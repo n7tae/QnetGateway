@@ -1,0 +1,359 @@
+You need to configure three software programs, g2_ircddb, g2_link, dvap_rptr
+by setting values in their *.cfg text files. Use your favorite text editor
+to do this. Scott's comments within those files are mostly self explainatory.
+
+Some other features are discussed below in Scott's own edited words.
+
+Tom Early, ac2ie@arrl.net
+
+/*
+ *   Copyright (C) 2010, 2011, 2012 by Scott Lawson KI4LKF
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful, 
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License 
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+G2_ircDDB adapted from the OpenG2 
+
+   DESCRIPTION
+=================
+
+g2_ircddb is a Dstar G2 gateway for the Dstar network with ircDDB routing
+and USroot routing. It runs on Linux(as a Linux service).
+ircddb originated from the OpenG2 with only one change.
+   Instead of using the local Postgres database server, 
+       we use the remote IRC database server.(group2 or group1)
+   So, the difference between OpenG2 and ircddb is 0.01%
+This new software g2_ircddb has been approved for use on the ircDDB network.
+
+IRC Gateways such as g2_ircdb (other IRC gateways copied from our OpenG2)
+connect to group2 server(USA/Canada) or group1 server(Europe).
+What are these group1, group2 servers? Group1 and group2 servers are really
+the combination of 2 programs running together:
+
+These are:  
+---- An IRC (Internet Relay Chat) program, in this case it is the inspIRCd
+     program
+---- the LDAP (Light Directory Access Protocol) program
+
+So, ircDDB database servers are NOTHING new, they were designed by groups
+of people 20-30 years ago, before even the ICOM Dstar came out.
+The German IRC team, copied the above programs (IRC, LDAP) from those groups,
+and they called it group1 and group2.
+
+The reason for that was that an IRC(Internet Relay Chat) server, sends data
+immediately, while the ICOM dstar network sends data 5 minutes later after a
+user keyed up a Dstar repeater.  So, IRC is faster, but it overloads your
+home-network.
+
+Using a PERSONAL callsign to set up an ircDBB gateway
+=====================================================
+In g2_ircddb.cfg, set OWNER equal to your personal callsign.
+In g2_link.cfg, set OWNER equal to your personal callsign.
+In your repeater config file, set OWNER equal to your personal callsign.
+
+Using a REPEATER callsign to set up an ircDBB gateway
+=====================================================
+In g2_ircddb.cfg, set OWNER equal to a REPEATER callsign (that you received
+from the ham authority of your Country).
+In g2_link.cfg, set OWNER equal to a REPEATER callsign (that you received
+from the ham authority of your Country) In your repeater config file, set
+OWNER equal to a REPEATER callsign (that you received from the ham authority
+of your Country).
+
+However, since the IRC database servers(group2 in Canada/USA, group1 in
+Europe) do NOT allow personal callsigns to be used as gateways, then you may
+be asking what is the point?
+
+Here is the logic:
+In some Countries, it is very difficult to receive a GATEWAY (club/group)
+callsign, sometimes it takes years.  In cases such as these, hams only have
+their own personal callsign to use. So, how do we get around the problem when
+the IRC servers group1, group2 require a GATEWAY callsign, but the user only
+has a PERSONAL callsign?
+
+Some groups of hams got together and installed their own IRC database server.
+An IRC database server (like group1, group2) is really these 2 basic programs:
+
+---- inspIRCd server software which is an IRC server (Internet Relay Chat)
+     which was designed in 1988. One such IRC program is inspIRCd which was
+     chosen by the German IRC team for use in their group1, group2 installations.
+
+---  LDAP server software, which  is the Light Directory Access Protocol server,
+     that was written in 1993.
+
+These 2 programs inspIRCd + LDAP make up the the IRC database servers as we know
+them today and were installed together by the IRC team on group1, group2
+installations.
+
+That is all there is to it.
+
+When LDAP runs, it checks the Gateway password as listed in g2_ircddb.cfg:
+IRC_PASS=... When LDAP does NOT run, then the IRC_PASS is NOT checked.
+
+So, some groups of hams, have installed the inspIRCd server, without installing
+the LDAP server. In such an installation, then the IRC_PASS is NOT checked, so
+you can use your personal callsign.
+
+g2_ircDDB supports the following commands in YRCALL
+
+Note: In the commands that folow, _ is a SPACE. 
+
+1)
+For Echotest/playback. 
+YRCALL=_ _ _ _ _ _ _E
+
+2)
+For Voice Mail: 
+YRCALL=_ _ _ _ _ _ S0
+The above command will Store/create voice mail in the dvtool file
+x_voicemail.dat.
+YRCALL=_ _ _ _ _ _ R0
+The above command will Recall/playback voice mail from the dvtool file
+x_voicemail.dat.
+YRCALL=_ _ _ _ _ _ C0
+The above command will Clear/delete voice mail. File x_voicemail.dat will be
+deleted. In all cases, the letter x in the file name x_voicemail is the
+module A,B or C.
+
+3)
+For inquiring the status of the link:
+YRCALL=_ _ _ _ _ _ _I
+
+4)
+For unlinking: 
+YRCALL=_ _ _ _ _ _ _U
+
+5)
+For linking:
+YRCALL=XXNYYYML
+Where XXNYYY is a friendly gateway, M is the gateways's module and L is the
+LINK command.
+YRCALL=XRFNNNML
+Where XRFNNN is a friendly reflector, M is the reflector's module and L is
+the LINK command.
+
+Note about linking:
+After linking succeeds, set YRCALL=CQCQCQ because your audio will go to the
+remote reflector ONLY if YRCALL=CQCQCQ.
+
+6)
+For executing scripts:
+YRCALL=_ _ _ _ _ _ nX
+where n can be from 0-9 or A-Z.
+Example: YRCALL=_ _ _ _ _ _1X
+Then the script exec_1.sh will be executed.
+<<AC2IE comment: Two scripts, exec_R.sh and exec_H.sh are included to reboot
+and halt your system, respectively. Also note that the MYCALL is passed to
+these scripts so you can use this as an input parameter for your scripts.>>
+
+7)
+Enabling and disabling INCOMING HotSpotNode connections: 
+To Enable:
+YRCALL=_ _ _ _ _ _ D1
+To Disable:
+YRCALL=_ _ _ _ _ _ D0
+
+Required software to run the g2_ircddb gateway correctly:
+--- g2_ircddb: The G2 audio gateway.
+--- g2_link: This communicates with g2_ircddb to link the local G2 gateway
+             to reflectors. Note: g2_link is NOT required if you only make
+             routing calls or talk locally on the repeater.
+--- rptr: This is our dstar repeater software that uses a GMSK adapter/modem.
+          Instead of rptr, you can use our dvap_rptr dstar repeater software
+          which uses a DVAP device. Intead of rptr, you can use our dvrptr
+          dstar repeater software which uses the DV-RPTR modem(dg1ht). Intead
+          of rptr, you can use our snd_rptr dstar repeater software which
+          uses a SOUND CARD. You can also use the ICOM's RP2C repeater
+          hardware box.
+
+ROUTING methods
+===============
+Some Dstar routing examples follow. Please do not use the same data because
+KJ4NHF is one of our own Dstar repeaters, and KI4LKF is a personal callsign
+in our group.
+
+Example of ZONE routing:
+ Lets say that your repeater is KJ4NHF, and you are currently on 
+ your local repeater module B, your callsign is KI4LKF
+ and you want to reach remote gateway XXNYYY module C
+ In this case, your radio should be programmed like this:
+ MYCALL=KI4LKF
+ YRCALL=/XXNYYYC
+ RPT1=KJ4NHF B
+ RPT2=KJ4NHF G
+
+Example of CALLSIGN routing:
+ Lets say that your repeater is KJ4NHF, and you are currently on 
+ your local repeater module B, your callsign is KI4LKF
+ and you want to talk to user XX0XXX
+ In this case, your radio should be programmed like this:
+ MYCALL=KI4LKF
+ YRCALL=XX0XXX
+ RPT1=KJ4NHF B
+ RPT2=KJ4NHF G
+
+Example of Cross-Band routing:
+ Lets say that your repeater is KJ4NHF, and you are currently on 
+ your local repeater module B, your callsign is KI4LKF
+ and you want to talk from your local module B to your local module C
+ In this case, your radio should be programmed like this:
+ MYCALL=KI4LKF
+ YRCALL=CQCQCQ
+ RPT1=KJ4NHF B
+ RPT2=KJ4NHF C
+
+DTMF decoding and processing
+=============================
+Prepare the software to decode and process DTMF tones
+-----------------------------------------------------
+Edit the Shell script proc_g2_ircddb_dtmfs.sh
+Correct the value for G2 to be the local G2 gateway
+callsign(same value in  g2_ircddb.cfg  ---->  OWNER)
+Edit G2_INT_IP  as follows:
+      If your g2_ircddb.cfg, says "G2_INTERNAL_IP=0.0.0.0" then set
+      G2_INT_IP=127.0.0.1.
+      If your g2_ircddb, says G2_INTERNAL_IP=<real local IP address>
+      then set G2_INT_IP equal to the exact value of G2_INTERNAL_IP.
+Edit G2_INT_PORT  to be equal to G2_INTERNAL_PORT in g2_ircddb.cfg.
+
+Note:   When local RF user has entered dtmf tones on the Dstar HT
+        and then PTT is released, g2_ircddb will print the whole
+        sequence in the g2_ircddb.log just before it creates the
+        dtmf file under  /tmp.
+
+How to enter DTMF tones correctly on your Dstar HT
+--------------------------------------------------
+If you want to have perfect DTMF decoding/processing in g2_ircddb,
+follow these suggestions:
+
+ 1) Hold down each dtmf key for at least 150 milliseconds.
+ 2) Leave at least 250 milliseconds of "silence", when you go from
+    one dtmf key to the next dtmf key.
+
+If you use a DTMF autodialer on your Dstar radio, you can program
+the above numbers easily into the ICOM's radio "auto-dialer".
+
+Note: MAXIMUM dtmf sequence is up to 32 dtmf tones.
+
+What dtmf tones are being decoded and processed
+-----------------------------------------------
+To link to an XRF reflector:  Example:   #02102
+That says:   link to XRF021  module B. So, we use the # dtmf key
+to mean that we're interested in linking to an XRF reflector. The
+last two digits are the remote module 01 thru 05 (which is
+translated to A thru E).
+
+To link to a DCS reflector:  Example:   D00126
+That says:   link to DCS001  module Z. So, we use the D  dtmf key
+to mean that we're interested in linking to a DCS reflector. The
+last two digits are the remote module 01 thru 26 (which is
+translated to A thru Z).
+
+To link to REF:  Example:    *01601
+That says:  link to REF016 module A. So, we use the *  dtmf key
+to mean that we're interested in linking to a REF reflector. The
+last two digits are the remote module 01 thru 05 (which is
+translated to A thru E).
+
+To unlink (from any reflector xrf or ref):    73
+
+To get the "link status":  99
+
+Note:
+You can extend the shell ascript to do more things.  like force
+your repeater to ID itself. Any YRCALL command that can be executed
+by g2link_test, can be added to the shell script. Basically, the
+Linux shell script proc_g2_ircddb_dtmfs.sh converts the decoded
+dtmf tones into YRCALL commands using g2link_test program.
+
+===========
+g2_link is a small program that is used to link a local RF repeater
+band to a remote reflector. g2_link software is used by our g2_ircddb
+(an IRCddb gateway) and by our g2_ccs (a CCS gateway).
+
+Before we begin, there are some dat files included in the g2_link
+ZIP package. These dat files are:
+
+already_linked.dat
+already_unlinked.dat
+failed_linked.dat
+linked.dat
+unlinked.dat
+id.dat
+
+All of the above dat files are dvtool format files and they are used
+when certain events take place. For example, when the link between your
+gateway and a reflector is established, then the file "linked.dat" will
+be played over RF, so anyone listening on your repeater, will hear the
+announcement that the link has been established. You do not have to
+change these files, unless you want to have your own personal voice
+played over RF. These dat files were created using a computer and they
+are NOT anyone's voice.
+
+The only dat file that you should really change is id.dat. The file
+id.dat contains the audio "UNLINKED" and nothing else. When the gateway
+is not linked and the RF user sets YRCALL=_______I to request the
+status of the link, the file id.dat will be played back over RF. But
+you should create your own id.dat file that should identify your own
+repeater with extra information if you like.
+
+For example, you could create your own dvtool audio file that contains
+the audio:  "This is repeater ...". A simple way to create your own
+recorded "repeater identification file" id.dat is to use your Dstar HT
+and set YRCALL command:   YRCALL=______S0 and key up your repeater.
+Start talking, and the gateway will record your audio into the file
+x_voicemail.dat where x is one of A.B or C. Now copy that file into
+id.dat.
+
+Open the file g2_link.cfg:
+    Edit the values for LOGIN_CALL, OWNER and ADMIN. LOGIN_CALL is
+    always your PERSONAL callsign. It is used to connect to REF
+    reflectors. (REF reflectors check if the value of LOGIN_CALL is a
+    user callsign registered with UStrust.)
+
+    OWNER is your GATEWAY/club/Repeater callsign. If you do not have a
+    GATEWAY/club/Repeater callsign, you can set OWNER equal to your
+    PERSONAL callsign.
+
+    If you set OWNER to a PERSONAL callsign, then the Gateway config
+    file(g2_ircddb.cfg, g2_ccs.cfg) must also use the same PERSONAL
+    callsign. If you set OWNER to your GATEWAY/club/Repeater callsign,
+    then the Gateway config file(g2_ircddb.cfg, g2_ccs.cfg) must also
+    use the same GATEWAY/club/Repeater callsign.
+        
+    You can add as many lines to gwys.txt, if you know of any other
+    reflectors that you want to be able to connect to. REF reflectors
+    use port 20001(for USER connections), DCS reflectors use port
+    30051 and XRF reflectors use either 30001(for Repeater linking)
+    or 20001(for USER connections).
+
+    You can have as many ADMIN lines as you want. ADMIN is user
+    callsign that can connect to your own gateway(g2_link) using
+    DVTool, ...
+
+Note:
+The zip file g2_lh conatain a small program that you can run to create
+the Dashboard for your gateway.
+
+Note:
+You may be thinking why did we put all this source code inside g2_link
+instead of putting it all inside the Gateway software g2_ircddb (or
+g2_ccs CCS gateway software). Because it is NOT a good design to burden
+the G2 gateway with code that is not DSTAR protocol and reflectors are
+NOT part of Dstar and they are not Dstar protocol.
+
+The only code that should be in a gateway, is G2 protocol code. This way
+we keep the gateways (g2_ircddb, g2_ccs) clean of any unneccesary source
+code logic and containing only pure G2/dstar logic.

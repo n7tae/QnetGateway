@@ -1,0 +1,63 @@
+#!/bin/sh
+# proc_g2_ircddb_dtmfs
+#
+
+### BEGIN INIT INFO
+# Provides:          proc_g2_ircddb_dtmfs
+# Required-Start:    $syslog $network
+# Required-Stop:     $syslog $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: proc_g2_ircddb_dtmfs
+# Description:       proc_g2_ircddb_dtmfs
+### END INIT INFO
+
+. /lib/lsb/init-functions
+
+SHFILE=/usr/local/bin/proc_g2_ircddb_dtmfs.sh
+PIDFILE=/usr/local/bin/proc_g2_ircddb_dtmfs.sh_pidfile
+LOG=/var/log/proc_g2_ircddb_dtmfs.log
+
+start() {
+
+   status_of_proc $SHFILE >/dev/null
+   RETVAL=$?
+   if [ "$RETVAL" = "0" ] ; then
+      echo $SHFILE already running
+   else
+       echo -n Starting $SHFILE
+       start-stop-daemon --make-pidfile --pidfile $PIDFILE --exec $SHFILE -S > $LOG 2>&1  &
+       log_end_msg $?
+   fi
+
+}
+
+stop() {
+   start-stop-daemon --pidfile $PIDFILE --retry 5 -K
+   /bin/rm -rf $PIDFILE
+}
+
+
+case "$1" in
+start)
+    start
+    ;;
+stop)
+    stop
+    ;;
+restart)
+    stop
+    start
+    ;;
+
+status)
+   echo -n $SHFILE
+   status_of_proc $SHFILE
+   ;;
+
+*)  log_action_msg "Usage: /etc/init.d/proc_g2_ircddb_dtmfs {start|stop|restart|status}"
+    exit 2
+    ;;
+esac
+exit 0
+

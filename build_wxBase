@@ -1,0 +1,33 @@
+#!/bin/bash
+
+BAKEFILES=$(PWD)/bakefiles.zip
+
+if [ -e $BAKEFILES ]
+then
+	# move to the home directory and get the source comressed archive for wxBase
+	cd ~
+	wget http://sourceforge.net/projects/wxwindows/files/2.8.12/wxBase-2.8.12.tar.gz
+	tar -xzvf wxBase-2.8.12.tar.gz
+
+	# move into the directory, configure and build it
+	cd wxBase-2.8.12
+	./configure --disable-gui --without-expat
+	make
+
+	# add the bakefiles and install wxBase
+	cd build
+	unzip $BAKEFILES
+	cd ..
+	sudo make install
+
+	# add /usr/local/lib to /etc/ld.so.conf, if needed and relink the libraries
+	grep -q /usr/local/lib /etc/ld.so.conf
+	RETVAL=$?
+	if [ $RETVAL -eq 1 ]
+	then
+		sudo echo /usr/local/lib >> /etc/ld.so.conf
+	fi
+	sudo ldconfig
+else
+	echo "$BAKEFILES not found, aborting!"
+fi

@@ -1,0 +1,60 @@
+#!/bin/sh
+# Start/stop the dstar dvap_rptr
+#
+### BEGIN INIT INFO
+# Provides:          dvap_rptr
+# Required-Start:    $null
+# Required-Stop:     $null
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: dvap_rptr
+# Description:       dvap_rptr
+### END INIT INFO
+
+. /lib/lsb/init-functions
+
+DVAP_RPTR_EXE=/usr/local/bin/dvap_rptr
+DVAP_RPTR_CFG=/usr/local/etc/dvap_rptr.cfg
+DVAP_RPTR_LOG-/var/log/dvap_rptr.log
+
+start()
+{
+    status_of_proc dvap_rptr >/dev/null
+    RETVAL=$?
+    if [ "$RETVAL" = "0" ] ; then
+       echo "dvap_rptr already running"
+    else
+       echo -n "Starting dvap_rptr"
+       start-stop-daemon --exec $DVAP_RPTR_EXE -S $DVAP_RPTR_CFG > $DVAP_RPTR_LOG 2>&1 &
+       log_end_msg $?
+    fi
+
+}
+
+stop() {
+    start-stop-daemon --exec $DVAP_RPTR_EXE --retry 5 -K
+}
+
+case "$1" in
+start)
+    start
+    ;;
+stop)
+    stop
+    ;;
+restart)
+    stop
+    start
+    ;;
+status)
+   echo -n "dvap_rptr "
+   status_of_proc dvap_rptr
+   ;;
+
+*)  log_action_msg "Usage: /etc/init.d/dvap_rptr {start|stop|restart|status}"
+    exit 2
+    ;;
+
+esac
+exit 0
+
