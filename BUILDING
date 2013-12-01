@@ -1,57 +1,68 @@
-Creating a DVAP hotspot based on Scott Lawson KI4LKF software is easy.
+Creating a portable DVAP hotspot based on a Raspberry Pi or a BeagleBone Black that
+can connect to both DStar reflectors as well as XREF reflectors based on Scott Lawson
+KI4LKF software is easy.
 
-I highly recommend doing this with Debian on a Raspberry Pi or a BeagleBone Black, but it should
-also work on virtually an hardware platform with any Debian-based OS. UBUNTU should work, but
-make no guarantees!
+Start with a Raspberry Pi with the latest Raspbian image (see http://raspberrypi.org)
+or a BeagleBone Black with the latest Debian image (see http://www.armhf.com). Scott's
+software will EASILY fit on the on-board memory of the BBB, but you will still
+need a uSD card to install the armhf.com Debian image to the on-board memory.
 
-The first order of business is to get the RasPi or the BBB up and running on a Debian image.
-There is plenty of room on the interal 2GB memory of the BBB to install all of what follows.
-(Unless you need a GUI, it that case you will need a lot more packages than I list below and
-a big enough external uSD card to hold the image.)
+You will need several packages to build Scott's gateway. The RasPi will probably have
+all or moste of these but it still doesn't hurt to be sure:
 
-Look to http://raspberrypi.org for the RasPi Raspbian hard float image and to
-http://www.armhf.com for the BBB Debian image.
-
-The RasPi should have all the needed packages but the BBB will not.
-On the BBB you will have:
 sudo su
 apt-get update
 apt-get upgrade
-agt-get install make g++ unzip
+agt-get install make g++ unzip git
 
-and maybe a few more.
+and maybe a few more. Here is one of my favorites: apt-get install avahi-daemon
+Then you can "ssh <user>@<hostname>.local" instead of "ssh <user>$<ip address>.
 
-The first order of business (after you expand the archvive this file came in) is to build the
-wxBase-2.8.12 library. There is a script to do all of this for you called "build_wsBase",
-but if you want to do this by hand, cat this script and type the command manually.
+After you install are the required packages, the gateway installation can begin.
+Go to your login home directory and (without root privileges type:
 
-Come back to this directory and type "make" to build all the executables. If you need DTMFS
-then also "build g2link_test".
+git clone git://github.com/ac2ie/g2_ircddb.git
 
-Now you should edit all the *.cfg files, g2_ircddb.cfg, g2_link.cfg and dvap_rptr.cfg.
-These files contain detailed comments. Just read through them and edit accordingly.
-Additional information about the configuration as well as other important and useful
-features are also in the CONFIGURING file.
+This will create a g2_ircddb directory with everything you need to build a dvap gateway.
+
+The first order of business is to build the necessary wxBase-2.8.12 library. There is a
+script in the g2_ircddb directory to do all of this for you. Just cd to g2_rcddb and type:
+
+./makewxBase
+
+Come back to this directory and type "make" to build all the executables, g2_ircddb,
+g2_link and dvap_rptr. If you need DTMFS then also execute "make g2link_test".
+
+Next, edit all the *.cfg files, g2_ircddb.cfg, g2_link.cfg and dvap_rptr.cfg.
+These files contain detailed comments about all of the values you need to set. Just
+read through the configuration files and edit accordingly. Additional information about
+the configuration as well as other important and useful features are also in the
+CONFIGURING file.
 
 The gwys.txt file is the internet address and port numbers for any gateway you would
 like g2_link to be able to connect to. The one delivered with this package is special:
-It has only XReflectors and DStar reflectors and the XReflectors are configures
-with the 20001 port. This will allow you to connect to everybody without opening any
-ports on your router. If you want to set up a repeater or access point, you will need
-to port forward several ports to your RasPi or BBB. Of course you will need to lock
-down the local address of the device with a static IP or reserving an address from
-your router. Executing get_gwys_list.sh will download a HUGE list of reflectors and
-repeaters with port address that my need forwarding to your sytem.
+It has only X-reflectors and DStar reflectors and the X-reflectors are configured
+with the 20001 port. This will allow you to connect to both DStar repeaters and XREF
+reflectors without opening any ports on your router. If you want to set up a repeater
+or access point, you will need to port-forward several ports to your RasPi or BBB.
+Of course you will also need to lock down the local address of the device with 
+either a static IP or by reserving an address from your router. There are MANY OTHER
+gateways to which you can connect. Executing get_gwys_list.sh will download a HUGE list
+of reflectors and gateways with port address that may need port-forwarding to your
+sytem. Just rememer if you update gwys.txt, you will have to reboot your system before
+the changes will be available.
 
 If you plan on using DTMFS, you can also edit proc_g2_ircddb_dtmfs.sh to add new dtmfs
 commands.
 
-Then install everything by typing "sudo make install". If you want DTMFS, type
+Then install everything by typing "sudo make install". If you want/need DTMFS, type
 "sudo make installdtmfs".
 
-Everything will install in /usr/local. The executables will be in /usr/local/bin and
-the *.cfg files will be in /usr/local/etc. If you need to modify a configuration file,
-do it in /usr/local/etc.
+This will install the service scripts and symbolic links in /etc/init.d and everything
+else in /usr/local. The executables will be in /usr/local/bin and the *.cfg files and
+other data will be in /usr/local/etc. If you need to modify a configuration file, do it
+in /usr/local/etc. If you edit the files in the user-local g2_ircddb directory, you will
+have to reinstall for the g2_ircddb, g2_link and dvap_rptr services to see them.
 
 At this point, you can either reboot to start the three or four services, or start them
 manually with the "service" command. (See the man page for service.)
@@ -61,6 +72,6 @@ You can clean up the intermediate *.o files with "make clean" and remove the int
 
 If you want to uninstall everything return to the build directory and type
 "sudo make uninstall" and possibly "sudo make uninstalldtmfs". This will shutdown the
-service scripts, remove everything from /usr/local and remove the service scripts.
+and remove the service scripts and links and remove everything from /usr/local.
 
 Tom Early, ac2ie@arrl.net
