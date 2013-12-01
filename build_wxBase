@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BAKEFILES=$(PWD)/bakefiles.zip
+BAKEFILES=${PWD}/bakefiles.zip
 
 if [ -e $BAKEFILES ]
 then
@@ -21,13 +21,12 @@ then
 	sudo make install
 
 	# add /usr/local/lib to /etc/ld.so.conf, if needed and relink the libraries
-	grep -q /usr/local/lib /etc/ld.so.conf
-	RETVAL=$?
-	if [ $RETVAL -eq 1 ]
-	then
-		sudo echo /usr/local/lib >> /etc/ld.so.conf
-	fi
-	sudo ldconfig
+	sudo ldconfig -v
+	
+	echo "==================================================="
+	echo "wxBase compiled and installed!"
+	echo "Inspect the 'ldconfig -v' output above to make sure that the wx libraries"
+	echo "are showing up in the /usr/local/lib directory."
 else
 	echo "$BAKEFILES not found, aborting!"
 fi
