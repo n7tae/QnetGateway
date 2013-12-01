@@ -15,7 +15,7 @@
 
 DVAP_RPTR_EXE=/usr/local/bin/dvap_rptr
 DVAP_RPTR_CFG=/usr/local/etc/dvap_rptr.cfg
-DVAP_RPTR_LOG-/var/log/dvap_rptr.log
+DVAP_RPTR_LOG=/var/log/dvap_rptr.log
 
 start()
 {
