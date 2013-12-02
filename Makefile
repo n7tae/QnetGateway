@@ -146,6 +146,8 @@ uninstall:
 	/bin/rm -f /var/log/g2_link.log
 	######### dvap_rptr #########
 	/usr/sbin/service dvap_rptr stop
-	/bin/rm -f $(BINDIR)/dvap_rptr
+	/bin/rm -f /etc/init.d/dvap_rptr
 	/usr/sbin/update-rc.d dvap_rptr remove
+	/bin/rm -f $(BINDIR)/dvap_rptr
+	/bin/rm -f $(BINDIR)/dvap_rptr.sh
 	/bin/rm -r $(CFGDIR)/dvap_rptr.cfg
