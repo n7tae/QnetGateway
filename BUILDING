@@ -13,7 +13,7 @@ all or moste of these but it still doesn't hurt to be sure:
 sudo su
 apt-get update
 apt-get upgrade
-agt-get install make g++ unzip git
+apt-get install make g++ unzip git
 
 and maybe a few more. Here is one of my favorites: apt-get install avahi-daemon
 Then you can "ssh <user>@<hostname>.local" instead of "ssh <user>$<ip address>.
@@ -28,7 +28,7 @@ This will create a g2_ircddb directory with everything you need to build a dvap 
 The first order of business is to build the necessary wxBase-2.8.12 library. There is a
 script in the g2_ircddb directory to do all of this for you. Just cd to g2_rcddb and type:
 
-./makewxBase
+./build_wxBase
 
 Come back to this directory and type "make" to build all the executables, g2_ircddb,
 g2_link and dvap_rptr. If you need DTMFS then also execute "make g2link_test".
