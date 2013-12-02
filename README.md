@@ -14,11 +14,14 @@ Start with a Raspberry Pi with the latest Raspbian image (see http://raspberrypi
 You will need several packages to build Scott's gateway. The RasPi will probably have all or moste of these but it still doesn't hurt to be sure:
 
 sudo su
-apt-get update
-apt-get upgrade
-agt-get install make g++ unzip git
 
-and maybe a few more. Here is one of my favorites: "apt-get install avahi-daemon". Then you can "ssh <user>@<hostname>.local" instead of "ssh <user>$<ip address>.
+apt-get update
+
+apt-get upgrade
+
+apt-get install make g++ unzip git
+
+and maybe a few more of your favorite packages. Here is one of my favorites: "apt-get install avahi-daemon". Then you can "ssh <user>@<hostname>.local" instead of "ssh <user>$<ip address>.
 
 After you install all the required packages, the g2_ircddb gateway installation can begin. Go to your login home directory and (without root privileges) type:
 
