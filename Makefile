@@ -102,6 +102,7 @@ install:
 	/usr/sbin/update-rc.d g2_link enable
 	######### dvap_rptr #########
 	/bin/cp -f dvap_rptr $(BINDIR)
+	/bin/cp -f dvap_rptr.sh $(BINDIR)
 	/bin/cp -f dvap_rptr.cfg $(CFGDIR)
 	/bin/cp -f service.dvap_rptr /etc/init.d/dvap_rptr
 	/usr/sbin/update-rc.d dvap_rptr defaults
