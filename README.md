@@ -21,7 +21,7 @@ apt-get upgrade
 
 apt-get install make g++ unzip git
 
-and maybe a few more of your favorite packages. Here is one of my favorites: "apt-get install avahi-daemon". Then you can "ssh <user>@<hostname>.local" instead of "ssh <user>$<ip address>.
+and maybe a few more of your favorite packages. Here is one of my favorites: "apt-get install avahi-daemon". Then you can "ssh \<user\>@\<hostname\>.local" instead of "ssh <user>$<ip address>.
 
 After you install all the required packages, the g2_ircddb gateway installation can begin. Go to your login home directory and (without root privileges) type:
 
