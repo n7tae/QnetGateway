@@ -3,7 +3,7 @@ g2_ircddb
 
 This package is for making a ircddb gateway based on Scott Lawson KI4LKF g2_ircddb gateway software.
 
-The only repeater device supported so far is a DVAP dongle (see http://www.dvapdongle.com). Plans are to also support a GMSK modem (as soon as I can get my hands on one).
+tworepeater devices are supported so far: the DVAP dongle (see http://www.dvapdongle.com) and the dvrptr (see http://www.dvrptr.net).
 
 Creating a portable DVAP hotspot based on a Raspberry Pi or a BeagleBone Black that can connect to both DStar reflectors as well as XREF reflectors based on Scott Lawson KI4LKF software is easy.
 
@@ -21,7 +21,7 @@ apt-get upgrade
 
 apt-get install make g++ unzip git
 
-and maybe a few more of your favorite packages. Here is one of my favorites: "apt-get install avahi-daemon". Then you can "ssh <user>@<hostname>.local" instead of "ssh <user>@<ip address>.
+and maybe a few more of your favorite packages. Here is one of my favorites: "apt-get install avahi-daemon". Then you can "ssh user@hostname.local" instead of "ssh user@ip_address.
 
 After you install all the required packages, the g2_ircddb gateway installation can begin. Go to your login home directory and (without root privileges) type:
 
