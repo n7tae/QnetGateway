@@ -58,16 +58,16 @@ commands.
 
 Then install your system, g2_ircddb, g2_link and either dvap_rptr or dvrptr. Start by
 typing "sudo make installg2". This will install g2_ircddb and g2_link and all the
-files they require. Then either dvap_rptr or dvrptr by typing "sudo make installdvap"
-or "sudo make installdvrptr", respectively. Finally, if you want/need DTMFS, type
-"sudo make installdtmfs".
+files they require. Then intstall either dvap_rptr or dvrptr by typing "sudo make
+installdvap" or "sudo make installdvrptr", respectively. Finally, if you want/need
+DTMFS, type "sudo make installdtmfs".
 
 This will install the service scripts and symbolic links in /etc/init.d and everything
 else in /usr/local. The executables will be in /usr/local/bin and the *.cfg files and
 other data will be in /usr/local/etc. If you find that you need to modify a
-configuration file, do it in /usr/local/etc. If you edit the files in the build
+configuration file, edit the ones in /usr/local/etc. If you edit the files in the build
 directory, you will either have to copy these modified configuration files you you will
- have to reinstall the application.
+have to reinstall the application.
 
 At this point, you can either reboot to start the three or four services, or start them
 manually with the "service" command. (See the man page for service.)
