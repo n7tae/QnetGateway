@@ -1,4 +1,4 @@
-Creating a portable DVAP hotspot based on a Raspberry Pi or a BeagleBone Black that
+Creating a DVAP or DVRPTR hotspot based on a Raspberry Pi or a BeagleBone Black that
 can connect to both DStar reflectors as well as XREF reflectors based on Scott Lawson
 KI4LKF software is easy.
 
@@ -26,18 +26,19 @@ git clone git://github.com/ac2ie/g2_ircddb.git
 This will create a g2_ircddb directory with everything you need to build a dvap gateway.
 
 The first order of business is to build the necessary wxBase-2.8.12 library. There is a
-script in the g2_ircddb directory to do all of this for you. Just cd to g2_rcddb and type:
+script in the g2_ircddb directory to do all of this for you. Just cd to g2_ircddb and
+type:
 
 ./build_wxBase
 
 Come back to this directory and type "make" to build all the executables, g2_ircddb,
 g2_link and dvap_rptr. If you need DTMFS then also execute "make g2link_test".
 
-Next, edit all the *.cfg files, g2_ircddb.cfg, g2_link.cfg and dvap_rptr.cfg.
-These files contain detailed comments about all of the values you need to set. Just
-read through the configuration files and edit accordingly. Additional information about
-the configuration as well as other important and useful features are also in the
-CONFIGURING file.
+Next, edit all the *.cfg files, g2_ircddb.cfg, g2_link.cfg and either dvap_rptr.cfg
+or dvrptr.cfg. These files contain detailed comments about all of the values you need
+to set. Just read through the configuration files and edit accordingly. Additional
+information about the configuration as well as other important and useful features are
+also in the CONFIGURING file.
 
 The gwys.txt file is the internet address and port numbers for any gateway you would
 like g2_link to be able to connect to. The one delivered with this package is special:
@@ -55,23 +56,28 @@ the changes will be available.
 If you plan on using DTMFS, you can also edit proc_g2_ircddb_dtmfs.sh to add new dtmfs
 commands.
 
-Then install everything by typing "sudo make install". If you want/need DTMFS, type
+Then install your system, g2_ircddb, g2_link and either dvap_rptr or dvrptr. Start by
+typing "sudo make installg2". This will install g2_ircddb and g2_link and all the
+files they require. Then either dvap_rptr or dvrptr by typing "sudo make installdvap"
+or "sudo make installdvrptr", respectively. Finally, if you want/need DTMFS, type
 "sudo make installdtmfs".
 
 This will install the service scripts and symbolic links in /etc/init.d and everything
 else in /usr/local. The executables will be in /usr/local/bin and the *.cfg files and
-other data will be in /usr/local/etc. If you need to modify a configuration file, do it
-in /usr/local/etc. If you edit the files in the user-local g2_ircddb directory, you will
-have to reinstall for the g2_ircddb, g2_link and dvap_rptr services to see them.
+other data will be in /usr/local/etc. If you find that you need to modify a
+configuration file, do it in /usr/local/etc. If you edit the files in the build
+directory, you will either have to copy these modified configuration files you you will
+ have to reinstall the application.
 
 At this point, you can either reboot to start the three or four services, or start them
 manually with the "service" command. (See the man page for service.)
 
-You can clean up the intermediate *.o files with "make clean" and remove the intermediate
-*.o files and binary executables with "make realclean".
+You can clean up the build directory of intermediate *.o files with "make clean" or, you
+can remove the intermediate *.o files and binary executables with "make realclean".
 
 If you want to uninstall everything return to the build directory and type
-"sudo make uninstall" and possibly "sudo make uninstalldtmfs". This will shutdown the
-and remove the service scripts and links and remove everything from /usr/local.
+"sudo make uninstallg2" and either "sudo make unistalldvap" or "sudo make
+uninstalldvrptr" and possibly "sudo make uninstalldtmfs". This will shutdown the and
+remove the service scripts and links and remove most everything from /usr/local.
 
 Tom Early, ac2ie@arrl.net
