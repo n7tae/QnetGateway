@@ -56,11 +56,9 @@ the changes will be available.
 If you plan on using DTMFS, you can also edit proc_g2_ircddb_dtmfs.sh to add new dtmfs
 commands.
 
-Then install your system, g2_ircddb, g2_link and either dvap_rptr or dvrptr. Start by
-typing "sudo make installg2". This will install g2_ircddb and g2_link and all the
-files they require. Then intstall either dvap_rptr or dvrptr by typing "sudo make
-installdvap" or "sudo make installdvrptr", respectively. Finally, if you want/need
-DTMFS, type "sudo make installdtmfs".
+Then install your system. you have two choices, either dvap_rptr or dvrptr by typing
+"sudo make installdvap" or "sudo make installdvrptr", respectively. Finally, if you
+want/need DTMFS, type "sudo make installdtmfs".
 
 This will install the service scripts and symbolic links in /etc/init.d and everything
 else in /usr/local. The executables will be in /usr/local/bin and the *.cfg files and
@@ -75,9 +73,9 @@ manually with the "service" command. (See the man page for service.)
 You can clean up the build directory of intermediate *.o files with "make clean" or, you
 can remove the intermediate *.o files and binary executables with "make realclean".
 
-If you want to uninstall everything return to the build directory and type
-"sudo make uninstallg2" and either "sudo make unistalldvap" or "sudo make
-uninstalldvrptr" and possibly "sudo make uninstalldtmfs". This will shutdown the and
-remove the service scripts and links and remove most everything from /usr/local.
+If you want to uninstall everything return to the build directory and type either "sudo
+make unistalldvap" or "sudo make uninstalldvrptr" and possibly "sudo make uninstalldtmfs".
+This will shutdown the and remove the service scripts and links and remove most everything
+from /usr/local.
 
 Tom Early, ac2ie@arrl.net
