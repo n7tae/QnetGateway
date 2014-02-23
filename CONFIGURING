@@ -1,8 +1,9 @@
-You need to configure three software programs, g2_ircddb, g2_link, dvap_rptr
-by setting values in their *.cfg text files. Use your favorite text editor
-to do this. Scott's comments within those files are mostly self explainatory.
+You need to configure three software programs, g2_ircddb, g2_link, and either
+dvap_rptr or dvrptr by setting values in their *.cfg text files. Use your
+favorite text editor to do this. Scott's comments within those files are
+mostly self explainatory.
 
-Some other features are discussed below in Scott's own edited words.
+Some other features are discussed below.
 
 Tom Early, ac2ie@arrl.net
 
