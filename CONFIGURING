@@ -154,9 +154,9 @@ YRCALL=_ _ _ _ _ _ nX
 where n can be from 0-9 or A-Z.
 Example: YRCALL=_ _ _ _ _ _1X
 Then the script exec_1.sh will be executed.
-<<AC2IE comment: Two scripts, exec_R.sh and exec_H.sh are included to reboot
-and halt your system, respectively. Also note that the MYCALL is passed to
-these scripts so you can use this as an input parameter for your scripts.>>
+Two scripts, exec_R.sh and exec_H.sh are included to reboot and halt your
+system, respectively. Also note that the MYCALL is passed to these scripts\
+so you can use this as an input parameter for your scripts.
 
 7)
 Enabling and disabling INCOMING HotSpotNode connections: 
@@ -342,6 +342,8 @@ Open the file g2_link.cfg:
     You can have as many ADMIN lines as you want. ADMIN is user
     callsign that can connect to your own gateway(g2_link) using
     DVTool, ...
+    
+    Only ADMIN users can use the scripts feature of this software.
 
 Note:
 The zip file g2_lh conatain a small program that you can run to create
@@ -357,3 +359,41 @@ NOT part of Dstar and they are not Dstar protocol.
 The only code that should be in a gateway, is G2 protocol code. This way
 we keep the gateways (g2_ircddb, g2_ccs) clean of any unneccesary source
 code logic and containing only pure G2/dstar logic.
+
+dvap_rptr
+
+The serial number required in the .cfg file is obtained from the label
+that can be seen on the DVAP circuit board. In most cases set the power
+to maximum level.
+
+dvrptr
+
+
+
+The serial number required in the .cfg file can most easily be obtained
+by examining the /var/log/dvrptr.log file once the board has been
+powered up by the BBB or RasPi. Once you know the board serial number,
+edit /usr/local/etc/dvrptr.cfg. Please note that once installed, you
+need to edit the configuration files in /usr/local/etc, not where you
+build the software. You need to be root to edit files in /usr/local/etc.
+After editing /usr/local/etc/dvrptr.cfg file you can restart the effected
+program with "sudo service dvrptr restart.
+
+Rig specific parameters are in "RF_AUDIO_Level", "RX_Inverse" and
+"TX_Inverse". You need to play with these to work best with your rig.
+With my Kenwood TM-V71, I use:
+
+RF_AUDIO_Level=80
+TX_Inverse=1
+RX_Inverse=1
+
+You can first start with RX_Inverse, trying 0 or 1. Use the echo command
+on your radio and look in the logs to see if you are getting into the
+dvprtr. Remember to restart the dvrptr service anytime you modify
+/usr/local/etc/dvrptr.cfg. Once you are able to get into the dvrptr,
+then you can work out the TX_Inverse paramter. Once you hear anything
+with in the echo mode, move RF_AUDIO_Level up or down to get the best
+audio.
+
+Once you have a working system, it's a good idea to back up you *.cfg
+files.
