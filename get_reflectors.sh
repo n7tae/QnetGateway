@@ -15,7 +15,7 @@ rm -f gwys.va2uv.txt
 wget -nv -O gwys.va3uv.txt http://www.va3uv.com/gwys.txt
 
 if [ -e gwys.va3uv.txt ]; then
-	awk '$1~/^REF|XRF/&&$2~/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/{printf "%s\t%s\t20001\n", $1, $2}' gwys.va3uv.txt > gwys.txt
+	awk '$1~/^REF|XRF/&&$2~/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/{print $1, $2, 20001}' gwys.va3uv.txt > gwys.txt
 else
         echo "Could not get gateways list from www.va3uv.com!"
 	if [ -e gwys.txt.orig ]; then
