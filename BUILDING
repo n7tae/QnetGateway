@@ -58,14 +58,22 @@ The gwys.txt file is the internet address and port numbers for any gateway you w
 like g2_link to be able to connect to. The one delivered with this package is special:
 It has only X-reflectors and DStar reflectors and the X-reflectors are configured
 with the 20001 port. This will allow you to connect to both DStar repeaters and XREF
-reflectors without opening any ports on your router. If you want to set up a repeater
-or access point, you will need to port-forward several ports to your RasPi or BBB.
-Of course you will also need to lock down the local address of the device with 
-either a static IP or by reserving an address from your router. There are MANY OTHER
+reflectors without opening any ports on your home router. If you want to set up a 
+DExtra repeater or access point, you will need to port-forward several ports to your
+RasPi or BBB. Of course you will also need to lock down the local address of the device
+with either a static IP or by reserving an address from your router. There are MANY OTHER
 gateways to which you can connect. Executing get_gwys_list.sh will download a HUGE list
-of reflectors and gateways with port address that may need port-forwarding to your
-sytem. Just rememer if you update gwys.txt, you will have to reboot your system before
-the changes will be available.
+of reflectors and gateways from www.va3uv.com with port address that may need
+port-forwarding to your sytem. Another script, get_reflectors.sh will download the same
+list from va3uv.com, but edit it so that it only contains DStar reflectors (REFXXX)
+or XReflectors (XRFXXX) and it will put all reflectors on port 20001 so you won't
+need any port-forwarding on your home router.
+
+Based on the above discussion, execute either "./get_reflectors.sh" or
+"./get_gwy_list.sh". If you want to be able to update your hotspot dynamically, you can
+modify either one of these scripts by adding a "reboot" command at the end and moving
+it to /usr/local/etc/exec_?X.sh where "?" is a number or letter. See the discussion
+of executables in the CONFIGURING text file.
 
 If you plan on using DTMFS, you can also edit proc_g2_ircddb_dtmfs.sh to add new dtmfs
 commands.
@@ -77,19 +85,20 @@ want/need DTMFS, type "sudo make installdtmfs".
 This will install the service scripts and symbolic links in /etc/init.d and everything
 else in /usr/local. The executables will be in /usr/local/bin and the *.cfg files and
 other data will be in /usr/local/etc. If you find that you need to modify a
-configuration file, edit the ones in /usr/local/etc. If you edit the files in the build
-directory, you will either have to copy these modified configuration files you you will
-have to reinstall the application.
+configuration file, edit the ones in /usr/local/etc as root. If you edit the files in
+the build directory, you will either have to copy these modified configuration files
+you you will have to reinstall the application.
 
 At this point, you can either reboot to start the three or four services, or start them
-manually with the "service" command. (See the man page for service.)
+manually with the "service" command. For example to start ircddb, type "sudo service
+g2_ircddb start". (See the man page for service.)
 
 You can clean up the build directory of intermediate *.o files with "make clean" or, you
 can remove the intermediate *.o files and binary executables with "make realclean".
 
 If you want to uninstall everything return to the build directory and type either "sudo
 make unistalldvap" or "sudo make uninstalldvrptr" and possibly "sudo make uninstalldtmfs".
-This will shutdown the and remove the service scripts and links and remove most everything
+This will shutdown and remove the service scripts and links and remove most everything
 from /usr/local.
 
 Tom Early, ac2ie@arrl.net
