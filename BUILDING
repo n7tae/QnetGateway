@@ -65,9 +65,9 @@ with either a static IP or by reserving an address from your router. There are M
 gateways to which you can connect. Executing get_gwys_list.sh will download a HUGE list
 of reflectors and gateways from www.va3uv.com with port address that may need
 port-forwarding to your sytem. Another script, get_reflectors.sh will download the same
-list from va3uv.com, but edit it so that it only contains DStar reflectors (REFXXX)
-or XReflectors (XRFXXX) and it will put all reflectors on port 20001 so you won't
-need any port-forwarding on your home router.
+list from va3uv.com, but edit it so that it only contains DCS x-reflectors (DCSXXX),
+DStar reflectors (REFXXX) or XReflectors (XRFXXX) and it will put all reflectors on port
+20001 so you won't need any port-forwarding on your home router.
 
 Based on the above discussion, execute either "./get_reflectors.sh" or
 "./get_gwy_list.sh". If you want to be able to update your hotspot dynamically, you can
