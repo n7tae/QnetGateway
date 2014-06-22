@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 int getAllIPV4Addresses ( const char * name, unsigned short port,
-    unsigned int * num, struct sockaddr_in * addr, unsigned int max_addr );
+                          unsigned int * num, struct sockaddr_in * addr, unsigned int max_addr );
 
 
 void safeStringCopy (char * dest, const char * src, unsigned int buf_size);

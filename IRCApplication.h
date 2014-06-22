@@ -28,25 +28,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class IRCApplication
 {
-  public:
+public:
 
-  virtual void userJoin (const wxString& nick, const wxString& name, const wxString& host) = 0;
-  virtual void userLeave (const wxString& nick) = 0;
-  virtual void userChanOp (const wxString& nick, bool op) = 0;
-  virtual void userListReset(void) = 0;
-	
-  virtual void msgChannel (IRCMessage * m) = 0;
-  virtual void msgQuery (IRCMessage * m) = 0;
+	virtual void userJoin (const wxString& nick, const wxString& name, const wxString& host) = 0;
+	virtual void userLeave (const wxString& nick) = 0;
+	virtual void userChanOp (const wxString& nick, bool op) = 0;
+	virtual void userListReset(void) = 0;
 
-  virtual void setCurrentNick(const wxString& nick) = 0;
-  virtual void setTopic(const wxString& topic) = 0;
-  
-  virtual void setBestServer(const wxString& ircUser) = 0;
+	virtual void msgChannel (IRCMessage * m) = 0;
+	virtual void msgQuery (IRCMessage * m) = 0;
 
-  virtual void setSendQ( IRCMessageQueue * s ) = 0;
-  virtual IRCMessageQueue * getSendQ (void) = 0;
-	
-  virtual ~IRCApplication() {}
+	virtual void setCurrentNick(const wxString& nick) = 0;
+	virtual void setTopic(const wxString& topic) = 0;
+
+	virtual void setBestServer(const wxString& ircUser) = 0;
+
+	virtual void setSendQ( IRCMessageQueue * s ) = 0;
+	virtual IRCMessageQueue * getSendQ (void) = 0;
+
+	virtual ~IRCApplication() {}
 
 };
 

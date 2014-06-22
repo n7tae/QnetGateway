@@ -31,32 +31,32 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class IRCReceiver : public wxThread
 {
-  public:
+public:
 
-  IRCReceiver(int sock, IRCMessageQueue * q);
+	IRCReceiver(int sock, IRCMessageQueue * q);
 
-  ~IRCReceiver();
-
-
-  bool startWork();
-
-  void stopWork();
+	~IRCReceiver();
 
 
-  protected:
+	bool startWork();
 
-  virtual wxThread::ExitCode Entry();
-
-
-
-  private:
+	void stopWork();
 
 
-  bool terminateThread;
-  int sock;
-  IRCMessageQueue * recvQ;
+protected:
+
+	virtual wxThread::ExitCode Entry();
+
+
+
+private:
+
+
+	bool terminateThread;
+	int sock;
+	IRCMessageQueue * recvQ;
 
 };
 
 
-#endif 
+#endif

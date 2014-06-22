@@ -30,34 +30,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class IRCProtocol
 {
-  public:
-    IRCProtocol ( IRCApplication * app,
-      const wxString& callsign, const wxString& password, const wxString& channel,
-      const wxString& versionInfo );
+public:
+	IRCProtocol ( IRCApplication * app,
+	              const wxString& callsign, const wxString& password, const wxString& channel,
+	              const wxString& versionInfo );
 
-    ~IRCProtocol();
+	~IRCProtocol();
 
-    void setNetworkReady( bool state );
+	void setNetworkReady( bool state );
 
-    bool processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sendQ );
+	bool processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sendQ );
 
-  private:
-    void chooseNewNick();
+private:
+	void chooseNewNick();
 
-    wxArrayString nicks;
-    wxString password;
-    wxString channel;
-    wxString name;
-    wxString currentNick;
-    wxString versionInfo;
+	wxArrayString nicks;
+	wxString password;
+	wxString channel;
+	wxString name;
+	wxString currentNick;
+	wxString versionInfo;
 
-    int state;
-    int timer;
-    int pingTimer;
+	int state;
+	int timer;
+	int pingTimer;
 
-    wxString debugChannel;
+	wxString debugChannel;
 
-    IRCApplication * app;
+	IRCApplication * app;
 
 };
 

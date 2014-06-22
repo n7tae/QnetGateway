@@ -31,9 +31,9 @@
  *
  * Because of its relatively low length (23), dimension (12) and number of
  * redundant bits (11), the binary (23,12,7) Golay code can be encoded and
- * decoded simply by using look-up tables. The program below uses a 16K 
+ * decoded simply by using look-up tables. The program below uses a 16K
  * encoding table and an 8K decoding table.
- * 
+ *
  * For more information, suggestions, or other ideas on implementing error
  * correcting codes, please contact me at (I'm temporarily in Japan, but
  * below is my U.S. address):
@@ -48,7 +48,7 @@
  *                 extended Golay code.
  *
  * COPYRIGHT NOTICE: This computer program is free for non-commercial purposes.
- * You may implement this program for any non-commercial application. You may 
+ * You may implement this program for any non-commercial application. You may
  * also implement this program for commercial purposes, provided that you
  * obtain my written permission. Any modification of this program is covered
  * by this copyright.
@@ -94,17 +94,17 @@ long arr2int(int *a, int r)
  * array a[1]...a[r], to a long integer \sum_{i=1}^r 2^{a[i]-1}.
  */
 {
-   int i;
-   long mul, result = 0, temp;
- 
-   for (i=1; i<=r; i++) {
-      mul = 1;
-      temp = a[i]-1;
-      while (temp--)
-         mul = mul << 1;
-      result += mul;
-      }
-   return(result);
+	int i;
+	long mul, result = 0, temp;
+
+	for (i=1; i<=r; i++) {
+		mul = 1;
+		temp = a[i]-1;
+		while (temp--)
+			mul = mul << 1;
+		result += mul;
+	}
+	return(result);
 }
 
 void nextcomb(int n, int r, int *a)
@@ -112,17 +112,17 @@ void nextcomb(int n, int r, int *a)
  * Calculate next r-combination of an n-set.
  */
 {
-  int  i, j;
- 
-  a[r]++;
-  if (a[r] <= n)
-      return;
-  j = r - 1;
-  while (a[j] == n - r + j)
-     j--;
-  for (i = r; i >= j; i--)
-      a[i] = a[j] + i - j + 1;
-  return;
+	int  i, j;
+
+	a[r]++;
+	if (a[r] <= n)
+		return;
+	j = r - 1;
+	while (a[j] == n - r + j)
+		j--;
+	for (i = r; i >= j; i--)
+		a[i] = a[j] + i - j + 1;
+	return;
 }
 
 long get_syndrome(long pattern)
@@ -137,15 +137,15 @@ long get_syndrome(long pattern)
  */
 {
 //    long aux = X22, aux2;
-    long aux = X22;
- 
-    if (pattern >= X11)
-       while (pattern & MASK12) {
-           while (!(aux & pattern))
-              aux = aux >> 1;
-           pattern ^= (aux/X11) * GENPOL;
-           }
-    return(pattern);
+	long aux = X22;
+
+	if (pattern >= X11)
+		while (pattern & MASK12) {
+			while (!(aux & pattern))
+				aux = aux >> 1;
+			pattern ^= (aux/X11) * GENPOL;
+		}
+	return(pattern);
 }
 
 // main()
@@ -153,7 +153,7 @@ long get_syndrome(long pattern)
 //    register int i,j;
 //    long temp;
 //    int seed = 133757;
-// 
+//
 //    /*
 //     * ---------------------------------------------------------------------
 //     *                  Generate ENCODING TABLE
@@ -164,13 +164,13 @@ long get_syndrome(long pattern)
 //     * integer whose 23 least significant bits are coded bits: Of these, the
 //     * 12 most significant bits are information bits and the 11 least
 //     * significant bits are redundant bits (systematic encoding).
-//     * --------------------------------------------------------------------- 
+//     * ---------------------------------------------------------------------
 //     */
 //     for (pattern = 0; pattern < 4096; pattern++) {
 //         temp = pattern << 11;          /* multiply information by X^{11} */
 //         encoding_table[pattern] = temp + get_syndrome(temp);/* add redundancy */
 //         }
-// 
+//
 //    /*
 //     * ---------------------------------------------------------------------
 //     *                  Generate DECODING TABLE
@@ -179,18 +179,18 @@ long get_syndrome(long pattern)
 //     * is the most likely error pattern. First an error pattern is generated.
 //     * Then its syndrome is calculated and used as a pointer to the table
 //     * where the error pattern value is stored.
-//     * --------------------------------------------------------------------- 
-//     *            
+//     * ---------------------------------------------------------------------
+//     *
 //     * (1) Error patterns of WEIGHT 1 (SINGLE ERRORS)
 //     */
 //     decoding_table[0] = 0;
 //     decoding_table[1] = 1;
-//     temp = 1; 
+//     temp = 1;
 //     for (i=2; i<= 23; i++) {
 //         temp *= 2;
 //         decoding_table[get_syndrome(temp)] = temp;
 //         }
-//    /*            
+//    /*
 //     * (2) Error patterns of WEIGHT 2 (DOUBLE ERRORS)
 //     */
 //     a[1] = 1; a[2] = 2;
@@ -201,7 +201,7 @@ long get_syndrome(long pattern)
 //         temp = arr2int(a,2);
 //         decoding_table[get_syndrome(temp)] = temp;
 //         }
-//    /*            
+//    /*
 //     * (3) Error patterns of WEIGHT 3 (TRIPLE ERRORS)
 //     */
 //     a[1] = 1; a[2] = 2; a[3] = 3;
@@ -212,7 +212,7 @@ long get_syndrome(long pattern)
 //         temp = arr2int(a,3);
 //         decoding_table[get_syndrome(temp)] = temp;
 //         }
-// 
+//
 //    /* ---------------------------------------------------------------------
 //     *                        Generate DATA
 //     * ---------------------------------------------------------------------
@@ -223,7 +223,7 @@ long get_syndrome(long pattern)
 //      */
 //     data = random() & 0x00000fff;
 //     printf("data =            %#012x\n", data);
-// 
+//
 //    /*
 //     * ---------------------------------------------------------------------
 //     *                         ENCODING
@@ -231,7 +231,7 @@ long get_syndrome(long pattern)
 //     */
 //     codeword = encoding_table[data];
 //     printf("codeword =        %#012x\n", codeword);
-// 
+//
 //    /*
 //     * ---------------------------------------------------------------------
 //     *                          ERRORS
@@ -241,7 +241,7 @@ long get_syndrome(long pattern)
 //     scanf("%d", &numerr);
 //     for (i = 0; i < numerr; i++)
 //         scanf("%d", &errpos[i]);
-// 
+//
 //    /*
 //     * ---------------------------------------------------------------------
 //     *                      RECEIVED VECTOR
@@ -252,7 +252,7 @@ long get_syndrome(long pattern)
 //         for (i = 0; i < numerr; i++)
 //             recd ^= position[errpos[i]];
 //     printf("received vector = %#012x\n", recd);
-// 
+//
 //    /*
 //     * ---------------------------------------------------------------------
 //     *                         DECODING

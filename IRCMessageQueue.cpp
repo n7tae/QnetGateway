@@ -24,112 +24,103 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 IRCMessageQueue::IRCMessageQueue()
 {
-  eof = false;
-  first = NULL;
-  last = NULL;
+	eof = false;
+	first = NULL;
+	last = NULL;
 
 }
 
 IRCMessageQueue::~IRCMessageQueue()
 {
-  while (messageAvailable())
-  {
-    IRCMessage * m = getMessage();
+	while (messageAvailable()) {
+		IRCMessage * m = getMessage();
 
-    delete m;
-  }
+		delete m;
+	}
 }
 
 
 bool IRCMessageQueue::isEOF()
 {
-  return eof;
+	return eof;
 }
 
 
 void IRCMessageQueue::signalEOF()
 {
-  eof = true;
+	eof = true;
 }
 
 
 bool IRCMessageQueue::messageAvailable()
 {
-  wxMutexLocker lock(accessMutex);
+	wxMutexLocker lock(accessMutex);
 
-  return (first != NULL);
+	return (first != NULL);
 }
 
 
 IRCMessage * IRCMessageQueue::peekFirst()
 {
-  wxMutexLocker lock(accessMutex);
+	wxMutexLocker lock(accessMutex);
 
-  IRCMessageQueueItem * k = first;
+	IRCMessageQueueItem * k = first;
 
-  if ( k == NULL )
-  {
-    return NULL;
-  }
+	if ( k == NULL ) {
+		return NULL;
+	}
 
-  return k->msg;
+	return k->msg;
 }
 
 
 IRCMessage * IRCMessageQueue::getMessage()
 {
-  wxMutexLocker lock(accessMutex);
+	wxMutexLocker lock(accessMutex);
 
-  IRCMessageQueueItem * k;
+	IRCMessageQueueItem * k;
 
-  if (first == NULL)
-  {
-	  return NULL;
-  }
+	if (first == NULL) {
+		return NULL;
+	}
 
-  k = first;
+	k = first;
 
-  first = k -> next;
+	first = k -> next;
 
-  if (k -> next == NULL)
-  {
-	  last = NULL;
-  }
-  else
-  {
-	  k -> next -> prev = NULL;
-  }
+	if (k -> next == NULL) {
+		last = NULL;
+	} else {
+		k -> next -> prev = NULL;
+	}
 
 
-  IRCMessage * msg = k -> msg;
+	IRCMessage * msg = k -> msg;
 
-  delete k;
+	delete k;
 
-  return msg;
+	return msg;
 }
 
 
 void IRCMessageQueue::putMessage( IRCMessage * m )
 {
-  wxMutexLocker lock(accessMutex);
+	wxMutexLocker lock(accessMutex);
 
-  // wxLogVerbose(wxT("IRCMessageQueue::putMessage"));
+	// wxLogVerbose(wxT("IRCMessageQueue::putMessage"));
 
-  IRCMessageQueueItem * k = new IRCMessageQueueItem(m);
+	IRCMessageQueueItem * k = new IRCMessageQueueItem(m);
 
-  k -> prev = last;
-  k -> next = NULL;
+	k -> prev = last;
+	k -> next = NULL;
 
-  if (last == NULL)
-  {
-	  first = k;
-  }
-  else
-  {
-	  last -> next = k;
-  }
+	if (last == NULL) {
+		first = k;
+	} else {
+		last -> next = k;
+	}
 
-  last = k;
+	last = k;
 }
 
 

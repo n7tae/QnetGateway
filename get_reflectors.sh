@@ -15,7 +15,9 @@ rm -f gwys.va2uv.txt
 wget -nv -O gwys.va3uv.txt http://www.va3uv.com/gwys.txt
 
 if [ -e gwys.va3uv.txt ]; then
-	awk '$1~/^REF|XRF/&&$2~/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/{print $1, $2, 20001}' gwys.va3uv.txt > gwys.txt
+	# Move DPlus and DExtra to port 20001
+	awk '$1~/^REF|XRF/{print $1, $2, 20001}' gwys.va3uv.txt > gwys.txt
+	# Get the DCS reflectors too
 	awk '$1~/^DCS/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
 else
         echo "Could not get gateways list from www.va3uv.com!"

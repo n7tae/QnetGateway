@@ -32,66 +32,66 @@ class IRCDDBAppPrivate;
 
 class IRCDDBApp : public IRCApplication, wxThread
 {
-  public:
-    IRCDDBApp(const wxString& update_channel);
+public:
+	IRCDDBApp(const wxString& update_channel);
 
-    virtual ~IRCDDBApp();
+	virtual ~IRCDDBApp();
 
-    virtual void userJoin (const wxString& nick, const wxString& name, const wxString& host);
+	virtual void userJoin (const wxString& nick, const wxString& name, const wxString& host);
 
-    virtual void userLeave (const wxString& nick);
+	virtual void userLeave (const wxString& nick);
 
-    virtual void userChanOp (const wxString& nick, bool op);
-    virtual void userListReset();
+	virtual void userChanOp (const wxString& nick, bool op);
+	virtual void userListReset();
 
-    virtual void msgChannel (IRCMessage * m);
-    virtual void msgQuery (IRCMessage * m);
+	virtual void msgChannel (IRCMessage * m);
+	virtual void msgQuery (IRCMessage * m);
 
-    virtual void setCurrentNick(const wxString& nick);
-    virtual void setTopic(const wxString& topic);
+	virtual void setCurrentNick(const wxString& nick);
+	virtual void setTopic(const wxString& topic);
 
-    virtual void setBestServer(const wxString& ircUser);
+	virtual void setBestServer(const wxString& ircUser);
 
-    virtual void setSendQ( IRCMessageQueue * s );
-    virtual IRCMessageQueue * getSendQ ();
+	virtual void setSendQ( IRCMessageQueue * s );
+	virtual IRCMessageQueue * getSendQ ();
 
-    bool startWork();
-    void stopWork();
+	bool startWork();
+	void stopWork();
 
-    IRCDDB_RESPONSE_TYPE getReplyMessageType();
+	IRCDDB_RESPONSE_TYPE getReplyMessageType();
 
-    IRCMessage * getReplyMessage();
+	IRCMessage * getReplyMessage();
 
-    bool findUser ( const wxString& s );
-    bool findRepeater ( const wxString& s );
-    bool findGateway ( const wxString& s );
+	bool findUser ( const wxString& s );
+	bool findRepeater ( const wxString& s );
+	bool findGateway ( const wxString& s );
 
-    bool sendHeard(const wxString& myCall, const wxString& myCallExt,
-            const wxString& yourCall, const wxString& rpt1,
-	    const wxString& rpt2, unsigned char flag1,
-	    unsigned char flag2, unsigned char flag3,
-	    const wxString& destination, const wxString& tx_msg,
-	    const wxString& tx_stats);
+	bool sendHeard(const wxString& myCall, const wxString& myCallExt,
+	               const wxString& yourCall, const wxString& rpt1,
+	               const wxString& rpt2, unsigned char flag1,
+	               unsigned char flag2, unsigned char flag3,
+	               const wxString& destination, const wxString& tx_msg,
+	               const wxString& tx_stats);
 
-    int getConnectionState();
+	int getConnectionState();
 
-    void rptrQRG( const wxString& module, double txFrequency, double duplexShift,
-	double range, double agl );
+	void rptrQRG( const wxString& module, double txFrequency, double duplexShift,
+	              double range, double agl );
 
-    void rptrQTH( double latitude, double longitude, const wxString& desc1,
-                 const wxString& desc2, const wxString& infoURL );
+	void rptrQTH( double latitude, double longitude, const wxString& desc1,
+	              const wxString& desc2, const wxString& infoURL );
 
-    void kickWatchdog( const wxString& wdInfo );
+	void kickWatchdog( const wxString& wdInfo );
 
-  protected:
-    virtual wxThread::ExitCode Entry();
+protected:
+	virtual wxThread::ExitCode Entry();
 
-  private:
-    void doUpdate ( wxString& msg );
-    void doNotFound ( wxString& msg, wxString& retval );
-    wxString getIPAddress( wxString& zonerp_cs );
-    bool findServerUser();
-    IRCDDBAppPrivate * d;
+private:
+	void doUpdate ( wxString& msg );
+	void doNotFound ( wxString& msg, wxString& retval );
+	wxString getIPAddress( wxString& zonerp_cs );
+	bool findServerUser();
+	IRCDDBAppPrivate * d;
 };
 
 

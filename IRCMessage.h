@@ -27,44 +27,44 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class IRCMessage
 {
-  public:
+public:
 
-    IRCMessage();
+	IRCMessage();
 
-    IRCMessage( const wxString& toNick, const wxString& msg );
+	IRCMessage( const wxString& toNick, const wxString& msg );
 
-    IRCMessage( const wxString& command );
+	IRCMessage( const wxString& command );
 
-    ~IRCMessage();
+	~IRCMessage();
 
 
 
-    wxString prefix;
-    wxString command;
-    wxArrayString params;
+	wxString prefix;
+	wxString command;
+	wxArrayString params;
 
-    int numParams;
+	int numParams;
 
-    wxString& getPrefixNick();
-    wxString& getPrefixName();
-    wxString& getPrefixHost();
+	wxString& getPrefixNick();
+	wxString& getPrefixName();
+	wxString& getPrefixHost();
 
-    void composeMessage ( wxString& output );
+	void composeMessage ( wxString& output );
 
-    void addParam( const wxString& p );
+	void addParam( const wxString& p );
 
-    wxString getCommand();
+	wxString getCommand();
 
-    wxString getParam( int pos );
+	wxString getParam( int pos );
 
-    int getParamCount();
+	int getParamCount();
 
-  private:
+private:
 
-    void parsePrefix();
+	void parsePrefix();
 
-    wxArrayString prefixComponents;
-    bool prefixParsed;
+	wxArrayString prefixComponents;
+	bool prefixParsed;
 
 };
 

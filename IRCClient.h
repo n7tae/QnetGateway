@@ -33,44 +33,44 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class IRCClient : public wxThread
 {
-  public:
+public:
 
-  IRCClient( IRCApplication * app, const wxString& update_channel,
-      const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
-      const wxString& versionInfo, const wxString& localAddr );
+	IRCClient( IRCApplication * app, const wxString& update_channel,
+	           const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
+	           const wxString& versionInfo, const wxString& localAddr );
 
-  ~IRCClient();
-
-
-  bool startWork();
-
-  void stopWork();
+	~IRCClient();
 
 
-  protected:
+	bool startWork();
 
-  virtual wxThread::ExitCode Entry();
+	void stopWork();
+
+
+protected:
+
+	virtual wxThread::ExitCode Entry();
 
 
 
-  private:
+private:
 
-  char host_name[100];
-  char local_addr[100];
-  unsigned int port;
-  wxString callsign;
-  wxString password;
+	char host_name[100];
+	char local_addr[100];
+	unsigned int port;
+	wxString callsign;
+	wxString password;
 
-  bool terminateThread;
+	bool terminateThread;
 
-  IRCReceiver * recv;
-  IRCMessageQueue * recvQ;
-  IRCMessageQueue * sendQ;
-  IRCProtocol * proto;
+	IRCReceiver * recv;
+	IRCMessageQueue * recvQ;
+	IRCMessageQueue * sendQ;
+	IRCProtocol * proto;
 
-  IRCApplication * app;
+	IRCApplication * app;
 
 };
 
 
-#endif 
+#endif

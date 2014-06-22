@@ -22,17 +22,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /* Call this function first before using any of the other functions */
 void dstar_dv_init(void);
 
-/* 
+/*
 This function decodes the first and most important Golay block
 of a DSTAR Digital Voice frame. The function is provided with a
 pointer to the 9-byte voice data. Result is the decoded
 first block. The number of decoding errors is reported in the
 variable errs and ranges from 0 to 4. Only 24 bits are
-checked, the BER therefore is:  BER = errs / 24	
+checked, the BER therefore is:  BER = errs / 24
  */
 int dstar_dv_decode_first_block (const unsigned char * d, int * errs);
 
-/* 
+/*
 This function decodes the both Golay blocks
 of a DSTAR Digital Voice frame. The function is provided with a
 pointer to the 9-byte voice data. Function result is

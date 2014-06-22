@@ -29,51 +29,49 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class IRCMessageQueueItem
 {
-  public:
-    IRCMessageQueueItem( IRCMessage * m )
-    {
-      msg = m;
-    }
+public:
+	IRCMessageQueueItem( IRCMessage * m ) {
+		msg = m;
+	}
 
-    ~IRCMessageQueueItem()
-    {
-    }
-    
-    IRCMessage * msg;
+	~IRCMessageQueueItem() {
+	}
 
-    IRCMessageQueueItem * prev;
-    IRCMessageQueueItem * next;
+	IRCMessage * msg;
+
+	IRCMessageQueueItem * prev;
+	IRCMessageQueueItem * next;
 };
 
 
 class IRCMessageQueue
 {
-  public:
-    IRCMessageQueue();
+public:
+	IRCMessageQueue();
 
-    ~IRCMessageQueue();
+	~IRCMessageQueue();
 
-    bool isEOF();
+	bool isEOF();
 
-    void signalEOF();
+	void signalEOF();
 
-    bool messageAvailable();
+	bool messageAvailable();
 
-    IRCMessage * getMessage();
+	IRCMessage * getMessage();
 
-    IRCMessage * peekFirst();
+	IRCMessage * peekFirst();
 
-    void putMessage ( IRCMessage * m );
+	void putMessage ( IRCMessage * m );
 
-  private:
+private:
 
-    bool eof;
+	bool eof;
 
-    IRCMessageQueueItem * first;
-    IRCMessageQueueItem * last;
+	IRCMessageQueueItem * first;
+	IRCMessageQueueItem * last;
 
-    wxMutex accessMutex;
-    
+	wxMutex accessMutex;
+
 };
 
 #endif

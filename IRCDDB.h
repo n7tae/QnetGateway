@@ -41,10 +41,11 @@ enum DSTAR_PROTOCOL {
 
 struct CIRCDDBPrivate;
 
-class CIRCDDB {
+class CIRCDDB
+{
 public:
 	CIRCDDB(const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
-	    const wxString& versionInfo, const wxString& localAddr = wxEmptyString );
+	        const wxString& versionInfo, const wxString& localAddr = wxEmptyString );
 	~CIRCDDB();
 
 	// A false return implies a network error, or unable to log in
@@ -58,7 +59,7 @@ public:
 	//   infoURL      URL of a web page with information about the repeater
 
 	void rptrQTH( double latitude, double longitude, const wxString& desc1,
-	    const wxString& desc2, const wxString& infoURL );
+	              const wxString& desc2, const wxString& infoURL );
 
 
 
@@ -95,9 +96,9 @@ public:
 
 	// Send heard data, a false return implies a network error
 	bool sendHeard(const wxString& myCall, const wxString& myCallExt,
-	          const wxString& yourCall, const wxString& rpt1,
-		  const wxString& rpt2, unsigned char flag1,
-		  unsigned char flag2, unsigned char flag3 );
+	               const wxString& yourCall, const wxString& rpt1,
+	               const wxString& rpt2, unsigned char flag1,
+	               unsigned char flag2, unsigned char flag3 );
 
 
 	// same as sendHeard with two new fields:
@@ -106,11 +107,11 @@ public:
 	//   tx_message:  20-char TX message or empty string, if the user did not
 	//       send a TX message
 	bool sendHeardWithTXMsg(const wxString& myCall, const wxString& myCallExt,
-	          const wxString& yourCall, const wxString& rpt1,
-		  const wxString& rpt2, unsigned char flag1,
-		  unsigned char flag2, unsigned char flag3,
-		  const wxString& network_destination,
-		  const wxString& tx_message );
+	                        const wxString& yourCall, const wxString& rpt1,
+	                        const wxString& rpt2, unsigned char flag1,
+	                        unsigned char flag2, unsigned char flag3,
+	                        const wxString& network_destination,
+	                        const wxString& tx_message );
 
 	// this method should be called at the end of a transmission
 	//  num_dv_frames: number of DV frames sent out (96 bit frames, 20ms)
@@ -123,12 +124,12 @@ public:
 	//      BER = num_bit_errors / (num_dv_frames * 24)
 	//      Set num_bit_errors = -1, if the error information is not available.
 	bool sendHeardWithTXStats(const wxString& myCall, const wxString& myCallExt,
-	          const wxString& yourCall, const wxString& rpt1,
-		  const wxString& rpt2, unsigned char flag1,
-		  unsigned char flag2, unsigned char flag3,
-		  int num_dv_frames,
-		  int num_dv_silent_frames,
-		  int num_bit_errors );
+	                          const wxString& yourCall, const wxString& rpt1,
+	                          const wxString& rpt2, unsigned char flag1,
+	                          unsigned char flag2, unsigned char flag3,
+	                          int num_dv_frames,
+	                          int num_dv_silent_frames,
+	                          int num_bit_errors );
 
 	// The following three functions don't block waiting for a reply, they just send the data
 
@@ -142,7 +143,7 @@ public:
 	bool findUser(const wxString& userCallsign);
 
 	// The following functions are for processing received messages
-	
+
 	// Get the waiting message type
 	IRCDDB_RESPONSE_TYPE getMessageType();
 
@@ -159,7 +160,7 @@ public:
 	bool receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address);
 
 	bool receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address,
-	    wxString& timeStamp );
+	                 wxString& timeStamp );
 
 	void close();		// Implictely kills any threads in the IRC code
 
