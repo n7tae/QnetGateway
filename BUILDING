@@ -17,7 +17,7 @@ enable it by executing:
 sudo depmod
 sudo modprobe <YOURDEVICEMODULE>
 
-where YOURDEVICEMODULE is "ftdl_sio" for the DVAP or is "cdc_acm" for the DVRPTR.
+where YOURDEVICEMODULE is "ftdi_sio" for the DVAP or is "cdc_acm" for the DVRPTR.
 After a reboot you should see the device in the "lsusb" list. If you don't see
 the device listed, Scott's software will never be able to open it either.
 
