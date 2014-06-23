@@ -95,6 +95,8 @@ g2_ircddb start". (See the man page for service.)
 
 You can clean up the build directory of intermediate *.o files with "make clean" or, you
 can remove the intermediate *.o files and binary executables with "make realclean".
+Note that "make realclean" only removes the executables from your build directory, not
+the copies in the installation directories (/usr/local/bin).
 
 If you want to uninstall everything return to the build directory and type either "sudo
 make unistalldvap" or "sudo make uninstalldvrptr" and possibly "sudo make uninstalldtmfs".
