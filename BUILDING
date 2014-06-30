@@ -3,104 +3,139 @@ can connect to both DStar reflectors as well as XREF reflectors based on Scott L
 KI4LKF software is easy.
 
 Start with a Raspberry Pi with the latest Raspbian image (see http://raspberrypi.org)
-or a BeagleBone Black with the latest Debian image (see http://www.armhf.com). Scott's
-software will EASILY fit on the on-board memory of the BBB, but you will still
-need a uSD card to install the armhf.com Debian image to the on-board memory.
+or a BeagleBone Black with the latest Debian image (see http://www.armhf.com). The
+g2_ircddb software will EASILY fit on the 2gb on-board memory of the older Rev. B of
+the BBB, but you will still need a uSD card to install the armhf.com Debian image to
+the on-board memory.
 
-Another note on the BBB, the armhf.com Debian image does not support some usb devices
-out of the box, but it is easy to correct. If you plug in your DVAP or DVRPTR into
-your BBB or RasPi, the kernel should auto load drivers and you will see that with the
-"lsusb" command. The DVAP uses a FTDI chip and the DVRPTR uses Atmel. If you don't
-see an approprite output from "lsusb" after your device is plugged in, you need to
-enable it by executing:
+On the RPi, do "sudo raspi-config" and expand the partition, change the password
+for the 'pi' user and do any other configuration setup. You don't need to overclock
+the RPi for g2_ircddb, the default clock rate is just fine. On the BBB, if you're
+using the armhf.com image, follow the instructions on the armhf.com website to
+expand the linux partion. Also don't forget to change the password for the 'debian'
+user. 
+
+After your Linux is set up, login and plug in your DVAP or DVRPTR_V1 device to see
+if the OS is recognizing it. The kernel should auto load drivers and you will see
+that with the "lsusb" command. The DVAP uses a FTDI chip and the DVRPTR uses Atmel.
+If you don't see an approprite output from "lsusb" after your device is plugged in,
+you need to enable it by executing:
 
 sudo depmod
 sudo modprobe <YOURDEVICEMODULE>
 
 where YOURDEVICEMODULE is "ftdi_sio" for the DVAP or is "cdc_acm" for the DVRPTR.
 After a reboot you should see the device in the "lsusb" list. If you don't see
-the device listed, Scott's software will never be able to open it either.
+the device listed, g2_ircddb software will never be able to open it either.
 
-You will need several packages to build Scott's gateway. The RasPi will probably have
-all or most of these but it still doesn't hurt to be sure:
+You will need several packages to build the g2_ircddb gateway. You may already
+have all or most of these but it still doesn't hurt to be sure:
 
-sudo su
-apt-get update
-apt-get upgrade
-apt-get install make g++ unzip git
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install make g++ unzip git
 
-and maybe a few more. Here is one of my favorites: apt-get install avahi-daemon
+and maybe a few more. Here is one of my favorites:
+
+sudo apt-get install avahi-daemon
+
 Then you can "ssh <user>@<hostname>.local" instead of "ssh <user>$<ip address>.
+NOTE: Windows user can download and use 'putty' to connect to the RPi or
+BBB.
 
-After you install are the required packages, the gateway installation can begin.
-Go to your login home directory and (without root privileges type:
+After you configure you RPi or BBB, update, upgrade and install all the required
+packages, the gateway installation can begin. Go to your login home directory and
+(without root privileges type:
 
 git clone git://github.com/ac2ie/g2_ircddb.git
 
-This will create a g2_ircddb directory with everything you need to build a dvap gateway.
+This will create a g2_ircddb directory with everything you need to build a dvap or
+dvrptr ircddb gateway.
 
-The first order of business is to build the necessary wxBase-2.8.12 library. There is a
-script in the g2_ircddb directory to do all of this for you. Just cd to g2_ircddb and
-type:
+The first order of business is to build the necessary wxBase-2.8.12 library. There
+is a script in the g2_ircddb directory to do all of this for you. Just cd to
+g2_ircddb and type:
 
 ./build_wxBase
 
-Come back to this directory and type "make" to build all the executables, g2_ircddb,
-g2_link and dvap_rptr. If you need DTMFS then also execute "make g2link_test".
+This will take serveral minutes to complete and you will see a lot of output.
+Depending on your device and the OS you are using, you may be prompted for your
+password for sudo access. Upon completetion, make sure you are still in the
+g2_ircddb directory and type "make" to build all the g2_ircddb executables. If you
+need DTMFS then also execute "make g2link_test".
 
 Next, edit all the *.cfg files, g2_ircddb.cfg, g2_link.cfg and either dvap_rptr.cfg
-or dvrptr.cfg. These files contain detailed comments about all of the values you need
-to set. Just read through the configuration files and edit accordingly. Additional
-information about the configuration as well as other important and useful features are
-also in the CONFIGURING file.
+or dvrptr.cfg. These files contain detailed comments about all of the values you
+need to set. Just read through the configuration files and edit accordingly.
+Additional information about the configuration as well as other important and
+useful features are also in the CONFIGURING file.
 
-The gwys.txt file is the internet address and port numbers for any gateway you would
-like g2_link to be able to connect to. The one delivered with this package is special:
-It has only X-reflectors and DStar reflectors and the X-reflectors are configured
-with the 20001 port. This will allow you to connect to both DStar repeaters and XREF
-reflectors without opening any ports on your home router. If you want to set up a 
-DExtra repeater or access point, you will need to port-forward several ports to your
-RasPi or BBB. Of course you will also need to lock down the local address of the device
-with either a static IP or by reserving an address from your router. There are MANY OTHER
-gateways to which you can connect. Executing get_gwys_list.sh will download a HUGE list
-of reflectors and gateways from www.va3uv.com with port address that may need
-port-forwarding to your sytem. Another script, get_reflectors.sh will download the same
-list from va3uv.com, but edit it so that it only contains DCS x-reflectors (DCSXXX),
-DStar reflectors (REFXXX) or XReflectors (XRFXXX) and it will put all reflectors on port
-20001 so you won't need any port-forwarding on your home router.
+The gwys.txt file is the internet address and port numbers for any gateway you
+would like your ircddb gateway to be able to connect to. The one delivered with
+this package is special: It has only DCS reflectors, X-reflectors and DStar
+reflectors and the X-reflectors are configured with the 20001 port instead of the
+default 30001 prot. This will allow you to connect to these XREF reflectors without
+creating any port-forwarding rules on your home router. You will also want to move
+X-reflectors to port 20001 if you are going to tether you device via WiFi to a
+smart-phone for internet access. Most phone companies will not let you configure
+port-forwarding rules on you phone internet account.
+
+There are MANY OTHER gateways to which you can connect. Executing get_gwys_list.sh
+will download a HUGE list of reflectors and gateways from www.va3uv.com with port
+address that may need port-forwarding to your sytem. I have provided anotherscript,
+'get_reflectors.sh' that will download the same list from va3uv.com, but filter it
+so that it only contains DCS x-reflectors (DCSXXX), DStar reflectors (REFXXX) and
+X-reflectors (XRFXXX) and it will put all x-reflectors on port 20001 so you won't
+need any port-forwarding on your home router.
 
 Based on the above discussion, execute either "./get_reflectors.sh" or
-"./get_gwy_list.sh". If you want to be able to update your hotspot dynamically, you can
-modify either one of these scripts by adding a "reboot" command at the end and moving
-it to /usr/local/etc/exec_?X.sh where "?" is a number or letter. See the discussion
-of executables in the CONFIGURING text file.
+"./get_gwy_list.sh". If you want to be able to update your hotspot dynamically,
+you can modify either one of these scripts by adding a "reboot" or "service
+g2_link restart" command at the end and moving it to /usr/local/etc/exec_?X.sh
+where "?" is a number or letter. See the discussion of executables in the
+CONFIGURING text file.
 
-If you plan on using DTMFS, you can also edit proc_g2_ircddb_dtmfs.sh to add new dtmfs
-commands.
+If you plan on using DTMFS, you can also edit proc_g2_ircddb_dtmfs.sh to add new
+dtmfs commands.
 
-Then install your system. you have two choices, either dvap_rptr or dvrptr by typing
-"sudo make installdvap" or "sudo make installdvrptr", respectively. Finally, if you
-want/need DTMFS, type "sudo make installdtmfs".
+Then install your system. you have two choices, either dvap_rptr or dvrptr by
+typing "sudo make installdvap" or "sudo make installdvrptr", respectively.
+Finally, if you want/need DTMFS, type "sudo make installdtmfs".
 
-This will install the service scripts and symbolic links in /etc/init.d and everything
-else in /usr/local. The executables will be in /usr/local/bin and the *.cfg files and
-other data will be in /usr/local/etc. If you find that you need to modify a
-configuration file, edit the ones in /usr/local/etc as root. If you edit the files in
-the build directory, you will either have to copy these modified configuration files
-you you will have to reinstall the application.
+This will install the service scripts and symbolic links in /etc/init.d and
+everything else in /usr/local. The executables will be in /usr/local/bin and the
+*.cfg files and other data will be in /usr/local/etc. If you find that you need to
+modify a configuration file, edit the ones in /usr/local/etc as root. If you edit
+the files in the build directory, you will either have to copy these modified
+configuration files you you will have to reinstall the application.
 
-At this point, you can either reboot to start the three or four services, or start them
-manually with the "service" command. For example to start ircddb, type "sudo service
-g2_ircddb start". (See the man page for service.)
+At this point, you can either reboot to start the three or four services, or start
+them manually with the "service" command. For example to start ircddb, type "sudo
+service g2_ircddb start". (See the man page for service.)
 
-You can clean up the build directory of intermediate *.o files with "make clean" or, you
-can remove the intermediate *.o files and binary executables with "make realclean".
-Note that "make realclean" only removes the binary files from your build directory and
-not the copies you installed into /usr/local/bin with the "sudo make install..." command.
+If you are having trouble connecting, look in the *.log files in /var/log. These
+log files are recreated every time you restart a service. The beginning of each
+log file will report the values of all the configuration parameters and after that
+you will see the verbose reports of what each service is doing. These logs are
+invaluable for traking down problems with your *.cfg files. In a putty or ssh
+shell, you can see in real time what is being added to the logs during operation
+by typing "tail -f /var/log/<service>.log", where <service> is one of the
+service programs, 'g2_ircddb', 'g2_link', 'dvap_rptr', etc.
 
-If you want to uninstall everything return to the build directory and type either "sudo
-make unistalldvap" or "sudo make uninstalldvrptr" and possibly "sudo make uninstalldtmfs".
-This will shutdown and remove the service scripts and links and remove most everything
-from /usr/local.
+These services talk to each other through ports and the *.cfg file default values
+are set up for a 2M gateway (module C). If you are using a 70cm setup, pay close
+attention to the port configuration in the *.cfg files. You will need to change
+several values.
+
+You can clean up the build directory of intermediate *.o files with "make clean"
+or, you can remove the intermediate *.o files and binary executables with "make
+realclean".  Note that "make realclean" only removes the binary files from your
+build directory and not the copies you installed into /usr/local/bin with the
+"sudo make install..." command.
+
+If you want to uninstall everything return to the build directory and type either
+"sudo make unistalldvap" or "sudo make uninstalldvrptr" and possibly "sudo make
+uninstalldtmfs".  This will shutdown and remove the service scripts and links and
+remove most everything from /usr/local.
 
 Tom Early, ac2ie@arrl.net
