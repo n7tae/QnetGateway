@@ -15,18 +15,22 @@ You can also use the new Debian images on BeagleBone.org. New BBBs (with the 4gb
 
 You will need several packages to build Scott's gateway. The RasPi will probably have all or most of these but it still doesn't hurt to be sure:
 
+```
 sudo apt-get update
-
 sudo apt-get upgrade
-
 sudo apt-get install make g++ unzip git
+```
 
-and maybe a few more of your favorite packages. Here is one of my favorites: "sudo apt-get install avahi-daemon". Then you can "ssh user@hostname.local" instead of "ssh user@ip_address.
+and maybe a few more of your favorite packages. Here is one of my favorites: `sudo apt-get install avahi-daemon`. Then you can `ssh user@hostname.local` instead of `ssh user@ip_address`.
 
 After you install all the required packages, the g2_ircddb gateway installation can begin. Go to your login home directory and (without root privileges) type:
-
+```
 git clone git://github.com/ac2ie/g2_ircddb.git
-
+```
 Then cd into the new g2_ircddb directory and review the BUILDING and CONFIGURING file for further instructions.
 
-Tom Early, ac2ie@arrl.net
+73
+
+Tom
+
+AC2IE (at) arrl (dot) net
