@@ -60,8 +60,7 @@ using namespace std;
 
 #include "IRCDDB.h"
 
-#define VERSION "Linux-g2_ircddb-3.09"
-#define OWNER_SIZE 8
+#define VERSION "AC2IE-g2_ircddb-1.0.0"
 #define IP_SIZE 15
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -74,8 +73,8 @@ using namespace std;
 /* configuration data */
 
 /* Gateway callsign */
-static char OWNER[OWNER_SIZE + 1];
-static char owner[OWNER_SIZE + 1];
+static char OWNER[CALL_SIZE + 1];
+static char owner[CALL_SIZE + 1];
 static char PACKAGE_REV[56];
 
 static char LOCAL_IRC_IP[IP_SIZE + 1];
@@ -548,11 +547,11 @@ static int read_config(char *cfgFile)
 	unsigned short i;
 
 	FILE *cnf = NULL;
-	char inbuf[1024];
-	char *p = NULL;
-	char *ptr;
+	char aline[1024];
 	char *tok = NULL;
 	const char *delim = ",";
+	const char *Tstr = "TRUE";
+	const char *Fstr = "FALSE";
 
 	cnf = fopen(cfgFile, "r");
 	if (!cnf) {
@@ -561,417 +560,340 @@ static int read_config(char *cfgFile)
 	}
 
 	traceit("Reading file %s\n", cfgFile);
-	while (fgets(inbuf, 1020, cnf) != NULL) {
-		if (strchr(inbuf, '#'))
+	while (fgets(aline, 1020, cnf) != NULL) {
+		char *param = strtok(aline, " =\t\r\n");
+		if (NULL==param || '#'==param[0])
 			continue;
+		char *value = strtok(NULL, "\r\n");
+		// trim value
+		if (value) {
+			while (isspace(value[0]))
+				value++;
+			while (isspace(value[strlen(value)-1]))
+				value[strlen(value)-1] = (char)NULL;
+		}
+		if (NULL==value)
+			value = "";
+		
 
-		p = strchr(inbuf, '\r');
-		if (p)
-			*p = '\0';
-		p = strchr(inbuf, '\n');
-		if (p)
-			*p = '\0';
-
-		p = strchr(inbuf, '=');
-		if (!p)
-			continue;
-		*p = '\0';
-
-		if (strcmp(inbuf,"OWNER") == 0) {
-			memset(OWNER,' ', sizeof(OWNER));
-			OWNER[OWNER_SIZE] = '\0';
-			strcpy(owner, OWNER);
-
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if ((strlen(p + 1) < 3) || (strlen(p + 1) > (OWNER_SIZE - 2)))
-				traceit("OWNER value [%s] invalid\n", p + 1);
+		if (0 == strcmp(param, "OWNER")) {
+			if (3>strlen(value) || CALL_SIZE-2<strlen(value))
+				traceit("OWNER value %s invalid\n", value);
 			else {
-				memcpy(OWNER, p + 1, strlen(p + 1));
+				strcpy(OWNER, value);
+				strcpy(owner, value);
 
-				for (i = 0; i < strlen(OWNER); i++)
-					OWNER[i] = toupper(OWNER[i]);
-
-				traceit("OWNER=[%s]\n",OWNER);
-
-				for (i = 0; i < strlen(OWNER); i++) {
-					if (OWNER[i] == ' ') {
-						owner[i] = '\0';
-						break;
-					}
-					owner[i] = tolower(OWNER[i]);
+				for (i=0; i < strlen(OWNER); i++) {
+					if (isupper(owner[i]))
+						owner[i] = tolower(owner[i]);
+					if (islower(OWNER[i]))
+						OWNER[i] = toupper(OWNER[i]);
 				}
+				traceit("OWNER=[%s]\n", OWNER);
+				while (CALL_SIZE > strlen(OWNER))
+					strcat(OWNER, " ");
 				params ++;
 			}
-		} else if (strcmp(inbuf,"STATUS_FILE") == 0) {
-			memset(STATUS_FILE, '\0', sizeof(STATUS_FILE));
-			strncpy(STATUS_FILE, p + 1,FILENAME_MAX);
+
+		} else if (0 == strcmp(param, "STATUS_FILE")) {
+			strncpy(STATUS_FILE, value ,FILENAME_MAX);
+			STATUS_FILE[FILENAME_MAX] = (char)NULL;
 			traceit("STATUS_FILE=[%s]\n",STATUS_FILE);
 			params ++;
-		} else if (strcmp(inbuf,"PACKAGE_REV") == 0) {
-			memset(PACKAGE_REV, 0, sizeof(PACKAGE_REV));
-			strncpy(PACKAGE_REV, p + 1, 55);
+			
+		} else if (0 == strcmp(param ,"PACKAGE_REV")) {
+			strncpy(PACKAGE_REV, value, 55);
+			PACKAGE_REV[55] = (char)NULL;
 			traceit("PACKAGE_REV=[%s]\n", PACKAGE_REV);
 			params ++;
-		} else if (strcmp(inbuf,"LOCAL_IRC_IP") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
 
-			if (strlen(p + 1) < 1)
-				traceit("LOCAL_IRC_IP value [%s] invalid\n", p + 1);
+		} else if (0 == strcmp(param, "LOCAL_IRC_IP")) {
+			if (strlen(value) < 7)
+				traceit("LOCAL_IRC_IP value [%s] invalid\n", value);
 			else {
-				strncpy(LOCAL_IRC_IP, p + 1, IP_SIZE);
-				LOCAL_IRC_IP[IP_SIZE] = '\0';
+				strncpy(LOCAL_IRC_IP, value, IP_SIZE);
+				LOCAL_IRC_IP[IP_SIZE] = (char)NULL;
 				traceit("LOCAL_IRC_IP=[%s]\n", LOCAL_IRC_IP);
 				params ++;
 			}
-		} else if (strcmp(inbuf,"SEND_QRGS_MAPS") == 0) {
-			if (*(p + 1) == 'Y')
+
+		} else if (0 == strcmp(param,"SEND_QRGS_MAPS")) {
+			if ('Y'==value[0] || 'y'==value[0])
 				SEND_QRGS_MAPS = true;
 			else
 				SEND_QRGS_MAPS = false;
-			traceit("SEND_QRGS_MAPS=[%c]\n", *(p + 1));
+			traceit("SEND_QRGS_MAPS=[%s]\n", SEND_QRGS_MAPS ? Tstr : Fstr);
 			params ++;
-		} else if (strcmp(inbuf,"QTH") == 0) {
-			memset(QTH, '\0', sizeof(QTH));
-			strncpy(QTH, p + 1, 256);
+
+		} else if (0 == strcmp(param, "QTH")) {
+			strncpy(QTH, value, 256);
+			QTH[256] = (char)NULL;
 			traceit("QTH=[%s]\n", QTH);
 			params++;
-		} else if (strcmp(inbuf,"QRG_A") == 0) {
-			memset(QRG_A, '\0', sizeof(QRG_A));
-			strncpy(QRG_A, p + 1, 256);
+
+		} else if (0 == strcmp(param, "QRG_A")) {
+			strncpy(QRG_A, value, 256);
+			QRG_A[256] = (char)NULL;
 			traceit("QRG_A=[%s]\n", QRG_A);
 			params++;
-		} else if (strcmp(inbuf,"QRG_B") == 0) {
-			memset(QRG_B, '\0', sizeof(QRG_B));
-			strncpy(QRG_B, p + 1, 256);
+
+		} else if (0 == strcmp(param, "QRG_B")) {
+			strncpy(QRG_B, value, 256);
+			QRG_B[256] = (char)NULL;
 			traceit("QRG_B=[%s]\n", QRG_B);
 			params++;
-		} else if (strcmp(inbuf,"QRG_C") == 0) {
-			memset(QRG_C, '\0', sizeof(QRG_C));
-			strncpy(QRG_C, p + 1, 256);
+
+		} else if (0 == strcmp(param ,"QRG_C")) {
+			strncpy(QRG_C, value, 256);
+			QRG_C[256] = (char)NULL;
 			traceit("QRG_C=[%s]\n", QRG_C);
 			params++;
-		} else if (strcmp(inbuf,"APRS_HOST") == 0) {
-			memset(RPTR_ID.aprs_host, '\0', sizeof(RPTR_ID.aprs_host));
-			strncpy(RPTR_ID.aprs_host, p + 1, MAXHOSTNAMELEN);
+
+		} else if (0 == strcmp(param, "APRS_HOST")) {
+			strncpy(RPTR_ID.aprs_host, value, MAXHOSTNAMELEN);
+			RPTR_ID.aprs_host[MAXHOSTNAMELEN] = (char)NULL;
 			traceit("APRS_HOST=[%s]\n", RPTR_ID.aprs_host);
 			params++;
-		} else if (strcmp(inbuf,"APRS_PORT") == 0) {
-			RPTR_ID.aprs_port = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "APRS_PORT")) {
+			RPTR_ID.aprs_port = atoi(value);
 			traceit("APRS_PORT=[%d]\n", RPTR_ID.aprs_port);
 			params++;
-		} else if (strcmp(inbuf,"APRS_INTERVAL") == 0) {
-			RPTR_ID.aprs_interval = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "APRS_INTERVAL")) {
+			RPTR_ID.aprs_interval = atoi(value);
 			traceit("APRS_INTERVAL=[%d]\n", RPTR_ID.aprs_interval);
 			if (RPTR_ID.aprs_interval < 40) {
 				RPTR_ID.aprs_interval = 40;
 				traceit("APRS_INTERVAL is low number, re-setting to 40\n");
 			}
 			params++;
-		} else if (strcmp(inbuf,"APRS_FILTER") == 0) {
-			memset(RPTR_ID.aprs_filter, '\0', sizeof(RPTR_ID.aprs_filter));
-			strncpy(RPTR_ID.aprs_filter, p + 1, 511);
+
+		} else if (0 == strcmp(param, "APRS_FILTER")) {
+			strncpy(RPTR_ID.aprs_filter, value, 512);
+			RPTR_ID.aprs_filter[511] = (char)NULL;
 			traceit("APRS_filter=[%s]\n", RPTR_ID.aprs_filter);
 			params++;
-		} else if (strcmp(inbuf, "RPTR_ID_A") == 0) {
-			traceit("RPTR_ID_A=[%s]\n", p + 1);
 
-			tok = strtok(p + 1, delim);
-			if (tok) {
-				RPTR_ID.lat[0] = atof(tok);
-				tok = strtok(NULL, delim);
+		} else if (0 == strncmp(param, "RPTR_ID_", 8)) {
+			char cm = param[8];
+			int m = cm - 'A';
+			if (0<=m && m<3) {
+				traceit("RPTR_ID_%c=[%s]\n", cm, value);
+
+				tok = strtok(value, delim);
 				if (tok) {
-					RPTR_ID.lon[0] = atof(tok);
-					tok = strtok(NULL,delim);
-					if (tok) {
-						RPTR_ID.range[0] = atoi(tok);
-						tok = strtok(NULL, delim);
-						if (tok) {
-							memset(RPTR_ID.desc[0], '\0', 64);
-							strncpy(RPTR_ID.desc[0], tok, 63);
-							params++;
-
-							traceit("ModA: lat=[%lf], lon=[%lf], range=[%d], descr=[%s]\n",
-							        RPTR_ID.lat[0], RPTR_ID.lon[0],
-							        RPTR_ID.range[0], RPTR_ID.desc[0]);
-						} else
-							traceit("ModA:Invalid value for description\n");
-					} else
-						traceit("ModA:Invalid value for range\n");
-				} else
-					traceit("ModA:Invalid values for longitude\n");
-			} else {
-				params++;
-				traceit("ModA aprs parameters NOT defined...ok\n");
-			}
-		} else if (strcmp(inbuf, "RPTR_ID_B") == 0) {
-			traceit("RPTR_ID_B=[%s]\n", p + 1);
-
-			tok = strtok(p + 1, delim);
-			if (tok) {
-				RPTR_ID.lat[1] = atof(tok);
-				tok = strtok(NULL, delim);
-				if (tok) {
-					RPTR_ID.lon[1] = atof(tok);
+					RPTR_ID.lat[m] = atof(tok);
 					tok = strtok(NULL, delim);
 					if (tok) {
-						RPTR_ID.range[1] = atoi(tok);
-						tok = strtok(NULL, delim);
+						RPTR_ID.lon[m] = atof(tok);
+						tok = strtok(NULL,delim);
 						if (tok) {
-							memset(RPTR_ID.desc[1], '\0', 64);
-							strncpy(RPTR_ID.desc[1], tok, 63);
-							params++;
+							RPTR_ID.range[m] = atoi(tok);
+							tok = strtok(NULL, delim);
+							if (tok) {
+								strncpy(RPTR_ID.desc[m], tok, 64);
+								RPTR_ID.desc[m][63] = (char)NULL;
+								params++;
 
-							traceit("ModB: lat=[%lf], lon=[%lf], range=[%d], descr=[%s]\n",
-							        RPTR_ID.lat[1], RPTR_ID.lon[1],
-							        RPTR_ID.range[1], RPTR_ID.desc[1]);
+								traceit("Mod%c: lat=[%lf], lon=[%lf], range=[%d], descr=[%s]\n", cm, RPTR_ID.lat[m], RPTR_ID.lon[m], RPTR_ID.range[m], RPTR_ID.desc[m]);
+							} else
+								traceit("Mod%c:Invalid value for description\n", cm);
 						} else
-							traceit("ModB:Invalid value for description\n");
+							traceit("Mod%c:Invalid value for range\n", cm);
 					} else
-						traceit("ModB:Invalid value for range\n");
-				} else
-					traceit("ModB:Invalid values for longitude\n");
-			} else {
-				params++;
-				traceit("ModB aprs parameters NOT defined...ok\n");
-			}
-		} else if (strcmp(inbuf, "RPTR_ID_C") == 0) {
-			traceit("RPTR_ID_C=[%s]\n", p + 1);
+						traceit("Mod%c:Invalid values for longitude\n", cm);
+				} else {
+					params++;
+					traceit("Mod%c aprs parameters NOT defined...ok\n", cm);
+				}
+			} else
+				traceit("RPTR_ID_%c? must be A, B or C\n", cm);
 
-			tok = strtok(p + 1, delim);
-			if (tok) {
-				RPTR_ID.lat[2] = atof(tok);
-				tok = strtok(NULL, delim);
-				if (tok) {
-					RPTR_ID.lon[2] = atof(tok);
-					tok = strtok(NULL, delim);
-					if (tok) {
-						RPTR_ID.range[2] = atoi(tok);
-						tok = strtok(NULL, delim);
-						if (tok) {
-							memset(RPTR_ID.desc[2], '\0', 64);
-							strncpy(RPTR_ID.desc[2], tok, 63);
-							params++;
-
-							traceit("ModC: lat=[%lf], lon=[%lf], range=[%d], descr=[%s]\n",
-							        RPTR_ID.lat[2], RPTR_ID.lon[2],
-							        RPTR_ID.range[2], RPTR_ID.desc[2]);
-						} else
-							traceit("ModC:Invalid value for description\n");
-					} else
-						traceit("ModC:Invalid value for range\n");
-				} else
-					traceit("ModC:Invalid values for longitude\n");
-			} else {
-				params++;
-				traceit("ModC aprs parameters NOT defined...ok\n");
-			}
-		} else if (strcmp(inbuf,"G2_EXTERNAL_IP") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if (strlen(p + 1) < 1)
-				traceit("G2_EXTERNAL_IP value [%s] invalid\n", p + 1);
+		} else if (0 == strcmp(param, "G2_EXTERNAL_IP")) {
+			if (strlen(value) < 7)
+				traceit("G2_EXTERNAL_IP value [%s] invalid\n", value);
 			else {
-				strncpy(G2_EXTERNAL_IP, p + 1, IP_SIZE);
-				G2_EXTERNAL_IP[IP_SIZE] = '\0';
+				strncpy(G2_EXTERNAL_IP, value, IP_SIZE);
+				G2_EXTERNAL_IP[IP_SIZE] = (char)NULL;
 				traceit("G2_EXTERNAL_IP=[%s]\n", G2_EXTERNAL_IP);
 				params ++;
 			}
-		} else if (strcmp(inbuf,"G2_EXTERNAL_PORT") == 0) {
-			G2_EXTERNAL_PORT = atoi(p + 1);
-			traceit("G2_EXTERNAL_PORT=[%d]\n",G2_EXTERNAL_PORT);
-			params ++;
-		} else if (strcmp(inbuf,"G2_INTERNAL_IP") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
 
-			if (strlen(p + 1) < 1)
-				traceit("G2_INTERNAL_IP value [%s] invalid\n", p + 1);
+		} else if (0 == strcmp(param, "G2_EXTERNAL_PORT")) {
+			G2_EXTERNAL_PORT = atoi(value);
+			traceit("G2_EXTERNAL_PORT=[%d]\n", G2_EXTERNAL_PORT);
+			params ++;
+
+		} else if (0 == strcmp(param, "G2_INTERNAL_IP")) {
+			if (strlen(value) < 7)
+				traceit("G2_INTERNAL_IP value [%s] invalid\n", value);
 			else {
-				strncpy(G2_INTERNAL_IP, p + 1, IP_SIZE);
-				G2_INTERNAL_IP[IP_SIZE] = '\0';
+				strncpy(G2_INTERNAL_IP, value, IP_SIZE);
+				G2_INTERNAL_IP[IP_SIZE] = (char)NULL;
 				traceit("G2_INTERNAL_IP=[%s]\n", G2_INTERNAL_IP);
 				params ++;
 			}
-		} else if (strcmp(inbuf,"G2_INTERNAL_PORT") == 0) {
-			G2_INTERNAL_PORT = atoi(p + 1);
-			traceit("G2_INTERNAL_PORT=[%d]\n",G2_INTERNAL_PORT);
-			params ++;
-		} else if (strcmp(inbuf,"TO_G2_LINK_IP") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
 
-			if (strlen(p + 1) < 1)
-				traceit("TO_G2_LINK_IP value [%s] invalid\n", p + 1);
+		} else if (0 == strcmp(param, "G2_INTERNAL_PORT")) {
+			G2_INTERNAL_PORT = atoi(value);
+			traceit("G2_INTERNAL_PORT=[%d]\n", G2_INTERNAL_PORT);
+			params ++;
+
+		} else if (0 == strcmp(param, "TO_G2_LINK_IP")) {
+			if (strlen(value) < 7)
+				traceit("TO_G2_LINK_IP value [%s] invalid\n", value);
 			else {
-				strncpy(TO_G2_LINK_IP, p + 1, IP_SIZE);
-				TO_G2_LINK_IP[IP_SIZE] = '\0';
+				strncpy(TO_G2_LINK_IP, value, IP_SIZE);
+				TO_G2_LINK_IP[IP_SIZE] = (char)NULL;
 				traceit("TO_G2_LINK_IP=[%s]\n", TO_G2_LINK_IP);
 				params ++;
 			}
-		} else if (strcmp(inbuf,"TO_G2_LINK_PORT") == 0) {
-			TO_G2_LINK_PORT = atoi(p + 1);
-			traceit("TO_G2_LINK_PORT=[%d]\n",TO_G2_LINK_PORT);
-			params ++;
-		} else if (strcmp(inbuf,"TO_RPTR_IP_A") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
 
-			if (strlen(p + 1) < 1)
-				traceit("TO_RPTR_IP_A value [%s] invalid\n", p + 1);
-			else {
-				strncpy(TO_RPTR_IP[0], p + 1, IP_SIZE);
-				TO_RPTR_IP[0][IP_SIZE] = '\0';
-				traceit("TO_RPTR_IP_A=[%s]\n", TO_RPTR_IP[0]);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"TO_RPTR_PORT_A") == 0) {
-			TO_RPTR_PORT[0] = atoi(p + 1);
-			traceit("TO_RPTR_PORT_A=[%d]\n",TO_RPTR_PORT[0]);
+		} else if (0 == strcmp(param, "TO_G2_LINK_PORT")) {
+			TO_G2_LINK_PORT = atoi(value);
+			traceit("TO_G2_LINK_PORT=[%d]\n", TO_G2_LINK_PORT);
 			params ++;
-		} else if (strcmp(inbuf,"TO_RPTR_IP_B") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
 
-			if (strlen(p + 1) < 1)
-				traceit("TO_RPTR_IP_B value [%s] invalid\n", p + 1);
-			else {
-				strncpy(TO_RPTR_IP[1], p + 1, IP_SIZE);
-				TO_RPTR_IP[1][IP_SIZE] = '\0';
-				traceit("TO_RPTR_IP_B=[%s]\n", TO_RPTR_IP[1]);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"TO_RPTR_PORT_B") == 0) {
-			TO_RPTR_PORT[1] = atoi(p + 1);
-			traceit("TO_RPTR_PORT_B=[%d]\n",TO_RPTR_PORT[1]);
-			params ++;
-		} else if (strcmp(inbuf,"TO_RPTR_IP_C") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
+		} else if (0 == strncmp(param, "TO_RPTR_IP_", 11)) {
+			char cm = param[11];
+			int m = cm - 'A';
+			if (0<=m && m<3) {
+				if (strlen(value) < 7)
+					traceit("TO_RPTR_IP_$c value [%s] invalid\n", cm, value);
+				else {
+					strncpy(TO_RPTR_IP[m], value, IP_SIZE);
+					TO_RPTR_IP[m][IP_SIZE] = '\0';
+					traceit("TO_RPTR_IP_%c=[%s]\n", cm, TO_RPTR_IP[m]);
+					params ++;
+				}
+			} else
+				traceit("TO_RPTR_IP_%c is invalid\n", cm);
 
-			if (strlen(p + 1) < 1)
-				traceit("TO_RPTR_IP_C value [%s] invalid\n", p + 1);
-			else {
-				strncpy(TO_RPTR_IP[2], p + 1, IP_SIZE);
-				TO_RPTR_IP[2][IP_SIZE] = '\0';
-				traceit("TO_RPTR_IP_C=[%s]\n", TO_RPTR_IP[2]);
+		} else if (0 == strncmp(param, "TO_RPTR_PORT_", 13)) {
+			char cm = param[13];
+			int m = cm - 'A';
+			if (0<=m && m<3) {
+				TO_RPTR_PORT[m] = atoi(value);
+				traceit("TO_RPTR_PORT_%c=[%d]\n", cm, TO_RPTR_PORT[m]);
 				params ++;
-			}
-		} else if (strcmp(inbuf,"TO_RPTR_PORT_C") == 0) {
-			TO_RPTR_PORT[2] = atoi(p + 1);
-			traceit("TO_RPTR_PORT_C=[%d]\n",TO_RPTR_PORT[2]);
-			params ++;
-		} else if (strcmp(inbuf,"QSO_DETAILS") == 0) {
-			if (*(p + 1) == 'Y')
+			} else
+				traceit("TO_RPTR_PORT_%c is invalid\n", cm);
+
+		} else if (0 == strcmp(param, "QSO_DETAILS")) {
+			if ('Y'==value[0] || 'y'==value[0])
 				QSO_DETAILS = true;
 			else
 				QSO_DETAILS = false;
-			traceit("QSO_DETAILS=[%c]\n", *(p + 1));
+			traceit("QSO_DETAILS=[%s]\n", QSO_DETAILS ? Tstr : Fstr);
 			params ++;
-		} else if (strcmp(inbuf,"IRC_DEBUG") == 0) {
-			if (*(p + 1) == 'Y')
+
+		} else if (0 == strcmp(param, "IRC_DEBUG")) {
+			if ('Y'==value[0] || 'y'==value[0])
 				IRC_DEBUG = true;
 			else
 				IRC_DEBUG = false;
-			traceit("IRC_DEBUG=[%c]\n", *(p + 1));
+			traceit("IRC_DEBUG=[%s]\n", IRC_DEBUG ? Tstr : Fstr);
 			params ++;
-		} else if (strcmp(inbuf,"DTMF_DEBUG") == 0) {
-			if (*(p + 1) == 'Y')
+
+		} else if (0 == strcmp(param, "DTMF_DEBUG")) {
+			if ('Y'==value[0] || 'y'==value[0])
 				DTMF_DEBUG = true;
 			else
 				DTMF_DEBUG = false;
-			traceit("DTMF_DEBUG=[%c]\n", *(p + 1));
+			traceit("DTMF_DEBUG=[%s]\n", DTMF_DEBUG ? Tstr : Fstr);
 			params ++;
-		} else if (strcmp(inbuf,"REGEN_HDR") == 0) {
-			if (*(p + 1) == 'Y')
+
+		} else if (0 == strcmp(param,"REGEN_HDR")) {
+			if ('Y'==value[0] || 'y'==value[0])
 				REGEN_HDR = true;
 			else
 				REGEN_HDR = false;
-			traceit("REGEN_HDR=[%c]\n", *(p + 1));
+			traceit("REGEN_HDR=[%s]\n", REGEN_HDR ? Tstr : Fstr);
 			params ++;
-		} else if (strcmp(inbuf,"SEND_APRS") == 0) {
-			if (*(p + 1) == 'Y')
+
+		} else if (0 == strcmp(param, "SEND_APRS")) {
+			if ('Y'==value[0] || 'y'==value[0])
 				SEND_APRS = true;
 			else
 				SEND_APRS = false;
-			traceit("SEND_APRS=[%c]\n", *(p + 1));
+			traceit("SEND_APRS=[%s]\n", SEND_APRS ? Tstr : Fstr);
 			params ++;
-		} else if (strcmp(inbuf,"ECHOTEST_DIR") == 0) {
-			memset(ECHOTEST_DIR, '\0', sizeof(ECHOTEST_DIR));
-			strncpy(ECHOTEST_DIR, p + 1, FILENAME_MAX);
+
+		} else if (0 == strcmp(param, "ECHOTEST_DIR")) {
+			strncpy(ECHOTEST_DIR, value, FILENAME_MAX);
+			ECHOTEST_DIR[FILENAME_MAX] = (char)NULL;
 			traceit("ECHOTEST_DIR=[%s]\n", ECHOTEST_DIR);
 			params ++;
-		} else if (strcmp(inbuf, "PLAY_WAIT") == 0) {
-			PLAY_WAIT = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "PLAY_WAIT")) {
+			PLAY_WAIT = atoi(value);
 			if ((PLAY_WAIT > 10) || (PLAY_WAIT < 1))
 				PLAY_WAIT = 1;
 			traceit("PLAY_WAIT=[%d]\n", PLAY_WAIT);
 			params ++;
-		} else if (strcmp(inbuf, "PLAY_DELAY") == 0) {
-			PLAY_DELAY = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "PLAY_DELAY")) {
+			PLAY_DELAY = atoi(value);
 			if ((PLAY_DELAY > 50) || (PLAY_DELAY < 10))
 				PLAY_DELAY = 20;
 			traceit("PLAY_DELAY=[%d]\n", PLAY_DELAY);
 			params ++;
-		} else if (strcmp(inbuf,"ECHOTEST_REC_TIMEOUT") == 0) {
-			ECHOTEST_REC_TIMEOUT = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "ECHOTEST_REC_TIMEOUT")) {
+			ECHOTEST_REC_TIMEOUT = atoi(value);
 			traceit("ECHOTEST_REC_TIMEOUT=[%d]\n", ECHOTEST_REC_TIMEOUT);
 			params ++;
-		} else if (strcmp(inbuf,"VOICEMAIL_REC_TIMEOUT") == 0) {
-			VOICEMAIL_REC_TIMEOUT = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "VOICEMAIL_REC_TIMEOUT")) {
+			VOICEMAIL_REC_TIMEOUT = atoi(value);
 			traceit("VOICEMAIL_REC_TIMEOUT=[%d]\n", VOICEMAIL_REC_TIMEOUT);
 			params ++;
-		} else if (strcmp(inbuf,"FROM_REMOTE_G2_TIMEOUT") == 0) {
-			FROM_REMOTE_G2_TIMEOUT = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "FROM_REMOTE_G2_TIMEOUT")) {
+			FROM_REMOTE_G2_TIMEOUT = atoi(value);
 			traceit("FROM_REMOTE_G2_TIMEOUT=[%d]\n", FROM_REMOTE_G2_TIMEOUT);
 			params ++;
-		} else if (strcmp(inbuf,"FROM_LOCAL_RPTR_TIMEOUT") == 0) {
-			FROM_LOCAL_RPTR_TIMEOUT = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "FROM_LOCAL_RPTR_TIMEOUT")) {
+			FROM_LOCAL_RPTR_TIMEOUT = atoi(value);
 			traceit("FROM_LOCAL_RPTR_TIMEOUT=[%d]\n", FROM_LOCAL_RPTR_TIMEOUT);
 			params ++;
-		} else if (strcmp(inbuf,"IRC_DDB_HOST") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
 
-			if (strlen(p + 1) < 1)
-				traceit("IRC_DDB_HOST value [%s] invalid\n", p + 1);
+		} else if (0 == strcmp(param, "IRC_DDB_HOST")) {
+			if (strlen(value) < 7)
+				traceit("IRC_DDB_HOST value [%s] invalid\n", value);
 			else {
-				memset(IRC_DDB_HOST, '\0', sizeof(IRC_DDB_HOST));
-				strncpy(IRC_DDB_HOST, p + 1, sizeof(IRC_DDB_HOST) - 1);
+				strncpy(IRC_DDB_HOST, value, 512);
+				IRC_DDB_HOST[512] = (char)NULL;
 				traceit("IRC_DDB_HOST=[%s]\n", IRC_DDB_HOST);
 				params ++;
 			}
-		} else if (strcmp(inbuf,"IRC_DDB_PORT") == 0) {
-			IRC_DDB_PORT = atoi(p + 1);
+
+		} else if (0 == strcmp(param, "IRC_DDB_PORT")) {
+			IRC_DDB_PORT = atoi(value);
 			traceit("IRC_DDB_PORT=[%d]\n",IRC_DDB_PORT);
 			params ++;
-		} else if (strcmp(inbuf,"IRC_PASS") == 0) {
-			memset(IRC_PASS, '\0', sizeof(IRC_PASS));
-			strncpy(IRC_PASS, p + 1, sizeof(IRC_PASS) - 1);
+
+		} else if (0 == strcmp(param, "IRC_PASS")) {
+			strncpy(IRC_PASS, value, 512);
+			IRC_PASS[511] = (char)NULL;
 			params ++;
-		} else if (strcmp(inbuf,"DTMF_DIR") == 0) {
-			memset(DTMF_DIR, '\0', sizeof(DTMF_DIR));
-			strncpy(DTMF_DIR, p + 1, FILENAME_MAX);
+	
+		} else if (0 == strcmp(param,"DTMF_DIR")) {
+			strncpy(DTMF_DIR, value, FILENAME_MAX);
+			DTMF_DIR[FILENAME_MAX] = (char)NULL;
 			traceit("DTMF_DIR=[%s]\n", DTMF_DIR);
 			params ++;
+
+		} else {
+			traceit("UNKNOWN: %s = %s\n", param, value);
 		}
 	}
 	fclose(cnf);
 
 	if (params != valid_params) {
-		traceit("Configuration file %s invalid\n",cfgFile);
+		traceit("Configuration file %s invalid, only found %d of %d parameters\n",cfgFile, params, valid_params);
 		return 1;
 	}
 	return 0;
@@ -4430,5 +4352,3 @@ static ssize_t writen(char *buffer, size_t n)
 	}
 	return tot_written;
 }
-
-
