@@ -1,6 +1,6 @@
 /*
  * DVRPTR Repeater for Linux
- * Autor: DG1HT DH2YBE KI4LKF
+ * Autor: DG1HT DH2YBE KI4LKF AC2IE
  *
  --------------------------------------------------------------------------------------------------------*/
 #include <stdio.h>
@@ -21,8 +21,9 @@
 #include <termios.h>
 #include <wchar.h>
 #include <sys/file.h>
+#include "versions.h"
 
-#define VERSION "1.79"
+#define VERSION DVRPTR_VERSION
 #define BAUD B115200
 #define CALL_SIZE 8
 #define RPTR_SIZE 8

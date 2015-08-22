@@ -17,7 +17,7 @@
  */
 
 /***
-   KI4LKF
+   KI4LKF, AC2IE
 ***/
 
 #include <stdio.h>
@@ -37,8 +37,9 @@
 #include <termios.h>
 #include <sys/file.h>
 #include <pthread.h>
+#include "versions.h"
 
-#define VERSION "2.32"
+#define VERSION DVAP_VERSION
 #define CALL_SIZE 8
 #define RPTR_SIZE 8
 #define IP_SIZE 15

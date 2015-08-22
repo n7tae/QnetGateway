@@ -75,11 +75,9 @@ public:
 
 	int getConnectionState();
 
-	void rptrQRG( const wxString& module, double txFrequency, double duplexShift,
-	              double range, double agl );
+	void rptrQRG(const wxString& rptrcall, double txFrequency, double duplexShift, double range, double agl);
 
-	void rptrQTH( double latitude, double longitude, const wxString& desc1,
-	              const wxString& desc2, const wxString& infoURL );
+	void rptrQTH(const wxString& rtprcall, double latitude, double longitude, const wxString& desc1, const wxString& desc2, const wxString& infoURL, const wxString &swVersion);
 
 	void kickWatchdog( const wxString& wdInfo );
 

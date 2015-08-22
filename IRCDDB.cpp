@@ -69,17 +69,15 @@ int CIRCDDB::getConnectionState()
 }
 
 
-void CIRCDDB::rptrQTH( double latitude, double longitude, const wxString& desc1,
-                       const wxString& desc2, const wxString& infoURL )
+void CIRCDDB::rptrQTH(const wxString& rptrcall, double latitude, double longitude, const wxString& desc1, const wxString& desc2, const wxString& infoURL, const wxString &swVersion)
 {
-	d->app->rptrQTH(latitude, longitude, desc1, desc2, infoURL);
+	d->app->rptrQTH(rptrcall, latitude, longitude, desc1, desc2, infoURL, swVersion);
 }
 
 
-void CIRCDDB::rptrQRG( const wxString& module, double txFrequency, double duplexShift,
-                       double range, double agl )
+void CIRCDDB::rptrQRG(const wxString& rptrcall, double txFrequency, double duplexShift, double range, double agl)
 {
-	d->app->rptrQRG(module, txFrequency, duplexShift, range, agl);
+	d->app->rptrQRG(rptrcall, txFrequency, duplexShift, range, agl);
 }
 
 

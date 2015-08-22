@@ -53,13 +53,12 @@ public:
 
 
 	// rptrQTH can be called multiple times if necessary
+	//   rptrcall     callsign of the repeater
 	//   latitude     WGS84 position of antenna in degrees, positive value -> NORTH
 	//   longitude    WGS84 position of antenna in degrees, positive value -> EAST
 	//   desc1, desc2   20-character description of QTH
-	//   infoURL      URL of a web page with information about the repeater
 
-	void rptrQTH( double latitude, double longitude, const wxString& desc1,
-	              const wxString& desc2, const wxString& infoURL );
+	void rptrQTH(const wxString& rptrcall, double latitude, double longitude, const wxString& desc1, const wxString& desc2, const wxString& infoURL, const wxString &swVersion);
 
 
 
@@ -70,7 +69,7 @@ public:
 	//  range       range of the repeater in meters (meters = miles * 1609.344)
 	//  agl         height of the antenna above ground in meters (meters = feet * 0.3048)
 
-	void rptrQRG( const wxString& module, double txFrequency, double duplexShift, double range, double agl );
+	void rptrQRG(const wxString& rptrcall, double txFrequency, double duplexShift, double range, double agl);
 
 
 	// If you call this method once, watchdog messages will be sent to the
