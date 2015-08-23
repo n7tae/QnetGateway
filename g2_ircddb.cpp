@@ -51,6 +51,7 @@
 #include <regex.h>
 
 #include <string>
+#include <map>
 #include <utility>
 using namespace std;
 
@@ -546,409 +547,442 @@ static char *trim(char *s)
 		// remove trailing whitespace
 		while (strlen(s) && isspace(s[strlen(s)-1]))
 			s[strlen(s)-1] = (char)NULL;
-		// count leading whitespace
-		int i = 0;
-		while (isspace(s[i]))
-			i++;
-		// this could be used on malloc'ed char*, so we will not change where s points
-		// and this will keep free() working properly.
-		// Instead we will move the string to s and write over leading whitespace.
-		if (i) {
-			char *p1 = s - 1;
-			char *p2 = p1 + i;
-			do {
-				*++p1 = *++p2;
-			} while (*p1);
-		}
+		// move s to first non-space char
+		while (isspace(*s))
+			s++;
 	}
-	// the returned value doesn't have to be used. s didn't change!
 	return s;
+}
+
+static bool parse_config(const char *filename, map<string,string> &param)
+{
+	struct stat s_buf;
+	int rc = stat(filename, &s_buf);
+	if (rc) {
+		traceit("Failed to stat '%s'\n", filename);
+		return false;
+	}
+	char *file = (char *)calloc((size_t)s_buf.st_size+1, sizeof(char));
+	if (NULL == file) {
+		traceit("failed to calloc memory\n");
+		return false;
+	}
+	FILE *f = fopen(filename, "r");
+	if (NULL == f) {
+		traceit("failed to open '%s'\n", filename);
+		return false;
+	}
+	if (s_buf.st_size != fread(file, sizeof(char), s_buf.st_size, f)) {
+		traceit("failed to read '%s'\n", filename);
+		fclose(f);
+		free(file);
+		return false;
+	}
+	fclose(f);
+	char *pline, *pvalue;
+	char *line = trim(strtok_r(file, "\n", &pline));
+	while (line) {
+		if (strlen(line) && *line!='#' && strchr(line, '=')) {
+			char *key = trim(strtok_r(line, "=", &pvalue));
+			if (strlen(key)) {
+				char *value = trim(strtok_r(NULL, "=", &pvalue));
+				if (value) {
+					param[key] = value;
+				}
+			}
+		}
+		line = trim(strtok_r(NULL, "\n", &pline));
+	}
+	free(file);
+	return true;
 }
 
 /* process configuration file */
 static int read_config(char *cfgFile)
 {
-	short int valid_params = 39;
-	short int params = 0;
 	unsigned short i;
-
-	FILE *cnf = NULL;
-	char aline[1024];
 	char *tok = NULL;
 	const char *Tstr = "TRUE";
 	const char *Fstr = "FALSE";
 	char zero = (char)NULL;
 
-	cnf = fopen(cfgFile, "r");
-	if (!cnf) {
-		traceit("Failed to open file %s\n", cfgFile);
-		return 1;
-	}
+	map<string, string> param;
 
 	traceit("Reading file %s\n", cfgFile);
-	while (fgets(aline, 1024, cnf) != NULL) {
-		(void)trim(aline);
-		if ('#'==aline[0] || NULL==strchr(aline, '=') || (char)NULL==aline[0])
-			continue;
-		char *param = strtok(aline, "=");
-		if (NULL == param)
-			continue;
-		(void)trim(param);
-		if (0 == strlen(param))
-			continue;
-		char *value = trim(strtok(NULL, "="));	// get the rest of the line, i.e., the value
-		// trim value
-		(void)trim(value);
-		if (NULL==value)
-			value = &zero;
+	if (! parse_config(cfgFile, param))
+		return 1;
 		
-		if (0 == strcmp(param, "OWNER")) {
-			if (3>strlen(value) || CALL_SIZE-2<strlen(value))
-				traceit("OWNER value '%s' invalid\n", value);
-			else {
-				strcpy(OWNER, value);
-				strcpy(owner, value);
-
-				for (i=0; i < strlen(OWNER); i++) {
-					if (isupper(owner[i]))
-						owner[i] = tolower(owner[i]);
-					if (islower(OWNER[i]))
-						OWNER[i] = toupper(OWNER[i]);
-				}
-				traceit("OWNER=[%s]\n", OWNER);
-				while (CALL_SIZE > strlen(OWNER))
-					strcat(OWNER, " ");
-				params ++;
-			}
-
-		} else if (0 == strcmp(param, "STATUS_FILE")) {
-			strncpy(STATUS_FILE, value ,FILENAME_MAX);
-			STATUS_FILE[FILENAME_MAX] = zero;
-			traceit("STATUS_FILE=[%s]\n",STATUS_FILE);
-			params ++;
-			
-		} else if (0 == strcmp(param, "LOCAL_IRC_IP")) {
-			if (strlen(value) < 7)
-				traceit("LOCAL_IRC_IP value [%s] invalid\n", value);
-			else {
-				strncpy(LOCAL_IRC_IP, value, IP_SIZE);
-				LOCAL_IRC_IP[IP_SIZE] = zero;
-				traceit("LOCAL_IRC_IP=[%s]\n", LOCAL_IRC_IP);
-				params ++;
-			}
-
-		} else if (0 == strcmp(param,"SEND_QRGS_MAPS")) {
-			if ('Y'==value[0] || 'y'==value[0])
-				SEND_QRGS_MAPS = true;
-			else
-				SEND_QRGS_MAPS = false;
-			traceit("SEND_QRGS_MAPS=[%s]\n", SEND_QRGS_MAPS ? Tstr : Fstr);
-			params ++;
-
-		} else if (0 == strcmp(param, "APRS_HOST")) {
-			strncpy(rptr.aprs_host, value, MAXHOSTNAMELEN);
-			rptr.aprs_host[MAXHOSTNAMELEN] = zero;
-			traceit("APRS_HOST=[%s]\n", rptr.aprs_host);
-			params++;
-
-		} else if (0 == strcmp(param, "APRS_PORT")) {
-			rptr.aprs_port = atoi(value);
-			traceit("APRS_PORT=[%d]\n", rptr.aprs_port);
-			params++;
-
-		} else if (0 == strcmp(param, "APRS_INTERVAL")) {
-			rptr.aprs_interval = atoi(value);
-			traceit("APRS_INTERVAL=[%d]\n", rptr.aprs_interval);
-			if (rptr.aprs_interval < 40) {
-				rptr.aprs_interval = 40;
-				traceit("APRS_INTERVAL is low number, re-setting to 40\n");
-			}
-			params++;
-
-		} else if (0 == strcmp(param, "APRS_FILTER")) {
-			strncpy(rptr.aprs_filter, value, 512);
-			rptr.aprs_filter[511] = zero;
-			traceit("APRS_filter=[%s]\n", rptr.aprs_filter);
-			params++;
-
-		} else if (0 == strncmp(param, "RPTR_", 5)) {
-			char cm = param[5];
-			int m = cm - 'A';
-			if (0<=m && m<3) {
-				rptr.mod[i].defined = strlen(value) ? true : false;
-				if (rptr.mod[i].defined) {
-					for (i=0; i<10; i++) {
-						tok = strtok(i?NULL:value, "|");
-						switch (i) {
-							case 0:
-								(void)trim(tok);
-								switch (tok[0]) {
-									case '0':
-										strcpy(rptr.mod[m].package_version, DVAP_VERSION);
-										break;
-									case '1':
-										strcpy(rptr.mod[m].package_version, DVRPTR_VERSION);
-										break;
-									default:
-										rptr.mod[m].package_version[0] = zero;
-										break;
-								}
-								break;
-							case 1:
-								rptr.mod[m].frequency = tok ? atof(tok) : 0.0;
-								break;
-							case 2:
-								rptr.mod[m].offset = tok ? atof(tok) : 0.0;
-								break;
-							case 3:
-								rptr.mod[m].range = tok ? atof(tok) : 0.0;
-								break;
-							case 4:
-								rptr.mod[m].agl = tok ? atof(tok) : 0.0;
-								break;
-							case 5:
-								rptr.mod[m].latitude = tok ? atof(tok) : 0.0;
-								break;
-							case 6:
-								rptr.mod[m].longitude = tok ? atof(tok) : 0.0;
-								break;
-							case 7:
-								if (tok)
-									strncpy(rptr.mod[m].desc1, trim(tok), 20);
-								rptr.mod[m].desc1[tok ? 20 : 0] = zero;
-								break;
-							case 8:
-								if (tok)
-									strncpy(rptr.mod[m].desc2, trim(tok), 20);
-								rptr.mod[m].desc2[tok ? 20 : 0] = zero;
-								break;
-							case 9:
-								if (tok) {
-									char *instr = strstr(tok, "//");
-									if (instr) {
-										char *p = tok;
-										while (p < instr+2)
-											*p++ = ' ';
-									}
-									(void)trim(tok);
-									strncpy(rptr.mod[m].url, tok, 64);
-								}
-								rptr.mod[m].url[tok ? 64 : 0] = zero;
-						}
-					}
-					if (strlen(rptr.mod[m].package_version)) {
-						params++;
-
-						// make the long description
-						strcpy(rptr.mod[m].desc, rptr.mod[m].desc1);
-						if (strlen(rptr.mod[m].desc2)) {
-							strcat(rptr.mod[m].desc, "%s ");
-							strcat(rptr.mod[m].desc, rptr.mod[m].desc2);
-						}
-						traceit("Mod%c:\n", cm);
-						traceit("\tType     =%s\n", rptr.mod[m].package_version);
-						traceit("\tfreq     =%lg\n", rptr.mod[m].frequency);
-						traceit("\toffset   =%lg\n", rptr.mod[m].offset);
-						traceit("\trange    =%lg\n", rptr.mod[m].range);
-						traceit("\tagl      =%lg\n", rptr.mod[m].agl);
-						traceit("\tlatitude =%lg\n", rptr.mod[m].latitude);
-						traceit("\tlongitude=%lg\n", rptr.mod[m].longitude);
-						traceit("\tdesc1    =%s\n", rptr.mod[m].desc1);
-						traceit("\tdesc2    =%s\n", rptr.mod[m].desc2);
-						traceit("\turl      =%s\n", rptr.mod[m].url);
-					} else
-						traceit("RPTR_%c Type not defined\n", cm);
-				} else
-					params++;	// empty value for RPTR_X
-			} else
-				traceit("RPTR_ID_%c? must be A, B or C\n", cm);
-
-		} else if (0 == strcmp(param, "G2_EXTERNAL_IP")) {
-			if (strlen(value) < 7)
-				traceit("G2_EXTERNAL_IP value [%s] invalid\n", value);
-			else {
-				strncpy(G2_EXTERNAL_IP, value, IP_SIZE);
-				G2_EXTERNAL_IP[IP_SIZE] = zero;
-				traceit("G2_EXTERNAL_IP=[%s]\n", G2_EXTERNAL_IP);
-				params ++;
-			}
-
-		} else if (0 == strcmp(param, "G2_EXTERNAL_PORT")) {
-			G2_EXTERNAL_PORT = atoi(value);
-			traceit("G2_EXTERNAL_PORT=[%d]\n", G2_EXTERNAL_PORT);
-			params ++;
-
-		} else if (0 == strcmp(param, "G2_INTERNAL_IP")) {
-			if (strlen(value) < 7)
-				traceit("G2_INTERNAL_IP value [%s] invalid\n", value);
-			else {
-				strncpy(G2_INTERNAL_IP, value, IP_SIZE);
-				G2_INTERNAL_IP[IP_SIZE] = zero;
-				traceit("G2_INTERNAL_IP=[%s]\n", G2_INTERNAL_IP);
-				params ++;
-			}
-
-		} else if (0 == strcmp(param, "G2_INTERNAL_PORT")) {
-			G2_INTERNAL_PORT = atoi(value);
-			traceit("G2_INTERNAL_PORT=[%d]\n", G2_INTERNAL_PORT);
-			params ++;
-
-		} else if (0 == strcmp(param, "TO_G2_LINK_IP")) {
-			if (strlen(value) < 7)
-				traceit("TO_G2_LINK_IP value [%s] invalid\n", value);
-			else {
-				strncpy(TO_G2_LINK_IP, value, IP_SIZE);
-				TO_G2_LINK_IP[IP_SIZE] = zero;
-				traceit("TO_G2_LINK_IP=[%s]\n", TO_G2_LINK_IP);
-				params ++;
-			}
-
-		} else if (0 == strcmp(param, "TO_G2_LINK_PORT")) {
-			TO_G2_LINK_PORT = atoi(value);
-			traceit("TO_G2_LINK_PORT=[%d]\n", TO_G2_LINK_PORT);
-			params ++;
-
-		} else if (0 == strncmp(param, "TO_RPTR_IP_", 11)) {
-			char cm = param[11];
-			int m = cm - 'A';
-			if (0<=m && m<3) {
-				if (strlen(value) < 7)
-					traceit("TO_RPTR_IP_$c value [%s] invalid\n", cm, value);
-				else {
-					strncpy(TO_RPTR_IP[m], value, IP_SIZE);
-					TO_RPTR_IP[m][IP_SIZE] = '\0';
-					traceit("TO_RPTR_IP_%c=[%s]\n", cm, TO_RPTR_IP[m]);
-					params ++;
-				}
-			} else
-				traceit("TO_RPTR_IP_%c is invalid\n", cm);
-
-		} else if (0 == strncmp(param, "TO_RPTR_PORT_", 13)) {
-			char cm = param[13];
-			int m = cm - 'A';
-			if (0<=m && m<3) {
-				TO_RPTR_PORT[m] = atoi(value);
-				traceit("TO_RPTR_PORT_%c=[%d]\n", cm, TO_RPTR_PORT[m]);
-				params ++;
-			} else
-				traceit("TO_RPTR_PORT_%c is invalid\n", cm);
-
-		} else if (0 == strcmp(param, "QSO_DETAILS")) {
-			if ('Y'==value[0] || 'y'==value[0])
-				QSO_DETAILS = true;
-			else
-				QSO_DETAILS = false;
-			traceit("QSO_DETAILS=[%s]\n", QSO_DETAILS ? Tstr : Fstr);
-			params ++;
-
-		} else if (0 == strcmp(param, "IRC_DEBUG")) {
-			if ('Y'==value[0] || 'y'==value[0])
-				IRC_DEBUG = true;
-			else
-				IRC_DEBUG = false;
-			traceit("IRC_DEBUG=[%s]\n", IRC_DEBUG ? Tstr : Fstr);
-			params ++;
-
-		} else if (0 == strcmp(param, "DTMF_DEBUG")) {
-			if ('Y'==value[0] || 'y'==value[0])
-				DTMF_DEBUG = true;
-			else
-				DTMF_DEBUG = false;
-			traceit("DTMF_DEBUG=[%s]\n", DTMF_DEBUG ? Tstr : Fstr);
-			params ++;
-
-		} else if (0 == strcmp(param,"REGEN_HDR")) {
-			if ('Y'==value[0] || 'y'==value[0])
-				REGEN_HDR = true;
-			else
-				REGEN_HDR = false;
-			traceit("REGEN_HDR=[%s]\n", REGEN_HDR ? Tstr : Fstr);
-			params ++;
-
-		} else if (0 == strcmp(param, "SEND_APRS")) {
-			if ('Y'==value[0] || 'y'==value[0])
-				SEND_APRS = true;
-			else
-				SEND_APRS = false;
-			traceit("SEND_APRS=[%s]\n", SEND_APRS ? Tstr : Fstr);
-			params ++;
-
-		} else if (0 == strcmp(param, "ECHOTEST_DIR")) {
-			strncpy(ECHOTEST_DIR, value, FILENAME_MAX);
-			ECHOTEST_DIR[FILENAME_MAX] = zero;
-			traceit("ECHOTEST_DIR=[%s]\n", ECHOTEST_DIR);
-			params ++;
-
-		} else if (0 == strcmp(param, "PLAY_WAIT")) {
-			PLAY_WAIT = atoi(value);
-			if ((PLAY_WAIT > 10) || (PLAY_WAIT < 1))
-				PLAY_WAIT = 1;
-			traceit("PLAY_WAIT=[%d]\n", PLAY_WAIT);
-			params ++;
-
-		} else if (0 == strcmp(param, "PLAY_DELAY")) {
-			PLAY_DELAY = atoi(value);
-			if ((PLAY_DELAY > 50) || (PLAY_DELAY < 10))
-				PLAY_DELAY = 20;
-			traceit("PLAY_DELAY=[%d]\n", PLAY_DELAY);
-			params ++;
-
-		} else if (0 == strcmp(param, "ECHOTEST_REC_TIMEOUT")) {
-			ECHOTEST_REC_TIMEOUT = atoi(value);
-			traceit("ECHOTEST_REC_TIMEOUT=[%d]\n", ECHOTEST_REC_TIMEOUT);
-			params ++;
-
-		} else if (0 == strcmp(param, "VOICEMAIL_REC_TIMEOUT")) {
-			VOICEMAIL_REC_TIMEOUT = atoi(value);
-			traceit("VOICEMAIL_REC_TIMEOUT=[%d]\n", VOICEMAIL_REC_TIMEOUT);
-			params ++;
-
-		} else if (0 == strcmp(param, "FROM_REMOTE_G2_TIMEOUT")) {
-			FROM_REMOTE_G2_TIMEOUT = atoi(value);
-			traceit("FROM_REMOTE_G2_TIMEOUT=[%d]\n", FROM_REMOTE_G2_TIMEOUT);
-			params ++;
-
-		} else if (0 == strcmp(param, "FROM_LOCAL_RPTR_TIMEOUT")) {
-			FROM_LOCAL_RPTR_TIMEOUT = atoi(value);
-			traceit("FROM_LOCAL_RPTR_TIMEOUT=[%d]\n", FROM_LOCAL_RPTR_TIMEOUT);
-			params ++;
-
-		} else if (0 == strcmp(param, "IRC_DDB_HOST")) {
-			if (strlen(value) < 7)
-				traceit("IRC_DDB_HOST value [%s] invalid\n", value);
-			else {
-				strncpy(IRC_DDB_HOST, value, 512);
-				IRC_DDB_HOST[512] = zero;
-				traceit("IRC_DDB_HOST=[%s]\n", IRC_DDB_HOST);
-				params ++;
-			}
-
-		} else if (0 == strcmp(param, "IRC_DDB_PORT")) {
-			IRC_DDB_PORT = atoi(value);
-			traceit("IRC_DDB_PORT=[%d]\n",IRC_DDB_PORT);
-			params ++;
-
-		} else if (0 == strcmp(param, "IRC_PASS")) {
-			strncpy(IRC_PASS, value, 512);
-			IRC_PASS[511] = zero;
-			params ++;
-	
-		} else if (0 == strcmp(param,"DTMF_DIR")) {
-			strncpy(DTMF_DIR, value, FILENAME_MAX);
-			DTMF_DIR[FILENAME_MAX] = zero;
-			traceit("DTMF_DIR=[%s]\n", DTMF_DIR);
-			params ++;
-
-		} else {
-			traceit("UNKNOWN: %s = %s\n", param, value);
-		}
-	}
-	fclose(cnf);
-
-	if (params != valid_params) {
-		traceit("Configuration file %s invalid, only found %d of %d parameters\n",cfgFile, params, valid_params);
+	map<string, string>::iterator pit = param.find("OWNER");
+	if (param.end() == pit) {
+		traceit("OWNER not defined!\n");
 		return 1;
 	}
+	if (pit->second.length()<3 || pit->second.length() > CALL_SIZE-2) {
+		traceit("OWNER value '%s' invalid\n", pit->second.c_str());
+		return 1;
+	}
+	strcpy(OWNER, pit->second.c_str());
+	strcpy(owner, pit->second.c_str());
+	for (i=0; i<strlen(OWNER); i++) {
+		if (isupper(owner[i]))
+			OWNER[i] = toupper(OWNER[i]);
+		else
+			owner[i] = tolower(owner[i]);
+	}
+	traceit("OWNER=[%s]\n", OWNER);
+	while (strlen(OWNER) < CALL_SIZE)
+		strcat(OWNER, " ");
+
+	for (short int m=0; m<3; m++) {
+		string key = "RPTR_";
+		key += m + 'A';
+		pit = param.find(key);
+		if (param.end() == pit)
+			rptr.mod[m].defined = false;
+		else {
+			rptr.mod[m].defined = true;
+			char value[128];
+			strncpy(value, param[key].c_str(), 128);
+			value[127] = zero;
+			for (i=0; i<10; i++) {
+				tok = strtok(i?NULL:value, "|");
+				switch (i) {
+					case 0:
+						(void)trim(tok);
+						switch (tok[0]) {
+							case '0':
+								strcpy(rptr.mod[m].package_version, DVAP_VERSION);
+								break;
+							case '1':
+								strcpy(rptr.mod[m].package_version, DVRPTR_VERSION);
+								break;
+							default:
+								traceit("%s type %s not defined!\n", key.c_str(), tok);
+								return 1;
+						}
+						break;
+					case 1:
+						rptr.mod[m].frequency = tok ? atof(tok) : 0.0;
+						break;
+					case 2:
+						rptr.mod[m].offset = tok ? atof(tok) : 0.0;
+						break;
+					case 3:
+						rptr.mod[m].range = tok ? atof(tok) : 0.0;
+						break;
+					case 4:
+						rptr.mod[m].agl = tok ? atof(tok) : 0.0;
+						break;
+					case 5:
+						rptr.mod[m].latitude = tok ? atof(tok) : 0.0;
+						break;
+					case 6:
+						rptr.mod[m].longitude = tok ? atof(tok) : 0.0;
+						break;
+					case 7:
+						if (tok)
+							strncpy(rptr.mod[m].desc1, trim(tok), 20);
+						rptr.mod[m].desc1[tok ? 20 : 0] = zero;
+						break;
+					case 8:
+						if (tok)
+							strncpy(rptr.mod[m].desc2, trim(tok), 20);
+						rptr.mod[m].desc2[tok ? 20 : 0] = zero;
+						break;
+					case 9:
+						if (tok) {
+							char *instr = strstr(tok, "//");
+							if (instr) {
+								char *p = tok;
+								while (p < instr+2)
+									*p++ = ' ';
+							}
+							(void)trim(tok);
+							strncpy(rptr.mod[m].url, tok, 64);
+						}
+						rptr.mod[m].url[tok ? 64 : 0] = zero;
+				}
+			}
+			// make the long description
+			strcpy(rptr.mod[m].desc, rptr.mod[m].desc1);
+			if (strlen(rptr.mod[m].desc2)) {
+				if (strlen(rptr.mod[m].desc))
+					strcat(rptr.mod[m].desc, " ");
+				strcat(rptr.mod[m].desc, rptr.mod[m].desc2);
+			}
+			traceit("RPTR_%c:\n", m+'A');
+			traceit("\tType     =%s\n", rptr.mod[m].package_version);
+			traceit("\tfreq     =%lg\n", rptr.mod[m].frequency);
+			traceit("\toffset   =%lg\n", rptr.mod[m].offset);
+			traceit("\trange    =%lg\n", rptr.mod[m].range);
+			traceit("\tagl      =%lg\n", rptr.mod[m].agl);
+			traceit("\tlatitude =%lg\n", rptr.mod[m].latitude);
+			traceit("\tlongitude=%lg\n", rptr.mod[m].longitude);
+			traceit("\tdesc1    =%s\n", rptr.mod[m].desc1);
+			traceit("\tdesc2    =%s\n", rptr.mod[m].desc2);
+			traceit("\turl      =%s\n", rptr.mod[m].url);
+		}
+	}
+	if (false==rptr.mod[0].defined && false==rptr.mod[1].defined && false==rptr.mod[2].defined) {
+		traceit("No repeaters defined!\n");
+		return 1;
+	}
+
+	pit = param.find("STATUS_FILE");
+	if (param.end() == pit)
+		strcpy(STATUS_FILE, "/usr/local/etc/RPT_STATUS.txt");
+	else {
+		strncpy(STATUS_FILE, pit->second.c_str() ,FILENAME_MAX);
+		STATUS_FILE[FILENAME_MAX] = zero;
+	}
+	traceit("STATUS_FILE=[%s]\n", STATUS_FILE);
+
+	pit = param.find("LOCAL_IRC_IP");
+	if (param.end() == pit)
+		strcpy(LOCAL_IRC_IP, "0.0.0.0");
+	else {
+		if (pit->second.length()>IP_SIZE || pit->second.length()<7) {
+			traceit("LOCAL_IRC_IP value [%s] invalid\n", pit->second.c_str());
+			return 1;
+		} else
+			strcpy(LOCAL_IRC_IP, pit->second.c_str());
+	}
+	traceit("LOCAL_IRC_IP=[%s]\n", LOCAL_IRC_IP);
+
+	pit = param.find("SEND_QRGS_MAPS");
+	if (param.end() == pit)
+		SEND_QRGS_MAPS = true;
+	else
+		SEND_QRGS_MAPS = ('Y'==toupper(pit->second.at(0))) ? true : false;
+	traceit("SEND_QRGS_MAPS=[%s]\n", SEND_QRGS_MAPS ? Tstr : Fstr);
+
+	pit = param.find("APRS_HOST");
+	if (param.end() == pit)
+		strcpy(rptr.aprs_host, "rotate.aprs.net");
+	else {
+		if (pit->second.length() > MAXHOSTNAMELEN) {
+			traceit("APRS_HOST definition is too long\n");
+			return 1;
+		} else
+			strcpy(rptr.aprs_host, pit->second.c_str());
+		rptr.aprs_host[MAXHOSTNAMELEN] = zero;
+	}
+	traceit("APRS_HOST=[%s]\n", rptr.aprs_host);
+
+	pit = param.find("APRS_PORT");
+	rptr.aprs_port = (param.end()==pit) ? 14580 : atoi(pit->second.c_str());
+	traceit("APRS_PORT=[%d]\n", rptr.aprs_port);
+
+	pit = param.find("APRS_INTERVAL");
+	rptr.aprs_interval = (param.end()==pit) ? 40 : atoi(pit->second.c_str());
+	traceit("APRS_INTERVAL=[%d]\n", rptr.aprs_interval);
+	if (rptr.aprs_interval < 40) {
+		rptr.aprs_interval = 40;
+		traceit("APRS_INTERVAL is low number, re-setting to 40\n");
+	}
+
+	pit = param.find("APRS_FILTER");
+	if (param.end() != pit) {
+		strncpy(rptr.aprs_filter, pit->second.c_str(), 512);
+		rptr.aprs_filter[511] = zero;
+	} else
+		rptr.aprs_filter[0] = zero;
+	traceit("APRS_filter=[%s]\n", rptr.aprs_filter);
+
+	pit = param.find("G2_EXTERNAL_IP");
+	if (param.end() == pit)
+		strcpy(G2_EXTERNAL_IP, "0.0.0.0");
+	else {
+		if (pit->second.length()<7 || pit->second.length()>IP_SIZE) {
+			traceit("G2_EXTERNAL_IP value [%s] invalid\n", pit->second.c_str());
+			return 1;
+		} else
+			strcpy(G2_EXTERNAL_IP, pit->second.c_str());
+	}
+	traceit("G2_EXTERNAL_IP=[%s]\n", G2_EXTERNAL_IP);
+
+	pit = param.find("G2_EXTERNAL_PORT");
+	G2_EXTERNAL_PORT = (param.end() == pit) ? 40000 : atoi(pit->second.c_str());
+	traceit("G2_EXTERNAL_PORT=[%d]\n", G2_EXTERNAL_PORT);
+
+	pit = param.find("G2_INTERNAL_IP");
+	if (param.end() == pit)
+		strcpy(G2_INTERNAL_IP, "0.0.0.0");
+	else {
+		if (pit->second.length()<7 || pit->second.length()>IP_SIZE) {
+			traceit("G2_INTERNAL_IP value [%s] invalid\n", pit->second.c_str());
+			return 1;
+		} else
+			strcpy(G2_INTERNAL_IP, pit->second.c_str());
+	}
+	traceit("G2_INTERNAL_IP=[%s]\n", G2_INTERNAL_IP);
+
+	pit = param.find("G2_INTERNAL_PORT");
+	G2_INTERNAL_PORT = (param.end() == pit) ? 19000 : atoi(pit->second.c_str());
+	traceit("G2_INTERNAL_PORT=[%d]\n", G2_INTERNAL_PORT);
+
+	pit = param.find("TO_G2_LINK_IP");
+	if (param.end() == pit)
+		strcpy(TO_G2_LINK_IP, "127.0.0.1");
+	else {
+		if (pit->second.length()<7 || pit->second.length()>IP_SIZE) {
+			traceit("TO_G2_LINK_IP value [%s] invalid\n", pit->second.c_str());
+			return 1;
+		} else
+			strcpy(TO_G2_LINK_IP, pit->second.c_str());
+	}
+	traceit("TO_G2_LINK_IP=[%s]\n", TO_G2_LINK_IP);
+
+	pit = param.find("TO_G2_LINK_PORT");
+	TO_G2_LINK_PORT = (param.end() == pit) ? 18997 : atoi(pit->second.c_str());
+	traceit("TO_G2_LINK_PORT=[%d]\n", TO_G2_LINK_PORT);
+
+	for (i=0; i<3; i++) {
+		string key = "TO_RPTR_IP_";
+		key += i + 'A';
+		pit = param.find(key);
+		if (param.end() == pit)
+			strcpy(TO_RPTR_IP[i], "127.0.0.1");
+		else {
+			if (pit->second.length()<7 || pit->second.length()>IP_SIZE) {
+				traceit("%s address %s is invalid\n", key.c_str(), pit->second.c_str());
+				return 1;
+			} else
+				strcpy(TO_RPTR_IP[i], pit->second.c_str());
+		}
+		traceit("%s = [%s]\n", key.c_str(), TO_RPTR_IP[i]);
+
+		key = "TO_RPTR_PORT_";
+		key += i + 'A';
+		pit = param.find(key);
+		TO_RPTR_PORT[i] = (param.end() == pit) ? 19998+i : atoi(pit->second.c_str());
+		traceit("%s=[%d]\n", key.c_str(), TO_RPTR_PORT[i]);
+	}
+
+	pit = param.find("QSO_DETAILS");
+	if (param.end() == pit)
+		QSO_DETAILS = true;
+	else
+		QSO_DETAILS = ('Y' == toupper(pit->second.at(0))) ? true : false;
+	traceit("QSO_DETAILS=[%s]\n", QSO_DETAILS ? Tstr : Fstr);
+
+	pit = param.find("IRC_DEBUG");
+	if (param.end() == pit)
+		IRC_DEBUG = false;
+	else
+		IRC_DEBUG = ('Y' == toupper(pit->second.at(0))) ? true : false;
+	traceit("IRC_DEBUG=[%s]\n", IRC_DEBUG ? Tstr : Fstr);
+
+	pit = param.find("DTMF_DEBUG");
+	if (param.end() == pit)
+		DTMF_DEBUG = false;
+	else
+		DTMF_DEBUG = ('Y' == toupper(pit->second.at(0))) ? true : false;
+	traceit("DTMF_DEBUG=[%s]\n", DTMF_DEBUG ? Tstr : Fstr);
+
+	pit = param.find("REGEN_HDR");
+	if (param.end() == pit)
+		REGEN_HDR = false;
+	else
+		REGEN_HDR = ('Y' == toupper(pit->second.at(0))) ? true : false;
+	traceit("REGEN_HDR=[%s]\n", REGEN_HDR ? Tstr : Fstr);
+
+	pit = param.find("SEND_APRS");
+	if (param.end() == pit)
+		SEND_APRS = true;
+	else
+		SEND_APRS = ('Y' == toupper(pit->second.at(0))) ? true : false;
+	traceit("SEND_APRS=[%s]\n", SEND_APRS ? Tstr : Fstr);
+
+	pit = param.find("ECHOTEST_DIR");
+	if (param.end() == pit)
+		strcpy(ECHOTEST_DIR, "/tmp");
+	else {
+		if (pit->second.length() > FILENAME_MAX) {
+			traceit("ECHOTEST_DIR definition is too long!\n");
+			return 1;
+		} else
+			strcpy(ECHOTEST_DIR, pit->second.c_str());
+	}
+	traceit("ECHOTEST_DIR=[%s]\n", ECHOTEST_DIR);
+
+	pit = param.find("PLAY_WAIT");
+	PLAY_WAIT = (param.end() == pit) ? 2 : atoi(pit->second.c_str());
+	if (PLAY_WAIT>10 || PLAY_WAIT<1)
+		PLAY_WAIT = 2;
+	traceit("PLAY_WAIT=[%d]\n", PLAY_WAIT);
+
+	pit = param.find("PLAY_DELAY");
+	PLAY_DELAY = (param.end() == pit) ? 10 : atoi(pit->second.c_str());
+	if (PLAY_DELAY>50 || PLAY_DELAY<10)
+		PLAY_DELAY = 19;
+	traceit("PLAY_DELAY=[%d]\n", PLAY_DELAY);
+
+	pit = param.find("ECHOTEST_REC_TIMEOUT");
+	ECHOTEST_REC_TIMEOUT = (param.end() == pit) ? 1 : atoi(pit->second.c_str());
+	if (1 > ECHOTEST_REC_TIMEOUT)
+		ECHOTEST_REC_TIMEOUT = 1;
+	traceit("ECHOTEST_REC_TIMEOUT=[%d]\n", ECHOTEST_REC_TIMEOUT);
+
+	pit = param.find("VOICEMAIL_REC_TIMEOUT");
+	VOICEMAIL_REC_TIMEOUT = (param.end() == pit) ? 1 : atoi(pit->second.c_str());
+	if (1 > VOICEMAIL_REC_TIMEOUT)
+		VOICEMAIL_REC_TIMEOUT = 1;
+	traceit("VOICEMAIL_REC_TIMEOUT=[%d]\n", VOICEMAIL_REC_TIMEOUT);
+
+	pit = param.find("FROM_REMOTE_G2_TIMEOUT");
+	FROM_REMOTE_G2_TIMEOUT = (param.end() == pit) ? 2 : atoi(pit->second.c_str());
+	if (1 > FROM_REMOTE_G2_TIMEOUT)
+		FROM_REMOTE_G2_TIMEOUT = 2;
+	traceit("FROM_REMOTE_G2_TIMEOUT=[%d]\n", FROM_REMOTE_G2_TIMEOUT);
+
+	pit = param.find("FROM_LOCAL_RPTR_TIMEOUT");
+	FROM_LOCAL_RPTR_TIMEOUT = (param.end() == pit) ? 1 : atoi(pit->second.c_str());
+	if (1 > FROM_LOCAL_RPTR_TIMEOUT)
+		FROM_LOCAL_RPTR_TIMEOUT = 1;
+	traceit("FROM_LOCAL_RPTR_TIMEOUT=[%d]\n", FROM_LOCAL_RPTR_TIMEOUT);
+
+	pit = param.find("IRC_DDB_HOST");
+	if (param.end() == pit)
+		strcpy(IRC_DDB_HOST, "rr.openquad.net");
+	else {
+		if (pit->second.length() < 511)
+			strcpy(IRC_DDB_HOST, pit->second.c_str());
+		else {
+			traceit("IRC_DDB_HOST definition is too long\n");
+			return 1;
+		}
+	}
+
+	pit = param.find("IRC_DDB_PORT");
+	IRC_DDB_PORT = (param.end() == pit) ? 9007 : atoi(pit->second.c_str());
+	if (IRC_DDB_PORT < 1)
+		IRC_DDB_PORT = 9007;
+	traceit("IRC_DDB_PORT=[%d]\n",IRC_DDB_PORT);
+
+	pit = param.find("IRC_PASS");
+	if (param.end() == pit)
+		strcpy(IRC_PASS, "1111111111111111");
+	else {
+		if (pit->second.length() > 511) {
+			traceit("IRC_PASS is too long!\n");
+			return 1;
+		}
+		strcpy(IRC_PASS, pit->second.c_str());
+	}
+
+	pit = param.find("DTMF_DIR");
+	if (param.end() == pit)
+		strcpy(DTMF_DIR, "/tmp");
+	else {
+		if (pit->second.length() < FILENAME_MAX)
+			strcpy(DTMF_DIR, pit->second.c_str());
+		else {
+			traceit("DTMF_DIR definition is too long!\n");
+			return 1;
+		}
+	}
+	traceit("DTMF_DIR=[%s]\n", DTMF_DIR);
 	return 0;
 }
 
