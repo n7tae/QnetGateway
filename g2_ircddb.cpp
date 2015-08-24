@@ -624,7 +624,7 @@ static int read_config(char *cfgFile)
 	strcpy(OWNER, pit->second.c_str());
 	strcpy(owner, pit->second.c_str());
 	for (i=0; i<strlen(OWNER); i++) {
-		if (isupper(owner[i]))
+		if (islower(owner[i]))
 			OWNER[i] = toupper(OWNER[i]);
 		else
 			owner[i] = tolower(owner[i]);
@@ -778,7 +778,6 @@ static int read_config(char *cfgFile)
 	traceit("APRS_INTERVAL=[%d]\n", rptr.aprs_interval);
 	if (rptr.aprs_interval < 40) {
 		rptr.aprs_interval = 40;
-		traceit("APRS_INTERVAL is low number, re-setting to 40\n");
 	}
 
 	pit = param.find("APRS_FILTER");
