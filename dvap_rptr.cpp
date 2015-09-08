@@ -1,6 +1,8 @@
 /*
  *   Copyright (C) 2010, 2011 by Scott Lawson KI4LKF
  *
+ *   Copyright (C) 2015 by Thomas A. Early AC2IE
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -38,6 +40,11 @@
 #include <sys/file.h>
 #include <pthread.h>
 #include "versions.h"
+
+#include <string>
+#include <libconfig.h++>
+using namespace std;
+using namespace libconfig;
 
 #define VERSION DVAP_VERSION
 #define CALL_SIZE 8
@@ -120,24 +127,24 @@ struct dvap_ack_arg_type {
 dvap_ack_arg_type dvap_ack_arg;
 
 /* Default configuration data */
-static char RPTR[RPTR_SIZE + 1] = {"ABCDEF"};
-static char OWNER[RPTR_SIZE + 1] = {"ABCDEF"};
-static char RPTR_MOD = 'B';
-static char RPTR_VIRTUAL_IP[IP_SIZE + 1] = {"172.16.0.1"};
-static int RPTR_PORT = 20000;
-static char G2_INTERNAL_IP[IP_SIZE + 1] = {"172.16.0.20"};
-static int G2_PORT = 20000;
+static char RPTR[RPTR_SIZE + 1];
+static char OWNER[RPTR_SIZE + 1];
+static char RPTR_MOD;
+static char RPTR_VIRTUAL_IP[IP_SIZE + 1];
+static int RPTR_PORT;
+static char G2_INTERNAL_IP[IP_SIZE + 1];
+static int G2_PORT;
 static char DVP_SERIAL[64]; /* APxxxxxx */
-static u_int32_t DVP_FREQ = 145500000; /* between 144000000 and 148000000 */
-static int16_t DVP_PWR = 10; /* between  -12 and 10 */
-static char DVP_SQL = -100; /* between  -128 and -45 */
-static int16_t DVP_OFF = 0; /* between -2000 and 2000 */
-static int WAIT_FOR_PACKETS=25;   /* wait 25 ms in reading from local G2 */
-static int REMOTE_TIMEOUT=1;  /* 1 second */
-static int DELAY_BETWEEN = 20;
-static int DELAY_BEFORE = 1;
-static bool RPTR_ACK = true;
-static char INVALID_YRCALL_KEY[CALL_SIZE + 1] = { "" };
+static u_int32_t DVP_FREQ; /* between 144000000 and 148000000 */
+static int16_t DVP_PWR; /* between  -12 and 10 */
+static char DVP_SQL; /* between  -128 and -45 */
+static int16_t DVP_OFF; /* between -2000 and 2000 */
+static int WAIT_FOR_PACKETS;   /* wait 25 ms in reading from local G2 */
+static int REMOTE_TIMEOUT;  /* 1 second */
+static int DELAY_BETWEEN;
+static int DELAY_BEFORE;
+static bool RPTR_ACK;
+static char INVALID_YRCALL_KEY[CALL_SIZE + 1];
 
 /* helper data */
 static int32_t val32bits = 1;
@@ -344,7 +351,7 @@ static void traceit(const char *fmt,...)
 	time(&ltime);
 	localtime_r(&ltime,&mytm);
 
-	snprintf(trace_buf,TRACE_BFSZ - 1,"%02d%02d%02d at %02d:%02d:%02d:",
+	snprintf(trace_buf,TRACE_BFSZ - 1,"%02d/%02d/%02d %02d:%02d:%02d:",
 	         mytm.tm_mon+1,mytm.tm_mday,mytm.tm_year % 100,
 	         mytm.tm_hour,mytm.tm_min,mytm.tm_sec);
 
@@ -357,194 +364,177 @@ static void traceit(const char *fmt,...)
 	return;
 }
 
+bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
+{
+	if (cfg.lookupValue(path, value)) {
+		if (value < min || value > max)
+			value = default_value;
+	} else
+		value = default_value;
+	traceit("%s = [%d]\n", path, value);
+	return true;
+}
+
+bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
+{
+	if (cfg.lookupValue(path, value)) {
+		if (value < min || value > max)
+			value = default_value;
+	} else
+		value = default_value;
+	traceit("%s = [%lg]\n", path, value);
+	return true;
+}
+
+bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
+{
+	if (! cfg.lookupValue(path, value))
+		value = default_value;
+	traceit("%s = [%s]\n", path, value ? "true" : "false");
+	return true;
+}
+
+bool get_value(const Config &cfg, const char *path, string &value, int min, int max, const char *default_value)
+{
+	if (cfg.lookupValue(path, value)) {
+		int l = value.length();
+		if (l<min || l>max) {
+			traceit("%s is invalid\n", path, value.c_str());
+			return false;
+		}
+	} else
+		value = default_value;
+	traceit("%s = [%s]\n", path, value.c_str());
+	return true;
+}
+
 /* process configuration file */
 static int read_config(const char *cfgFile)
 {
-	short int valid_params = 18;
-	short int params = 0;
-
-	FILE *cnf = NULL;
-	char inbuf[1024];
-	char *p = NULL;
-	char *ptr;
-	unsigned short i;
-
-	cnf = fopen(cfgFile, "r");
-	if (!cnf) {
-		traceit("Failed to open file %s\n", cfgFile);
-		return 1;
-	}
+	int i;
+	Config cfg;
 
 	traceit("Reading file %s\n", cfgFile);
-	while (fgets(inbuf, 1020, cnf) != NULL) {
-		if (strchr(inbuf, '#'))
-			continue;
-
-		p = strchr(inbuf, '\r');
-		if (p)
-			*p = '\0';
-		p = strchr(inbuf, '\n');
-		if (p)
-			*p = '\0';
-
-		p = strchr(inbuf, '=');
-		if (!p)
-			continue;
-		*p = '\0';
-
-		if (strcmp(inbuf,"RPTR") == 0) {
-			memset(RPTR,' ', sizeof(RPTR));
-			RPTR[RPTR_SIZE] = '\0';
-
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if ((strlen(p + 1) < 1) || (strlen(p + 1) > (RPTR_SIZE - 2)))
-				traceit("RPTR value [%s] invalid\n", p + 1);
-			else {
-				memcpy(RPTR, p + 1, strlen(p + 1));
-				traceit("RPTR=[%s]\n",RPTR);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"OWNER") == 0) {
-			memset(OWNER,' ', sizeof(OWNER));
-			OWNER[RPTR_SIZE] = '\0';
-
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if ((strlen(p + 1) < 1) || (strlen(p + 1) > (RPTR_SIZE - 2)))
-				traceit("OWNER value [%s] invalid\n", p + 1);
-			else {
-				memcpy(OWNER, p + 1, strlen(p + 1));
-				traceit("OWNER=[%s]\n",OWNER);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"INVALID_YRCALL_KEY") == 0) {
-			memset(INVALID_YRCALL_KEY, 0, sizeof(INVALID_YRCALL_KEY));
-
-			if ( (strlen(p + 1) < 1) || (strlen(p + 1) > CALL_SIZE) )
-				traceit("INVALID_YRCALL_KEY value [%s] invalid\n", p + 1);
-			else {
-				memcpy(INVALID_YRCALL_KEY, p + 1, strlen(p + 1));
-
-				for (i = 0; i < strlen(INVALID_YRCALL_KEY); i++)
-					INVALID_YRCALL_KEY[i] = toupper(INVALID_YRCALL_KEY[i]);
-
-				traceit("INVALID_YRCALL_KEY=[%s]\n",INVALID_YRCALL_KEY);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"RPTR_MOD") == 0) {
-			RPTR_MOD = *(p + 1);
-			traceit("RPTR_MOD=[%c]\n", *(p + 1));
-			params ++;
-		} else if (strcmp(inbuf,"RPTR_VIRTUAL_IP") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if (strlen(p + 1) < 1)
-				traceit("RPTR_VIRTUAL_IP value [%s] invalid\n", p + 1);
-			else {
-				strncpy(RPTR_VIRTUAL_IP, p + 1, IP_SIZE);
-				RPTR_VIRTUAL_IP[IP_SIZE] = '\0';
-				traceit("RPTR_VIRTUAL_IP=[%s]\n", RPTR_VIRTUAL_IP);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"RPTR_PORT") == 0) {
-			RPTR_PORT = atoi(p + 1);
-			traceit("RPTR_PORT=[%d]\n",RPTR_PORT);
-			params ++;
-		} else if (strcmp(inbuf,"G2_INTERNAL_IP") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if (strlen(p + 1) < 1)
-				traceit("G2_INTERNAL_IP value [%s] invalid\n", p + 1);
-			else {
-				strncpy(G2_INTERNAL_IP, p + 1, IP_SIZE);
-				G2_INTERNAL_IP[IP_SIZE] = '\0';
-				traceit("G2_INTERNAL_IP=[%s]\n", G2_INTERNAL_IP);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"G2_PORT") == 0) {
-			G2_PORT = atoi(p + 1);
-			traceit("G2_PORT=[%d]\n",G2_PORT);
-			params ++;
-		} else if (strcmp(inbuf,"DVP_SERIAL") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if ((strlen(p + 1) > 63) || (strlen(p + 1) < 1))
-				traceit("DVP_SERIAL value [%s] invalid\n", p + 1);
-			else {
-				strcpy(DVP_SERIAL, p + 1);
-				traceit("DVP_SERIAL=[%s]\n", DVP_SERIAL);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"DVP_FREQ") == 0) {
-			DVP_FREQ = atoi(p + 1);
-			traceit("DVP_FREQ=[%u]\n", DVP_FREQ);
-			params ++;
-		} else if (strcmp(inbuf,"DVP_PWR") == 0) {
-			DVP_PWR = atoi(p + 1);
-			traceit("DVP_PWR=[%d]\n", DVP_PWR);
-			params ++;
-		} else if (strcmp(inbuf,"DVP_SQL") == 0) {
-			DVP_SQL = atoi(p + 1);
-			traceit("DVP_SQL=[%d]\n", DVP_SQL);
-			params ++;
-		} else if (strcmp(inbuf,"DVP_OFF") == 0) {
-			DVP_OFF = atoi(p + 1);
-			traceit("DVP_OFF=[%u]\n", DVP_OFF);
-			params ++;
-		} else if (strcmp(inbuf,"WAIT_FOR_PACKETS") == 0) {
-			WAIT_FOR_PACKETS = atoi(p + 1);
-			if (WAIT_FOR_PACKETS <= 5)
-				WAIT_FOR_PACKETS = 25;
-			traceit("WAIT_FOR_PACKETS=[%d]\n",WAIT_FOR_PACKETS);
-			params ++;
-		} else if (strcmp(inbuf,"REMOTE_TIMEOUT") == 0) {
-			REMOTE_TIMEOUT = atoi(p + 1);
-			if (REMOTE_TIMEOUT < 1)
-				REMOTE_TIMEOUT = 1;
-			traceit("REMOTE_TIMEOUT=[%d]\n",REMOTE_TIMEOUT);
-			params ++;
-		} else if (strcmp(inbuf,"DELAY_BETWEEN") == 0) {
-			DELAY_BETWEEN = atoi(p + 1);
-			if (DELAY_BETWEEN <= 0)
-				DELAY_BETWEEN = 20;
-			traceit("DELAY_BETWEEN=[%d]\n",DELAY_BETWEEN);
-			params ++;
-		} else if (strcmp(inbuf,"DELAY_BEFORE") == 0) {
-			DELAY_BEFORE = atoi(p + 1);
-			if (DELAY_BEFORE <= 0)
-				DELAY_BEFORE = 1;
-			traceit("DELAY_BEFORE=[%d]\n",DELAY_BEFORE);
-			params ++;
-		} else if (strcmp(inbuf,"RPTR_ACK") == 0) {
-			if (*(p + 1) == 'Y')
-				RPTR_ACK = true;
-			else
-				RPTR_ACK = false;
-			traceit("RPTR_ACK=[%c]\n", *(p + 1));
-			params ++;
-		}
+	// Read the file. If there is an error, report it and exit.
+	try {
+		cfg.readFile(cfgFile);
 	}
-	fclose(cnf);
-
-	if (params != valid_params) {
-		traceit("Configuration file %s invalid\n",cfgFile);
+	catch(const FileIOException &fioex) {
+		traceit("Can't read %s\n", cfgFile);
+		return 1;
+	}
+	catch(const ParseException &pex) {
+		traceit("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
 		return 1;
 	}
 
-	/*********   HERE HERE check for valid values *************/
-	/* check valid values */
-	/*********   HERE HERE check for valid values *************/
+	string dvap_path, value;
+	for (i=0; i<3; i++) {
+		dvap_path = "module.";
+		dvap_path += ('a' + i);
+		if (cfg.lookupValue(dvap_path + ".type", value)) {
+			if (0 == strcasecmp(value.c_str(), "dvap"))
+				break;
+		}
+	}
+	if (i >= 3) {
+		traceit("dvap not defined in any module!\n");
+		return 1;
+	}
+	RPTR_MOD = 'A' + i;
+
+	if (cfg.lookupValue(string(dvap_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
+		int l = value.length();
+		if (l<3 || l>CALL_SIZE-2) {
+			traceit("Call '%s' is invalid length!\n", value.c_str());
+			return 1;
+		} else {
+			for (i=0; i<l; i++) {
+				if (islower(value[i]))
+					value[i] = toupper(value[i]);
+			}
+			value.resize(CALL_SIZE, ' ');
+		}
+		strcpy(RPTR, value.c_str());
+		traceit("%s.login = [%s]\n", dvap_path.c_str(), RPTR);
+	} else {
+		traceit("%s.login is not defined!\n", dvap_path.c_str());
+		return 1;
+	}
+	
+	if (cfg.lookupValue("ircddb.login", value)) {
+		int l = value.length();
+		if (l<3 || l>CALL_SIZE-2) {
+			traceit("Call '%s' is invalid length!\n", value.c_str());
+			return 1;
+		} else {
+			for (i=0; i<l; i++) {
+				if (islower(value[i]))
+					value[i] = toupper(value[i]);
+			}
+			value.resize(CALL_SIZE, ' ');
+		}
+		strcpy(OWNER, value.c_str());
+		traceit("ircddb.login = [%s]\n", OWNER);
+	} else {
+		traceit("ircddb.login is not defined!\n");
+		return 1;
+	}
+
+	if (get_value(cfg, string(dvap_path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
+		if (islower(value[i]))
+			value[i] = toupper(value[i]);
+		value.resize(CALL_SIZE, ' ');
+		strcpy(INVALID_YRCALL_KEY, value.c_str());
+	} else
+		return 1;
+
+	if (get_value(cfg, string(dvap_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
+		strcpy(RPTR_VIRTUAL_IP, value.c_str());
+	else
+		return 1;
+
+	i = 19998 + (RPTR_MOD - 'A');
+	get_value(cfg, string(dvap_path+".port").c_str(), RPTR_PORT, 10000, 65535, i);
+
+	if (get_value(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
+		strcpy(G2_INTERNAL_IP, value.c_str());
+	else {
+		traceit("gateway.ip '%s' is invalid!\\n", value.c_str());
+		return 1;
+	}
+
+	get_value(cfg, "gateway.internal.port", G2_PORT, 10000, 65535, 19000);
+
+	if (get_value(cfg, string(dvap_path+".serial_number").c_str(), value, 8, 10, "APXXXXXX"))
+		strcpy(DVP_SERIAL, value.c_str());
+	else {
+		traceit("%s.serial_number '%s' is invalid!\n", dvap_path.c_str(), value.c_str());
+		return 1;
+	}
+
+	double f;
+	get_value(cfg, string(dvap_path+".frequency").c_str(), f, 100.0, 1400.0, 145.5);
+	DVP_FREQ = (u_int32_t)(1.0e6*f);
+
+	get_value(cfg, string(dvap_path+".power").c_str(), i, -12, 10, 10);
+	DVP_PWR = (int16_t)i;
+
+	get_value(cfg, string(dvap_path+".squelch").c_str(), i, -128, -45, -100);
+	DVP_SQL = (char)i;
+
+	get_value(cfg, string(dvap_path+".offset").c_str(), i, -2000, 2000, 0.0);
+	DVP_OFF = (int16_t)i;
+
+	get_value(cfg, string(dvap_path+".packet_wait").c_str(), WAIT_FOR_PACKETS, 6, 100, 25);
+
+	get_value(cfg, "timing.timeout.remote_g2", REMOTE_TIMEOUT, 1, 10, 2);
+
+	get_value(cfg, "timing.play.delay", DELAY_BETWEEN, 9, 25, 19);
+
+	get_value(cfg, "timing.play.wait", DELAY_BEFORE, 1, 10, 2);
+
+	get_value(cfg, string(dvap_path+".acknowledge").c_str(), RPTR_ACK, false);
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000) / WAIT_FOR_PACKETS;
 	traceit("Max loops = %d\n", inactiveMax);

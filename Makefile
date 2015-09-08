@@ -21,7 +21,7 @@ CFGDIR=/usr/local/etc
 LOGDIR=/var/log
 
 CPPFLAGS=-W -Wall -I/usr/include `wx-config --cppflags base`
-LDFLAGS=-L/usr/lib `wx-config --libs base` 
+LDFLAGS=-L/usr/lib `wx-config --libs base` -lconfig++
 
 PROGRAMS=g2_ircddb g2_link dvap_rptr dvrptr g2link_test g2link_test_audio
 
@@ -33,13 +33,13 @@ g2_ircddb : g2_ircddb.cpp $(IRCDDBOBJS) versions.h
 	g++ $(CPPFLAGS) -o g2_ircddb g2_ircddb.cpp $(IRCDDBOBJS) $(LDFLAGS) -pthread
 
 g2_link : g2_link.cpp versions.h
-	g++ -W -Wall -o g2_link g2_link.cpp -lrt -pthread
+	g++ -W -Wall -o g2_link g2_link.cpp -lrt -lconfig++ -pthread
 
 dvap_rptr : dvap_rptr.cpp dstar_dv.o golay23.o versions.h
-	g++ -W -Wall -o dvap_rptr  dvap_rptr.cpp  golay23.o dstar_dv.o -I/usr/include -L/usr/lib -lrt -pthread
+	g++ -W -Wall -o dvap_rptr  dvap_rptr.cpp  golay23.o dstar_dv.o -I/usr/include -L/usr/lib -lrt -lconfig++ -pthread
 
 dvrptr : dvrptr.cpp dstar_dv.o golay23.o
-	g++ -W -Wall -o dvrptr  dvrptr.cpp golay23.o dstar_dv.o  -I/usr/include -L/usr/lib -lrt
+	g++ -W -Wall -o dvrptr  dvrptr.cpp golay23.o dstar_dv.o  -I/usr/include -L/usr/lib -lconfig++ -lrt
 
 IRCDDB.o : IRCDDB.cpp IRCDDB.h
 	g++ $(CPPFLAGS) -c $(CPPFLAGS) IRCDDB.cpp
@@ -90,13 +90,12 @@ realclean :
 installdvap : dvap_rptr g2_link g2_ircddb
 	######### g2_ircddb #########
 	/bin/cp -f g2_ircddb $(BINDIR)
-	/bin/cp -f g2_ircddb.cfg $(CFGDIR)
+	/bin/cp -f g2.cfg $(CFGDIR)
 	/bin/cp -f service.g2_ircddb /etc/init.d/g2_ircddb
 	/usr/sbin/update-rc.d g2_ircddb defaults
 	/usr/sbin/update-rc.d g2_ircddb enable
 	######### g2_link #########
 	/bin/cp -f g2_link $(BINDIR)
-	/bin/cp -f g2_link.cfg $(CFGDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
@@ -106,7 +105,6 @@ installdvap : dvap_rptr g2_link g2_ircddb
 	######### dvap_rptr #########
 	/bin/cp -f dvap_rptr $(BINDIR)
 	/bin/cp -f dvap_rptr.sh $(BINDIR)
-	/bin/cp -f dvap_rptr.cfg $(CFGDIR)
 	/bin/cp -f service.dvap_rptr /etc/init.d/dvap_rptr
 	/usr/sbin/update-rc.d dvap_rptr defaults
 	/usr/sbin/update-rc.d dvap_rptr enable
@@ -114,13 +112,12 @@ installdvap : dvap_rptr g2_link g2_ircddb
 installdvrptr : dvrptr g2_link g2_ircddb
 	######### g2_ircddb #########
 	/bin/cp -f g2_ircddb $(BINDIR)
-	/bin/cp -f g2_ircddb.cfg $(CFGDIR)
+	/bin/cp -f g2.cfg $(CFGDIR)
 	/bin/cp -f service.g2_ircddb /etc/init.d/g2_ircddb
 	/usr/sbin/update-rc.d g2_ircddb defaults
 	/usr/sbin/update-rc.d g2_ircddb enable
 	######### g2_link #########
 	/bin/cp -f g2_link $(BINDIR)
-	/bin/cp -f g2_link.cfg $(CFGDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
@@ -130,7 +127,6 @@ installdvrptr : dvrptr g2_link g2_ircddb
 	######### dvrptr ##########
 	/bin/cp -f dvrptr $(BINDIR)
 	/bin/cp -f dvrptr.sh $(BINDIR)
-	/bin/cp -f dvrptr.cfg $(CFGDIR)
 	/bin/cp -f service.dvrptr /etc/init.d/dvrptr
 	/usr/sbin/update-rc.d dvrptr defaults
 	/usr/sbin/update-rc.d dvrptr enable
@@ -155,13 +151,12 @@ uninstalldvap :
 	/bin/rm -f /etc/init.d/g2_ircddb
 	/usr/sbin/update-rc.d g2_ircddb remove
 	/bin/rm -f $(BINDIR)/g2_ircddb
-	/bin/rm -f $(CFGDIR)/g2_ircddb.cfg
+	/bin/rm -f $(CFGDIR)/g2.cfg
 	######### g2_link #########
 	/usr/sbin/service g2_link stop
 	/bin/rm -f /etc/init.d/g2_link
 	/usr/sbin/update-rc.d g2_link remove
 	/bin/rm -f $(BINDIR)/g2_link
-	/bin/rm -f $(CFGDIR)/g2_link.cfg
 	/bin/rm -f $(CFGDIR)/already_linked.dat
 	/bin/rm -f $(CFGDIR)/already_unlinked.dat
 	/bin/rm -f $(CFGDIR)/failed_linked.dat
@@ -178,7 +173,6 @@ uninstalldvap :
 	/usr/sbin/update-rc.d dvap_rptr remove
 	/bin/rm -f $(BINDIR)/dvap_rptr
 	/bin/rm -f $(BINDIR)/dvap_rptr.sh
-	/bin/rm -r $(CFGDIR)/dvap_rptr.cfg
 
 uninstalldvrptr:
 	######### g2_ircddb #########
@@ -186,13 +180,12 @@ uninstalldvrptr:
 	/bin/rm -f /etc/init.d/g2_ircddb
 	/usr/sbin/update-rc.d g2_ircddb remove
 	/bin/rm -f $(BINDIR)/g2_ircddb
-	/bin/rm -f $(CFGDIR)/g2_ircddb.cfg
+	/bin/rm -f $(CFGDIR)/g2.cfg
 	######### g2_link #########
 	/usr/sbin/service g2_link stop
 	/bin/rm -f /etc/init.d/g2_link
 	/usr/sbin/update-rc.d g2_link remove
 	/bin/rm -f $(BINDIR)/g2_link
-	/bin/rm -f $(CFGDIR)/g2_link.cfg
 	/bin/rm -f $(CFGDIR)/already_linked.dat
 	/bin/rm -f $(CFGDIR)/already_unlinked.dat
 	/bin/rm -f $(CFGDIR)/failed_linked.dat
@@ -209,4 +202,3 @@ uninstalldvrptr:
 	/usr/sbin/update-rc.d dvrtpr remove
 	/bin/rm -f $(BINDIR)/dvrptr
 	/bin/rm -f $(BINDIR)/dvrptr.sh
-	/bin/rm -f $(CFGDIR)/dvrptr.cfg

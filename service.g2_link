@@ -14,7 +14,7 @@
 . /lib/lsb/init-functions
 
 G2_LINK_EXE=/usr/local/bin/g2_link
-G2_LINK_CFG=/usr/local/etc/g2_link.cfg
+G2_LINK_CFG=/usr/local/etc/g2.cfg
 G2_LINK_LOG=/var/log/g2_link.log
 
 start() {

@@ -1,14 +1,46 @@
-You need to configure three software programs, g2_ircddb, g2_link, and either
-dvap_rptr or dvrptr by setting values in their *.cfg text files. Use your
-favorite text editor to do this. Scott's comments within those files are
-mostly self explainatory.
+I have substantially modified (and hopefully simplified) the configuration
+of this software, now, modules g2_ircddb, g2_link, dvap_rptr and dvrptr
+all use a single configuration file. Further, and this is the exciting
+part, NEARLY ALL of the parameters these modules need have a useful
+default value. If the default value is acceptible to you (and it
+probably will be) then you only need to specify what you need to change.
+
+
+This means that for most users, you will only need to specify a few
+parameters. For example, if you want to set up a 2M dvap, your a working
+configuration file might be:
+
+-------------------------------------------------------------------
+# my configuration, using rr.openquad.net with my DVAP Dongle
+
+ircddb = {
+    login = "XX0XXX"
+}
+
+module = {
+	 c = {
+		type = "dvap" 
+		frequency = 146.55
+		serial_number = "AP123456"
+	}
+}
+
+-------------------------------------------------------------------
+
+Of course, you can add other parameters, such as latitude and longitude,
+or a URL that will show up on the "User Gateways" page of
+www.openquad.net. This software is highly flexible, so you can have
+different modules running on different computers and these hidden
+configuration parameters to allow that are there, waiting to be defined.
+However, most hams won't have to bother with them!
 
 Some other features are discussed below.
 
-Tom Early, ac2ie@arrl.net
+Tom Early, ac2ie (at) arrl (dot) net
 
 /*
  *   Copyright (C) 2010, 2011, 2012 by Scott Lawson KI4LKF
+ *   addition Copyright (C) 2015 by Thomas A. Early AC2IE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -174,10 +206,7 @@ Required software to run the g2_ircddb gateway correctly:
 --- rptr: This is our dstar repeater software that uses a GMSK adapter/modem.
           Instead of rptr, you can use our dvap_rptr dstar repeater software
           which uses a DVAP device. Intead of rptr, you can use our dvrptr
-          dstar repeater software which uses the DV-RPTR modem(dg1ht). Intead
-          of rptr, you can use our snd_rptr dstar repeater software which
-          uses a SOUND CARD. You can also use the ICOM's RP2C repeater
-          hardware box.
+          dstar repeater software which uses the DV-RPTR modem(dg1ht).
 
 ROUTING methods
 ===============
@@ -319,21 +348,6 @@ x_voicemail.dat where x is one of A.B or C. Now copy that file into
 id.dat.
 
 Open the file g2_link.cfg:
-    Edit the values for LOGIN_CALL, OWNER and ADMIN. LOGIN_CALL is
-    always your PERSONAL callsign. It is used to connect to REF
-    reflectors. (REF reflectors check if the value of LOGIN_CALL is a
-    user callsign registered with UStrust.)
-
-    OWNER is your GATEWAY/club/Repeater callsign. If you do not have a
-    GATEWAY/club/Repeater callsign, you can set OWNER equal to your
-    PERSONAL callsign.
-
-    If you set OWNER to a PERSONAL callsign, then the Gateway config
-    file(g2_ircddb.cfg, g2_ccs.cfg) must also use the same PERSONAL
-    callsign. If you set OWNER to your GATEWAY/club/Repeater callsign,
-    then the Gateway config file(g2_ircddb.cfg, g2_ccs.cfg) must also
-    use the same GATEWAY/club/Repeater callsign.
-        
     You can add as many lines to gwys.txt, if you know of any other
     reflectors that you want to be able to connect to. REF reflectors
     use port 20001(for USER connections), DCS reflectors use port
@@ -374,27 +388,24 @@ dvrptr
 The serial number required in the .cfg file can most easily be obtained
 by examining the /var/log/dvrptr.log file once the board has been
 powered up by the BBB or RasPi. Once you know the board serial number,
-edit /usr/local/etc/dvrptr.cfg. Please note that once installed, you
+edit /usr/local/etc/g2.cfg. Please note that once installed, you
 need to edit the configuration files in /usr/local/etc, not where you
 build the software. You need to be root to edit files in /usr/local/etc.
-After editing /usr/local/etc/dvrptr.cfg file you can restart the effected
-program with "sudo service dvrptr restart.
+After editing /usr/local/etc/g2.cfg file you can restart the effected
+program with "sudo service dvrptr restart". Or you can alway just
+reboot with "sudo reboot".
 
-Rig specific parameters are in "RF_AUDIO_Level", "RX_Inverse" and
-"TX_Inverse". You need to play with these to work best with your rig.
-With my Kenwood TM-V71, I use:
+Rig specific parameters are in "dvrptr.rf_rx_level", "dvrptr.inverse.rx" and
+"dvrptr.inverse.tx". You need to play with these to work best with your rig.
+With my Kenwood TM-V71, I use the default values.
 
-RF_AUDIO_Level=80
-TX_Inverse=1
-RX_Inverse=1
-
-You can first start with RX_Inverse, trying 0 or 1. Use the echo command
+You can first start with inverse.rx, trying true or false. Use the echo command
 on your radio and look in the logs to see if you are getting into the
 dvprtr. Remember to restart the dvrptr service anytime you modify
-/usr/local/etc/dvrptr.cfg. Once you are able to get into the dvrptr,
-then you can work out the TX_Inverse paramter. Once you hear anything
-with in the echo mode, move RF_AUDIO_Level up or down to get the best
+/usr/local/etc/g2.cfg. Once you are able to get into the dvrptr,
+then you can work out the inverse.tx paramter. Once you hear anything
+with in the echo mode, move rf_rx_level up or down to get the best
 audio.
 
-Once you have a working system, it's a good idea to back up you *.cfg
+Once you have a working system, it's a good idea to back up you g2.cfg
 files.

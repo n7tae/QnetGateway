@@ -33,7 +33,7 @@ have all or most of these but it still doesn't hurt to be sure:
 
 sudo apt-get update
 sudo apt-get upgrade
-sudo apt-get install make g++ unzip git
+sudo apt-get install make g++ unzip git libconfig++-dev
 
 and maybe a few more. Here is one of my favorites:
 
@@ -64,9 +64,17 @@ password for sudo access. Upon completetion, make sure you are still in the
 g2_ircddb directory and type "make" to build all the g2_ircddb executables. If you
 need DTMFS then also execute "make g2link_test".
 
-Next, edit all the *.cfg files, g2_ircddb.cfg, g2_link.cfg and either dvap_rptr.cfg
-or dvrptr.cfg. These files contain detailed comments about all of the values you
-need to set. Just read through the configuration files and edit accordingly.
+Next, crate your g2.cfg configuration file. There are two example for you to look at:
+. g2.everything.cfg contains all parameter with lengthly comments about what
+  each parameter does. The definitions that are commented out are defined with
+  their default value.
+. g2.dvap.cfg is the simplest possible configuration for a 2m DVAP. If you have
+  a 70cm DVAP rename the module to "b" and change the frequency.
+
+Remeber the everything file contain detailed comments about all of the values you
+can set. Just read through it and edit accordingly. In the end you will need
+a configuration file called "g2.cfg".
+
 Additional information about the configuration as well as other important and
 useful features are also in the CONFIGURING file.
 
@@ -78,7 +86,10 @@ default 30001 prot. This will allow you to connect to these XREF reflectors with
 creating any port-forwarding rules on your home router. You will also want to move
 X-reflectors to port 20001 if you are going to tether you device via WiFi to a
 smart-phone for internet access. Most phone companies will not let you configure
-port-forwarding rules on you phone internet account.
+port-forwarding rules on you phone internet account. If you operate behing a
+router/firewall without port forwarding in place, you will not be able to
+do most callsign routing techniques discussed in CONFIGURING.txt, but you should
+still be able to connect to reflectors.
 
 There are MANY OTHER gateways to which you can connect. Executing get_gwys_list.sh
 will download a HUGE list of reflectors and gateways from www.va3uv.com with port
@@ -92,8 +103,8 @@ Based on the above discussion, execute either "./get_reflectors.sh" or
 "./get_gwy_list.sh". If you want to be able to update your hotspot dynamically,
 you can modify either one of these scripts by adding a "reboot" or "service
 g2_link restart" command at the end and moving it to /usr/local/etc/exec_?X.sh
-where "?" is a number or letter. See the discussion of executables in the
-CONFIGURING text file.
+where "?" is a number or letter. You can then execute this script with ?X in YRCALL.
+See the discussion of executables in the CONFIGURING text file.
 
 If you plan on using DTMFS, you can also edit proc_g2_ircddb_dtmfs.sh to add new
 dtmfs commands.
@@ -104,9 +115,9 @@ Finally, if you want/need DTMFS, type "sudo make installdtmfs".
 
 This will install the service scripts and symbolic links in /etc/init.d and
 everything else in /usr/local. The executables will be in /usr/local/bin and the
-*.cfg files and other data will be in /usr/local/etc. If you find that you need to
-modify a configuration file, edit the ones in /usr/local/etc as root. If you edit
-the files in the build directory, you will either have to copy these modified
+g2.cfg file and other data will be in /usr/local/etc. If you find that you need to
+modify the configuration file, edit the one in /usr/local/etc as root. If you edit
+the file in the build directory, you will either have to copy these modified
 configuration files you you will have to reinstall the application.
 
 At this point, you can either reboot to start the three or four services, or start
@@ -115,17 +126,17 @@ service g2_ircddb start". (See the man page for service.)
 
 If you are having trouble connecting, look in the *.log files in /var/log. These
 log files are recreated every time you restart a service. The beginning of each
-log file will report the values of all the configuration parameters and after that
+log file will report the values of all the configuration parameters (even the ones
+you didn't specify in g2.cfg) and after that
 you will see the verbose reports of what each service is doing. These logs are
-invaluable for traking down problems with your *.cfg files. In a putty or ssh
+invaluable for traking down problems with your g2.cfg file. In a putty or ssh
 shell, you can see in real time what is being added to the logs during operation
 by typing "tail -f /var/log/<service>.log", where <service> is one of the
 service programs, 'g2_ircddb', 'g2_link', 'dvap_rptr', etc.
 
-These services talk to each other through ports and the *.cfg file default values
-are set up for a 2M gateway (module C). If you are using a 70cm setup, pay close
-attention to the port configuration in the *.cfg files. You will need to change
-several values.
+These services talk to each other through ports and the default values
+are set up for a 2M gateway (module C). If you are using a 70cm setup, just
+change the module from "c" to "b".
 
 You can clean up the build directory of intermediate *.o files with "make clean"
 or, you can remove the intermediate *.o files and binary executables with "make

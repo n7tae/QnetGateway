@@ -13,7 +13,7 @@
 
 . /lib/lsb/init-functions
 IRCDDB_EXE=/usr/local/bin/g2_ircddb
-IRCDDB_CFG=/usr/local/etc/g2_ircddb.cfg
+IRCDDB_CFG=/usr/local/etc/g2.cfg
 IRCDDB_LOG=/var/log/g2_ircddb.log
 
 start() {

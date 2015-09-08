@@ -22,6 +22,11 @@
 #include <wchar.h>
 #include <sys/file.h>
 #include "versions.h"
+#include <string>
+#include <libconfig.h++>
+
+using namespace std;
+using namespace libconfig;
 
 #define VERSION DVRPTR_VERSION
 #define BAUD B115200
@@ -1802,244 +1807,198 @@ static void calcPFCS(unsigned char packet[58])//Netzwerk CRC
 	return;
 }
 
+bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
+{
+	if (cfg.lookupValue(path, value)) {
+		if (value < min || value > max)
+			value = default_value;
+	} else
+		value = default_value;
+	logdata("%s = [%d]\n", path, value);
+	return true;
+}
+
+bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
+{
+	if (cfg.lookupValue(path, value)) {
+		if (value < min || value > max)
+			value = default_value;
+	} else
+		value = default_value;
+	logdata("%s = [%lg]\n", path, value);
+	return true;
+}
+
+bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
+{
+	if (! cfg.lookupValue(path, value))
+		value = default_value;
+	logdata("%s = [%s]\n", path, value ? "true" : "false");
+	return true;
+}
+
+bool get_value(const Config &cfg, const char *path, string &value, int min, int max, const char *default_value)
+{
+	if (cfg.lookupValue(path, value)) {
+		int l = value.length();
+		if (l<min || l>max) {
+			logdata("%s is invalid\n", path, value.c_str());
+			return false;
+		}
+	} else
+		value = default_value;
+	logdata("%s = [%s]\n", path, value.c_str());
+	return true;
+}
+
+/* process configuration file */
 static int read_config(const char *cfgFile)
 {
-	short int valid_params = 21;
-	short int params = 0;
-
-	FILE *cnf = NULL;
-	char inbuf[1024];
-	char *p = NULL;
-	char *ptr;
-	unsigned short i;
-
-	cnf = fopen(cfgFile, "r");
-	if (!cnf) {
-		logdata("Failed to open file %s\n", cfgFile);
-		return 1;
-	}
+	int i;
+	Config cfg;
 
 	logdata("Reading file %s\n", cfgFile);
-	while (fgets(inbuf, 1020, cnf) != NULL) {
-		if (strchr(inbuf, '#'))
-			continue;
-
-		p = strchr(inbuf, '\r');
-		if (p)
-			*p = '\0';
-		p = strchr(inbuf, '\n');
-		if (p)
-			*p = '\0';
-
-		p = strchr(inbuf, '=');
-		if (!p)
-			continue;
-		*p = '\0';
-
-		if (strcmp(inbuf,"DVCALL") == 0) {
-			memset(DVCALL,' ', sizeof(DVCALL));
-			DVCALL[RPTR_SIZE] = '\0';
-
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if ((strlen(p + 1) < 1) || (strlen(p + 1) > (RPTR_SIZE - 2)))
-				logdata("DVCALL value [%s] invalid\n", p + 1);
-			else {
-				memcpy(DVCALL, p + 1, strlen(p + 1));
-				logdata("DVCALL=[%s]\n",DVCALL);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"RPTR") == 0) {
-			memset(RPTR,' ', sizeof(RPTR));
-			RPTR[RPTR_SIZE] = '\0';
-
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if ((strlen(p + 1) < 1) || (strlen(p + 1) > (RPTR_SIZE - 2)))
-				logdata("RPTR value [%s] invalid\n", p + 1);
-			else {
-				memcpy(RPTR, p + 1, strlen(p + 1));
-				logdata("RPTR=[%s]\n",RPTR);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"DVRPTR_SERIAL") == 0) {
-			memset(DVRPTR_SERIAL, 0, sizeof(DVRPTR_SERIAL));
-			strncpy(DVRPTR_SERIAL, p + 1, 11);
-			DVRPTR_SERIAL[11] = '\0';
-			logdata("DVRPTR_SERIAL=[%s]\n",DVRPTR_SERIAL);
-			params ++;
-		} else if (strcmp(inbuf,"GATEWAY_IP") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if (strlen(p + 1) < 1)
-				logdata("GATEWAY_IP value [%s] invalid\n", p + 1);
-			else {
-				strncpy(GATEWAY_IP, p + 1, IP_SIZE);
-				GATEWAY_IP[IP_SIZE] = '\0';
-				logdata("GATEWAY_IP=[%s]\n", GATEWAY_IP);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"DVRPTR_INTERNAL_PORT") == 0) {
-			DVRPTR_INTERNAL_PORT = atoi(p + 1);
-			logdata("DVRPTR_INTERNAL_PORT=[%d]\n",DVRPTR_INTERNAL_PORT);
-			params ++;
-		} else if (strcmp(inbuf,"DVRPTR_INTERNAL_IP") == 0) {
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if (strlen(p + 1) < 1)
-				logdata("DVRPTR_INTERNAL_IP value [%s] invalid\n", p + 1);
-			else {
-				strncpy(DVRPTR_INTERNAL_IP, p + 1, IP_SIZE);
-				DVRPTR_INTERNAL_IP[IP_SIZE] = '\0';
-				logdata("DVRPTR_INTERNAL_IP=[%s]\n", DVRPTR_INTERNAL_IP);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"GATEWAY_PORT") == 0) {
-			GATEWAY_PORT = atoi(p + 1);
-			logdata("GATEWAY_PORT=[%d]\n",GATEWAY_PORT);
-			params ++;
-		} else if (strcmp(inbuf,"DVRPTR_MOD") == 0) {
-			DVRPTR_MOD = *(p + 1);
-
-			logdata("DVRPTR_MOD=[%c]\n", *(p + 1));
-			params ++;
-		} else if (strcmp(inbuf,"INVALID_YRCALL_KEY") == 0) {
-			memset(INVALID_YRCALL_KEY, 0, sizeof(INVALID_YRCALL_KEY));
-
-			if ( (strlen(p + 1) < 1) || (strlen(p + 1) > CALL_SIZE) )
-				logdata("INVALID_YRCALL_KEY value [%s] invalid\n", p + 1);
-			else {
-				memcpy(INVALID_YRCALL_KEY, p + 1, strlen(p + 1));
-
-				for (i = 0; i < strlen(INVALID_YRCALL_KEY); i++)
-					INVALID_YRCALL_KEY[i] = toupper(INVALID_YRCALL_KEY[i]);
-
-				logdata("INVALID_YRCALL_KEY=[%s]\n",INVALID_YRCALL_KEY);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"RF_AUDIO_Level") == 0) {
-			RF_AUDIO_Level = atoi(p + 1);
-			if (RF_AUDIO_Level < 0)
-				RF_AUDIO_Level = 1;
-			Modem_Init2[7] = RF_AUDIO_Level;
-			logdata("RF_AUDIO_Level=[%d]\n",RF_AUDIO_Level);
-			params ++;
-		} else if (strcmp(inbuf,"DUPLEX") == 0) {
-			if (*(p + 1) == 'Y')
-				DUPLEX = true;
-			else
-				DUPLEX = false;
-			logdata("DUPLEX=[%c]\n", *(p + 1));
-			params ++;
-		} else if (strcmp(inbuf,"RPTR_ACK") == 0) {
-			if (*(p + 1) == 'Y')
-				RPTR_ACK = true;
-			else
-				RPTR_ACK = false;
-			logdata("RPTR_ACK=[%c]\n", *(p + 1));
-			params ++;
-		} else if (strcmp(inbuf,"ACK_DELAY") == 0) {
-			ACK_DELAY = atol(p + 1);
-			if ((ACK_DELAY < 1) || (ACK_DELAY > 999))
-				ACK_DELAY = 250;
-			logdata("ACK_DELAY=[%ld]\n", ACK_DELAY);
-			ACK_DELAY = ACK_DELAY * 1000;
-			params ++;
-		} else if (strcmp(inbuf,"DELAY_BETWEEN") == 0) {
-			DELAY_BETWEEN = atoi(p + 1);
-			if (DELAY_BETWEEN < 10)
-				DELAY_BETWEEN = 16;
-			logdata("DELAY_BETWEEN=[%d]\n", DELAY_BETWEEN);
-			DELAY_BETWEEN = DELAY_BETWEEN * 1000;
-			params ++;
-		} else if (strcmp(inbuf,"RQST_COUNT") == 0) {
-			RQST_COUNT = atoi(p + 1);
-			if (RQST_COUNT < 6)
-				RQST_COUNT = 6;
-			logdata("RQST_COUNT=[%d]\n",RQST_COUNT);
-			params ++;
-		} else if (strcmp(inbuf,"ENABLE_RF") == 0) {
-			memset(ENABLE_RF,' ', sizeof(ENABLE_RF));
-			ENABLE_RF[RPTR_SIZE] = '\0';
-
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if (strlen(p + 1) > RPTR_SIZE)
-				logdata("ENABLE_RF value [%s] invalid\n", p + 1);
-			else {
-				memcpy(ENABLE_RF, p + 1, strlen(p + 1));
-				logdata("ENABLE_RF=[%s]\n",ENABLE_RF);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"DISABLE_RF") == 0) {
-			memset(DISABLE_RF,' ', sizeof(DISABLE_RF));
-			DISABLE_RF[RPTR_SIZE] = '\0';
-
-			ptr = strchr(p + 1, ' ');
-			if (ptr)
-				*ptr = '\0';
-
-			if (strlen(p + 1) > RPTR_SIZE)
-				logdata("DISABLE_RF value [%s] invalid\n", p + 1);
-			else {
-				memcpy(DISABLE_RF, p + 1, strlen(p + 1));
-				logdata("DISABLE_RF=[%s]\n",DISABLE_RF);
-				params ++;
-			}
-		} else if (strcmp(inbuf,"REMOTE_TIMEOUT") == 0) {
-			REMOTE_TIMEOUT = atoi(p + 1);
-			if (REMOTE_TIMEOUT < 1)
-				REMOTE_TIMEOUT = 1;
-			logdata("REMOTE_TIMEOUT=[%d]\n",REMOTE_TIMEOUT);
-			params ++;
-		} else if (strcmp(inbuf,"RX_Inverse") == 0) {
-			if (*(p + 1) == '1')
-				RX_Inverse = 1;
-
-			else
-				RX_Inverse = 0;
-			logdata("RX_Inverse=[%c]\n", *(p + 1));
-			params ++;
-		} else if (strcmp(inbuf,"TX_Inverse") == 0) {
-			if (*(p + 1) == '1')
-				TX_Inverse = 1;
-
-			else
-				TX_Inverse = 0;
-			logdata("TX_Inverse=[%c]\n", *(p + 1));
-			params ++;
-		} else if (strcmp(inbuf,"TX_DELAY") == 0) {
-			TX_DELAY = atoi(p + 1);
-			if (TX_DELAY < 0) {
-				TX_DELAY = 250;
-				logdata("TX-delay can not be below 0, setting it back to 250");
-			}
-			if (TX_DELAY > 6000) {
-				TX_DELAY = 250;
-				logdata("TX-delay exceeds maximum of 6000, setting it back to 250");
-			}
-			Modem_Init2[8] = TX_DELAY & 0xFF;
-			Modem_Init2[9] = TX_DELAY >> 8;
-			logdata("TX_DELAY=[%d]\n",TX_DELAY);
-			params ++;
-		}
+	// Read the file. If there is an error, report it and exit.
+	try {
+		cfg.readFile(cfgFile);
 	}
-	fclose(cnf);
-
-	if (params != valid_params) {
-		logdata("Configuration file %s invalid\n",cfgFile);
+	catch(const FileIOException &fioex) {
+		logdata("Can't read %s\n", cfgFile);
 		return 1;
 	}
+	catch(const ParseException &pex) {
+		logdata("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
+		return 1;
+	}
+
+	string path, value;
+	for (i=0; i<3; i++) {
+		path = "module.";
+		path += ('a' + i);
+		if (cfg.lookupValue(path + ".type", value)) {
+			if (0 == strcasecmp(value.c_str(), "dvrptr"))
+				break;
+		}
+	}
+	if (i >= 3) {
+		logdata("dvrptr not defined in any module!\n");
+		return 1;
+	}
+	DVRPTR_MOD = 'A' + i;
+
+	if (cfg.lookupValue(string(path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
+		int l = value.length();
+		if (l<3 || l>CALL_SIZE-2) {
+			logdata("Call '%s' is invalid length!\n", value.c_str());
+			return 1;
+		} else {
+			for (i=0; i<l; i++) {
+				if (islower(value[i]))
+					value[i] = toupper(value[i]);
+			}
+			value.resize(CALL_SIZE, ' ');
+		}
+		strcpy(RPTR, value.c_str());
+		logdata("%s.callsign = [%s]\n", path.c_str(), RPTR);
+	} else {
+		logdata("%s.callsign is not defined!\n", path.c_str());
+		return 1;
+	}
+	
+	if (cfg.lookupValue("ircddb.login", value)) {
+		int l = value.length();
+		if (l<3 || l>CALL_SIZE-2) {
+			logdata("Call '%s' is invalid length!\n", value.c_str());
+			return 1;
+		} else {
+			for (i=0; i<l; i++) {
+				if (islower(value[i]))
+					value[i] = toupper(value[i]);
+			}
+			value.resize(CALL_SIZE, ' ');
+		}
+		strcpy(DVCALL, value.c_str());
+		logdata("ircddb.login = [%s]\n", DVCALL);
+	} else {
+		logdata("ircddb.login is not defined!\n");
+		return 1;
+	}
+
+	if (get_value(cfg, string(path+".rf_control.on").c_str(), value, 0, CALL_SIZE, "        "))
+		strcpy(ENABLE_RF, value.c_str());
+	else
+		logdata("%s.rf_control.on '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
+
+	if (get_value(cfg, string(path+".rf_control.off").c_str(), value, 0, CALL_SIZE, "        "))
+		strcpy(DISABLE_RF, value.c_str());
+	else
+		logdata("%s.rf_control.off '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
+
+	if (cfg.lookupValue("timing.timeout.remote_g2", REMOTE_TIMEOUT)) {
+		REMOTE_TIMEOUT++;
+		if (REMOTE_TIMEOUT < 1)
+			REMOTE_TIMEOUT = 2;
+	} else
+		REMOTE_TIMEOUT = 3;
+	logdata("timing.timeout.remote_g2 = [%d]\n", REMOTE_TIMEOUT);
+
+	if (get_value(cfg, string(path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
+		value.resize(CALL_SIZE, ' ');
+		for (i=0; i<CALL_SIZE; i++) {
+			if (islower(value[i]))
+				value[i] = toupper(value[i]);
+		}
+		strcpy(INVALID_YRCALL_KEY, value.c_str());
+	} else {
+		logdata("%s.invalid_prefix '%s' is invalid!\n", path.c_str(), value.c_str());
+		return 1;
+	}
+
+	if (get_value(cfg, string(path+".serial_number").c_str(), value, 11, 11, "00.00.00.00"))
+		strcpy(DVRPTR_SERIAL, value.c_str());
+	else {
+		logdata("%s.serial_number '%s' is invalid!\n", path.c_str(), value.c_str());
+		return 1;
+	}
+
+	if (get_value(cfg, string(path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
+		strcpy(DVRPTR_INTERNAL_IP, value.c_str());
+	else {
+		logdata("%s.internal_ip '%s' is invalid!\n", path.c_str(), value.c_str());
+		return 1;
+	}
+
+	get_value(cfg, string(path+".port").c_str(), DVRPTR_INTERNAL_PORT, 10000, 65535, 19998 + (DVRPTR_MOD - 'A'));
+
+	if (get_value(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
+		strcpy(GATEWAY_IP, value.c_str());
+	else {
+		logdata("gateway.ip '%s' is invalid!\n", value.c_str());
+		return 1;
+	}
+
+	get_value(cfg, "gateway.internal.port", GATEWAY_PORT, 10000, 65535, 19000);
+
+	get_value(cfg, string(path+".rf_tx_level").c_str(), RF_AUDIO_Level, 1, 100, 80);
+
+	get_value(cfg, string(path+".duplex").c_str(), DUPLEX, false);
+
+	get_value(cfg, string(path+".acknowledge").c_str(), RPTR_ACK, false);
+
+	get_value(cfg, string(path+".ack_delay").c_str(), i, 1, 999, 300);
+	ACK_DELAY = (long)i;
+
+	get_value(cfg, "timing.play.delay", DELAY_BETWEEN, 10, 25, 19);
+	DELAY_BETWEEN *= 1000;
+
+	get_value(cfg, string(path+".tx_delay").c_str(), TX_DELAY, 0, 6000, 250);
+	Modem_Init2[8] = TX_DELAY & 0xFF;
+	Modem_Init2[9] = TX_DELAY >> 8;
+
+	get_value(cfg, string(path+".rqst_count").c_str(), RQST_COUNT, 6, 20, 10);
+
+	get_value(cfg, string(path+".inverse.rx").c_str(), RX_Inverse, true);
+	get_value(cfg, string(path+".inverse.tx").c_str(), TX_Inverse, true);
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000000) / 400;
 	logdata("... computed max number of loops %d, each loop is 400 microseconds\n", inactiveMax);
@@ -2055,7 +2014,7 @@ static void logdata(const char *fmt,...)
 	time(&ltime);
 	localtime_r(&ltime,&mytm);
 
-	snprintf(trace_buf,TRACE_BFSZ - 1,"%02d%02d%02d at %02d:%02d:%02d:",
+	snprintf(trace_buf,TRACE_BFSZ - 1,"%02d/%02d/%02d %02d:%02d:%02d:",
 	         mytm.tm_mon+1,mytm.tm_mday,mytm.tm_year % 100,
 	         mytm.tm_hour,mytm.tm_min,mytm.tm_sec);
 	trace_buf[TRACE_BFSZ - 1] = '\0';
