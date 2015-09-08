@@ -358,7 +358,7 @@ static ssize_t writen(char *buffer, size_t n);
 
 static void qrgs_and_maps();
 
-static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
+//static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
 
 static void set_dest_rptr(int mod_ndx, char *dest_rptr);
 
@@ -3128,7 +3128,6 @@ int main(int argc, char **argv)
 	short int i;
 	struct sigaction act;
 	bool ok;
-	char *p = NULL;
 
 	int rc = 0;
 
