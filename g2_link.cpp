@@ -931,7 +931,7 @@ static bool read_config(char *cfgFile)
 		traceit("]\n");
 	}
 
-	key = "ircddb.username";
+	key = "ircddb.login";
 	if (cfg.lookupValue(key, owner)) {
 		int l = owner.length();
 		if (l>2 && l<=CALL_SIZE-2) {
