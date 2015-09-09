@@ -850,7 +850,7 @@ static bool read_config(char *cfgFile)
 	}
 
 	string value;
-	if (cfg.lookupValue("g2_link.ref_login", value) || cfg.lookupValue("ircddb.username", value)) {
+	if (cfg.lookupValue("g2_link.ref_login", value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
 			traceit("Call '%s' is invalid length!\n", value.c_str());
