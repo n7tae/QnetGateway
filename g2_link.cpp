@@ -867,7 +867,7 @@ static bool read_config(char *cfgFile)
 		return 1;
 	}
 
-	string key = "g2_link.users";
+	string key = "g2_link.admin";
 	only_admin_login = false;
 	if (cfg.exists(key)) {
 		Setting &userlist = cfg.lookup(key);
@@ -926,7 +926,7 @@ static bool read_config(char *cfgFile)
 			return 1;
 		}
 		traceit("%s = [ ");
-		for (link_unlink_user_pos=admin.begin(); link_unlink_user_pos!=admin.end(); link_unlink_user_pos++)
+		for (link_unlink_user_pos=link_unlink_user.begin(); link_unlink_user_pos!=link_unlink_user.end(); link_unlink_user_pos++)
 			traceit("%s ", link_unlink_user_pos->c_str());
 		traceit("]\n");
 	}
