@@ -193,9 +193,9 @@ where n can be from 0-9 or A-Z.
 Example: YRCALL=_ _ _ _ _ _1X
 Then the script exec_1.sh will be executed.
 Two scripts, exec_R.sh and exec_H.sh are included to reboot and halt your
-system, respectively. Also note that the MYCALL is passed to these scripts\
+system, respectively. Also note that rpt1 is passed to these scripts\
 so you can use this as an input parameter for your scripts.
-Only admins can execute scripts so 
+Only admins can execute scripts, so set g2_link.admin to your callsign
 
 7)
 Enabling and disabling INCOMING HotSpotNode connections: 
