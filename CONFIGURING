@@ -7,22 +7,27 @@ probably will be) then you only need to specify what you need to change.
 
 
 This means that for most users, you will only need to specify a few
-parameters. For example, if you want to set up a 2M dvap, your a working
+parameters. For example, if you want to set up a 70cm dvap, your a working
 configuration file might be:
 
 -------------------------------------------------------------------
 # my configuration, using rr.openquad.net with my DVAP Dongle
+# on startup link module b to REF020C
 
 ircddb = {
     login = "XX0XXX"
 }
 
 module = {
-	 c = {
+	 b = {
 		type = "dvap" 
-		frequency = 146.55
+		frequency = 445.474
 		serial_number = "AP123456"
 	}
+}
+
+g2_link {
+	link_at_start = "CREF020A"
 }
 
 -------------------------------------------------------------------
