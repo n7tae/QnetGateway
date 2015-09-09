@@ -893,10 +893,13 @@ static bool read_config(char *cfgFile)
 			traceit("%s is not an array!\n", key.c_str());
 			return 1;
 		}
-		traceit("%s = [ ");
-		for (pos=admin.begin(); pos!=admin.end(); pos++)
-			traceit("%s ", pos->c_str());
-		traceit("]\n");
+		traceit("%s = [ ", key.c_str());
+		for (pos=admin.begin(); pos!=admin.end(); pos++) {
+			if (pos != admin.begin())
+				fprintf(stdout, ", ");
+			fprintf(stdout, "\"%s\"", (*pos).c_str());
+		}
+		fprintf(stdout, " ]\n");
 	}
 
 	key = "g2_link.link_unlink";
@@ -925,10 +928,13 @@ static bool read_config(char *cfgFile)
 			traceit("%s is not an array!\n", key.c_str());
 			return 1;
 		}
-		traceit("%s = [ ");
-		for (link_unlink_user_pos=link_unlink_user.begin(); link_unlink_user_pos!=link_unlink_user.end(); link_unlink_user_pos++)
-			traceit("%s ", link_unlink_user_pos->c_str());
-		traceit("]\n");
+		traceit("%s = [ ", key.c_str());
+		for (link_unlink_user_pos=link_unlink_user.begin(); link_unlink_user_pos!=link_unlink_user.end(); link_unlink_user_pos++) {
+			if (link_unlink_user_pos != link_unlink_user.begin())
+				fprintf(stdout, ", ");
+			fprintf(stdout, "\"%s\"", (*link_unlink_user_pos).c_str());
+		}
+		fprintf(stdout, " ]\n");
 	}
 
 	key = "ircddb.login";
