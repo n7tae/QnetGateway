@@ -5,7 +5,7 @@ NEW! Software configuration is SIGNIFICANTLY easier because most parameters now 
 
 PRETTY NEW: g2_ircddb has come up to current practices when it comes to ":IRCDDB" irc commands. This means irc hosts like rr.openquad.net can list your repeater frequency, offset, location and URL automatically if you want.
 
-This package is for making a ircddb gateway based on Scott Lawson KI4LKF g2_ircddb gateway software.
+This package is for making a ircddb gateway based on Scott Lawson KI4LKF g2_ircddb gateway software. I have now been adding new stuff to Scott's code. If your having problems with something, it's probably my fault. Please give be a shout!
 
 Two repeater devices are supported so far: the DVAP dongle (http://www.dvapdongle.com) and the dvrptr V1 (http://www.dvrptr.net).
 
@@ -33,12 +33,12 @@ git clone git://github.com/ac2ie/g2_ircddb.git
 ```
 Then cd into the new g2_ircddb directory and review the `BUILDING` and `CONFIGURING` file for further instructions, here is an outline:
 ```
-Build the wxWidgets library.
-Make the g2 modules.
-Edit the configuration file, g2.cfg.
-Download the latest gateway list, gwys.txt.
-Install g2.
-Reboot and enjoy!
+Build the wxWidgets library.................. "./build_wxBase"
+Make the g2 modules.......................... "make"
+Make the configuration file, g2.cfg.......... start by copying one of the examples to g2.cfg and then editing.
+Download the latest gateway list, gwys.txt... "./get_gwy_list.sh" or "./get_reflectors.sh"
+Install g2................................... "sudo make installdvap" or "sudo make installdvrptr"
+Reboot and enjoy!............................ "sudo reboot"
 ```
 
 73
