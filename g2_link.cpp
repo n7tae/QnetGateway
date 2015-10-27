@@ -850,7 +850,7 @@ static bool read_config(char *cfgFile)
 	}
 
 	string value;
-	string key = "g2_link.ref.login";
+	string key = "g2_link.ref_login";
 	if (cfg.lookupValue(key, login_call) || cfg.lookupValue("ircddb.login", login_call)) {
 		int l = login_call.length();
 		if (l<3 || l>CALL_SIZE-2) {
