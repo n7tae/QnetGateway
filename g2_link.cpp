@@ -865,7 +865,7 @@ static bool read_config(char *cfgFile)
 			traceit("%s = [\"%s\"]\n", key.c_str(), login_call.c_str());
 		}
 	} else {
-		traceit("login callsign is not defined.\n");
+		traceit("%s is not defined.\n", key.c_str());
 		return 1;
 	}
 
