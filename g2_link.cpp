@@ -861,8 +861,8 @@ static bool read_config(char *cfgFile)
 				if (islower(login_call[i]))
 					login_call[i] = toupper(login_call[i]);
 			}
-			value.resize(CALL_SIZE, ' ');
-			traceit("%s = [%s]\n", key.c_str(), login_call.c_str());
+			login_call.resize(CALL_SIZE, ' ');
+			traceit("%s = [\"%s\"]\n", key.c_str(), login_call.c_str());
 		}
 	} else {
 		traceit("login callsign is not defined.\n");
