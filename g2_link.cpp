@@ -850,24 +850,26 @@ static bool read_config(char *cfgFile)
 	}
 
 	string value;
-	if (cfg.lookupValue("g2_link.ref_login", value) || cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
+	string key = "g2_link.ref.login";
+	if (cfg.lookupValue(key, login_call) || cfg.lookupValue("ircddb.login", login_call)) {
+		int l = login_call.length();
 		if (l<3 || l>CALL_SIZE-2) {
-			traceit("Call '%s' is invalid length!\n", value.c_str());
+			traceit("Call '%s' is invalid length!\n", login_call.c_str());
 			return 1;
 		} else {
 			for (i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
+				if (islower(login_call[i]))
+					login_call[i] = toupper(login_call[i]);
 			}
 			value.resize(CALL_SIZE, ' ');
+			traceit("%s = [%s]\n", key.c_str(), login_call.c_str());
 		}
 	} else {
 		traceit("login callsign is not defined.\n");
 		return 1;
 	}
 
-	string key = "g2_link.admin";
+	key = "g2_link.admin";
 	only_admin_login = false;
 	if (cfg.exists(key)) {
 		Setting &userlist = cfg.lookup(key);
