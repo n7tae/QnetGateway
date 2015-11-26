@@ -25,7 +25,6 @@
 #include <string>
 #include <libconfig.h++>
 
-using namespace std;
 using namespace libconfig;
 
 #define VERSION DVRPTR_VERSION
@@ -1837,7 +1836,7 @@ bool get_value(const Config &cfg, const char *path, bool &value, bool default_va
 	return true;
 }
 
-bool get_value(const Config &cfg, const char *path, string &value, int min, int max, const char *default_value)
+bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
@@ -1871,7 +1870,7 @@ static int read_config(const char *cfgFile)
 		return 1;
 	}
 
-	string path, value;
+	std::string path, value;
 	for (i=0; i<3; i++) {
 		path = "module.";
 		path += ('a' + i);
@@ -1886,7 +1885,7 @@ static int read_config(const char *cfgFile)
 	}
 	DVRPTR_MOD = 'A' + i;
 
-	if (cfg.lookupValue(string(path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
+	if (cfg.lookupValue(std::string(path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
 			logdata("Call '%s' is invalid length!\n", value.c_str());
@@ -1924,12 +1923,12 @@ static int read_config(const char *cfgFile)
 		return 1;
 	}
 
-	if (get_value(cfg, string(path+".rf_control.on").c_str(), value, 0, CALL_SIZE, "        "))
+	if (get_value(cfg, std::string(path+".rf_control.on").c_str(), value, 0, CALL_SIZE, "        "))
 		strcpy(ENABLE_RF, value.c_str());
 	else
 		logdata("%s.rf_control.on '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
 
-	if (get_value(cfg, string(path+".rf_control.off").c_str(), value, 0, CALL_SIZE, "        "))
+	if (get_value(cfg, std::string(path+".rf_control.off").c_str(), value, 0, CALL_SIZE, "        "))
 		strcpy(DISABLE_RF, value.c_str());
 	else
 		logdata("%s.rf_control.off '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
@@ -1942,7 +1941,7 @@ static int read_config(const char *cfgFile)
 		REMOTE_TIMEOUT = 3;
 	logdata("timing.timeout.remote_g2 = [%d]\n", REMOTE_TIMEOUT);
 
-	if (get_value(cfg, string(path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
+	if (get_value(cfg, std::string(path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
 		value.resize(CALL_SIZE, ' ');
 		for (i=0; i<CALL_SIZE; i++) {
 			if (islower(value[i]))
@@ -1954,21 +1953,21 @@ static int read_config(const char *cfgFile)
 		return 1;
 	}
 
-	if (get_value(cfg, string(path+".serial_number").c_str(), value, 11, 11, "00.00.00.00"))
+	if (get_value(cfg, std::string(path+".serial_number").c_str(), value, 11, 11, "00.00.00.00"))
 		strcpy(DVRPTR_SERIAL, value.c_str());
 	else {
 		logdata("%s.serial_number '%s' is invalid!\n", path.c_str(), value.c_str());
 		return 1;
 	}
 
-	if (get_value(cfg, string(path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
+	if (get_value(cfg, std::string(path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
 		strcpy(DVRPTR_INTERNAL_IP, value.c_str());
 	else {
 		logdata("%s.internal_ip '%s' is invalid!\n", path.c_str(), value.c_str());
 		return 1;
 	}
 
-	get_value(cfg, string(path+".port").c_str(), DVRPTR_INTERNAL_PORT, 10000, 65535, 19998 + (DVRPTR_MOD - 'A'));
+	get_value(cfg, std::string(path+".port").c_str(), DVRPTR_INTERNAL_PORT, 10000, 65535, 19998 + (DVRPTR_MOD - 'A'));
 
 	if (get_value(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
 		strcpy(GATEWAY_IP, value.c_str());
@@ -1979,26 +1978,26 @@ static int read_config(const char *cfgFile)
 
 	get_value(cfg, "gateway.internal.port", GATEWAY_PORT, 10000, 65535, 19000);
 
-	get_value(cfg, string(path+".rf_tx_level").c_str(), RF_AUDIO_Level, 1, 100, 80);
+	get_value(cfg, std::string(path+".rf_tx_level").c_str(), RF_AUDIO_Level, 1, 100, 80);
 
-	get_value(cfg, string(path+".duplex").c_str(), DUPLEX, false);
+	get_value(cfg, std::string(path+".duplex").c_str(), DUPLEX, false);
 
-	get_value(cfg, string(path+".acknowledge").c_str(), RPTR_ACK, false);
+	get_value(cfg, std::string(path+".acknowledge").c_str(), RPTR_ACK, false);
 
-	get_value(cfg, string(path+".ack_delay").c_str(), i, 1, 999, 300);
+	get_value(cfg, std::string(path+".ack_delay").c_str(), i, 1, 999, 300);
 	ACK_DELAY = (long)i;
 
 	get_value(cfg, "timing.play.delay", DELAY_BETWEEN, 10, 25, 19);
 	DELAY_BETWEEN *= 1000;
 
-	get_value(cfg, string(path+".tx_delay").c_str(), TX_DELAY, 0, 6000, 250);
+	get_value(cfg, std::string(path+".tx_delay").c_str(), TX_DELAY, 0, 6000, 250);
 	Modem_Init2[8] = TX_DELAY & 0xFF;
 	Modem_Init2[9] = TX_DELAY >> 8;
 
-	get_value(cfg, string(path+".rqst_count").c_str(), RQST_COUNT, 6, 20, 10);
+	get_value(cfg, std::string(path+".rqst_count").c_str(), RQST_COUNT, 6, 20, 10);
 
-	get_value(cfg, string(path+".inverse.rx").c_str(), RX_Inverse, true);
-	get_value(cfg, string(path+".inverse.tx").c_str(), TX_Inverse, true);
+	get_value(cfg, std::string(path+".inverse.rx").c_str(), RX_Inverse, true);
+	get_value(cfg, std::string(path+".inverse.tx").c_str(), TX_Inverse, true);
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000000) / 400;
 	logdata("... computed max number of loops %d, each loop is 400 microseconds\n", inactiveMax);

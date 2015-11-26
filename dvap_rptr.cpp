@@ -43,7 +43,6 @@
 
 #include <string>
 #include <libconfig.h++>
-using namespace std;
 using namespace libconfig;
 
 #define VERSION DVAP_VERSION
@@ -394,7 +393,7 @@ bool get_value(const Config &cfg, const char *path, bool &value, bool default_va
 	return true;
 }
 
-bool get_value(const Config &cfg, const char *path, string &value, int min, int max, const char *default_value)
+bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
@@ -428,7 +427,7 @@ static int read_config(const char *cfgFile)
 		return 1;
 	}
 
-	string dvap_path, value;
+	std::string dvap_path, value;
 	for (i=0; i<3; i++) {
 		dvap_path = "module.";
 		dvap_path += ('a' + i);
@@ -443,7 +442,7 @@ static int read_config(const char *cfgFile)
 	}
 	RPTR_MOD = 'A' + i;
 
-	if (cfg.lookupValue(string(dvap_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
+	if (cfg.lookupValue(std::string(dvap_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
 			traceit("Call '%s' is invalid length!\n", value.c_str());
@@ -481,7 +480,7 @@ static int read_config(const char *cfgFile)
 		return 1;
 	}
 
-	if (get_value(cfg, string(dvap_path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
+	if (get_value(cfg, std::string(dvap_path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
 		if (islower(value[i]))
 			value[i] = toupper(value[i]);
 		value.resize(CALL_SIZE, ' ');
@@ -489,13 +488,13 @@ static int read_config(const char *cfgFile)
 	} else
 		return 1;
 
-	if (get_value(cfg, string(dvap_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
+	if (get_value(cfg, std::string(dvap_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
 		strcpy(RPTR_VIRTUAL_IP, value.c_str());
 	else
 		return 1;
 
 	i = 19998 + (RPTR_MOD - 'A');
-	get_value(cfg, string(dvap_path+".port").c_str(), RPTR_PORT, 10000, 65535, i);
+	get_value(cfg, std::string(dvap_path+".port").c_str(), RPTR_PORT, 10000, 65535, i);
 
 	if (get_value(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
 		strcpy(G2_INTERNAL_IP, value.c_str());
@@ -506,7 +505,7 @@ static int read_config(const char *cfgFile)
 
 	get_value(cfg, "gateway.internal.port", G2_PORT, 10000, 65535, 19000);
 
-	if (get_value(cfg, string(dvap_path+".serial_number").c_str(), value, 8, 10, "APXXXXXX"))
+	if (get_value(cfg, std::string(dvap_path+".serial_number").c_str(), value, 8, 10, "APXXXXXX"))
 		strcpy(DVP_SERIAL, value.c_str());
 	else {
 		traceit("%s.serial_number '%s' is invalid!\n", dvap_path.c_str(), value.c_str());
@@ -514,19 +513,19 @@ static int read_config(const char *cfgFile)
 	}
 
 	double f;
-	get_value(cfg, string(dvap_path+".frequency").c_str(), f, 100.0, 1400.0, 145.5);
+	get_value(cfg, std::string(dvap_path+".frequency").c_str(), f, 100.0, 1400.0, 145.5);
 	DVP_FREQ = (u_int32_t)(1.0e6*f);
 
-	get_value(cfg, string(dvap_path+".power").c_str(), i, -12, 10, 10);
+	get_value(cfg, std::string(dvap_path+".power").c_str(), i, -12, 10, 10);
 	DVP_PWR = (int16_t)i;
 
-	get_value(cfg, string(dvap_path+".squelch").c_str(), i, -128, -45, -100);
+	get_value(cfg, std::string(dvap_path+".squelch").c_str(), i, -128, -45, -100);
 	DVP_SQL = (char)i;
 
-	get_value(cfg, string(dvap_path+".offset").c_str(), i, -2000, 2000, 0.0);
+	get_value(cfg, std::string(dvap_path+".offset").c_str(), i, -2000, 2000, 0.0);
 	DVP_OFF = (int16_t)i;
 
-	get_value(cfg, string(dvap_path+".packet_wait").c_str(), WAIT_FOR_PACKETS, 6, 100, 25);
+	get_value(cfg, std::string(dvap_path+".packet_wait").c_str(), WAIT_FOR_PACKETS, 6, 100, 25);
 
 	get_value(cfg, "timing.timeout.remote_g2", REMOTE_TIMEOUT, 1, 10, 2);
 
@@ -534,7 +533,7 @@ static int read_config(const char *cfgFile)
 
 	get_value(cfg, "timing.play.wait", DELAY_BEFORE, 1, 10, 2);
 
-	get_value(cfg, string(dvap_path+".acknowledge").c_str(), RPTR_ACK, false);
+	get_value(cfg, std::string(dvap_path+".acknowledge").c_str(), RPTR_ACK, false);
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000) / WAIT_FOR_PACKETS;
 	traceit("Max loops = %d\n", inactiveMax);

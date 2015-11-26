@@ -1,31 +1,23 @@
-/*
+#pragma once
 
-CIRCDDB - ircDDB client library in C++
+#include <string>
+#include <vector>
+#include <ctime>
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+time_t parseTime(const std::string str);
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
-(at your option) any later version.
+std::vector<std::string> stringTokenizer(const std::string &str);
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*/
-
-
-
-int getAllIPV4Addresses ( const char * name, unsigned short port,
-                          unsigned int * num, struct sockaddr_in * addr, unsigned int max_addr );
-
+int getAllIPV4Addresses(const char *name, unsigned short port, unsigned int *num, struct sockaddr_in *addr, unsigned int max_addr);
 
 void safeStringCopy (char * dest, const char * src, unsigned int buf_size);
 
-wxString getCurrentTime(void);
+char *getCurrentTime(void);
 
+void traceit(const char *fmt,...);
+
+void ToUpper(std::string &str);
+
+void ToLower(std::string &str);
+
+void ReplaceChar(std::string &str, char from, char to);

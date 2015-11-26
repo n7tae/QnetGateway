@@ -53,7 +53,6 @@
 #include <utility>
 #include <libconfig.h++>
 #include "versions.h"
-using namespace std;
 using namespace libconfig;
 
 /*** version number must be x.xx ***/
@@ -71,25 +70,25 @@ using namespace libconfig;
 #define FILE_REFRESH_GWYS_CODE 'F'
 
 /* configuration data */
-static string login_call;
+static std::string login_call;
 static bool only_admin_login;
 static bool only_link_unlink;
-static string owner;
+static std::string owner;
 static int rmt_xrf_port;
 static int rmt_ref_port;
 static int rmt_dcs_port;
-static string my_g2_link_ip;
+static std::string my_g2_link_ip;
 static int my_g2_link_port;
-static string to_g2_external_ip;
+static std::string to_g2_external_ip;
 static int to_g2_external_port;
 static bool qso_details;
-static string gwys;
-static string status_file;
+static std::string gwys;
+static std::string status_file;
 static bool bool_rptr_ack;
 static int delay_between;
 static int delay_before;
 static bool announce;
-static string announce_dir;
+static std::string announce_dir;
 static char link_at_startup[CALL_SIZE+1];
 static unsigned int max_dongles;
 static unsigned int saved_max_dongles;
@@ -120,17 +119,17 @@ struct inbound {
 
 };
 /* the Key in this inbound_list map is the unique IP address of the remote */
-typedef map<string, inbound *> inbound_type;
+typedef std::map<std::string, inbound *> inbound_type;
 static inbound_type inbound_list;
 
-typedef set<string> admin_type;
+typedef std::set<std::string> admin_type;
 static admin_type admin;
 
-typedef set<string> link_unlink_user_type;
+typedef std::set<std::string> link_unlink_user_type;
 static link_unlink_user_type link_unlink_user;
 
 #define LH_MAX_SIZE 39
-typedef map<string, string> dt_lh_type;
+typedef std::map<std::string, std::string> dt_lh_type;
 static dt_lh_type dt_lh_list;
 
 /*
@@ -248,7 +247,7 @@ static unsigned short crc_tabccitt[256] = {
 
 /* the map of remotes */
 /* key is the callsign, data is the host */
-typedef map<string, string> gwy_list_type;
+typedef std::map<std::string, std::string> gwy_list_type;
 static gwy_list_type gwy_list;
 
 static unsigned char queryCommand[QUERY_SIZE];
@@ -270,7 +269,7 @@ static struct {
 	{ {0x00, 0x00} }
 };
 
-static bool load_gwys(const string &filename);
+static bool load_gwys(const std::string &filename);
 static void calcPFCS(unsigned char *packet, int len);
 static void traceit(const char *fmt,...);
 static bool read_config(char *);
@@ -617,7 +616,7 @@ static void print_status_file()
 }
 
 /* Open text file of repeaters, reflectors */
-static bool load_gwys(const string &filename)
+static bool load_gwys(const std::string &filename)
 {
 	FILE *fp = NULL;
 	char inbuf[1024];
@@ -634,7 +633,7 @@ static bool load_gwys(const string &filename)
 	unsigned short j;
 
 	gwy_list_type::iterator gwy_pos;
-	pair<gwy_list_type::iterator,bool> gwy_insert_pair;
+	std::pair<gwy_list_type::iterator,bool> gwy_insert_pair;
 
 	traceit("Trying to open file %s\n", filename.c_str());
 	fp = fopen(filename.c_str(), "r");
@@ -708,7 +707,7 @@ static bool load_gwys(const string &filename)
 
 		gwy_pos = gwy_list.find(call);
 		if (gwy_pos == gwy_list.end()) {
-			gwy_insert_pair = gwy_list.insert(pair<string,string>(call,payload));
+			gwy_insert_pair = gwy_list.insert(std::pair<std::string,std::string>(call,payload));
 			if (gwy_insert_pair.second)
 				traceit("Added Call=[%s], payload=[%s]\n",call, payload);
 			else
@@ -813,7 +812,7 @@ bool get_value(const Config &cfg, const char *path, bool &value, bool default_va
 	return true;
 }
 
-bool get_value(const Config &cfg, const char *path, string &value, int min, int max, const char *default_value)
+bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
@@ -849,8 +848,8 @@ static bool read_config(char *cfgFile)
 		return 1;
 	}
 
-	string value;
-	string key = "g2_link.ref_login";
+	std::string value;
+	std::string key = "g2_link.ref_login";
 	if (cfg.lookupValue(key, login_call) || cfg.lookupValue("ircddb.login", login_call)) {
 		int l = login_call.length();
 		if (l<3 || l>CALL_SIZE-2) {
@@ -986,7 +985,7 @@ static bool read_config(char *cfgFile)
 
 	get_value(cfg, "timing.play.wait", delay_before, 1, 10, 2);
 
-	if (! get_value(cfg, "g2_link.link_at_start", value, 5, CALL_SIZE, "NONE")) {
+	if (get_value(cfg, "g2_link.link_at_start", value, 5, CALL_SIZE, "NONE")) {
 		if (strcasecmp(value.c_str(), "none"))
 			strcpy(link_at_startup, value.c_str());
 	} else
@@ -1367,7 +1366,7 @@ static void runit()
 	int max_nfds = 0;
 
 	char tmp1[CALL_SIZE + 1];
-	char tmp2[36]; // 8 for rpt1 + 24 for time_t in string format
+	char tmp2[36]; // 8 for rpt1 + 24 for time_t in std::string format
 	dt_lh_type::iterator dt_lh_pos;
 	dt_lh_type::reverse_iterator r_dt_lh_pos;
 
@@ -1377,9 +1376,9 @@ static void runit()
 	char ip[IP_SIZE + 1];
 	inbound *inbound_ptr;
 	inbound_type::iterator pos;
-	pair<inbound_type::iterator,bool> insert_pair;
+	std::pair<inbound_type::iterator,bool> insert_pair;
 	bool found = false;
-	set<string>::iterator it;
+	std::set<std::string>::iterator it;
 
 	char cmd_2_dcs[23];
 	unsigned char dcs_seq[3] = { 0x00, 0x00, 0x00 };
@@ -2882,7 +2881,7 @@ static void runit()
 							else
 								inbound_ptr->client = 'D';  /* dongle */
 
-							insert_pair = inbound_list.insert(pair<string, inbound *>(ip, inbound_ptr));
+							insert_pair = inbound_list.insert(std::pair<std::string, inbound *>(ip, inbound_ptr));
 							if (insert_pair.second) {
 								if (memcmp(inbound_ptr->call, "1NFO", 4) != 0)
 									traceit("new CALL=%s, DONGLE-p, ip=%s, users=%d\n",

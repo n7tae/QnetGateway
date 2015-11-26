@@ -53,14 +53,12 @@
 #include <string>
 #include <map>
 #include <libconfig.h++>
-using namespace std;
 using namespace libconfig;
 
 #include <pthread.h>
 
-#include <wx/hashmap.h>
-
 #include "IRCDDB.h"
+#include "IRCutils.h"
 #include "versions.h"
 
 #define IP_SIZE 15
@@ -75,19 +73,19 @@ using namespace libconfig;
 /* configuration data */
 
 typedef struct portip_tag {
-	string ip;
+	std::string ip;
 	int port;
 } PORTIP;
 
 /* Gateway callsign */
-static string OWNER;
-static string owner;
-static string local_irc_ip;
-static string status_file;
-static string dtmf_dir;
-static string dtmf_file;
-static string echotest_dir;
-static string irc_pass;
+static std::string OWNER;
+static std::string owner;
+static std::string local_irc_ip;
+static std::string status_file;
+static std::string dtmf_dir;
+static std::string dtmf_file;
+static std::string echotest_dir;
+static std::string irc_pass;
 
 
 PORTIP g2_internal, g2_external, g2_link, ircddb;
@@ -125,17 +123,17 @@ static socklen_t aprs_addr_len;
 /* data needed for aprs login and aprs beacon */
 static struct rptr_struct{
 	PORTIP aprs;
-	string aprs_filter;
+	std::string aprs_filter;
 	int aprs_hash;
 	int aprs_interval;
 
 	/* 0=A, 1=B, 2=C */
 	struct mod_struct {
-		string call;   /* KJ4NHF-B */
+		std::string call;   /* KJ4NHF-B */
 		bool defined;
-		string band;  /* 23cm ... */
+		std::string band;  /* 23cm ... */
 		double frequency, offset, latitude, longitude, range, agl;
-		string desc1, desc2, desc, url, package_version;
+		std::string desc1, desc2, desc, url, package_version;
 		PORTIP portip;
 	} mod[3];
 } rptr;
@@ -274,14 +272,8 @@ static regex_t preg;
    CACHE used to cache users, repeaters,
     gateways, IP numbers coming from the irc server
 */
-WX_DECLARE_STRING_HASH_MAP(wxString, user2rptr_type);
-static user2rptr_type user2rptr_map;
 
-WX_DECLARE_STRING_HASH_MAP(wxString, rptr2gwy_type);
-static rptr2gwy_type rptr2gwy_map;
-
-WX_DECLARE_STRING_HASH_MAP(wxString, gwy2ip_type);
-static gwy2ip_type gwy2ip_map;
+static std::map<std::string, std::string> user2rptr_map, rptr2gwy_map, gwy2ip_map;
 
 static pthread_mutex_t irc_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -328,7 +320,6 @@ static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_
                                       char *mod, char *ip, char RoU);
 static bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs,
                             char *mod, char *ip, char RoU);
-static void traceit(const char *fmt,...);
 static int read_config(char *);
 static void runit();
 static void sigCatch(int signum);
@@ -478,30 +469,6 @@ static void calcPFCS(unsigned char *packet, int len)
 	return;
 }
 
-/* log the event */
-static void traceit(const char *fmt,...)
-{
-	time_t ltime;
-	struct tm tm;
-	const short BFSZ = 512;
-	char buf[BFSZ];
-
-	time(&ltime);
-	localtime_r(&ltime, &tm);
-
-	snprintf(buf,BFSZ - 1,"%02d/%02d/%02d %d:%02d:%02d:",
-	         tm.tm_mon+1,tm.tm_mday,tm.tm_year % 100,
-	         tm.tm_hour,tm.tm_min,tm.tm_sec);
-
-	va_list args;
-	va_start(args,fmt);
-	vsnprintf(buf + strlen(buf), BFSZ - strlen(buf) -1, fmt, args);
-	va_end(args);
-
-	fprintf(stdout, "%s", buf);
-	return;
-}
-
 bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
 {
 	if (cfg.lookupValue(path, value)) {
@@ -532,7 +499,7 @@ bool get_value(const Config &cfg, const char *path, bool &value, bool default_va
 	return true;
 }
 
-bool get_value(const Config &cfg, const char *path, string &value, int min, int max, const char *default_value)
+bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
@@ -549,7 +516,6 @@ bool get_value(const Config &cfg, const char *path, string &value, int min, int 
 /* process configuration file */
 static int read_config(char *cfgFile)
 {
-	unsigned short i;
 	Config cfg;
 
 	traceit("Reading file %s\n", cfgFile);
@@ -569,20 +535,16 @@ static int read_config(char *cfgFile)
 	if (! get_value(cfg, "ircddb.login", owner, 3, CALL_SIZE-2, "UNDEFINED"))
 		return 1;
 	OWNER = owner;
-	for (i=0; i<owner.length(); i++) {
-		if (islower(owner[i]))
-			OWNER[i] = toupper(OWNER[i]);
-		else
-			owner[i] = tolower(owner[i]);
-	}
+	ToLower(owner);
+	ToUpper(OWNER);
 	traceit("OWNER=[%s]\n", OWNER.c_str());
 	OWNER.resize(CALL_SIZE, ' ');
 
 	for (short int m=0; m<3; m++) {
-		string path = "module.";
+		std::string path = "module.";
 		path += m + 'a';
-		string type;
-		if (cfg.lookupValue(string(path+".type").c_str(), type)) {
+		std::string type;
+		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
 			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr")) {
 				traceit("%s.type '%s' is invalid\n", type.c_str());
 				return 1;
@@ -592,20 +554,20 @@ static int read_config(char *cfgFile)
 				rptr.mod[m].package_version = DVAP_VERSION;
 			else
 				rptr.mod[m].package_version = DVRPTR_VERSION;
-			if (! get_value(cfg, string(path+".ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, "127.0.0.1"))
+			if (! get_value(cfg, std::string(path+".ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, "127.0.0.1"))
 				return 1;
-			get_value(cfg, string(path+".port").c_str(), rptr.mod[m].portip.port, 16000, 65535, 19998+m);
-			get_value(cfg, string(path+".frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
-			get_value(cfg, string(path+".offset").c_str(), rptr.mod[m].offset,-1.0e12, 1.0e12, 0.0);
-			get_value(cfg, string(path+".range").c_str(), rptr.mod[m].range, 0.0, 1609344.0, 0.0);
-			get_value(cfg, string(path+".agl").c_str(), rptr.mod[m].agl, 0.0, 1000.0, 0.0);
-			get_value(cfg, string(path+".latitude").c_str(), rptr.mod[m].latitude, -90.0, 90.0, 0.0);
-			get_value(cfg, string(path+".longitude").c_str(), rptr.mod[m].longitude, -180.0, 180.0, 0.0);
+			get_value(cfg, std::string(path+".port").c_str(), rptr.mod[m].portip.port, 16000, 65535, 19998+m);
+			get_value(cfg, std::string(path+".frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
+			get_value(cfg, std::string(path+".offset").c_str(), rptr.mod[m].offset,-1.0e12, 1.0e12, 0.0);
+			get_value(cfg, std::string(path+".range").c_str(), rptr.mod[m].range, 0.0, 1609344.0, 0.0);
+			get_value(cfg, std::string(path+".agl").c_str(), rptr.mod[m].agl, 0.0, 1000.0, 0.0);
+			get_value(cfg, std::string(path+".latitude").c_str(), rptr.mod[m].latitude, -90.0, 90.0, 0.0);
+			get_value(cfg, std::string(path+".longitude").c_str(), rptr.mod[m].longitude, -180.0, 180.0, 0.0);
 			if (! cfg.lookupValue(path+".desc1", rptr.mod[m].desc1))
 				rptr.mod[m].desc1 = "";
 			if (! cfg.lookupValue(path+".desc2", rptr.mod[m].desc2))
 				rptr.mod[m].desc2 = "";
-			if (! get_value(cfg, string(path+".url").c_str(), rptr.mod[m].url, 0, 80, "github.com/ac2ie/g2_ircddb"))
+			if (! get_value(cfg, std::string(path+".url").c_str(), rptr.mod[m].url, 0, 80, "github.com/ac2ie/g2_ircddb"))
 				return 1;
 			// truncate strings
 			if (rptr.mod[m].desc1.length() > 20)
@@ -755,10 +717,10 @@ static void *get_irc_data(void *arg)
 {
 	struct timespec req;
 
-	wxString user;
-	wxString rptr;
-	wxString gateway;
-	wxString ipaddr;
+	std::string user;
+	std::string rptr;
+	std::string gateway;
+	std::string ipaddr;
 	DSTAR_PROTOCOL proto;
 	IRCDDB_RESPONSE_TYPE type;
 	int rc = 0;
@@ -817,10 +779,10 @@ static void *get_irc_data(void *arg)
 		while (((type = ii->getMessageType()) != IDRT_NONE) && keep_running) {
 			if (type == IDRT_USER) {
 				ii->receiveUser(user, rptr, gateway, ipaddr);
-				if (!user.IsEmpty()) {
-					if (!rptr.IsEmpty() && !gateway.IsEmpty() && !ipaddr.IsEmpty()) {
+				if (!user.empty()) {
+					if (!rptr.empty() && !gateway.empty() && !ipaddr.empty()) {
 						if (bool_irc_debug)
-							traceit("C-u:%s,%s,%s,%s\n", user.mb_str(), rptr.mb_str(), gateway.mb_str(), ipaddr.mb_str());
+							traceit("C-u:%s,%s,%s,%s\n", user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 
 						pthread_mutex_lock(&irc_data_mutex);
 
@@ -836,10 +798,10 @@ static void *get_irc_data(void *arg)
 				}
 			} else if (type == IDRT_REPEATER) {
 				ii->receiveRepeater(rptr, gateway, ipaddr, proto);
-				if (!rptr.IsEmpty()) {
-					if (!gateway.IsEmpty() && !ipaddr.IsEmpty()) {
+				if (!rptr.empty()) {
+					if (!gateway.empty() && !ipaddr.empty()) {
 						if (bool_irc_debug)
-							traceit("C-r:%s,%s,%s\n", rptr.mb_str(), gateway.mb_str(), ipaddr.mb_str());
+							traceit("C-r:%s,%s,%s\n", rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 
 						pthread_mutex_lock(&irc_data_mutex);
 
@@ -854,9 +816,9 @@ static void *get_irc_data(void *arg)
 				}
 			} else if (type == IDRT_GATEWAY) {
 				ii->receiveGateway(gateway, ipaddr, proto);
-				if (!gateway.IsEmpty() && !ipaddr.IsEmpty()) {
+				if (!gateway.empty() && !ipaddr.empty()) {
 					if (bool_irc_debug)
-						traceit("C-g:%s,%s\n", gateway.mb_str(),ipaddr.mb_str());
+						traceit("C-g:%s,%s\n", gateway.c_str(),ipaddr.c_str());
 
 					pthread_mutex_lock(&irc_data_mutex);
 
@@ -881,9 +843,9 @@ static void *get_irc_data(void *arg)
 static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs,
                                       char *mod, char *ip, char RoU)
 {
-	user2rptr_type::iterator user_pos = user2rptr_map.end();
-	rptr2gwy_type::iterator rptr_pos = rptr2gwy_map.end();
-	gwy2ip_type::iterator gwy_pos = gwy2ip_map.end();
+	std::map<std::string, std::string>::iterator user_pos = user2rptr_map.end();
+	std::map<std::string, std::string>::iterator rptr_pos = rptr2gwy_map.end();
+	std::map<std::string, std::string>::iterator gwy_pos = gwy2ip_map.end();
 	char temp[CALL_SIZE + 1];
 
 	memset(arearp_cs, ' ', CALL_SIZE);
@@ -2033,7 +1995,10 @@ static void runit()
 
 							if ((readBuffer[16] & 0x40) != 0) {
 								if (dtmf_buf_count[i] > 0) {
-									dtmf_file = dtmf_dir + "/" + ('A'+i) + "_mod_DTMF_NOTIFY";
+									dtmf_file = dtmf_dir;
+									dtmf_file.push_back('/');
+									dtmf_file.push_back('A'+i);
+									dtmf_file += "_mod_DTMF_NOTIFY";
 									if (bool_dtmf_debug)
 										traceit("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
 									dtmf_fp = fopen(dtmf_file.c_str(), "w");
@@ -3111,7 +3076,7 @@ static void *echotest(void *arg)
 static void qrgs_and_maps()
 {
 	for(int i=0; i<3; i++) {
-		string rptrcall = OWNER;
+		std::string rptrcall = OWNER;
 		rptrcall.resize(CALL_SIZE-1);
 		rptrcall += i + 'A';
 		if (rptr.mod[i].latitude || rptr.mod[i].longitude || rptr.mod[i].desc1.length() || rptr.mod[i].url.length())
@@ -3127,7 +3092,6 @@ int main(int argc, char **argv)
 {
 	short int i;
 	struct sigaction act;
-	bool ok;
 
 	int rc = 0;
 
@@ -3230,17 +3194,10 @@ int main(int argc, char **argv)
 	aprs_init();
 	compute_aprs_hash();
 
-	ok = ::wxInitialize();
-	if (!ok) {
-		traceit("Failed to initialize wx\n");
-		return 1;
-	}
-
 	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, irc_pass, IRCDDB_VERSION, local_irc_ip);
-	ok = ii->open();
+	bool ok = ii->open();
 	if (!ok) {
 		traceit("irc open failed\n");
-		::wxUninitialize();
 		return 1;
 	}
 
@@ -3402,7 +3359,6 @@ int main(int argc, char **argv)
 	}
 
 	ii->close();
-	::wxUninitialize();
 	traceit("g2_ircddb exiting\n");
 	return rc;
 }

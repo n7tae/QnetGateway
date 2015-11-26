@@ -1,49 +1,41 @@
-/*
-
-CIRCDDB - ircDDB client library in C++
-
-Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*/
-
-
-#if defined(WIN32)
-
-#define WIN32_LEAN_AND_MEAN
-
-#include <winsock2.h>
-#include <ws2tcpip.h>
-
-#else
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-
-#endif
-
-
-
-#include <wx/wx.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <cstdarg>
+#include <ctime>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <istream>
+#include <ostream>
+#include <iterator>
+#include <sstream>
+#include <algorithm>
 
 #include "IRCutils.h"
+// not needed, defined in /usr/include/features.h
+//#define _XOPEN_SOURCE
 
+time_t parseTime(const std::string str)
+{
+	struct tm stm;
+	strptime(str.c_str(), "%Y-%m-%d %H:%M:%S", &stm);
+	return mktime(&stm);
+}
 
-int getAllIPV4Addresses ( const char * name, unsigned short port,
-                          unsigned int * num, struct sockaddr_in * addr, unsigned int max_addr )
+std::vector<std::string> stringTokenizer(const std::string &s)
+{
+        std::stringstream ss(s);
+        std::istream_iterator<std::string> it(ss);
+        std::istream_iterator<std::string> end;
+        std::vector<std::string> result(it, end);
+        return result;
+}
+
+int getAllIPV4Addresses(const char * name, unsigned short port, unsigned int * num, struct sockaddr_in * addr, unsigned int max_addr)
 {
 
 	struct addrinfo hints;
@@ -53,30 +45,27 @@ int getAllIPV4Addresses ( const char * name, unsigned short port,
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
-	int r = getaddrinfo( name, NULL, &hints, &res );
+	int r = getaddrinfo(name, NULL, &hints, &res);
 
 	if (r == 0) {
 		struct addrinfo * rp;
 		unsigned int numAddr = 0;
 
 		for (rp = res; rp != NULL; rp = rp->ai_next) {
-			if (rp->ai_family == AF_INET) {
+			if (rp->ai_family == AF_INET)
 				numAddr ++;
-			}
 		}
 
 		if (numAddr > 0) {
-			if (numAddr > max_addr) {
+			if (numAddr > max_addr)
 				numAddr = max_addr;
-			}
 
 			int * shuffle = new int[numAddr];
 
 			unsigned int i;
 
-			for (i=0; i < numAddr; i++) {
+			for (i=0; i < numAddr; i++)
 				shuffle[i] = i;
-			}
 
 			for (i=0; i < (numAddr - 1); i++) {
 				if (rand() & 1) {
@@ -116,9 +105,7 @@ int getAllIPV4Addresses ( const char * name, unsigned short port,
 		return 0;
 
 	} else {
-		wxString e( gai_strerror(r), wxConvUTF8);
-
-		wxLogWarning(wxT("getaddrinfo: ") + e );
+		traceit("getaddrinfo: %s\n", gai_strerror(r));
 
 		return 1;
 	}
@@ -126,15 +113,11 @@ int getAllIPV4Addresses ( const char * name, unsigned short port,
 
 }
 
-
-
-
-
-void safeStringCopy (char * dest, const char * src, unsigned int buf_size)
+void safeStringCopy (char *dest, const char *src, unsigned int buf_size)
 {
 	unsigned int i = 0;
 
-	while (i < (buf_size - 1)  &&  (src[i] != 0)) {
+	while (i<(buf_size - 1)  &&  src[i] != 0) {
 		dest[i] = src[i];
 		i++;
 	}
@@ -142,24 +125,65 @@ void safeStringCopy (char * dest, const char * src, unsigned int buf_size)
 	dest[i] = 0;
 }
 
-
-wxString getCurrentTime(void)
+char *getCurrentTime(void)
 {
 	time_t now = time(NULL);
 	struct tm* tm;
 	struct tm tm_buf;
-	char buffer[25];
+	static char buffer[25];
 
-#if defined(__WINDOWS__)
-	gmtime_s(&tm_buf, &now);
-	tm = &tm_buf;
-#else
 	gmtime_r(&now, &tm_buf);
 	tm = &tm_buf;
-#endif
 
 	strftime(buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", tm);
 
-	return wxString(buffer, wxConvLocal);
+	return buffer;
 }
 
+void traceit(const char *fmt,...)
+{
+	time_t ltime;
+	struct tm tm;
+	const short BFSZ = 512;
+	char buf[BFSZ];
+
+	time(&ltime);
+	localtime_r(&ltime, &tm);
+
+	snprintf(buf,BFSZ - 1,"%02d/%02d/%02d %d:%02d:%02d:",
+	         tm.tm_mon+1,tm.tm_mday,tm.tm_year % 100,
+	         tm.tm_hour,tm.tm_min,tm.tm_sec);
+
+	va_list args;
+	va_start(args,fmt);
+	vsnprintf(buf + strlen(buf), BFSZ - strlen(buf) -1, fmt, args);
+	va_end(args);
+
+	fprintf(stdout, "%s", buf);
+	return;
+}
+
+void ToUpper(std::string &str)
+{
+	for (auto it=str.begin(); it!=str.end(); it++) {
+		if (islower(*it))
+			*it = toupper(*it);
+	}
+}
+
+void ToLower(std::string &str)
+{
+	for (auto it=str.begin(); it!=str.end(); it++) {
+		if (isupper(*it))
+			*it = tolower(*it);
+	}
+}
+
+
+void ReplaceChar(std::string &str, char from, char to)
+{
+	for (auto it=str.begin(); it!=str.end(); it++) {
+		if (from == *it)
+			*it = to;
+	}
+}

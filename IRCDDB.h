@@ -1,29 +1,6 @@
-/*
+#pragma once
 
-CIRCDDB - ircDDB client library in C++
-
-Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*/
-
-
-#if !defined(_IRCDDB_H)
-#define _IRCDDB_H
-
-#include <wx/wx.h>
+#include <string>
 
 enum IRCDDB_RESPONSE_TYPE {
 	IDRT_NONE,
@@ -44,8 +21,7 @@ struct CIRCDDBPrivate;
 class CIRCDDB
 {
 public:
-	CIRCDDB(const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
-	        const wxString& versionInfo, const wxString& localAddr = wxEmptyString );
+	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, const std::string &localAddr = "");
 	~CIRCDDB();
 
 	// A false return implies a network error, or unable to log in
@@ -58,7 +34,7 @@ public:
 	//   longitude    WGS84 position of antenna in degrees, positive value -> EAST
 	//   desc1, desc2   20-character description of QTH
 
-	void rptrQTH(const wxString& rptrcall, double latitude, double longitude, const wxString& desc1, const wxString& desc2, const wxString& infoURL, const wxString &swVersion);
+	void rptrQTH(const std::string &rptrcall, double latitude, double longitude, const std::string &desc1, const std::string &desc2, const std::string &infoURL, const std::string &swVersion);
 
 
 
@@ -69,7 +45,7 @@ public:
 	//  range       range of the repeater in meters (meters = miles * 1609.344)
 	//  agl         height of the antenna above ground in meters (meters = feet * 0.3048)
 
-	void rptrQRG(const wxString& rptrcall, double txFrequency, double duplexShift, double range, double agl);
+	void rptrQRG(const std::string &rptrcall, double txFrequency, double duplexShift, double range, double agl);
 
 
 	// If you call this method once, watchdog messages will be sent to the
@@ -80,7 +56,7 @@ public:
 	// version of the RF decoding software. For example, the ircDDB java software sets this
 	// to "rpm_ircddbmhd-x.z-z".  The string wdInfo must contain at least one non-space character.
 
-	void kickWatchdog(const wxString& wdInfo);
+	void kickWatchdog(const std::string &wdInfo);
 
 
 
@@ -94,10 +70,7 @@ public:
 	//  10 = some network error occured, next state is "0" (new connection attempt)
 
 	// Send heard data, a false return implies a network error
-	bool sendHeard(const wxString& myCall, const wxString& myCallExt,
-	               const wxString& yourCall, const wxString& rpt1,
-	               const wxString& rpt2, unsigned char flag1,
-	               unsigned char flag2, unsigned char flag3 );
+	bool sendHeard(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3);
 
 
 	// same as sendHeard with two new fields:
@@ -105,12 +78,8 @@ public:
 	//	    or reflector, where this transmission is relayed to.
 	//   tx_message:  20-char TX message or empty string, if the user did not
 	//       send a TX message
-	bool sendHeardWithTXMsg(const wxString& myCall, const wxString& myCallExt,
-	                        const wxString& yourCall, const wxString& rpt1,
-	                        const wxString& rpt2, unsigned char flag1,
-	                        unsigned char flag2, unsigned char flag3,
-	                        const wxString& network_destination,
-	                        const wxString& tx_message );
+	bool sendHeardWithTXMsg(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
+	                        unsigned char flag2, unsigned char flag3, const std::string &network_destination, const std::string &tx_message);
 
 	// this method should be called at the end of a transmission
 	//  num_dv_frames: number of DV frames sent out (96 bit frames, 20ms)
@@ -122,24 +91,19 @@ public:
 	//      So, the overall bit error rate is calculated like this:
 	//      BER = num_bit_errors / (num_dv_frames * 24)
 	//      Set num_bit_errors = -1, if the error information is not available.
-	bool sendHeardWithTXStats(const wxString& myCall, const wxString& myCallExt,
-	                          const wxString& yourCall, const wxString& rpt1,
-	                          const wxString& rpt2, unsigned char flag1,
-	                          unsigned char flag2, unsigned char flag3,
-	                          int num_dv_frames,
-	                          int num_dv_silent_frames,
-	                          int num_bit_errors );
+	bool sendHeardWithTXStats(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
+	                          unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors);
 
 	// The following three functions don't block waiting for a reply, they just send the data
 
 	// Send query for a gateway/reflector, a false return implies a network error
-	bool findGateway(const wxString& gatewayCallsign);
+	bool findGateway(const std::string &gatewayCallsign);
 
 	// Send query for a repeater module, a false return implies a network error
-	bool findRepeater(const wxString& repeaterCallsign);
+	bool findRepeater(const std::string &repeaterCallsign);
 
 	// Send query for a user, a false return implies a network error
-	bool findUser(const wxString& userCallsign);
+	bool findUser(const std::string &userCallsign);
 
 	// The following functions are for processing received messages
 
@@ -148,18 +112,17 @@ public:
 
 	// Get a gateway message, as a result of IDRT_REPEATER returned from getMessageType()
 	// A false return implies a network error
-	bool receiveRepeater(wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol);
+	bool receiveRepeater(std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address, DSTAR_PROTOCOL& protocol);
 
 	// Get a gateway message, as a result of IDRT_GATEWAY returned from getMessageType()
 	// A false return implies a network error
-	bool receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol);
+	bool receiveGateway(std::string &gatewayCallsign, std::string &address, DSTAR_PROTOCOL &protocol);
 
 	// Get a user message, as a result of IDRT_USER returned from getMessageType()
 	// A false return implies a network error
-	bool receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address);
+	bool receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address);
 
-	bool receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address,
-	                 wxString& timeStamp );
+	bool receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address, std::string &timeStamp);
 
 	void close();		// Implictely kills any threads in the IRC code
 
@@ -168,6 +131,3 @@ private:
 	struct CIRCDDBPrivate * const d;
 
 };
-
-#endif  // _IRCDDB_H
-

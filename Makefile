@@ -20,8 +20,8 @@ BINDIR=/usr/local/bin
 CFGDIR=/usr/local/etc
 LOGDIR=/var/log
 
-CPPFLAGS=-W -Wall -I/usr/include `wx-config --cppflags base`
-LDFLAGS=-L/usr/lib `wx-config --libs base` -lconfig++
+CPPFLAGS=-W -Wall -I/usr/include -std=c++11
+LDFLAGS=-L/usr/lib -lconfig++
 
 PROGRAMS=g2_ircddb g2_link dvap_rptr dvrptr g2link_test g2link_test_audio
 
@@ -41,19 +41,22 @@ dvap_rptr : dvap_rptr.cpp dstar_dv.o golay23.o versions.h
 dvrptr : dvrptr.cpp dstar_dv.o golay23.o
 	g++ -W -Wall -o dvrptr  dvrptr.cpp golay23.o dstar_dv.o  -I/usr/include -L/usr/lib -lconfig++ -lrt
 
-IRCDDB.o : IRCDDB.cpp IRCDDB.h
-	g++ $(CPPFLAGS) -c $(CPPFLAGS) IRCDDB.cpp
+IRCutils.o : IRCutils.cpp IRCutils.h
+	g++ -c $(CPPFLAGS) IRCutils.cpp
+
+IRCDDB.o : IRCDDB.cpp IRCDDB.h IRCutils.h
+	g++ -c $(CPPFLAGS) IRCDDB.cpp
 
 IRCClient.o : IRCClient.cpp IRCClient.h IRCutils.h
 	g++ -c $(CPPFLAGS) IRCClient.cpp
 
-IRCReceiver.o : IRCReceiver.cpp IRCReceiver.h IRCMessageQueue.h
+IRCReceiver.o : IRCReceiver.cpp IRCReceiver.h IRCMessageQueue.h IRCutils.h
 	g++ -c $(CPPFLAGS) IRCReceiver.cpp
 
 IRCMessageQueue.o : IRCMessageQueue.cpp IRCMessageQueue.h IRCMessage.h
 	g++ -c $(CPPFLAGS) IRCMessageQueue.cpp
 
-IRCProtocol.o : IRCProtocol.cpp IRCProtocol.h
+IRCProtocol.o : IRCProtocol.cpp IRCProtocol.h IRCutils.h
 	g++ -c $(CPPFLAGS) IRCProtocol.cpp
 
 IRCMessage.o : IRCMessage.cpp IRCMessage.h

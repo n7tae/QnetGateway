@@ -1,44 +1,24 @@
-/*
-
-CIRCDDB - ircDDB client library in C++
-
-Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*/
+//#include <string>
+//#include <list>
 
 #include "IRCMessage.h"
 
-
-
-IRCMessage::IRCMessage ()
+IRCMessage::IRCMessage()
 {
 	numParams = 0;
 	prefixParsed = false;
 }
 
-IRCMessage::IRCMessage ( const wxString& toNick, const wxString& msg )
+IRCMessage::IRCMessage(const std::string &toNick, const std::string &msg)
 {
-	command = wxT("PRIVMSG");
+	command = "PRIVMSG";
 	numParams = 2;
-	params.Add( toNick );
-	params.Add( msg );
+	params.push_back(toNick);
+	params.push_back(msg);
 	prefixParsed = false;
 }
 
-IRCMessage::IRCMessage ( const wxString& cmd )
+IRCMessage::IRCMessage(const std::string &cmd)
 {
 	command = cmd;
 	numParams = 0;
@@ -50,23 +30,23 @@ IRCMessage::~IRCMessage()
 }
 
 
-void IRCMessage::addParam( const wxString& p )
+void IRCMessage::addParam(const std::string &p)
 {
-	params.Add( p );
-	numParams = params.GetCount();
+	params.push_back(p);
+	numParams = params.size();
 }
 
 int IRCMessage::getParamCount()
 {
-	return params.GetCount();
+	return params.size();
 }
 
-wxString IRCMessage::getParam( int pos )
+std::string IRCMessage::getParam(int pos)
 {
 	return params[pos];
 }
 
-wxString IRCMessage::getCommand()
+std::string IRCMessage::getCommand()
 {
 	return command;
 }
@@ -77,25 +57,25 @@ void IRCMessage::parsePrefix()
 	unsigned int i;
 
 	for (i=0; i < 3; i++) {
-		prefixComponents.Add(wxT(""));
+		prefixComponents.push_back("");
 	}
 
 	int state = 0;
 
-	for (i=0; i < prefix.Len(); i++) {
-		wxChar c = prefix.GetChar(i);
+	for (i=0; i < prefix.length(); i++) {
+		char c = prefix.at(i);
 
 		switch (c) {
-		case wxT('!'):
+		case '!':
 			state = 1; // next is name
 			break;
 
-		case wxT('@'):
+		case '@':
 			state = 2; // next is host
 			break;
 
 		default:
-			prefixComponents[state].Append(c);
+			prefixComponents[state].append(1, c);
 			break;
 		}
 	}
@@ -103,7 +83,7 @@ void IRCMessage::parsePrefix()
 	prefixParsed = true;
 }
 
-wxString& IRCMessage::getPrefixNick()
+std::string &IRCMessage::getPrefixNick()
 {
 	if (!prefixParsed) {
 		parsePrefix();
@@ -112,7 +92,7 @@ wxString& IRCMessage::getPrefixNick()
 	return prefixComponents[0];
 }
 
-wxString& IRCMessage::getPrefixName()
+std::string &IRCMessage::getPrefixName()
 {
 	if (!prefixParsed) {
 		parsePrefix();
@@ -121,7 +101,7 @@ wxString& IRCMessage::getPrefixName()
 	return prefixComponents[1];
 }
 
-wxString& IRCMessage::getPrefixHost()
+std::string &IRCMessage::getPrefixHost()
 {
 	if (!prefixParsed) {
 		parsePrefix();
@@ -130,36 +110,25 @@ wxString& IRCMessage::getPrefixHost()
 	return prefixComponents[2];
 }
 
-void IRCMessage::composeMessage ( wxString& output )
+void IRCMessage::composeMessage(std::string &output)
 {
-#if defined(DEBUG_IRC)
-	wxString d = wxT("T [") + prefix + wxT("] [") + command + wxT("]");
-	for (int i=0; i < numParams; i++) {
-		d.Append(wxT(" [") + params[i] + wxT("]") );
-	}
-	d.Replace(wxT("%"), wxT("%%"), true);
-	d.Replace(wxT("\\"), wxT("\\\\"), true);
-	wxLogVerbose(d);
-#endif
+	std::string o;
 
-	wxString o;
-
-	if (prefix.Len() > 0) {
-		o = wxT(":") + prefix + wxT(" ");
+	if (prefix.length() > 0) {
+		o = std::string(":") + prefix + ' ';
 	}
 
-	o.Append(command);
+	o += command;
 
 	for (int i=0; i < numParams; i++) {
 		if (i == (numParams - 1)) {
-			o.Append(wxT(" :") + params[i]);
+			o += (std::string(" :") + params[i]);
 		} else {
-			o.Append(wxT(" ") + params[i]);
+			o += (std::string(" ") + params[i]);
 		}
 	}
 
-	o.Append(wxT("\r\n"));
+	o += std::string("\r\n");
 
 	output = o;
 }
-

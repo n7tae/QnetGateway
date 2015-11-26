@@ -1,50 +1,24 @@
-/*
-
-CIRCDDB - ircDDB client library in C++
-
-Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*/
-
-
 #include "IRCDDB.h"
 
 #include "IRCClient.h"
 #include "IRCDDBApp.h"
-
-#include <wx/wx.h>
-
+#include "IRCutils.h"
 
 struct CIRCDDBPrivate {
-	IRCClient * client;
-	IRCDDBApp * app;
+	IRCClient *client;
+	IRCDDBApp *app;
 };
 
 
-CIRCDDB::CIRCDDB(const wxString& hostName, unsigned int port,
-                 const wxString& callsign, const wxString& password,
-                 const wxString& versionInfo, const wxString& localAddr  ) : d( new CIRCDDBPrivate )
+CIRCDDB::CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, const std::string &localAddr)
+    : d(new CIRCDDBPrivate)
 
 {
-	wxString update_channel = wxT("#dstar");
+	std::string update_channel = "#dstar";
 
 	d->app = new IRCDDBApp(update_channel);
 
-	d->client = new IRCClient( d->app, update_channel, hostName, port, callsign,
-	                           password, versionInfo, localAddr );
+	d->client = new IRCClient(d->app, update_channel, hostName, port, callsign, password, versionInfo, localAddr);
 }
 
 CIRCDDB::~CIRCDDB()
@@ -58,8 +32,8 @@ CIRCDDB::~CIRCDDB()
 // A false return implies a network error, or unable to log in
 bool CIRCDDB::open()
 {
-	wxLogVerbose(wxT("start"));
-	return d->client -> startWork()   &&   d->app->startWork();
+	traceit("start");
+	return d->client->startWork() && d->app->startWork();
 }
 
 
@@ -69,229 +43,215 @@ int CIRCDDB::getConnectionState()
 }
 
 
-void CIRCDDB::rptrQTH(const wxString& rptrcall, double latitude, double longitude, const wxString& desc1, const wxString& desc2, const wxString& infoURL, const wxString &swVersion)
+void CIRCDDB::rptrQTH(const std::string &rptrcall, double latitude, double longitude, const std::string &desc1, const std::string &desc2, const std::string &infoURL, const std::string &swVersion)
 {
 	d->app->rptrQTH(rptrcall, latitude, longitude, desc1, desc2, infoURL, swVersion);
 }
 
 
-void CIRCDDB::rptrQRG(const wxString& rptrcall, double txFrequency, double duplexShift, double range, double agl)
+void CIRCDDB::rptrQRG(const std::string &rptrcall, double txFrequency, double duplexShift, double range, double agl)
 {
 	d->app->rptrQRG(rptrcall, txFrequency, duplexShift, range, agl);
 }
 
 
-void CIRCDDB::kickWatchdog ( const wxString& wdInfo )
+void CIRCDDB::kickWatchdog(const std::string &wdInfo)
 {
-	d->app->kickWatchdog( wdInfo );
+	d->app->kickWatchdog(wdInfo);
 }
 
-
-
 // Send heard data, a false return implies a network error
-bool CIRCDDB::sendHeard( const wxString& myCall, const wxString& myCallExt,
-                         const wxString& yourCall, const wxString& rpt1,
-                         const wxString& rpt2, unsigned char flag1,
-                         unsigned char flag2, unsigned char flag3 )
+bool CIRCDDB::sendHeard(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1,
+                            const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3)
 {
-	if (myCall.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:myCall: len != 8"));
+	if (myCall.size() != 8) {
+		traceit("CIRCDDB::sendHeard:myCall: len != 8");
 		return false;
 	}
 
-	if (myCallExt.Len() != 4) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:myCallExt: len != 4"));
+	if (myCallExt.size() != 4) {
+		traceit("CIRCDDB::sendHeard:myCallExt: len != 4");
 		return false;
 	}
 
-	if (yourCall.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:yourCall: len != 8"));
+	if (yourCall.size() != 8) {
+		traceit("CIRCDDB::sendHeard:yourCall: len != 8");
 		return false;
 	}
 
-	if (rpt1.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:rpt1: len != 8"));
+	if (rpt1.size() != 8) {
+		traceit("CIRCDDB::sendHeard:rpt1: len != 8");
 		return false;
 	}
 
-	if (rpt2.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:rpt2: len != 8"));
+	if (rpt2.size() != 8) {
+		traceit("CIRCDDB::sendHeard:rpt2: len != 8");
 		return false;
 	}
 
-	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3,
-	                          wxT("        "), wxT(""), wxT(""));
+	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3, "        ", "", "");
 }
 
-
 // Send heard data, a false return implies a network error
-bool CIRCDDB::sendHeardWithTXMsg( const wxString& myCall, const wxString& myCallExt,
-                                  const wxString& yourCall, const wxString& rpt1,
-                                  const wxString& rpt2, unsigned char flag1,
-                                  unsigned char flag2, unsigned char flag3,
-                                  const wxString& network_destination,
-                                  const wxString& tx_message )
+bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
+                                  unsigned char flag2, unsigned char flag3, const std::string &network_destination, const std::string &tx_message)
 {
-	if (myCall.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:myCall: len != 8"));
+	if (myCall.size() != 8) {
+		traceit("CIRCDDB::sendHeard:myCall: len != 8");
 		return false;
 	}
 
-	if (myCallExt.Len() != 4) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:myCallExt: len != 4"));
+	if (myCallExt.size() != 4) {
+		traceit("CIRCDDB::sendHeard:myCallExt: len != 4");
 		return false;
 	}
 
-	if (yourCall.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:yourCall: len != 8"));
+	if (yourCall.size() != 8) {
+		traceit("CIRCDDB::sendHeard:yourCall: len != 8");
 		return false;
 	}
 
-	if (rpt1.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:rpt1: len != 8"));
+	if (rpt1.size() != 8) {
+		traceit("CIRCDDB::sendHeard:rpt1: len != 8");
 		return false;
 	}
 
-	if (rpt2.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:rpt2: len != 8"));
+	if (rpt2.size() != 8) {
+		traceit("CIRCDDB::sendHeard:rpt2: len != 8");
 		return false;
 	}
 
-	wxString dest = network_destination;
+	std::string dest = network_destination;
 
-	if (dest.Len() == 0) {
-		dest = wxT("        ");
-	}
+	if (dest.size() == 0)
+		dest = "        ";
 
-	if (dest.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:network_destination: len != 8"));
+	if (dest.size() != 8) {
+		traceit("CIRCDDB::sendHeard:network_destination: len != 8");
 		return false;
 	}
 
-	wxString msg;
+	std::string msg;
 
-	if (tx_message.Len() == 20) {
-		unsigned int i;
-		for (i=0; i < tx_message.Len(); i++) {
-			wxChar ch = tx_message.GetChar(i);
+	if (tx_message.length() == 20) {
+		for (unsigned int i=0; i < tx_message.size(); i++) {
+			char ch = tx_message.at(i);
 
-			if ((ch > 32) && (ch < 127)) {
-				msg.Append(ch);
+			if (ch>32 && ch<127) {
+				msg.push_back(ch);
 			} else {
-				msg.Append(wxT('_'));
+				msg.push_back('_');
 			}
 		}
 	}
 
-	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3,
-	                          dest, msg, wxT(""));
+	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3, dest, msg, "");
 }
 
 
 
-bool CIRCDDB::sendHeardWithTXStats( const wxString& myCall, const wxString& myCallExt,
-                                    const wxString& yourCall, const wxString& rpt1,
-                                    const wxString& rpt2, unsigned char flag1,
-                                    unsigned char flag2, unsigned char flag3,
-                                    int num_dv_frames,
-                                    int num_dv_silent_frames,
-                                    int num_bit_errors )
+bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
+                        unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors)
 {
-	if ((num_dv_frames <= 0) || (num_dv_frames > 65535)) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:num_dv_frames not in range 1-65535"));
+	if (num_dv_frames<= 0 || num_dv_frames>65535) {
+		traceit("CIRCDDB::sendHeard:num_dv_frames not in range 1-65535");
 		return false;
 	}
 
 	if (num_dv_silent_frames > num_dv_frames) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:num_dv_silent_frames > num_dv_frames"));
+		traceit("CIRCDDB::sendHeard:num_dv_silent_frames > num_dv_frames");
 		return false;
 	}
 
-	if (num_bit_errors > (4*num_dv_frames)) { // max 4 bit errors per frame
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:num_bit_errors > (4*num_dv_frames)"));
+	if (num_bit_errors > 4*num_dv_frames) { // max 4 bit errors per frame
+		traceit("CIRCDDB::sendHeard:num_bit_errors > (4*num_dv_frames)");
 		return false;
 	}
 
-	if (myCall.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:myCall: len != 8"));
+	if (myCall.size() != 8) {
+		traceit("CIRCDDB::sendHeard:myCall: len != 8");
 		return false;
 	}
 
-	if (myCallExt.Len() != 4) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:myCallExt: len != 4"));
+	if (myCallExt.size() != 4) {
+		traceit("CIRCDDB::sendHeard:myCallExt: len != 4");
 		return false;
 	}
 
-	if (yourCall.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:yourCall: len != 8"));
+	if (yourCall.size() != 8) {
+		traceit("CIRCDDB::sendHeard:yourCall: len != 8");
 		return false;
 	}
 
-	if (rpt1.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:rpt1: len != 8"));
+	if (rpt1.size() != 8) {
+		traceit("CIRCDDB::sendHeard:rpt1: len != 8");
 		return false;
 	}
 
-	if (rpt2.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::sendHeard:rpt2: len != 8"));
+	if (rpt2.size() != 8) {
+		traceit("CIRCDDB::sendHeard:rpt2: len != 8");
 		return false;
 	}
 
-	wxString stats = wxString::Format(wxT("%04x"), num_dv_frames);
+	char buf[16];
+	snprintf(buf, 16, "%04x", num_dv_frames);
+	std::string stats = buf;
 
 	if (num_dv_silent_frames >= 0) {
-		wxString s = wxString::Format(wxT("%02x"), (num_dv_silent_frames * 100) / num_dv_frames);
-		stats.Append(s);
+		snprintf(buf, 16, "%02x", num_dv_silent_frames * 100 / num_dv_frames);
+		stats.append(buf);
 
 		if (num_bit_errors >= 0) {
-			s = wxString::Format(wxT("%02x"), (num_bit_errors * 125) / (num_dv_frames * 3));
-			stats.Append(s);
+			snprintf(buf,16, "%02x", num_bit_errors * 125 / (num_dv_frames * 3));
+			stats.append(buf);
 		} else {
-			stats.Append(wxT("__"));
+			stats.append("__");
 		}
 	} else {
-		stats.Append(wxT("____"));
+		stats.append("____");
 	}
 
-	stats.Append(wxT("____________"));  // stats string should have 20 chars
+	stats.append("____________");  // stats string should have 20 chars
 
-	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3,
-	                          wxT("        "), wxT(""), stats);
+	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3, "        ", "", stats);
 }
 
 
 
 // Send query for a gateway/reflector, a false return implies a network error
-bool CIRCDDB::findGateway(const wxString& gatewayCallsign)
+bool CIRCDDB::findGateway(const std::string &gatewayCallsign)
 {
-	if (gatewayCallsign.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::findGateway: len != 8"));
+	if (gatewayCallsign.size() != 8) {
+		traceit("CIRCDDB::findGateway: len != 8");
 		return false;
 	}
-
-	return d->app->findGateway( gatewayCallsign.Upper());
+	std::string gcs = gatewayCallsign;
+	ToUpper(gcs);
+	return d->app->findGateway(gcs);
 }
 
 
-bool CIRCDDB::findRepeater(const wxString& repeaterCallsign)
+bool CIRCDDB::findRepeater(const std::string &repeaterCallsign)
 {
-	if (repeaterCallsign.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::findRepeater: len != 8"));
+	if (repeaterCallsign.size() != 8) {
+		traceit("CIRCDDB::findRepeater: len != 8");
 		return false;
 	}
-
-	return d->app->findRepeater( repeaterCallsign.Upper());
+	std::string rcs = repeaterCallsign;
+	ToUpper(rcs);
+	return d->app->findRepeater(rcs);
 }
 
 // Send query for a user, a false return implies a network error
-bool CIRCDDB::findUser(const wxString& userCallsign)
+bool CIRCDDB::findUser(const std::string &userCallsign)
 {
-	if (userCallsign.Len() != 8) {
-		wxLogVerbose(wxT("CIRCDDB::findUser: len != 8"));
+	if (userCallsign.size() != 8) {
+		traceit("CIRCDDB::findUser: len != 8");
 		return false;
 	}
-
-	return d->app->findUser( userCallsign.Upper());
+	std::string ucs = userCallsign;
+	ToUpper(ucs);
+	return d->app->findUser(ucs);
 }
 
 // The following functions are for processing received messages
@@ -304,29 +264,29 @@ IRCDDB_RESPONSE_TYPE CIRCDDB::getMessageType()
 
 // Get a gateway message, as a result of IDRT_REPEATER returned from getMessageType()
 // A false return implies a network error
-bool CIRCDDB::receiveRepeater(wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& /*protocol*/)
+bool CIRCDDB::receiveRepeater(std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address, DSTAR_PROTOCOL &/*protocol*/)
 {
 	IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
 
 	if (rt != IDRT_REPEATER) {
-		wxLogError(wxT("CIRCDDB::receiveRepeater: unexpected response type"));
+		traceit("CIRCDDB::receiveRepeater: unexpected response type");
 		return false;
 	}
 
 	IRCMessage * m = d->app->getReplyMessage();
 
 	if (m == NULL) {
-		wxLogError(wxT("CIRCDDB::receiveRepeater: no message"));
+		traceit("CIRCDDB::receiveRepeater: no message");
 		return false;
 	}
 
-	if (!m->getCommand().IsSameAs(wxT("IDRT_REPEATER"))) {
-		wxLogError(wxT("CIRCDDB::receiveRepeater: wrong message type"));
+	if (m->getCommand().compare("IDRT_REPEATER")) {
+		traceit("CIRCDDB::receiveRepeater: wrong message type");
 		return false;
 	}
 
 	if (m->getParamCount() != 3) {
-		wxLogError(wxT("CIRCDDB::receiveRepeater: unexpected number of message parameters"));
+		traceit("CIRCDDB::receiveRepeater: unexpected number of message parameters");
 		return false;
 	}
 
@@ -341,29 +301,29 @@ bool CIRCDDB::receiveRepeater(wxString& repeaterCallsign, wxString& gatewayCalls
 
 // Get a gateway message, as a result of IDRT_GATEWAY returned from getMessageType()
 // A false return implies a network error
-bool CIRCDDB::receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& /*protocol*/)
+bool CIRCDDB::receiveGateway(std::string &gatewayCallsign, std::string &address, DSTAR_PROTOCOL& /*protocol*/)
 {
 	IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
 
 	if (rt != IDRT_GATEWAY) {
-		wxLogError(wxT("CIRCDDB::receiveGateway: unexpected response type"));
+		traceit("CIRCDDB::receiveGateway: unexpected response type");
 		return false;
 	}
 
 	IRCMessage * m = d->app->getReplyMessage();
 
 	if (m == NULL) {
-		wxLogError(wxT("CIRCDDB::receiveGateway: no message"));
+		traceit("CIRCDDB::receiveGateway: no message");
 		return false;
 	}
 
-	if (!m->getCommand().IsSameAs(wxT("IDRT_GATEWAY"))) {
-		wxLogError(wxT("CIRCDDB::receiveGateway: wrong message type"));
+	if (m->getCommand().compare("IDRT_GATEWAY")) {
+		traceit("CIRCDDB::receiveGateway: wrong message type");
 		return false;
 	}
 
 	if (m->getParamCount() != 2) {
-		wxLogError(wxT("CIRCDDB::receiveGateway: unexpected number of message parameters"));
+		traceit("CIRCDDB::receiveGateway: unexpected number of message parameters");
 		return false;
 	}
 
@@ -377,36 +337,36 @@ bool CIRCDDB::receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR
 
 // Get a user message, as a result of IDRT_USER returned from getMessageType()
 // A false return implies a network error
-bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address)
+bool CIRCDDB::receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address)
 {
-	wxString dummy;
+	std::string dummy;
 	return receiveUser(userCallsign, repeaterCallsign, gatewayCallsign, address, dummy);
 }
 
-bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address,
-                          wxString& timeStamp)
+bool CIRCDDB::receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address,
+                          std::string &timeStamp)
 {
 	IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
 
 	if (rt != IDRT_USER) {
-		wxLogError(wxT("CIRCDDB::receiveUser: unexpected response type"));
+		traceit("CIRCDDB::receiveUser: unexpected response type");
 		return false;
 	}
 
 	IRCMessage * m = d->app->getReplyMessage();
 
 	if (m == NULL) {
-		wxLogError(wxT("CIRCDDB::receiveUser: no message"));
+		traceit("CIRCDDB::receiveUser: no message");
 		return false;
 	}
 
-	if (!m->getCommand().IsSameAs(wxT("IDRT_USER"))) {
-		wxLogError(wxT("CIRCDDB::receiveUser: wrong message type"));
+	if (m->getCommand().compare("IDRT_USER")) {
+		traceit("CIRCDDB::receiveUser: wrong message type");
 		return false;
 	}
 
 	if (m->getParamCount() != 5) {
-		wxLogError(wxT("CIRCDDB::receiveUser: unexpected number of message parameters"));
+		traceit("CIRCDDB::receiveUser: unexpected number of message parameters");
 		return false;
 	}
 
@@ -423,7 +383,7 @@ bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wx
 
 void CIRCDDB::close()		// Implictely kills any threads in the IRC code
 {
-	d->client -> stopWork();
-	d->app -> stopWork();
+	d->client->stopWork();
+	d->app->stopWork();
 }
 
