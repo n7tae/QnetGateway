@@ -35,7 +35,6 @@ git clone git://github.com/ac2ie/g2_ircddb.git
 ```
 Then cd into the new g2_ircddb directory and review the `BUILDING` and `CONFIGURING` file for further instructions, here is an outline:
 ```
-Build the wxWidgets library.................. "./build_wxBase"
 Make the g2 modules.......................... "make"
 Make the configuration file, g2.cfg.......... start by copying one of the examples to g2.cfg and then editing.
 Download the latest gateway list, gwys.txt... "./get_gwy_list.sh" or "./get_reflectors.sh"
