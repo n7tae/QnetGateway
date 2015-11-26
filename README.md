@@ -1,6 +1,8 @@
 g2_ircddb
 =========
 
+NEWEST! g2_ircddb now no longer depends on wxWidgits. You will need a to have a reasonably modern compiler. Type "g++ --version" to see what you have before you get started. I know it will compile properly with version 4.9, but I'm not sure how far back you can go. The jessie Raspbian works, but the wheezy Raspbian my not, at least out of the box. If you are stuck with an older compiler, you'll have to go with an earlier version of g2_ircddb, and there, you will have to make wxWidgits.
+
 NEW! Software configuration is SIGNIFICANTLY easier because most parameters now have default values. Most hams will only need to define a few things.
 
 PRETTY NEW: g2_ircddb has come up to current practices when it comes to ":IRCDDB" irc commands. This means irc hosts like rr.openquad.net can list your repeater frequency, offset, location and URL automatically if you want.

@@ -52,19 +52,12 @@ git clone git://github.com/ac2ie/g2_ircddb.git
 This will create a g2_ircddb directory with everything you need to build a dvap or
 dvrptr ircddb gateway.
 
-The first order of business is to build the necessary wxBase-2.8.12 library. There
-is a script in the g2_ircddb directory to do all of this for you. Just cd to
-g2_ircddb and type:
+The first thing to do is change to the build directory with "cd g2_ircddb" and then
+type "make" to build all the g2_ircddb executables. If you need DTMFS then also
+execute "make g2link_test".
 
-./build_wxBase
-
-This will take serveral minutes to complete and you will see a lot of output.
-Depending on your device and the OS you are using, you may be prompted for your
-password for sudo access. Upon completetion, make sure you are still in the
-g2_ircddb directory and type "make" to build all the g2_ircddb executables. If you
-need DTMFS then also execute "make g2link_test".
-
-Next, crate your g2.cfg configuration file. There are two example for you to look at:
+Next, create your g2.cfg configuration file. There are two example for you to look
+at:
 . g2.everything.cfg contains all parameter with lengthly comments about what
   each parameter does. The definitions that are commented out are defined with
   their default value.
