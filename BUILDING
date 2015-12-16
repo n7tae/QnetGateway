@@ -1,12 +1,18 @@
-Creating a DVAP or DVRPTR hotspot based on a Raspberry Pi or a BeagleBone Black that
-can connect to both DStar reflectors as well as XREF reflectors based on Scott Lawson
-KI4LKF software is easy.
+Creating a DVAP or a Version 1 DVRPTR hotspot based on a Raspberry Pi or a BeagleBone
+Black that can connect to both DStar reflectors as well as XREF reflectors based on
+Scott Lawson KI4LKF software is easy.
 
 Start with a Raspberry Pi with the latest Raspbian image (see http://raspberrypi.org)
-or a BeagleBone Black with the latest Debian image (see http://www.armhf.com). The
-g2_ircddb software will EASILY fit on the 2gb on-board memory of the older Rev. B of
-the BBB, but you will still need a uSD card to install the armhf.com Debian image to
-the on-board memory.
+or a BeagleBone Black with the latest Debian image (see
+http://beagleboard.org/latest-images). For this latest version of g2_ircddb requires
+the c++ compiler of at least version 4.9. This means you will need Debian 8 (Jessie).
+
+For the BBB, the jessie Debian version is small enough to fit onto the on-board 2gb
+memory.The basic process is to first burn the image to a micro SD card then put
+it into the BBB and power it up while holding down switch S2 until the BBB lights
+start blinking. The process is done when the BBB LEDs quit blinking. Remove the
+SD card and boot up off the on-board jessie! See info on the BBB website listed
+above.
 
 On the RPi, do "sudo raspi-config" and expand the partition, change the password
 for the 'pi' user and do any other configuration setup. You don't need to overclock
