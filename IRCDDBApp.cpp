@@ -149,7 +149,7 @@ void IRCDDBApp::rptrQTH(const std::string &rptrcall, double latitude, double lon
 	d1.resize(20, '_');
 	d2.resize(20, '_');
 
-	std::regex nonValid("[^a-zA-Z0-9 +&(),./'-]+");
+	std::regex nonValid("[^a-zA-Z0-9 +&(),./'-_]+");
 
 	std::smatch sm;
 	while (std::regex_search(d1, sm, nonValid))
