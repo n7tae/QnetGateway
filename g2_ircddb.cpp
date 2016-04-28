@@ -36,107 +36,50 @@
 #include <errno.h>
 #include <time.h>
 #include <math.h>
-
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-
 #include <regex.h>
+#include <pthread.h>
 
 #include <string>
 #include <map>
 #include <libconfig.h++>
 using namespace libconfig;
 
-#include <pthread.h>
 
 #include "IRCDDB.h"
 #include "IRCutils.h"
 #include "versions.h"
+#include "aprs.h"
 
 #define IP_SIZE 15
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
+#define MAX_DTMF_BUF 32
 #define ECHO_CODE 'E'
 #define STORE_VM_CODE 'S'
 #define RECALL_VM_CODE 'R'
 #define CLEAR_VM_CODE 'C'
 #define LINK_CODE 'L'
 
-/* configuration data */
-
-typedef struct portip_tag {
-	std::string ip;
-	int port;
-} PORTIP;
-
-/* Gateway callsign */
-static std::string OWNER;
-static std::string owner;
-static std::string local_irc_ip;
-static std::string status_file;
-static std::string dtmf_dir;
-static std::string dtmf_file;
-static std::string echotest_dir;
-static std::string irc_pass;
-
-
 PORTIP g2_internal, g2_external, g2_link, ircddb;
 
-static bool bool_send_qrgs;
-static bool bool_irc_debug;
-static bool bool_dtmf_debug;
-static bool bool_regen_header;
-static bool bool_qso_details;
-static bool bool_send_aprs;
+static std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass;
 
-static int play_wait;
-static int play_delay;
-static int echotest_rec_timeout;
-static int voicemail_rec_timeout;
-static int from_remote_g2_timeout;
-static int from_local_rptr_timeout;
+static bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header,bool_qso_details, bool_send_aprs;
 
-static unsigned char silence[9] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8 };
-static const int MAX_DTMF_BUF = 32;
-static char dtmf_chars[17] = "147*2580369#ABCD";
-static int dtmf_digit;
-static FILE *dtmf_fp = NULL;
-static char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
-static int dtmf_buf_count[3] = {0, 0, 0};
-static unsigned int dtmf_counter[3] = {0, 0, 0};
-static int dtmf_last_frame[3] = {0, 0, 0};
-
-
-/* the aprs TCP socket */
-static int aprs_sock = -1;
-static struct sockaddr_in aprs_addr;
-static socklen_t aprs_addr_len;
+static int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
 
 /* data needed for aprs login and aprs beacon */
-static struct rptr_struct{
-	PORTIP aprs;
-	std::string aprs_filter;
-	int aprs_hash;
-	int aprs_interval;
-
-	/* 0=A, 1=B, 2=C */
-	struct mod_struct {
-		std::string call;   /* KJ4NHF-B */
-		bool defined;
-		std::string band;  /* 23cm ... */
-		double frequency, offset, latitude, longitude, range, agl;
-		std::string desc1, desc2, desc, url, package_version;
-		PORTIP portip;
-	} mod[3];
-} rptr;
+// RPTR defined in aprs.h
+RPTR rptr;
 
 /* local repeater modules being recorded */
 /* This is for echotest */
@@ -199,41 +142,7 @@ static struct sockaddr_in plug;
 
 /* for talking with the irc server */
 static CIRCDDB *ii;
-
-enum aprs_level {
-	al_none,
-	al_$1,
-	al_$2,
-	al_c1,
-	al_r1,
-	al_c2,
-	al_csum1,
-	al_csum2,
-	al_csum3,
-	al_csum4,
-	al_data,
-	al_end
-};
-
-enum slow_level {
-	sl_first,
-	sl_second
-};
-
-static struct {
-	aprs_level al;
-	unsigned char data[300];
-	unsigned int len;
-	unsigned char buf[6];
-	slow_level sl;
-	bool is_sent;
-} aprs_pack[3];
-
-/* lock down a stream per band */
-static struct {
-	unsigned char streamID[2];
-	time_t last_time;
-} aprs_streamID[3];
+static CAPRS *aprs;
 
 /* text coming from local repeater bands */
 static struct {
@@ -277,49 +186,12 @@ static std::map<std::string, std::string> user2rptr_map, rptr2gwy_map, gwy2ip_ma
 
 static pthread_mutex_t irc_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static unsigned short crc_tabccitt[256] = {
-	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,
-	0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
-	0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,
-	0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
-	0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,
-	0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
-	0x3183,0x200a,0x1291,0x0318,0x77a7,0x662e,0x54b5,0x453c,
-	0xbdcb,0xac42,0x9ed9,0x8f50,0xfbef,0xea66,0xd8fd,0xc974,
-	0x4204,0x538d,0x6116,0x709f,0x0420,0x15a9,0x2732,0x36bb,
-	0xce4c,0xdfc5,0xed5e,0xfcd7,0x8868,0x99e1,0xab7a,0xbaf3,
-	0x5285,0x430c,0x7197,0x601e,0x14a1,0x0528,0x37b3,0x263a,
-	0xdecd,0xcf44,0xfddf,0xec56,0x98e9,0x8960,0xbbfb,0xaa72,
-	0x6306,0x728f,0x4014,0x519d,0x2522,0x34ab,0x0630,0x17b9,
-	0xef4e,0xfec7,0xcc5c,0xddd5,0xa96a,0xb8e3,0x8a78,0x9bf1,
-	0x7387,0x620e,0x5095,0x411c,0x35a3,0x242a,0x16b1,0x0738,
-	0xffcf,0xee46,0xdcdd,0xcd54,0xb9eb,0xa862,0x9af9,0x8b70,
-	0x8408,0x9581,0xa71a,0xb693,0xc22c,0xd3a5,0xe13e,0xf0b7,
-	0x0840,0x19c9,0x2b52,0x3adb,0x4e64,0x5fed,0x6d76,0x7cff,
-	0x9489,0x8500,0xb79b,0xa612,0xd2ad,0xc324,0xf1bf,0xe036,
-	0x18c1,0x0948,0x3bd3,0x2a5a,0x5ee5,0x4f6c,0x7df7,0x6c7e,
-	0xa50a,0xb483,0x8618,0x9791,0xe32e,0xf2a7,0xc03c,0xd1b5,
-	0x2942,0x38cb,0x0a50,0x1bd9,0x6f66,0x7eef,0x4c74,0x5dfd,
-	0xb58b,0xa402,0x9699,0x8710,0xf3af,0xe226,0xd0bd,0xc134,
-	0x39c3,0x284a,0x1ad1,0x0b58,0x7fe7,0x6e6e,0x5cf5,0x4d7c,
-	0xc60c,0xd785,0xe51e,0xf497,0x8028,0x91a1,0xa33a,0xb2b3,
-	0x4a44,0x5bcd,0x6956,0x78df,0x0c60,0x1de9,0x2f72,0x3efb,
-	0xd68d,0xc704,0xf59f,0xe416,0x90a9,0x8120,0xb3bb,0xa232,
-	0x5ac5,0x4b4c,0x79d7,0x685e,0x1ce1,0x0d68,0x3ff3,0x2e7a,
-	0xe70e,0xf687,0xc41c,0xd595,0xa12a,0xb0a3,0x8238,0x93b1,
-	0x6b46,0x7acf,0x4854,0x59dd,0x2d62,0x3ceb,0x0e70,0x1ff9,
-	0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,
-	0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
-};
-
 static int g2_open();
 static int srv_open();
 static void calcPFCS(unsigned char *packet, int len);
 static void *get_irc_data(void *arg);
-static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs,
-                                      char *mod, char *ip, char RoU);
-static bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs,
-                            char *mod, char *ip, char RoU);
+static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
+static bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
 static int read_config(char *);
 static void runit();
 static void sigCatch(int signum);
@@ -328,63 +200,16 @@ static void compute_aprs_hash();
 static void *send_aprs_beacon(void *arg);
 
 /* aprs functions, borrowed from my retired IRLP node 4201 */
-static bool aprs_write_data(short int rptr_idx, unsigned char *data);
-static void aprs_sync_it(short int rptr_idx);
-static void aprs_reset(short int rptr_idx);
-static unsigned int aprs_get_data(short int rptr_idx, unsigned char *data, unsigned int len);
-static void aprs_init();
-static void aprs_open();
-static bool aprs_add_data(short int rptr_idx, unsigned char *data);
-static bool aprs_check_data(short int rptr_idx);
-static unsigned int aprs_calc_crc(unsigned char* buf, unsigned int len);
-static void aprs_select_band(short int rptr_idx, unsigned char *streamID);
-static void aprs_process_text(unsigned char *streamID,
-                              unsigned char seq,
-                              unsigned char *buf,
-                              unsigned int len);
 static void gps_send(short int rptr_idx);
 static bool verify_gps_csum(char *gps_text, char *csum_text);
 static void build_aprs_from_gps_and_send(short int rptr_idx);
-static ssize_t writen(char *buffer, size_t n);
 
 static void qrgs_and_maps();
-
-//static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
 
 static void set_dest_rptr(int mod_ndx, char *dest_rptr);
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
-
-static bool resolve_rmt(const char *name, int type, struct sockaddr_in *addr)
-{
-	struct addrinfo hints;
-	struct addrinfo *res;
-	struct addrinfo *rp;
-	int rc = 0;
-	bool found = false;
-
-	memset(&hints, 0x00, sizeof(struct addrinfo));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = type;
-
-	rc = getaddrinfo(name, NULL, &hints, &res);
-	if (rc != 0) {
-		traceit("getaddrinfo return error code %d for [%s]\n", rc, name);
-		return false;
-	}
-
-	for (rp = res; rp != NULL; rp = rp->ai_next) {
-		if ((rp->ai_family == AF_INET) &&
-		        (rp->ai_socktype == type)) {
-			memcpy(addr, rp->ai_addr, sizeof(struct sockaddr_in));
-			found = true;
-			break;
-		}
-	}
-	freeaddrinfo(res);
-	return found;
-}
 
 static void set_dest_rptr(int mod_ndx, char *dest_rptr)
 {
@@ -434,11 +259,27 @@ static void set_dest_rptr(int mod_ndx, char *dest_rptr)
 /* compute checksum */
 static void calcPFCS(unsigned char *packet, int len)
 {
+	const unsigned short crc_tabccitt[256] = {
+		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
+		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
+		0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
+		0x3183,0x200a,0x1291,0x0318,0x77a7,0x662e,0x54b5,0x453c,0xbdcb,0xac42,0x9ed9,0x8f50,0xfbef,0xea66,0xd8fd,0xc974,
+		0x4204,0x538d,0x6116,0x709f,0x0420,0x15a9,0x2732,0x36bb,0xce4c,0xdfc5,0xed5e,0xfcd7,0x8868,0x99e1,0xab7a,0xbaf3,
+		0x5285,0x430c,0x7197,0x601e,0x14a1,0x0528,0x37b3,0x263a,0xdecd,0xcf44,0xfddf,0xec56,0x98e9,0x8960,0xbbfb,0xaa72,
+		0x6306,0x728f,0x4014,0x519d,0x2522,0x34ab,0x0630,0x17b9,0xef4e,0xfec7,0xcc5c,0xddd5,0xa96a,0xb8e3,0x8a78,0x9bf1,
+		0x7387,0x620e,0x5095,0x411c,0x35a3,0x242a,0x16b1,0x0738,0xffcf,0xee46,0xdcdd,0xcd54,0xb9eb,0xa862,0x9af9,0x8b70,
+		0x8408,0x9581,0xa71a,0xb693,0xc22c,0xd3a5,0xe13e,0xf0b7,0x0840,0x19c9,0x2b52,0x3adb,0x4e64,0x5fed,0x6d76,0x7cff,
+		0x9489,0x8500,0xb79b,0xa612,0xd2ad,0xc324,0xf1bf,0xe036,0x18c1,0x0948,0x3bd3,0x2a5a,0x5ee5,0x4f6c,0x7df7,0x6c7e,
+		0xa50a,0xb483,0x8618,0x9791,0xe32e,0xf2a7,0xc03c,0xd1b5,0x2942,0x38cb,0x0a50,0x1bd9,0x6f66,0x7eef,0x4c74,0x5dfd,
+		0xb58b,0xa402,0x9699,0x8710,0xf3af,0xe226,0xd0bd,0xc134,0x39c3,0x284a,0x1ad1,0x0b58,0x7fe7,0x6e6e,0x5cf5,0x4d7c,
+		0xc60c,0xd785,0xe51e,0xf497,0x8028,0x91a1,0xa33a,0xb2b3,0x4a44,0x5bcd,0x6956,0x78df,0x0c60,0x1de9,0x2f72,0x3efb,
+		0xd68d,0xc704,0xf59f,0xe416,0x90a9,0x8120,0xb3bb,0xa232,0x5ac5,0x4b4c,0x79d7,0x685e,0x1ce1,0x0d68,0x3ff3,0x2e7a,
+		0xe70e,0xf687,0xc41c,0xd595,0xa12a,0xb0a3,0x8238,0x93b1,0x6b46,0x7acf,0x4854,0x59dd,0x2d62,0x3ceb,0x0e70,0x1ff9,
+		0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
+	};
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
-	short int i;
-	short int low;
-	short int high;
+	short int low, high;
 
 	if (len == 56) {
 		low = 15;
@@ -450,7 +291,7 @@ static void calcPFCS(unsigned char *packet, int len)
 		return;
 
 
-	for (i = low; i < high ; i++) {
+	for (unsigned short int i = low; i < high ; i++) {
 		short_c = 0x00ff & (unsigned short)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
@@ -1383,19 +1224,20 @@ static void runit()
 			                   0,(struct sockaddr *)&fromRptr,&fromlen);
 
 			/* DV */
-			if ( ((recvlen == 58) ||
-			        (recvlen == 29) ||
-			        (recvlen == 32)) &&
-			        (readBuffer[6] == 0x73) &&
-			        (readBuffer[7] == 0x12) &&
+			if ( ((recvlen == 58) || (recvlen == 29) || (recvlen == 32)) &&
+			        (readBuffer[6] == 0x73) && (readBuffer[7] == 0x12) &&
 			        (memcmp(readBuffer,"DSTR", 4) == 0) &&
-			        (readBuffer[10] == 0x20) &&
-			        (readBuffer[8] == 0x00) &&
+			        (readBuffer[10] == 0x20) && (readBuffer[8] == 0x00) &&
 			        ((readBuffer[9] == 0x30) ||    /* 48 bytes follow */
 			         (readBuffer[9] == 0x13) ||    /* 19 bytes follow */
 			         (readBuffer[9] == 0x16)) ) {  /* 22 bytes follow */
 
+				int dtmf_buf_count[3] = {0, 0, 0};
+				char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
+				int dtmf_last_frame[3] = { 0, 0, 0 };
+				unsigned int dtmf_counter[3] = { 0, 0, 0 };
 				if (recvlen == 58) {
+					
 					if (bool_qso_details)
 						traceit("START from rptr: cntr=%02x %02x, streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
 						        readBuffer[4], readBuffer[5],
@@ -1475,7 +1317,7 @@ static void runit()
 
 							/* select the band for aprs processing, and lock on the stream ID */
 							if (bool_send_aprs)
-								aprs_select_band(i, readBuffer + 14);
+								aprs->SelectBand(i, readBuffer + 14);
 						}
 					}
 
@@ -2001,14 +1843,14 @@ static void runit()
 									dtmf_file += "_mod_DTMF_NOTIFY";
 									if (bool_dtmf_debug)
 										traceit("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
-									dtmf_fp = fopen(dtmf_file.c_str(), "w");
-									if (!dtmf_fp)
-										traceit("Failed to create dtmf file %s\n", dtmf_file.c_str());
-									else {
+									FILE *dtmf_fp = fopen(dtmf_file.c_str(), "w");
+									if (dtmf_fp) {
 										fprintf(dtmf_fp, "%s\n%s", dtmf_buf[i], band_txt[i].lh_mycall);
 										fclose(dtmf_fp);
-										dtmf_fp = NULL;
-									}
+									} else
+										traceit("Failed to create dtmf file %s\n", dtmf_file.c_str());
+
+
 									memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
 									dtmf_buf_count[i] = 0;
 									dtmf_counter[i] = 0;
@@ -2067,10 +1909,12 @@ static void runit()
 
 									if ((dtmf_counter[i] == 5) && (dtmf_digit >= 0) && (dtmf_digit <= 15)) {
 										if (dtmf_buf_count[i] < MAX_DTMF_BUF) {
+											const char *dtmf_chars = "147*2580369#ABCD";
 											dtmf_buf[i][ dtmf_buf_count[i] ] = dtmf_chars[dtmf_digit];
 											dtmf_buf_count[i] ++;
 										}
 									}
+									const unsigned char silence[9] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8 };
 									memcpy(readBuffer + 17, silence, 9);
 								} else
 									dtmf_counter[i] = 0;
@@ -2418,7 +2262,7 @@ static void runit()
 
 					/* aprs processing */
 					if (bool_send_aprs)
-						aprs_process_text(readBuffer + 14,          /* stream ID    */
+						aprs->ProcessText(readBuffer + 14,          /* stream ID    */
 						                  readBuffer[16],           /* seq          */
 						                  readBuffer + 17,          /* audio + text */
 						                  (recvlen == 29)?12:15);   /* size         */
@@ -2606,131 +2450,6 @@ static void compute_aprs_hash()
 	return;
 }
 
-static void aprs_open()
-{
-	struct timespec req;
-	bool ok = false;
-
-	fd_set fdset;
-	struct timeval tv;
-	short int MAX_WAIT = 15; /* 15 seconds wait time MAX */
-	int val = 1;
-	socklen_t val_len;
-	char snd_buf[512];
-	char rcv_buf[512];
-	int rc = 0;
-
-	ok = resolve_rmt(rptr.aprs.ip.c_str(), SOCK_STREAM, &aprs_addr);
-	if (!ok) {
-		traceit("Can not resolve APRS_HOST %s\n", rptr.aprs.ip.c_str());
-		return;
-	}
-
-	/* fill it in */
-	aprs_addr.sin_family = AF_INET;
-	aprs_addr.sin_port = htons(rptr.aprs.port);
-
-	aprs_addr_len = sizeof(aprs_addr);
-
-	aprs_sock = socket(PF_INET,SOCK_STREAM,0);
-	if (aprs_sock == -1) {
-		traceit("Failed to create aprs socket,error=%d\n",errno);
-		return;
-	}
-	fcntl(aprs_sock,F_SETFL,O_NONBLOCK);
-
-	val = 1;
-	if (setsockopt(aprs_sock,IPPROTO_TCP,TCP_NODELAY,(char *)&val, sizeof(val)) == -1) {
-		traceit("setsockopt TCP_NODELAY TCP for aprs socket failed,error=%d\n",errno);
-		close(aprs_sock);
-		aprs_sock = -1;
-		return;
-	}
-
-	traceit("Trying to connect to APRS...\n");
-	rc = connect(aprs_sock, (struct sockaddr *)&aprs_addr, aprs_addr_len);
-	if (rc != 0) {
-		if (errno == EINPROGRESS) {
-			traceit("Waiting for up to %d seconds for APRS_HOST\n", MAX_WAIT);
-			while (MAX_WAIT > 0) {
-				tv.tv_sec = 0;
-				tv.tv_usec = 0;
-				FD_ZERO(&fdset);
-				FD_SET(aprs_sock, &fdset);
-				rc = select(aprs_sock + 1, NULL,  &fdset, NULL, &tv);
-
-				if (rc < 0) {
-					traceit("Failed to connect to APRS...select,error=%d\n", errno);
-					close(aprs_sock);
-					aprs_sock = -1;
-					return;
-				} else if (rc == 0) { /* timeout */
-					MAX_WAIT--;
-					sleep(1);
-				} else {
-					val = 1; /* Assume it fails */
-					val_len = sizeof(val);
-					if (getsockopt(aprs_sock, SOL_SOCKET, SO_ERROR, (char *) &val, &val_len) < 0) {
-						traceit("Failed to connect to APRS...getsockopt, error=%d\n", errno);
-						close(aprs_sock);
-						aprs_sock = -1;
-						return;
-					} else if (val == 0)
-						break;
-
-					MAX_WAIT--;
-					sleep(1);
-				}
-			}
-			if (MAX_WAIT == 0) {
-				traceit("Failed to connect to APRS...timeout\n");
-				close(aprs_sock);
-				aprs_sock = -1;
-				return;
-			}
-		} else {
-			traceit("Failed to connect to APRS, error=%d\n", errno);
-			close(aprs_sock);
-			aprs_sock = -1;
-			return;
-		}
-	}
-	traceit("Connected to APRS %s:%d\n", rptr.aprs.ip.c_str(), rptr.aprs.port);
-
-	/* login to aprs */
-	sprintf(snd_buf, "user %s pass %d vers g2_ircddb 2.99 UDP 5 ",
-	        OWNER.c_str(), rptr.aprs_hash);
-
-	/* add the user's filter */
-	if (rptr.aprs_filter.length()) {
-		strcat(snd_buf, "filter ");
-		strcat(snd_buf, rptr.aprs_filter.c_str());
-	}
-	// traceit("APRS login command:[%s]\n", snd_buf);
-	strcat(snd_buf, "\r\n");
-
-	while (true) {
-		rc = writen(snd_buf, strlen(snd_buf));
-		if (rc < 0) {
-			if (errno == EWOULDBLOCK) {
-				recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
-				req.tv_sec = 0;
-				req.tv_nsec = 100000000; // 100 milli
-				nanosleep(&req, NULL);
-			} else {
-				traceit("APRS login command failed, error=%d\n", errno);
-				break;
-			}
-		} else {
-			// traceit("APRS login command sent\n");
-			break;
-		}
-	}
-	recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
-
-	return;
-}
-
 void *send_aprs_beacon(void *arg)
 {
 	struct timespec req;
@@ -2786,9 +2505,9 @@ void *send_aprs_beacon(void *arg)
 
 	/* This thread is also saying to the APRS_HOST that we are ALIVE */
 	while (keep_running) {
-		if (aprs_sock == -1) {
-			aprs_open();
-			if (aprs_sock == -1)
+		if (aprs->GetSock() == -1) {
+			aprs->Open(OWNER);
+			if (aprs->GetSock() == -1)
 				sleep(1);
 			else
 				THRESHOLD_COUNTDOWN = 15;
@@ -2836,14 +2555,14 @@ void *send_aprs_beacon(void *arg)
 					strcat(snd_buf, "\r\n");
 
 					while (keep_running) {
-						if (aprs_sock == -1) {
-							aprs_open();
-							if (aprs_sock == -1)
+						if (aprs->GetSock() == -1) {
+							aprs->Open(OWNER);
+							if (aprs->GetSock() == -1)
 								sleep(1);
 							else
 								THRESHOLD_COUNTDOWN = 15;
 						} else {
-							rc = writen(snd_buf, strlen(snd_buf));
+							rc = aprs->WriteSock(snd_buf, strlen(snd_buf));
 							if (rc < 0) {
 								if ((errno == EPIPE) ||
 								        (errno == ECONNRESET) ||
@@ -2857,8 +2576,8 @@ void *send_aprs_beacon(void *arg)
 								        (errno == EHOSTDOWN) ||
 								        (errno == ENOTCONN)) {
 									traceit("send_aprs_beacon: APRS_HOST closed connection,error=%d\n",errno);
-									close(aprs_sock);
-									aprs_sock = -1;
+									close(aprs->GetSock());
+									aprs->SetSock( -1 );
 								} else if (errno == EWOULDBLOCK) {
 									req.tv_sec = 0;
 									req.tv_nsec = 100000000; // 100 milli
@@ -2873,12 +2592,12 @@ void *send_aprs_beacon(void *arg)
 								break;
 							}
 						}
-						rc = recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
+						rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
 						if (rc > 0)
 							THRESHOLD_COUNTDOWN = 15;
 					}
 				}
-				rc = recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
+				rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
 				if (rc > 0)
 					THRESHOLD_COUNTDOWN = 15;
 			}
@@ -2887,7 +2606,7 @@ void *send_aprs_beacon(void *arg)
 		/*
 		   Are we still receiving from APRS host ?
 		*/
-		rc = recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
+		rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
 		if (rc < 0) {
 			if ((errno == EPIPE) ||
 			        (errno == ECONNRESET) ||
@@ -2901,13 +2620,13 @@ void *send_aprs_beacon(void *arg)
 			        (errno == EHOSTDOWN) ||
 			        (errno == ENOTCONN)) {
 				traceit("send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n",errno);
-				close(aprs_sock);
-				aprs_sock = -1;
+				close(aprs->GetSock());
+				aprs->SetSock( -1 );
 			}
 		} else if (rc == 0) {
 			traceit("send_aprs_beacon: recv: APRS shutdown\n");
-			close(aprs_sock);
-			aprs_sock = -1;
+			close(aprs->GetSock());
+			aprs->SetSock( -1 );
 		} else
 			THRESHOLD_COUNTDOWN = 15;
 
@@ -2919,21 +2638,21 @@ void *send_aprs_beacon(void *arg)
 		time(&tnow);
 		if ((tnow - last_keepalive_time) > 20) {
 			/* we should be receving keepalive packets ONLY if the connection is alive */
-			if (aprs_sock >= 0) {
+			if (aprs->GetSock() >= 0) {
 				if (THRESHOLD_COUNTDOWN > 0)
 					THRESHOLD_COUNTDOWN--;
 
 				if (THRESHOLD_COUNTDOWN == 0) {
 					traceit("APRS host keepalive timeout\n");
-					close(aprs_sock);
-					aprs_sock = -1;
+					close(aprs->GetSock());
+					aprs->SetSock( -1 );
 				}
 			}
 			/* reset timer */
 			time(&last_keepalive_time);
 		}
 	}
-	traceit("beacon thread exiting...\n");
+	traceit("APRS beacon thread exiting...\n");
 	pthread_exit(NULL);
 }
 
@@ -3093,8 +2812,6 @@ int main(int argc, char **argv)
 	short int i;
 	struct sigaction act;
 
-	int rc = 0;
-
 	setvbuf(stdout, (char *)NULL, _IOLBF, 0);
 
 	traceit("VERSION %s\n", IRCDDB_VERSION);
@@ -3104,7 +2821,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Used to validate MYCALL input */
-	rc = regcomp(&preg,
+	int rc = regcomp(&preg,
 	             "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$",
 	             REG_EXTENDED | REG_NOSUB);
 	if (rc != REG_NOERROR) {
@@ -3131,12 +2848,6 @@ int main(int argc, char **argv)
 	rptr.mod[0].band = "23cm";
 	rptr.mod[1].band = "70cm";
 	rptr.mod[2].band = "2m";
-
-	for (i = 0; i < 3; i++) {
-		aprs_streamID[i].streamID[0] = 0x00;
-		aprs_streamID[i].streamID[1] = 0x00;
-		aprs_streamID[i].last_time = 0;
-	}
 
 	for (i = 0; i < 3; i++) {
 		band_txt[i].streamID[0] = 0x00;
@@ -3191,7 +2902,15 @@ int main(int argc, char **argv)
 	rptr.mod[2].call += "-C";
 	traceit("Repeater callsigns: [%s] [%s] [%s]\n", rptr.mod[0].call.c_str(), rptr.mod[1].call.c_str(), rptr.mod[2].call.c_str());
 
-	aprs_init();
+	if (bool_send_aprs) {
+		aprs = new CAPRS();
+		if (aprs)
+			aprs->Init();
+		else {
+			traceit("aprs class init failed!\nAPRS will be turned off");
+			bool_send_aprs = false;
+		}
+	}
 	compute_aprs_hash();
 
 	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, irc_pass, IRCDDB_VERSION, local_irc_ip);
@@ -3343,10 +3062,11 @@ int main(int argc, char **argv)
 		traceit("Closed G2_EXTERNAL_PORT\n");
 	}
 
-	if (aprs_sock != -1) {
-		close(aprs_sock);
-		traceit("Closed APRS\n");
-	}
+	if (bool_send_aprs) {
+		if (aprs->GetSock() != -1) {
+			close(aprs->GetSock());
+			traceit("Closed APRS\n");
+		}
 
 	for (i = 0; i < 3; i++) {
 		recd[i].last_time = 0;
@@ -3359,369 +3079,12 @@ int main(int argc, char **argv)
 	}
 
 	ii->close();
+	delete ii;
+	if (bool_send_aprs)
+		delete aprs;
+	}
 	traceit("g2_ircddb exiting\n");
 	return rc;
-}
-
-static void aprs_init()
-{
-	short int rptr_idx;
-
-	/* Initialize the statistics on the APRS packets */
-	for (rptr_idx = 0; rptr_idx < 3; rptr_idx++) {
-		aprs_pack[rptr_idx].al = al_none;
-		aprs_pack[rptr_idx].data[0] = '\0';
-		aprs_pack[rptr_idx].len = 0;
-		aprs_pack[rptr_idx].buf[0] = '\0';
-		aprs_pack[rptr_idx].sl = sl_first;
-		aprs_pack[rptr_idx].is_sent = false;
-	}
-
-	/* Initialize the APRS host */
-	memset(&aprs_addr,0,sizeof(struct sockaddr_in));
-	aprs_addr_len = sizeof(aprs_addr);
-
-	return;
-}
-
-// This is called when header comes in from repeater
-static void aprs_select_band(short int rptr_idx, unsigned char *streamID)
-{
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in aprs_select_band, invalid mod %d\n", rptr_idx);
-		return;
-	}
-
-	/* lock on the streamID */
-	aprs_streamID[rptr_idx].streamID[0] = streamID[0];
-	aprs_streamID[rptr_idx].streamID[1] = streamID[1];
-	// aprs_streamID[rptr_idx].last_time = 0;
-
-	aprs_reset(rptr_idx);
-	return;
-}
-
-// This is called when data(text) comes in from repeater
-// Parameter buf is either:
-//              12 bytes(packet from repeater was 29 bytes) or
-//              15 bytes(packet from repeater was 32 bytes)
-// Parameter len is either 12 or 15, because we took passed over the first 17 bytes
-//           in the repeater data
-// Paramter seq is the byte at pos# 16(counting from zero) in the repeater data
-static void aprs_process_text(unsigned char *streamID,
-                              unsigned char seq,
-                              unsigned char *buf,
-                              unsigned int len)
-{
-	bool done = false;
-	unsigned char aprs_data[200];
-	unsigned int aprs_len;
-	char *p = NULL;
-	char *hdr = NULL;
-	char *aud = NULL;
-	char aprs_buf[1024];
-	int rc;
-	time_t tnow = 0;
-
-	short int i;
-	short int rptr_idx = -1;
-
-	len = len;
-
-	for (i = 0; i < 3; i++) {
-		if (memcmp(streamID, aprs_streamID[i].streamID, 2) == 0) {
-			rptr_idx = i;
-			break;
-		}
-	}
-
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		// traceit("ERROR in aprs_process_text: rptr_idx %d is invalid\n", rptr_idx);
-		return;
-	}
-
-	if ((seq & 0x40) == 0x40)
-		return;
-
-	if ((seq & 0x1f) == 0x00) {
-		aprs_sync_it(rptr_idx);
-		return;
-	}
-
-	done = aprs_write_data(rptr_idx, buf + 9);
-	if (!done)
-		return;
-
-	aprs_len = aprs_get_data(rptr_idx, aprs_data, 200);
-	aprs_data[aprs_len] = '\0';
-
-	time(&tnow);
-	if ((tnow - aprs_streamID[rptr_idx].last_time) < 30)
-		return;
-
-	if (aprs_sock == -1)
-		return;
-
-	p = strchr((char*)aprs_data, ':');
-	if (!p) {
-		aprs_reset(rptr_idx);
-		return;
-	}
-	*p = '\0';
-
-
-	hdr = (char *)aprs_data;
-	aud = p + 1;
-	if (strchr(hdr, 'q') != NULL)
-		return;
-
-	p = strchr(aud, '\r');
-	*p = '\0';
-
-	sprintf(aprs_buf, "%s,qAR,%s:%s\r\n", hdr, rptr.mod[rptr_idx].call.c_str(), aud);
-	// traceit("GPS-A=%s", aprs_buf);
-	rc = writen(aprs_buf, strlen(aprs_buf));
-	if (rc == -1) {
-		if ((errno == EPIPE) ||
-		        (errno == ECONNRESET) ||
-		        (errno == ETIMEDOUT) ||
-		        (errno == ECONNABORTED) ||
-		        (errno == ESHUTDOWN) ||
-		        (errno == EHOSTUNREACH) ||
-		        (errno == ENETRESET) ||
-		        (errno == ENETDOWN) ||
-		        (errno == ENETUNREACH) ||
-		        (errno == EHOSTDOWN) ||
-		        (errno == ENOTCONN)) {
-			traceit("aprs_process_text: APRS_HOST closed connection,error=%d\n",errno);
-			close(aprs_sock);
-			aprs_sock = -1;
-		} else /* if it is WOULDBLOCK, we will not go into a loop here */
-			traceit("aprs_process_text: send error=%d\n", errno);
-	}
-
-	time(&aprs_streamID[rptr_idx].last_time);
-
-	return;
-}
-
-static bool aprs_write_data(short int rptr_idx, unsigned char *data)
-{
-
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in aprs_write_data: rptr_idx %d is invalid\n", rptr_idx);
-		return false;
-	}
-
-	if (aprs_pack[rptr_idx].is_sent)
-		return false;
-
-	switch (aprs_pack[rptr_idx].sl) {
-	case sl_first:
-		aprs_pack[rptr_idx].buf[0] = data[0] ^ 0x70;
-		aprs_pack[rptr_idx].buf[1] = data[1] ^ 0x4f;
-		aprs_pack[rptr_idx].buf[2] = data[2] ^ 0x93;
-		aprs_pack[rptr_idx].sl = sl_second;
-		return false;
-
-	case sl_second:
-		aprs_pack[rptr_idx].buf[3] = data[0] ^ 0x70;
-		aprs_pack[rptr_idx].buf[4] = data[1] ^ 0x4f;
-		aprs_pack[rptr_idx].buf[5] = data[2] ^ 0x93;
-		aprs_pack[rptr_idx].sl = sl_first;
-		break;
-	}
-
-	if ((aprs_pack[rptr_idx].buf[0] & 0xf0) != 0x30)
-		return false;
-
-	return aprs_add_data(rptr_idx, aprs_pack[rptr_idx].buf + 1);
-
-}
-
-
-static void aprs_reset(short int rptr_idx)
-{
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in aprs_reset: rptr_idx %d is invalid\n", rptr_idx);
-		return;
-	}
-
-	aprs_pack[rptr_idx].al = al_none;
-	aprs_pack[rptr_idx].len = 0;
-	aprs_pack[rptr_idx].sl = sl_first;
-	aprs_pack[rptr_idx].is_sent = false;
-
-	return;
-}
-
-static void aprs_sync_it(short int rptr_idx)
-{
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in aprs_sync_it: rptr_idx %d is invalid\n", rptr_idx);
-		return;
-	}
-
-	aprs_pack[rptr_idx].sl = sl_first;
-	return;
-}
-
-static bool aprs_add_data(short int rptr_idx, unsigned char *data)
-{
-	unsigned int i;
-	unsigned char c;
-	bool ok;
-
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in aprs_add_data: rptr_idx %d is invalid\n", rptr_idx);
-		return false;
-	}
-
-	for (i = 0; i < 5; i++) {
-		c = data[i];
-
-		if ((aprs_pack[rptr_idx].al == al_none) && (c == '$')) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_$1;
-		} else if ((aprs_pack[rptr_idx].al == al_$1) && (c == '$')) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_$2;
-		} else if ((aprs_pack[rptr_idx].al == al_$2) && (c == 'C')) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_c1;
-		} else if ((aprs_pack[rptr_idx].al == al_c1) && (c == 'R')) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_r1;
-		} else if ((aprs_pack[rptr_idx].al  == al_r1) && (c == 'C')) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_c2;
-		} else if (aprs_pack[rptr_idx].al == al_c2) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_csum1;
-		} else if (aprs_pack[rptr_idx].al == al_csum1) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_csum2;
-		} else if (aprs_pack[rptr_idx].al == al_csum2) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_csum3;
-		} else if (aprs_pack[rptr_idx].al == al_csum3) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_csum4;
-		} else if ((aprs_pack[rptr_idx].al == al_csum4) && (c == ',')) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_data;
-		} else if ((aprs_pack[rptr_idx].al == al_data) && (c != '\r')) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-
-			if (aprs_pack[rptr_idx].len >= 300) {
-				traceit("ERROR in aprs_add_data: Expected END of APRS data\n");
-				aprs_pack[rptr_idx].len = 0;
-				aprs_pack[rptr_idx].al  = al_none;
-			}
-		} else if ((aprs_pack[rptr_idx].al == al_data) && (c == '\r')) {
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-
-
-			ok = aprs_check_data(rptr_idx);
-			if (ok) {
-				aprs_pack[rptr_idx].al = al_end;
-				return true;
-			} else {
-				traceit("BAD checksum in APRS data\n");
-				aprs_pack[rptr_idx].al  = al_none;
-				aprs_pack[rptr_idx].len = 0;
-			}
-		} else {
-			aprs_pack[rptr_idx].al  = al_none;
-			aprs_pack[rptr_idx].len = 0;
-		}
-	}
-	return false;
-}
-
-static unsigned int aprs_get_data(short int rptr_idx, unsigned char *data, unsigned int len)
-{
-	unsigned int l;
-
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in aprs_get_data: rptr_idx %d is invalid\n", rptr_idx);
-		return 0;
-	}
-
-	l = aprs_pack[rptr_idx].len - 10;
-
-	if (l > len)
-		l = len;
-
-	memcpy(data, aprs_pack[rptr_idx].data  + 10, l);
-
-	aprs_pack[rptr_idx].al = al_none;
-	aprs_pack[rptr_idx].len = 0;
-	aprs_pack[rptr_idx].is_sent = true;
-
-	return l;
-
-}
-
-static bool aprs_check_data(short int rptr_idx)
-{
-	unsigned int my_sum;
-	char buf[5];
-
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in aprs_check_data: rptr_idx %d is invalid\n", rptr_idx);
-		return false;
-	}
-	my_sum = aprs_calc_crc(aprs_pack[rptr_idx].data + 10,
-	                       aprs_pack[rptr_idx].len - 10);
-
-	sprintf(buf, "%04X", my_sum);
-
-	return (memcmp(buf,
-	               aprs_pack[rptr_idx].data + 5,
-	               4) == 0);
-
-}
-
-static unsigned int aprs_calc_crc(unsigned char* buf, unsigned int len)
-{
-	unsigned int my_crc = 0xffff;
-	unsigned int i,j;
-	unsigned char c;
-	bool xor_val;
-
-	if (!buf)
-		return 0;
-
-	if (len <= 0)
-		return 0;
-
-	for (j = 0; j < len; j++) {
-		c = buf[j];
-
-		for (i = 0; i < 8; i++) {
-			xor_val = (((my_crc ^ c) & 0x01) == 0x01);
-			my_crc >>= 1;
-
-			if (xor_val)
-				my_crc ^= 0x8408;
-
-			c >>= 1;
-		}
-	}
-	return (~my_crc & 0xffff);
 }
 
 static void gps_send(short int rptr_idx)
@@ -3914,7 +3277,7 @@ static void build_aprs_from_gps_and_send(short int rptr_idx)
 	// traceit("Built APRS from old GPS mode=[%s]\n", buf);
 	strcat(buf, "\r\n");
 
-	rc = writen(buf, strlen(buf));
+	rc = aprs->WriteSock(buf, strlen(buf));
 	if (rc == -1) {
 		if ((errno == EPIPE) ||
 		        (errno == ECONNRESET) ||
@@ -3928,8 +3291,8 @@ static void build_aprs_from_gps_and_send(short int rptr_idx)
 		        (errno == EHOSTDOWN) ||
 		        (errno == ENOTCONN)) {
 			traceit("build_aprs_from_gps_and_send: APRS_HOST closed connection,error=%d\n",errno);
-			close(aprs_sock);
-			aprs_sock = -1;
+			close(aprs->GetSock());
+			aprs->SetSock( -1 );
 		} else
 			traceit("build_aprs_from_gps_and_send: send error=%d\n", errno);
 	}
@@ -3964,25 +3327,4 @@ static bool verify_gps_csum(char *gps_text, char *csum_text)
 		return true;
 	else
 		return false;
-}
-
-static ssize_t writen(char *buffer, size_t n)
-{
-	ssize_t num_written = 0;
-	size_t tot_written = 0;
-	char *buf;
-
-	buf = buffer;
-	for (tot_written = 0; tot_written < n;) {
-		num_written = write(aprs_sock, buf, n - tot_written);
-		if (num_written <= 0) {
-			if ((num_written == -1) && (errno == EINTR))
-				continue;
-			else
-				return num_written;
-		}
-		tot_written += num_written;
-		buf += num_written;
-	}
-	return tot_written;
 }

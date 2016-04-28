@@ -25,7 +25,7 @@ LDFLAGS=-L/usr/lib -lconfig++
 
 PROGRAMS=g2_ircddb g2_link dvap_rptr dvrptr g2link_test g2link_test_audio
 
-IRCDDBOBJS = IRCDDB.o IRCClient.o IRCReceiver.o IRCMessageQueue.o IRCProtocol.o IRCMessage.o IRCDDBApp.o IRCutils.o golay23.o dstar_dv.o
+IRCDDBOBJS = IRCDDB.o IRCClient.o IRCReceiver.o IRCMessageQueue.o IRCProtocol.o IRCMessage.o IRCDDBApp.o IRCutils.o golay23.o dstar_dv.o aprs.o
 
 all : $(PROGRAMS)
 
@@ -64,6 +64,9 @@ IRCMessage.o : IRCMessage.cpp IRCMessage.h
 
 IRCDDBApp.o : IRCDDBApp.cpp IRCDDBApp.h IRCutils.h
 	g++ -c $(CPPFLAGS) IRCDDBApp.cpp
+
+aprs.o : aprs.cpp aprs.h
+	g++ -c $(CPPFLAGS) aprs.cpp
 
 golay23.o : golay23.cpp golay23.h
 	g++ -c $(CPPFLAGS) golay23.cpp
