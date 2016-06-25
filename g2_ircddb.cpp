@@ -396,7 +396,7 @@ static int read_config(char *cfgFile)
 			else if (0 == strcasecmp(type.c_str(), "dvrptr"))
 				rptr.mod[m].package_version = DVRPTR_VERSION;
 			else
-				rptr.mod[m].package_fersion = MMDVM_VERSION;
+				rptr.mod[m].package_version = MMDVM_VERSION;
 			if (! get_value(cfg, std::string(path+".ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, "127.0.0.1"))
 				return 1;
 			get_value(cfg, std::string(path+".port").c_str(), rptr.mod[m].portip.port, 16000, 65535, 19998+m);
