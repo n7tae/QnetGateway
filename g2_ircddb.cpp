@@ -386,15 +386,17 @@ static int read_config(char *cfgFile)
 		path += m + 'a';
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr")) {
+			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm")) {
 				traceit("%s.type '%s' is invalid\n", type.c_str());
 				return 1;
 			}
 			rptr.mod[m].defined = true;
 			if (0 == strcasecmp(type.c_str(), "dvap"))
 				rptr.mod[m].package_version = DVAP_VERSION;
-			else
+			else if (0 == strcasecmp(type.c_str(), "dvrptr"))
 				rptr.mod[m].package_version = DVRPTR_VERSION;
+			else
+				rptr.mod[m].package_fersion = MMDVM_VERSION;
 			if (! get_value(cfg, std::string(path+".ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, "127.0.0.1"))
 				return 1;
 			get_value(cfg, std::string(path+".port").c_str(), rptr.mod[m].portip.port, 16000, 65535, 19998+m);
