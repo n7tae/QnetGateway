@@ -77,26 +77,19 @@ static bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header,b
 
 static int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
 
-/* data needed for aprs login and aprs beacon */
+// data needed for aprs login and aprs beacon
 // RPTR defined in aprs.h
 RPTR rptr;
 
-/* local repeater modules being recorded */
-/* This is for echotest */
+// local repeater modules being recorded
+// This is for echotest and voicemail
 static struct {
 	time_t last_time;
 	unsigned char streamid[2];
 	int fd;
 	char file[FILENAME_MAX + 1];
-} recd[3];
+} recd[3], vm[3];
 
-/* this is for vm */
-static struct {
-	time_t last_time;
-	unsigned char streamid[2];
-	int fd;
-	char file[FILENAME_MAX + 1];
-} vm[3];
 static unsigned char recbuf[100]; /* 56 or 27, max is 56 */
 
 /* the streamids going to remote Gateways from each local module */
@@ -186,8 +179,7 @@ static std::map<std::string, std::string> user2rptr_map, rptr2gwy_map, gwy2ip_ma
 
 static pthread_mutex_t irc_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int g2_open();
-static int srv_open();
+static int open_port(const PORTIP &pip);
 static void calcPFCS(unsigned char *packet, int len);
 static void *get_irc_data(void *arg);
 static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
@@ -447,15 +439,15 @@ static int read_config(char *cfgFile)
 	if (! get_value(cfg, "aprs.filter", rptr.aprs_filter, 0, 512, ""))
 		return 1;
 
-	if (! get_value(cfg, "gateway.g2_external.ip", g2_external.ip, 7, IP_SIZE, "0.0.0.0"))
+	if (! get_value(cfg, "gateway.external.ip", g2_external.ip, 7, IP_SIZE, "0.0.0.0"))
 		return 1;
 
-	get_value(cfg, "gateway.g2_external.port", g2_external.port, 20001, 65535, 40000);
+	get_value(cfg, "gateway.external.port", g2_external.port, 20001, 65535, 40000);
 
-	if (! get_value(cfg, "gateway.g2_internal.ip", g2_internal.ip, 7, IP_SIZE, "0.0.0.0"))
+	if (! get_value(cfg, "gateway.internal.ip", g2_internal.ip, 7, IP_SIZE, "0.0.0.0"))
 		return 1;
 
-	get_value(cfg, "gateway.g2_internal.port", g2_internal.port, 16000, 65535, 19000);
+	get_value(cfg, "gateway.internal.port", g2_internal.port, 16000, 65535, 19000);
 
 	if (! get_value(cfg, "g2_link.outgoing_ip", g2_link.ip, 7, IP_SIZE, "127.0.0.1"))
 		return 1;
@@ -501,58 +493,30 @@ static int read_config(char *cfgFile)
 	return 0;
 }
 
-/* Create the 40000 g2_external port */
-static int g2_open()
+// Create ports
+static int open_port(const PORTIP &pip)
 {
 	struct sockaddr_in sin;
 
-	g2_sock = socket(PF_INET,SOCK_DGRAM,0);
-	if (g2_sock == -1) {
-		traceit("Failed to create g2 socket,errno=%d\n",errno);
-		return 1;
+	int sock = socket(PF_INET, SOCK_DGRAM, 0);
+	if (0 > sock) {
+		traceit("Failed to create socket on %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
+		return -1;
 	}
-	fcntl(g2_sock,F_SETFL,O_NONBLOCK);
+	fcntl(sock, F_SETFL, O_NONBLOCK);
 
-	memset(&sin,0,sizeof(struct sockaddr_in));
+	memset(&sin, 0, sizeof(struct sockaddr_in));
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(g2_external.port);
-	sin.sin_addr.s_addr = inet_addr(g2_external.ip.c_str());
+	sin.sin_port = htons(pip.port);
+	sin.sin_addr.s_addr = inet_addr(pip.ip.c_str());
 
-	if (bind(g2_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		traceit("Failed to bind g2 socket on port %d, errno=%d\n",g2_external.port,errno);
-		close(g2_sock);
-		g2_sock = -1;
-		return 1;
+	if (bind(sock, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) != 0) {
+		traceit("filed to bind %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
+		close(sock);
+		return -1;
 	}
-	return 0;
-}
-
-/* Create the 19000 g2_internal port */
-static int srv_open()
-{
-	struct sockaddr_in sin;
-
-	srv_sock = socket(PF_INET,SOCK_DGRAM,0);
-	if (srv_sock == -1) {
-		traceit("Failed to create srv socket,errno=%d\n",errno);
-		return 1;
-	}
-	fcntl(srv_sock,F_SETFL,O_NONBLOCK);
-
-	memset(&sin,0,sizeof(struct sockaddr_in));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(g2_internal.port);
-	sin.sin_addr.s_addr = inet_addr(g2_internal.ip.c_str());
-
-	if (bind(srv_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		traceit("Failed to bind srv socket on port %d, errno=%d\n",
-		        g2_internal.port, errno);
-		close(srv_sock);
-		srv_sock = -1;
-		return 1;
-	}
-
-	return 0;
+	
+	return sock;
 }
 
 /* receive data from the irc server and save it */
@@ -683,8 +647,7 @@ static void *get_irc_data(void *arg)
 }
 
 /* return codes: 0=OK(found it), 1=TRY AGAIN, 2=FAILED(bad data) */
-static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs,
-                                      char *mod, char *ip, char RoU)
+static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
 {
 	std::map<std::string, std::string>::iterator user_pos = user2rptr_map.end();
 	std::map<std::string, std::string>::iterator rptr_pos = rptr2gwy_map.end();
@@ -800,6 +763,16 @@ static void sigCatch(int signum)
 	return;
 }
 
+static int CreateThread(pthread_t *thread, void *(*start_sub)(void *), void *arg = (void *)0)
+{
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	int rc = pthread_create(thread, &attr, start_sub, arg);
+	pthread_attr_destroy(&attr);
+	return rc;
+}
+
 /* run the main loop for g2_ircddb */
 static void runit()
 {
@@ -822,15 +795,11 @@ static void runit()
 	char zonerp_cs[CALL_SIZE + 1];
 	char ip[IP_SIZE + 1];
 
-	int rc = 0;
 	char tempfile[FILENAME_MAX + 1];
-	pthread_t echo_thread;
-	pthread_attr_t attr;
 	long num_recs = 0L;
 	short int rec_len = 56;
 
-	pthread_t aprs_beacon_thread;
-	pthread_t irc_data_thread;
+	pthread_t aprs_beacon_thread, echo_thread, irc_data_thread;
 
 	/* START:  TEXT crap */
 	bool new_group[3] = { true, true, true };
@@ -852,30 +821,21 @@ static void runit()
 		max_nfds = g2_sock;
 	if (srv_sock > max_nfds)
 		max_nfds = srv_sock;
-	traceit("g2=%d, srv=%d, MAX+1=%d\n",
-	        g2_sock, srv_sock, max_nfds + 1);
+	traceit("g2=%d, srv=%d, MAX+1=%d\n", g2_sock, srv_sock, max_nfds + 1);
 
 	/* start the beacon thread */
 	if (bool_send_aprs) {
-		pthread_attr_init(&attr);
-		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-		rc = pthread_create(&aprs_beacon_thread,&attr,send_aprs_beacon,(void *)0);
-		if (rc != 0)
+		if (CreateThread(&aprs_beacon_thread, send_aprs_beacon))
 			traceit("failed to start the aprs beacon thread\n");
 		else
 			traceit("APRS beacon thread started\n");
-		pthread_attr_destroy(&attr);
 	}
 
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	rc = pthread_create(&irc_data_thread,&attr,get_irc_data,(void *)0);
-	if (rc != 0) {
+	if (CreateThread(&irc_data_thread, get_irc_data)) {
 		traceit("failed to start the get_irc_data thread\n");
 		keep_running = false;
 	} else
 		traceit("get_irc_data thread started\n");
-	pthread_attr_destroy(&attr);
 
 	ii->kickWatchdog(IRCDDB_VERSION);
 
@@ -888,25 +848,19 @@ static void runit()
 					traceit("Inactivity on echotest recording mod %d, removing stream id=%d,%d\n",
 					        i,recd[i].streamid[0], recd[i].streamid[1]);
 
-					recd[i].streamid[0] = 0x00;
-					recd[i].streamid[1] = 0x00;
+					recd[i].streamid[0] = recd[i].streamid[1] = 0x00;
 					recd[i].last_time = 0;
 					close(recd[i].fd);
 					recd[i].fd = -1;
 					// traceit("Closed echotest audio file:[%s]\n", recd[i].file);
 
 					/* START: echotest thread setup */
-					pthread_attr_init(&attr);
-					pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-					rc = pthread_create(&echo_thread, &attr, echotest, (void *)recd[i].file);
-					if (rc != 0) {
+					if (CreateThread(&echo_thread, echotest, (void *)recd[i].file)) {
 						traceit("failed to start echotest thread\n");
-						/* when the echotest thread runs, it deletes the file,
-						   Because the echotest thread did NOT start, we delete the file here
-						*/
+						// when the echotest thread runs, it deletes the file,
+						// Because the echotest thread did NOT start, we delete the file here
 						unlink(recd[i].file);
 					}
-					pthread_attr_destroy(&attr);
 					/* END: echotest thread setup */
 				}
 			}
@@ -916,10 +870,9 @@ static void runit()
 				time(&t_now);
 				if ((t_now - vm[i].last_time) > voicemail_rec_timeout) {
 					traceit("Inactivity on voicemail recording mod %d, removing stream id=%d,%d\n",
-					        i,vm[i].streamid[0], vm[i].streamid[1]);
+					        i, vm[i].streamid[0], vm[i].streamid[1]);
 
-					vm[i].streamid[0] = 0x00;
-					vm[i].streamid[1] = 0x00;
+					vm[i].streamid[0] = vm[i].streamid[1] = 0x00;
 					vm[i].last_time = 0;
 					close(vm[i].fd);
 					vm[i].fd = -1;
@@ -927,21 +880,17 @@ static void runit()
 				}
 			}
 
-			/* any stream going to local repeater timed out? */
+			// any stream going to local repeater timed out?
 			if (toRptr[i].last_time != 0) {
 				time(&t_now);
-				/*
-				   The stream can be from a cross-band, or from a remote system,
-				   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
-				   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
-				*/
+				//   The stream can be from a cross-band, or from a remote system,
+				//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
+				//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
 				if ((t_now - toRptr[i].last_time) > from_remote_g2_timeout) {
-					traceit("Inactivity to local rptr mod index %d, removing stream id %d,%d\n",
-					        i, toRptr[i].streamid[0], toRptr[i].streamid[1]);
-					/*
-					   Send end_of_audio to local repeater.
-					   Let the repeater re-initialize
-					*/
+					traceit("Inactivity to local rptr mod index %d, removing stream id %d,%d\n", i, toRptr[i].streamid[0], toRptr[i].streamid[1]);
+
+					// Send end_of_audio to local repeater.
+					// Let the repeater re-initialize
 					end_of_audio[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
 					end_of_audio[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
 					if (i == 0)
@@ -955,14 +904,11 @@ static void runit()
 					end_of_audio[16] = toRptr[i].sequence | 0x40;
 
 					for (j = 0; j < 2; j++)
-						sendto(srv_sock, (char *)end_of_audio,29,0,
-						       (struct sockaddr *)&toRptr[i].band_addr,
-						       sizeof(struct sockaddr_in));
+						sendto(srv_sock, (char *)end_of_audio, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 					toRptr[i].G2_COUNTER ++;
 
-					toRptr[i].streamid[0] = '\0';
-					toRptr[i].streamid[1] = '\0';
+					toRptr[i].streamid[0] = toRptr[i].streamid[1] = '\0';
 					toRptr[i].adr = 0;
 					toRptr[i].last_time = 0;
 				}
@@ -974,14 +920,10 @@ static void runit()
 				if ((t_now - band_txt[i].last_time) > from_local_rptr_timeout) {
 					/* This local stream never went to a remote system, so trace the timeout */
 					if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0)
-						traceit("Inactivity from local rptr band %d, removing stream id %d,%d\n",
-						        i, band_txt[i].streamID[0], band_txt[i].streamID[1]);
+						traceit("Inactivity from local rptr band %d, removing stream id %d,%d\n", i, band_txt[i].streamID[0], band_txt[i].streamID[1]);
 
-					band_txt[i].streamID[0] = 0x00;
-					band_txt[i].streamID[1] = 0x00;
-					band_txt[i].flags[0] = 0x00;
-					band_txt[i].flags[1] = 0x00;
-					band_txt[i].flags[2] = 0x00;
+					band_txt[i].streamID[0] = band_txt[i].streamID[1] = 0x0;
+					band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
 					band_txt[i].lh_mycall[0] = '\0';
 					band_txt[i].lh_sfx[0] = '\0';
 					band_txt[i].lh_yrcall[0] = '\0';
@@ -1018,40 +960,29 @@ static void runit()
 
 		/* wait 20 ms max */
 		FD_ZERO(&fdset);
-		FD_SET(g2_sock,&fdset);
-		FD_SET(srv_sock,&fdset);
+		FD_SET(g2_sock, &fdset);
+		FD_SET(srv_sock, &fdset);
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000; /* 20 ms */
-		(void)select(max_nfds + 1,&fdset,0,0,&tv);
+		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
 		/* process packets coming from remote G2 */
 		if (FD_ISSET(g2_sock, &fdset)) {
 			fromlen = sizeof(struct sockaddr_in);
-			recvlen2 = recvfrom(g2_sock,(char *)readBuffer2,2000,
-			                    0,(struct sockaddr *)&fromDst4,&fromlen);
+			recvlen2 = recvfrom(g2_sock, (char *)readBuffer2, 2000, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
-			if ( ((recvlen2 == 56) ||
-			        (recvlen2 == 27)) &&
-			        (memcmp(readBuffer2, "DSVT", 4) == 0) &&
-			        ((readBuffer2[4] == 0x10) ||   /* header */
-			         (readBuffer2[4] == 0x20)) &&  /* details */
+			if ( ((recvlen2 == 56) || (recvlen2 == 27)) &&
+			      (memcmp(readBuffer2, "DSVT", 4) == 0) &&
+			      ((readBuffer2[4] == 0x10) || (readBuffer2[4] == 0x20)) &&  /* header or voiceframe */
 			        (readBuffer2[8] == 0x20)) {    /* voice type */
 				if (recvlen2 == 56) {
 
-					/*
-					   Find out the local repeater module IP/port
-					   to send the data to
-					*/
-					i = -1;
-					if (readBuffer2[25] == 'A')
-						i = 0;
-					else if (readBuffer2[25] == 'B')
-						i = 1;
-					else if (readBuffer2[25] == 'C')
-						i = 2;
+					// Find out the local repeater module IP/port
+					// to send the data to
+					i = readBuffer2[25] - 'A';
 
 					/* valid repeater module? */
-					if (i >= 0) {
+					if (i>=0 && i<3) {
 						/*
 						   toRptr[i] is active if a remote system is talking to it or
 						   toRptr[i] is receiving data from a cross-band
@@ -1107,8 +1038,7 @@ static void runit()
 					if ((readBuffer2[14] & 0x40) != 0) {
 						if (bool_qso_details)
 							traceit("END from g2: streamID=%d,%d, %d bytes from IP=%s\n",
-							        readBuffer2[12],readBuffer2[13],
-							        recvlen2,inet_ntoa(fromDst4.sin_addr));
+								readBuffer2[12], readBuffer2[13], recvlen2,inet_ntoa(fromDst4.sin_addr));
 					}
 
 					/* find out which repeater module to send the data to */
@@ -1124,9 +1054,9 @@ static void runit()
 							readBuffer[8] = 0x00;
 							readBuffer[9] = 0x13;
 							readBuffer[10] = 0x20;
-							memcpy(readBuffer + 11, readBuffer2 + 9, 18);
+							memcpy(readBuffer+11, readBuffer2+9, 18);
 
-							sendto(srv_sock, (char *)readBuffer,29,0,
+							sendto(srv_sock, (char *)readBuffer, 29, 0,
 							       (struct sockaddr *)&toRptr[i].band_addr,
 							       sizeof(struct sockaddr_in));
 
@@ -1134,7 +1064,7 @@ static void runit()
 							time(&toRptr[i].last_time);
 
 							/* bump G2 counter */
-							toRptr[i].G2_COUNTER ++;
+							toRptr[i].G2_COUNTER++;
 
 							toRptr[i].sequence = readBuffer[16];
 
@@ -1255,15 +1185,9 @@ static void runit()
 					         (readBuffer[17] == 0x20) ||                 /* BREAK */
 					         (readBuffer[17] == 0x28))) {                /* EMR + BREAK */
 
-						i = -1;
-						if (readBuffer[35] == 'A')
-							i = 0;
-						else if (readBuffer[35] == 'B')
-							i = 1;
-						else if (readBuffer[35] == 'C')
-							i = 2;
+						i = readBuffer[35] - 'A';
 
-						if (i >= 0) {
+						if (i>=0  && i<3) {
 							dtmf_last_frame[i] = 0;
 							dtmf_counter[i] = 0;
 							memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
@@ -1341,9 +1265,7 @@ static void runit()
 
 					/* send data g2_link */
 					if (mycall_valid == REG_NOERROR)
-						sendto(srv_sock, (char *)readBuffer, recvlen,0,
-						       (struct sockaddr *)&plug,
-						       sizeof(struct sockaddr_in));
+						sendto(srv_sock, (char *)readBuffer, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
 					if ((mycall_valid == REG_NOERROR) &&
 					        (memcmp(readBuffer + 36, "XRF", 3) != 0) &&             /* not a reflector */
@@ -1366,15 +1288,9 @@ static void runit()
 						         (readBuffer[17] == 0x28))                           /* EMR + BK */
 						   ) {
 							if (memcmp(readBuffer + 37, OWNER.c_str(), 6) != 0) {         /* the value after the slash in urcall, is NOT this repeater */
-								i = -1;
-								if (readBuffer[35] == 'A')
-									i = 0;
-								else if (readBuffer[35] == 'B')
-									i = 1;
-								else if (readBuffer[35] == 'C')
-									i = 2;
+								i = readBuffer[35] - 'A';
 
-								if (i >= 0) {
+								if (i>=0 && i<3) {
 									/* one radio user on a repeater module at a time */
 									if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
 										/* YRCALL=/repeater + mod */
@@ -1468,15 +1384,9 @@ static void runit()
 							if (result) {
 								/* destination is a remote system */
 								if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
-									i = -1;
-									if (readBuffer[35] == 'A')
-										i = 0;
-									else if (readBuffer[35] == 'B')
-										i = 1;
-									else if (readBuffer[35] == 'C')
-										i = 2;
+									i = readBuffer[35] - 'A';
 
-									if (i >= 0) {
+									if (i>=0 && i<3) {
 										/* one radio user on a repeater module at a time */
 										if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
 											/* set the destination */
@@ -1531,15 +1441,9 @@ static void runit()
 										}
 									}
 								} else {
-									i = -1;
-									if (readBuffer[35] == 'A')
-										i = 0;
-									else if (readBuffer[35] == 'B')
-										i = 1;
-									else if (readBuffer[35] == 'C')
-										i = 2;
+									i = readBuffer[35] - 'A';
 
-									if (i >= 0) {
+									if (i>=0 && i<3) {
 										/* the user we are trying to contact is on our gateway */
 										/* make sure they are on a different module */
 										if (temp_mod != readBuffer[35]) {
@@ -1551,16 +1455,10 @@ static void runit()
 											band_txt[i].dest_rptr[7] = temp_mod;
 											band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
-											i = -1;
-											if (temp_mod == 'A')
-												i = 0;
-											else if (temp_mod == 'B')
-												i = 1;
-											else if (temp_mod == 'C')
-												i = 2;
+											i = temp_mod - 'A';
 
 											/* valid destination repeater module? */
-											if (i >= 0) {
+											if (i>=0 && i<3) {
 												/*
 												   toRptr[i] :    receiving from a remote system or cross-band
 												   band_txt[i] :  local RF is talking.
@@ -1599,15 +1497,9 @@ static void runit()
 					} else if ((readBuffer[43] == '0') &&
 					           (readBuffer[42] == CLEAR_VM_CODE) &&
 					           (readBuffer[36] == ' ')) {
-						i = -1;
-						if (readBuffer[35] == 'A')
-							i = 0;
-						else if (readBuffer[35] == 'B')
-							i = 1;
-						else if (readBuffer[35] == 'C')
-							i = 2;
+						i = readBuffer[35] - 'A';
 
-						if (i >= 0) {
+						if (i>=0 && i<3) {
 							/* voicemail file is closed */
 							if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
 								unlink(vm[i].file);
@@ -1630,27 +1522,17 @@ static void runit()
 						if (i >= 0) {
 							/* voicemail file is closed */
 							if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
-								pthread_attr_init(&attr);
-								pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-								rc = pthread_create(&echo_thread, &attr, echotest, (void *)vm[i].file);
-								if (rc != 0)
+								if (CreateThread(&echo_thread, echotest, (void *)vm[i].file))
 									traceit("failed to start playing back voicemail\n");
-								pthread_attr_destroy(&attr);
 							} else
 								traceit("No voicemail to recall or still recording\n");
 						}
 					} else if ((readBuffer[43] == '0') &&
 					           (readBuffer[42] == STORE_VM_CODE) &&
 					           (readBuffer[36] == ' ')) {
-						i = -1;
-						if (readBuffer[35] == 'A')
-							i = 0;
-						else if (readBuffer[35] == 'B')
-							i = 1;
-						else if (readBuffer[35] == 'C')
-							i = 2;
+						i = readBuffer[35] - 'A';
 
-						if (i >= 0) {
+						if (i>=0 && i<3) {
 							if (vm[i].fd >= 0)
 								traceit("Already recording for voicemail on mod %d\n", i);
 							else {
@@ -1704,15 +1586,9 @@ static void runit()
 						}
 					} else if ((readBuffer[43] == ECHO_CODE) &&
 					           (readBuffer[36] == ' ')) {
-						i = -1;
-						if (readBuffer[35] == 'A')
-							i = 0;
-						else if (readBuffer[35] == 'B')
-							i = 1;
-						else if (readBuffer[35] == 'C')
-							i = 2;
+						i = readBuffer[35] - 'A';
 
-						if (i >= 0) {
+						if (i>=0 && i<3) {
 							if (recd[i].fd >= 0)
 								traceit("Already recording for echotest on mod %d\n", i);
 							else {
@@ -1776,37 +1652,21 @@ static void runit()
 						         (readBuffer[27] == 'B') ||
 						         (readBuffer[27] == 'C')) &&           /* !!! usually a G of rpt2, but we see A,B,C */
 						        (readBuffer[35] != readBuffer[27])) {  /* cross-banding? make sure NOT the same */
-							i = -1;
-							if (readBuffer[35] == 'A')
-								i = 0;
-							else if (readBuffer[35] == 'B')
-								i = 1;
-							else if (readBuffer[35] == 'C')
-								i = 2;
+							i = readBuffer[35] - 'A';
 
-							if (i >= 0) {
-								/*
-								   The remote repeater has been set, lets fill in the dest_rptr
-								   so that later we can send that to the LIVE web site
-								*/
+							if (i>=0 && i<3) {
+								// The remote repeater has been set, lets fill in the dest_rptr
+								// so that later we can send that to the LIVE web site
 								memcpy(band_txt[i].dest_rptr, readBuffer + 20, CALL_SIZE);
 								band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 							}
 
-							i = -1;
-							if (readBuffer[27] == 'A')
-								i = 0;
-							else if (readBuffer[27] == 'B')
-								i = 1;
-							else if (readBuffer[27] == 'C')
-								i = 2;
+							i = readBuffer[27] - 'A';
 
 							/* valid destination repeater module? */
-							if (i >= 0) {
-								/*
-								   toRptr[i] :    receiving from a remote system or cross-band
-								   band_txt[i] :  local RF is talking.
-								*/
+							if (i>=0 && i<3) {
+								// toRptr[i] :    receiving from a remote system or cross-band
+								// band_txt[i] :  local RF is talking.
 								if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
 									traceit("ZONEmode cross-banding from mod %c to %c\n",  readBuffer[35], readBuffer[27]);
 
@@ -1871,11 +1731,8 @@ static void runit()
 								                         band_txt[i].num_dv_silent_frames,
 								                         band_txt[i].num_bit_errors);
 
-								band_txt[i].streamID[0] = 0x00;
-								band_txt[i].streamID[1] = 0x00;
-								band_txt[i].flags[0] = 0x00;
-								band_txt[i].flags[1] = 0x00;
-								band_txt[i].flags[2] = 0x00;
+								band_txt[i].streamID[0] = band_txt[i].streamID[1] = 0x0;
+								band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
 								band_txt[i].lh_mycall[0] = '\0';
 								band_txt[i].lh_sfx[0] = '\0';
 								band_txt[i].lh_yrcall[0] = '\0';
@@ -2258,37 +2115,27 @@ static void runit()
 					}
 
 					/* send data to g2_link */
-					sendto(srv_sock, (char *)readBuffer, recvlen,0,
-					       (struct sockaddr *)&plug,
-					       sizeof(struct sockaddr_in));
+					sendto(srv_sock, (char *)readBuffer, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
 					/* aprs processing */
 					if (bool_send_aprs)
-						aprs->ProcessText(readBuffer + 14,          /* stream ID    */
-						                  readBuffer[16],           /* seq          */
-						                  readBuffer + 17,          /* audio + text */
-						                  (recvlen == 29)?12:15);   /* size         */
+						//                streamID       seq             audio+text     size
+						aprs->ProcessText(readBuffer+14, readBuffer[16], readBuffer+17, (recvlen == 29)?12:15);
 
 					for (i = 0; i < 3; i++) {
 						/* find out if data must go to the remote G2 */
 						if (memcmp(to_remote_g2[i].streamid, readBuffer + 14, 2) == 0) {
 							memcpy(readBuffer2, "DSVT", 4);
 							readBuffer2[4] = 0x20;
-							readBuffer2[5] = 0x00;
-							readBuffer2[6] = 0x00;
-							readBuffer2[7] = 0x00;
-							readBuffer2[8] =  readBuffer[10];
-							readBuffer2[9] =  readBuffer[11];
-							readBuffer2[10] = readBuffer[12];
-							readBuffer2[11] = readBuffer[13];
-							memcpy(readBuffer2 + 12, readBuffer + 14, 3);
+							readBuffer2[5] = readBuffer2[6] = readBuffer2[7] = 0x00;
+							memcpy(readBuffer2 + 8, readBuffer + 10, 7);
 							if (recvlen == 29)
 								memcpy(readBuffer2 + 15, readBuffer + 17, 12);
 							else
 								memcpy(readBuffer2 + 15, readBuffer + 20, 12);
 
 							sendto(g2_sock, (char *)readBuffer2, 27,
-							       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
+							       0, (struct sockaddr *)&(to_remote_g2[i].toDst4),
 							       sizeof(struct sockaddr_in));
 
 							time(&(to_remote_g2[i].last_time));
@@ -2296,8 +2143,7 @@ static void runit()
 							/* Is this the end-of-stream */
 							if ((readBuffer[16] & 0x40) != 0) {
 								memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
-								to_remote_g2[i].streamid[0] = '\0';
-								to_remote_g2[i].streamid[1] = '\0';
+								to_remote_g2[i].streamid[0] = to_remote_g2[i].streamid[1] = '\0';
 								to_remote_g2[i].last_time = 0;
 							}
 							break;
@@ -2335,10 +2181,7 @@ static void runit()
 									// traceit("Closed echotest audio file:[%s]\n", recd[i].file);
 
 									/* we are in echotest mode, so play it back */
-									pthread_attr_init(&attr);
-									pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-									rc = pthread_create(&echo_thread, &attr, echotest, (void *)recd[i].file);
-									if (rc != 0) {
+									if (CreateThread(&echo_thread, echotest, (void *)recd[i].file)) {
 										traceit("failed to start echotest thread\n");
 										/*
 										   When the echotest thread runs, it deletes the file,
@@ -2346,7 +2189,6 @@ static void runit()
 										*/
 										unlink(recd[i].file);
 									}
-									pthread_attr_destroy(&attr);
 								}
 								break;
 							} else
@@ -2385,8 +2227,7 @@ static void runit()
 									break;
 								} else
 									/* or maybe this is cross-banding data */
-									if ((memcmp(toRptr[i].streamid, readBuffer + 14, 2) == 0) &&
-									        (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {
+									if ((memcmp(toRptr[i].streamid, readBuffer + 14, 2) == 0) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {
 										sendto(srv_sock, (char *)readBuffer,29,0,
 										       (struct sockaddr *)&toRptr[i].band_addr,
 										       sizeof(struct sockaddr_in));
@@ -2852,16 +2693,10 @@ int main(int argc, char **argv)
 	rptr.mod[2].band = "2m";
 
 	for (i = 0; i < 3; i++) {
-		band_txt[i].streamID[0] = 0x00;
-		band_txt[i].streamID[1] = 0x00;
-		band_txt[i].flags[0] = 0x00;
-		band_txt[i].flags[1] = 0x00;
-		band_txt[i].flags[2] = 0x00;
-		band_txt[i].lh_mycall[0] = '\0';
-		band_txt[i].lh_sfx[0] = '\0';
-		band_txt[i].lh_yrcall[0] = '\0';
-		band_txt[i].lh_rpt1[0] = '\0';
-		band_txt[i].lh_rpt2[0] = '\0';
+		band_txt[i].streamID[0] = band_txt[i].streamID[1] = 0x0;
+		band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
+		band_txt[i].lh_mycall[0] = band_txt[i].lh_sfx[0] = band_txt[i].lh_yrcall[0] = '\0';
+		band_txt[i].lh_rpt1[0] = band_txt[i].lh_rpt2[0] = '\0';
 
 		band_txt[i].last_time = 0;
 
@@ -2945,62 +2780,46 @@ int main(int argc, char **argv)
 
 	do {
 		/* udp port 40000 must open first */
-		rc = g2_open();
-		if (rc != 0) {
-			traceit("g2_open() failed\n");
+		g2_sock = open_port(g2_external);
+		if (0 > g2_sock) {
+			traceit("Can't open %s:%d\n", g2_external.ip.c_str(), g2_external.port);
 			break;
 		}
 
 		/* Open udp INTERNAL port */
-		rc = srv_open();
-		if (rc != 0) {
-			traceit("srv_open() failed\n");
+		srv_sock = open_port(g2_internal);
+		if (0 > srv_sock) {
+			traceit("Can't open %s:%d\n", g2_internal.ip.c_str(), g2_internal.port);
 			break;
 		}
 
-		/* recording for echotest on local repeater modules */
 		for (i = 0; i < 3; i++) {
+			// recording for echotest on local repeater modules
 			recd[i].last_time = 0;
-			recd[i].streamid[0] = 0x00;
-			recd[i].streamid[1] = 0x00;
+			recd[i].streamid[0] = recd[i].streamid[1] = 0x0;
 			recd[i].fd = -1;
 			memset(recd[i].file, 0, sizeof(recd[i].file));
-		}
 
-		/* recording for voicemail on local repeater modules */
-		for (i = 0; i < 3; i++) {
+			// recording for voicemail on local repeater modules 
 			vm[i].last_time = 0;
-			vm[i].streamid[0] = 0x00;
-			vm[i].streamid[1] = 0x00;
+			vm[i].streamid[0] = vm[i].streamid[1] = 0x0;
 			vm[i].fd = -1;
 			memset(vm[i].file, 0, sizeof(vm[i].file));
 
-			if (i == 0)
-				snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s",
-				         echotest_dir.c_str(),'A',"voicemail.dat");
-			else if (i == 1)
-				snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s",
-				         echotest_dir.c_str(),'B',"voicemail.dat");
-			else
-				snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s",
-				         echotest_dir.c_str(),'C',"voicemail.dat");
+			snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), 'A'+i, "voicemail.dat");
 
 			if (access(vm[i].file, F_OK) != 0)
 				memset(vm[i].file, 0, sizeof(vm[i].file));
 			else
-				traceit("Loaded voicemail file: %s for mod %d\n",
-				        vm[i].file, i);
-		}
+				traceit("Loaded voicemail file: %s for mod %d\n", vm[i].file, i);
 
-		/* the repeater modules run on these ports */
-		for (i = 0; i < 3; i++) {
+			// the repeater modules run on these ports
 			memset(&toRptr[i],0,sizeof(toRptr[i]));
 
 			memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
 			toRptr[i].saved_adr = 0;
 
-			toRptr[i].streamid[0] = '\0';
-			toRptr[i].streamid[1] = '\0';
+			toRptr[i].streamid[0] = toRptr[i].streamid[1] = '\0';
 			toRptr[i].adr = 0;
 
 			toRptr[i].band_addr.sin_family = AF_INET;
@@ -3010,7 +2829,7 @@ int main(int argc, char **argv)
 			toRptr[i].last_time = 0;
 			toRptr[i].G2_COUNTER = 0;
 
-			toRptr[i].sequence = 0x00;
+			toRptr[i].sequence = 0x0;
 		}
 
 		/*
@@ -3032,14 +2851,14 @@ int main(int argc, char **argv)
 
 		/* to remote systems */
 		for (i = 0; i < 3; i++) {
-			memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
+			memset(&(to_remote_g2[i].toDst4), 0, sizeof(struct sockaddr_in));
 			to_remote_g2[i].streamid[0] = '\0';
 			to_remote_g2[i].streamid[1] = '\0';
 			to_remote_g2[i].last_time = 0;
 		}
 
 		/* where to send packets to g2_link */
-		memset(&plug,0,sizeof(struct sockaddr_in));
+		memset(&plug, 0, sizeof(struct sockaddr_in));
 		plug.sin_family = AF_INET;
 		plug.sin_port = htons(g2_link.port);
 		plug.sin_addr.s_addr = inet_addr(g2_link.ip.c_str());
@@ -3069,11 +2888,12 @@ int main(int argc, char **argv)
 			close(aprs->GetSock());
 			traceit("Closed APRS\n");
 		}
+		delete aprs;
+	}
 
 	for (i = 0; i < 3; i++) {
 		recd[i].last_time = 0;
-		recd[i].streamid[0] = 0x00;
-		recd[i].streamid[1] = 0x00;
+		recd[i].streamid[0] = recd[i].streamid[1] = 0x0;
 		if (recd[i].fd >= 0) {
 			close(recd[i].fd);
 			unlink(recd[i].file);
@@ -3082,9 +2902,7 @@ int main(int argc, char **argv)
 
 	ii->close();
 	delete ii;
-	if (bool_send_aprs)
-		delete aprs;
-	}
+
 	traceit("g2_ircddb exiting\n");
 	return rc;
 }
@@ -3281,18 +3099,10 @@ static void build_aprs_from_gps_and_send(short int rptr_idx)
 
 	rc = aprs->WriteSock(buf, strlen(buf));
 	if (rc == -1) {
-		if ((errno == EPIPE) ||
-		        (errno == ECONNRESET) ||
-		        (errno == ETIMEDOUT) ||
-		        (errno == ECONNABORTED) ||
-		        (errno == ESHUTDOWN) ||
-		        (errno == EHOSTUNREACH) ||
-		        (errno == ENETRESET) ||
-		        (errno == ENETDOWN) ||
-		        (errno == ENETUNREACH) ||
-		        (errno == EHOSTDOWN) ||
-		        (errno == ENOTCONN)) {
-			traceit("build_aprs_from_gps_and_send: APRS_HOST closed connection,error=%d\n",errno);
+		if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) ||
+		    (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) ||
+		    (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
+			traceit("build_aprs_from_gps_and_send: APRS_HOST closed connection, error=%d\n", errno);
 			close(aprs->GetSock());
 			aprs->SetSock( -1 );
 		} else
