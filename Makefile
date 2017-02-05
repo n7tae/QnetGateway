@@ -33,13 +33,13 @@ g2_ircddb : g2_ircddb.cpp $(IRCDDBOBJS) versions.h
 	g++ $(CPPFLAGS) -o g2_ircddb g2_ircddb.cpp $(IRCDDBOBJS) $(LDFLAGS) -pthread
 
 g2_link : g2_link.cpp versions.h
-	g++ -W -Wall -o g2_link g2_link.cpp -lrt -lconfig++ -pthread
+	g++ $(CPPFLAGS) -o g2_link g2_link.cpp -lrt -lconfig++ -pthread
 
 dvap_rptr : dvap_rptr.cpp dstar_dv.o golay23.o versions.h
-	g++ -W -Wall -o dvap_rptr  dvap_rptr.cpp  golay23.o dstar_dv.o -I/usr/include -L/usr/lib -lrt -lconfig++ -pthread
+	g++ $(CPPFLAGS) -o dvap_rptr  dvap_rptr.cpp  golay23.o dstar_dv.o -I/usr/include -L/usr/lib -lrt -lconfig++ -pthread
 
 dvrptr : dvrptr.cpp dstar_dv.o golay23.o
-	g++ -W -Wall -o dvrptr  dvrptr.cpp golay23.o dstar_dv.o  -I/usr/include -L/usr/lib -lconfig++ -lrt
+	g++ $(CPPFLAGS) -o dvrptr  dvrptr.cpp golay23.o dstar_dv.o  -I/usr/include -L/usr/lib -lconfig++ -lrt
 
 IRCutils.o : IRCutils.cpp IRCutils.h
 	g++ -c $(CPPFLAGS) IRCutils.cpp
@@ -75,10 +75,10 @@ dstar_dv.o : dstar_dv.cpp dstar_dv.h golay23.h
 	g++ -c $(CPPFLAGS) dstar_dv.cpp
 
 g2link_test : g2link_test.cpp
-	g++ -W -Wall -o g2link_test g2link_test.cpp  -lrt
+	g++ $(CPPFLAGS) -o g2link_test g2link_test.cpp  -lrt
 
 g2link_test_audio : g2link_test_audio.cpp
-	g++ -W -Wall -o g2link_test_audio g2link_test_audio.cpp  -lrt
+	g++ $(CPPFLAGS) -o g2link_test_audio g2link_test_audio.cpp  -lrt
 
 IRCApplication.h : IRCMessageQueue.h
 IRCClient.h : IRCReceiver.h IRCMessageQueue.h IRCProtocol.h IRCApplication.h
