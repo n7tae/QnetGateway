@@ -49,9 +49,24 @@ using namespace libconfig;
 #define CALL_SIZE 8
 #define RPTR_SIZE 8
 #define IP_SIZE 15
+#define isit_bigendian() ( (*(char*)&val32bits) == 0 )
+#define do_swap16(val) \
+   ((int16_t) ( \
+    (((u_int16_t) (val) & (u_int16_t) 0x00ffU) << 8) | \
+    (((u_int16_t) (val) & (u_int16_t) 0xff00U) >> 8)))
+#define do_swapu16(val) \
+   ((u_int16_t) ( \
+    (((u_int16_t) (val) & (u_int16_t) 0x00ffU) << 8) | \
+    (((u_int16_t) (val) & (u_int16_t) 0xff00U) >> 8)))
+#define do_swapu32(val) \
+   ((u_int32_t) ( \
+    (((u_int32_t) (val) & (u_int32_t) 0x000000ffU) << 24) | \
+    (((u_int32_t) (val) & (u_int32_t) 0x0000ff00U) <<  8) | \
+    (((u_int32_t) (val) & (u_int32_t) 0x00ff0000U) >>  8) | \
+    (((u_int32_t) (val) & (u_int32_t) 0xff000000U) >> 24)))
 
 /* data from dvap */
-struct dvap_hdr {
+typedef struct dvap_hdr_tag {
 	unsigned char hdr0; // 0x2f
 	unsigned char hdr1; // 0xa0
 	unsigned char streamid[2];
@@ -66,19 +81,10 @@ struct dvap_hdr {
 	unsigned char mycall[8];
 	unsigned char sfx[4];
 	unsigned char pfcs[2];
-};
-struct dvap_voice {
-	unsigned char hdr0; // 0x12
-	unsigned char hdr1; // 0xc0
-	unsigned char streamid[2];
-	unsigned char framepos;
-	unsigned char seq;
-	unsigned char voice[9];
-	unsigned char txt[3];
-};
+} SDVAP_HDR;
 
 /* data from the local gateway */
-struct hdr {
+typedef struct hdr_tag {
 	unsigned char flags[3];
 	unsigned char rpt2[8];
 	unsigned char rpt1[8];
@@ -86,44 +92,44 @@ struct hdr {
 	unsigned char mycall[8];
 	unsigned char sfx[4];
 	unsigned char pfcs[2];
-};
+} SHDR;
 
-struct icm {
+typedef struct icm_tag {
 	unsigned char icm_id;
 	unsigned char dst_rptr_id;
 	unsigned char snd_rptr_id;
 	unsigned char snd_term_id;
 	unsigned char streamid[2];
 	unsigned char ctrl;
-};
+} SICM;
 
-struct voice_and_text {
+typedef struct voice_and_text_tag {
 	unsigned char voice[9];
 	unsigned char text[3];
-};
+} SVAT;
 
-struct audio {
-	unsigned char buff[sizeof(struct hdr)];
-};
+typedef struct audio_tag {
+	unsigned char buff[sizeof(SHDR)];
+} SAUDIO;
 
-struct pkt {
+typedef struct pkt_tag {
 	unsigned char pkt_id[4];
 	unsigned char nothing1[2];
 	unsigned char flags[2];
 	unsigned char nothing2[2];
-	struct icm myicm;
+	SICM myicm;
 	union {
-		struct audio rf_audio;
-		struct hdr rf_hdr;
-		struct voice_and_text vat;
+		SAUDIO rf_audio;
+		SHDR rf_hdr;
+		SVAT vat;
 	};
-};
+} SPKT;
 
-struct dvap_ack_arg_type {
+typedef struct dvap_ack_arg_tag {
 	char mycall[8];
 	float ber;
-};
-dvap_ack_arg_type dvap_ack_arg;
+} SDVAP_ACK_ARG;
+
 
 /* Default configuration data */
 static char RPTR[RPTR_SIZE + 1];
@@ -147,21 +153,6 @@ static char INVALID_YRCALL_KEY[CALL_SIZE + 1];
 
 /* helper data */
 static int32_t val32bits = 1;
-#define isit_bigendian() ( (*(char*)&val32bits) == 0 )
-#define do_swap16(val) \
-   ((int16_t) ( \
-    (((u_int16_t) (val) & (u_int16_t) 0x00ffU) << 8) | \
-    (((u_int16_t) (val) & (u_int16_t) 0xff00U) >> 8)))
-#define do_swapu16(val) \
-   ((u_int16_t) ( \
-    (((u_int16_t) (val) & (u_int16_t) 0x00ffU) << 8) | \
-    (((u_int16_t) (val) & (u_int16_t) 0xff00U) >> 8)))
-#define do_swapu32(val) \
-   ((u_int32_t) ( \
-    (((u_int32_t) (val) & (u_int32_t) 0x000000ffU) << 24) | \
-    (((u_int32_t) (val) & (u_int32_t) 0x0000ff00U) <<  8) | \
-    (((u_int32_t) (val) & (u_int32_t) 0x00ff0000U) >>  8) | \
-    (((u_int32_t) (val) & (u_int32_t) 0xff000000U) >> 24)))
 static unsigned char SND_TERM_ID = 0x00;
 static char RPTR_and_G[9];
 static char RPTR_and_MOD[9];
@@ -1221,7 +1212,7 @@ static void readFrom20000()
 	unsigned streamid[2] = {0x00, 0x00};
 	u_int16_t sid;
 	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
-	struct pkt net_buf;
+	SPKT net_buf;
 	u_int16_t stream_id_to_dvap = 0;
 	u_int8_t frame_pos_to_dvap = 0;
 	u_int8_t seq_to_dvap = 0;
@@ -1582,8 +1573,9 @@ int main(int argc, const char **argv)
 static void *rptr_ack(void *arg)
 {
 	char mycall[8];
-	memcpy(mycall, ((struct dvap_ack_arg_type *)arg)->mycall, 8);
-	float ber = ((struct dvap_ack_arg_type *)arg)->ber;
+	SDVAP_ACK_ARG *parg = (SDVAP_ACK_ARG *)arg;
+	memcpy(mycall, parg->mycall, 8);
+	float ber = parg->ber;
 
 	char RADIO_ID[21];
 
@@ -1810,7 +1802,7 @@ static void *readFromRF(void *arg)
 	REPLY_TYPE reply;
 	unsigned int len = 0;
 	unsigned char dvp_buf[200];
-	struct pkt net_buf;
+	SPKT net_buf;
 	time_t tnow = 0;
 	time_t S_ctrl_msg_time = 0;
 	unsigned char S_packet[26];
@@ -1820,7 +1812,7 @@ static void *readFromRF(void *arg)
 	bool dvap_busy = false;
 	// bool ptt = false;
 	bool the_end = true;
-	dvap_hdr *from_dvap_hdr = (dvap_hdr *)dvp_buf;
+	SDVAP_HDR *from_dvap_hdr = (SDVAP_HDR *)dvp_buf;
 	// dvap_voice *from_dvap_voice = (dvap_voice *)dvp_buf;
 	bool ok = true;
 	int i = 0;
@@ -2115,6 +2107,7 @@ static void *readFromRF(void *arg)
 					        (num_dv_frames == 0)?0.00:100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
 
 					if (RPTR_ACK && !busy20000) {
+						static SDVAP_ACK_ARG dvap_ack_arg;
 						pthread_attr_init(&attr);
 						pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 						memcpy(dvap_ack_arg.mycall, mycall, 8);
