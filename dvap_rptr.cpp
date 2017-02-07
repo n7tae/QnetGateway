@@ -150,13 +150,13 @@ static int DELAY_BETWEEN;
 static int DELAY_BEFORE;
 static bool RPTR_ACK;
 static char INVALID_YRCALL_KEY[CALL_SIZE + 1];
+static int inactiveMax = 25;
 
 /* helper data */
 static int32_t val32bits = 1;
-static unsigned char SND_TERM_ID = 0x00;
+static unsigned char SND_TERM_ID;
 static char RPTR_and_G[9];
 static char RPTR_and_MOD[9];
-static int inactiveMax = 25;
 static int insock = -1;
 static struct sockaddr_in outaddr;
 static int serfd = -1;
@@ -270,7 +270,6 @@ static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
 {
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
-	short int i;
 	unsigned short crc_tabccitt[256] = {
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,
 		0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
@@ -306,7 +305,7 @@ static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
 		0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 	};
 
-	for (i = 0; i < 39 ; i++) {
+	for (int i = 0; i < 39 ; i++) {
 		short_c = 0x00ff & (unsigned short)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
@@ -322,9 +321,7 @@ static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
 
 static void sig_catch(int signum)
 {
-	if ((signum == SIGTERM) ||
-	        (signum == SIGINT)  ||
-	        (signum == SIGHUP))
+	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
 		keep_running = false;
 	exit(0);
 }
@@ -537,7 +534,6 @@ static int read_config(const char *cfgFile)
 static int open_sock()
 {
 	struct  sockaddr_in inaddr;
-	int rc = -1;
 
 	insock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (insock == -1) {
@@ -549,7 +545,7 @@ static int open_sock()
 	inaddr.sin_family = AF_INET;
 	inaddr.sin_port = htons(RPTR_PORT);
 	inaddr.sin_addr.s_addr = inet_addr(RPTR_VIRTUAL_IP);
-	rc = bind(insock, (struct sockaddr *)&inaddr, sizeof(inaddr));
+	int rc = bind(insock, (struct sockaddr *)&inaddr, sizeof(inaddr));
 	if (rc == -1) {
 		traceit("Failed to bind server socket, error=%d, message=%s\n", errno,strerror(errno));
 		close(insock);
@@ -613,12 +609,11 @@ static bool open_ser(char *dvp)
 
 static bool open_dvp()
 {
-	short int i;
 	bool ok = false;
 	char dvp_device[128];
 
 	do {
-		for (i = 0; i < 32; i++) {
+		for (int i = 0; i < 32; i++) {
 			sprintf(dvp_device, "/dev/ttyUSB%d", i);
 
 			if (access(dvp_device, R_OK | W_OK) != 0)
@@ -740,13 +735,12 @@ static int read_from_dvp(unsigned char *buf, unsigned int len)
 static int write_to_dvp(unsigned char *buf, unsigned int len)
 {
 	unsigned int ptr = 0;
-	ssize_t n;
 
 	if (len == 0)
 		return 0;
 
 	while (ptr < len) {
-		n = write(serfd, buf + ptr, len - ptr);
+		ssize_t n = write(serfd, buf + ptr, len - ptr);
 		if (n < 0) {
 			traceit("Error %d writing to dvap\n", errno);
 			return -1;
@@ -762,9 +756,7 @@ static int write_to_dvp(unsigned char *buf, unsigned int len)
 static REPLY_TYPE get_reply(unsigned char *buf,  unsigned int *len)
 {
 	unsigned int off = 2;
-	int rc = -1;
-
-	rc = read_from_dvp(buf, 2);
+	int rc = read_from_dvp(buf, 2);
 	if (rc == 0)
 		return RT_TIMEOUT;
 	if (rc != 2)
@@ -828,8 +820,6 @@ static REPLY_TYPE get_reply(unsigned char *buf,  unsigned int *len)
 static void syncit()
 {
 	unsigned char data[7];
-	unsigned char c;
-	int n;
 	struct timeval tv;
 	fd_set fds;
 	short cnt = 0;
@@ -842,7 +832,7 @@ static void syncit()
 		FD_SET(serfd, &fds);
 		tv.tv_sec  = 0;
 		tv.tv_usec = 1000;
-		n = select(serfd + 1, &fds, NULL, NULL, &tv);
+		int n = select(serfd + 1, &fds, NULL, NULL, &tv);
 		if (n <= 0) {
 			cnt ++;
 			if (cnt > 100) {
@@ -851,6 +841,7 @@ static void syncit()
 				return;
 			}
 		} else {
+			unsigned char c;
 			n = read_from_dvp(&c, 1);
 			if (n > 0) {
 				data[0] = data[1];
@@ -874,11 +865,9 @@ static bool get_name()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	bool testit = false;
-	int rc = -1;
 	unsigned char dvp_buf[200];
 
-	rc = write_to_dvp(DVP_RQST_NAME, 4);
+	int rc = write_to_dvp(DVP_RQST_NAME, 4);
 	if (rc != 4) {
 		traceit("Failed to send request to get dvap name\n");
 		return false;
@@ -895,7 +884,7 @@ static bool get_name()
 		}
 	} while (reply != RT_NAME);
 
-	testit = (memcmp(dvp_buf, DVP_REPL_NAME, len) == 0);
+	bool testit = (memcmp(dvp_buf, DVP_REPL_NAME, len) == 0);
 
 	if (!testit) {
 		traceit("Failed to receive dvap name\n");
@@ -911,11 +900,9 @@ static bool get_fw()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	unsigned int ver;
-	int rc = -1;
 	unsigned char dvp_buf[200];
 
-	rc = write_to_dvp(DVP_RQST_FW, 5);
+	int rc = write_to_dvp(DVP_RQST_FW, 5);
 	if (rc != 5) {
 		traceit("Failed to send request to get dvap fw\n");
 		return false;
@@ -932,7 +919,7 @@ static bool get_fw()
 		}
 	} while (reply != RT_FW);
 
-	ver = dvp_buf[6] * 256 + dvp_buf[5];
+	unsigned int ver = dvp_buf[6] * 256 + dvp_buf[5];
 	traceit("dvap fw ver: %u.%u\n", ver / 100, ver % 100);
 
 	return true;
@@ -943,10 +930,9 @@ static bool get_ser(char *dvp)
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	int rc = -1;
 	unsigned char dvp_buf[200];
 
-	rc = write_to_dvp(DVP_RQST_SER, 4);
+	int rc = write_to_dvp(DVP_RQST_SER, 4);
 	if (rc != 4) {
 		traceit("Failed to send request to get dvap serial#\n");
 		return false;
@@ -978,10 +964,9 @@ static bool set_modu()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	int rc = -1;
 	unsigned char dvp_buf[200];
 
-	rc = write_to_dvp(DVP_RQST_MODU, 5);
+	int rc = write_to_dvp(DVP_RQST_MODU, 5);
 	if (rc != 5) {
 		traceit("Failed to send request to set dvap modulation\n");
 		return false;
@@ -1007,10 +992,9 @@ static bool set_mode()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	int rc = -1;
 	unsigned char dvp_buf[200];
 
-	rc = write_to_dvp(DVP_RQST_MODE, 5);
+	int rc = write_to_dvp(DVP_RQST_MODE, 5);
 	if (rc != 5) {
 		traceit("Failed to send request to set dvap mode\n");
 		return false;
@@ -1036,14 +1020,13 @@ static bool set_sql()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	int rc = -1;
 	unsigned char buf[10];
 	unsigned char dvp_buf[200];
 
 	memcpy(buf, DVP_RQST_SQL, 5);
 	memcpy(buf + 4, &DVP_SQL, 1);
 
-	rc = write_to_dvp(buf, 5);
+	int rc = write_to_dvp(buf, 5);
 	if (rc != 5) {
 		traceit("Failed to send request to set dvap sql\n");
 		return false;
@@ -1069,16 +1052,14 @@ static bool set_pwr()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	int rc = -1;
 	unsigned char buf[10];
-	int16_t temp_pwr;
 	unsigned char dvp_buf[200];
 
 	memcpy(buf, DVP_RQST_PWR, 6);
-	temp_pwr = (isit_bigendian())?do_swap16(DVP_PWR):DVP_PWR;
+	int16_t temp_pwr = (isit_bigendian())?do_swap16(DVP_PWR):DVP_PWR;
 	memcpy(buf + 4, &temp_pwr, sizeof(int16_t));
 
-	rc = write_to_dvp(buf, 6);
+	int rc = write_to_dvp(buf, 6);
 	if (rc != 6) {
 		traceit("Failed to send request to set dvap pwr\n");
 		return false;
@@ -1104,16 +1085,14 @@ static bool set_off()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	int rc = -1;
 	unsigned char buf[10];
-	int16_t temp_off;
 	unsigned char dvp_buf[200];
 
 	memcpy(buf, DVP_RQST_OFF, 6);
-	temp_off = (isit_bigendian())?do_swap16(DVP_OFF):DVP_OFF;
+	int16_t temp_off = (isit_bigendian())?do_swap16(DVP_OFF):DVP_OFF;
 	memcpy(buf + 4, &temp_off, sizeof(int16_t));
 
-	rc = write_to_dvp(buf, 6);
+	int rc = write_to_dvp(buf, 6);
 	if (rc != 6) {
 		traceit("Failed to send request to set dvap offset\n");
 		return false;
@@ -1139,16 +1118,14 @@ static bool set_freq()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	int rc = -1;
 	unsigned char buf[10];
-	u_int32_t temp_freq;
 	unsigned char dvp_buf[200];
 
 	memcpy(buf, DVP_RQST_FREQ, 8);
-	temp_freq = (isit_bigendian())?do_swapu32(DVP_FREQ):DVP_FREQ;
+	u_int32_t temp_freq = (isit_bigendian())?do_swapu32(DVP_FREQ):DVP_FREQ;
 	memcpy(buf + 4, &temp_freq, sizeof(u_int32_t));
 
-	rc = write_to_dvp(buf, 8);
+	int rc = write_to_dvp(buf, 8);
 	if (rc != 8) {
 		traceit("Failed to send request to set dvap frequency\n");
 		return false;
@@ -1174,10 +1151,9 @@ static bool start_dvap()
 	unsigned cnt = 0;
 	unsigned int len = 0;
 	REPLY_TYPE reply;
-	int rc = -1;
 	unsigned char dvp_buf[200];
 
-	rc = write_to_dvp(DVP_RQST_START, 5);
+	int rc = write_to_dvp(DVP_RQST_START, 5);
 	if (rc != 5) {
 		traceit("Failed to send request to start the dvap dongle\n");
 		return false;
@@ -2134,4 +2110,3 @@ static void *readFromRF(void *arg)
 	keep_running = false;
 	pthread_exit(NULL);
 }
-
