@@ -48,6 +48,7 @@
 #include <regex.h>
 #include <pthread.h>
 
+#include <atomic>
 #include <string>
 #include <map>
 #include <libconfig.h++>
@@ -117,7 +118,7 @@ static struct {
 	uint32_t adr;
 	struct sockaddr_in band_addr;
 	time_t last_time;
-	unsigned short G2_COUNTER;
+	std::atomic<unsigned short> G2_COUNTER;
 	unsigned char sequence;
 } toRptr[3]; /* 0=A, 1=B, 2=C */
 
@@ -128,7 +129,7 @@ static struct sockaddr_in fromRptr;
 
 static unsigned char end_of_audio[29];
 
-static volatile bool keep_running = true;
+static std::atomic<bool> keep_running(true);
 
 /* send packets to g2_link */
 static struct sockaddr_in plug;
@@ -906,7 +907,7 @@ static void runit()
 					for (j = 0; j < 2; j++)
 						sendto(srv_sock, (char *)end_of_audio, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
-					toRptr[i].G2_COUNTER ++;
+					toRptr[i].G2_COUNTER++;
 
 					toRptr[i].streamid[0] = toRptr[i].streamid[1] = '\0';
 					toRptr[i].adr = 0;
@@ -1029,7 +1030,7 @@ static void runit()
 							time(&toRptr[i].last_time);
 
 							/* bump the G2 counter */
-							toRptr[i].G2_COUNTER ++;
+							toRptr[i].G2_COUNTER++;
 
 							toRptr[i].sequence = readBuffer[16];
 						}
@@ -1108,7 +1109,7 @@ static void runit()
 										       sizeof(struct sockaddr_in));
 
 										/* bump G2 counter */
-										toRptr[i].G2_COUNTER ++;
+										toRptr[i].G2_COUNTER++;
 
 										/* send this audio packet to repeater */
 										memcpy(readBuffer,"DSTR", 4);
@@ -1134,7 +1135,7 @@ static void runit()
 										time(&toRptr[i].last_time);
 
 										/* bump the G2 counter */
-										toRptr[i].G2_COUNTER ++;
+										toRptr[i].G2_COUNTER++;
 
 										toRptr[i].sequence = readBuffer[16];
 
@@ -1483,7 +1484,7 @@ static void runit()
 													time(&toRptr[i].last_time);
 
 													/* bump the G2 counter */
-													toRptr[i].G2_COUNTER ++;
+													toRptr[i].G2_COUNTER++;
 
 													toRptr[i].sequence = readBuffer[16];
 												}
@@ -2587,16 +2588,6 @@ static void *echotest(void *arg)
 					i = 1;
 				else if (dstar_buf[25] == 'C')
 					i = 2;
-
-
-				/***
-				   WARNING: G2_COUNTER is accessed by both threads.
-				   It should be protected with a MUTEX,
-				   but since this version is NOT for RP2C, but for home-brew
-				   it does not really matter.
-				   Anyway, accessing G2_COUNTER and adding 1 to it,
-				     should be an atomic operation.
-				***/
 
 				memcpy(rptr_buf, "DSTR", 4);
 				rptr_buf[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);

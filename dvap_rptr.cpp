@@ -41,6 +41,7 @@
 #include <pthread.h>
 #include "versions.h"
 
+#include <atomic>
 #include <string>
 #include <libconfig.h++>
 using namespace libconfig;
@@ -161,7 +162,7 @@ static int insock = -1;
 static struct sockaddr_in outaddr;
 static int serfd = -1;
 static bool busy20000 = false;
-static bool keep_running = true;
+static std::atomic<bool> keep_running(true);
 static unsigned char DVP_RQST_NAME[] = {0x04, 0x20, 0x01, 0x00};
 static unsigned char DVP_REPL_NAME[] = {0x10, 0x00, 0x01, 0x00, 'D', 'V', 'A', 'P', ' ', 'D', 'o', 'n', 'g', 'l', 'e', 0x00};
 static unsigned char DVP_RQST_SER[] = {0x04, 0x20, 0x02, 0x00};

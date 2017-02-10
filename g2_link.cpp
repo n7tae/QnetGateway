@@ -45,7 +45,7 @@
 #include <netdb.h>
 
 #include <pthread.h>
-
+#include <atomic>
 /* Required for Binary search trees using C++ STL */
 #include <string>
 #include <set>
@@ -198,7 +198,7 @@ static struct sockaddr_in fromRptr;
 static fd_set fdset;
 static struct timeval tv;
 
-static bool keep_running = true;
+static std::atomic<bool> keep_running(true);
 
 /* Used to validate incoming donglers */
 static regex_t preg;
