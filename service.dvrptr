@@ -3,7 +3,7 @@
 #
 ### BEGIN INIT INFO
 # Provides:          dvrptr
-# Required-Start:
+# Required-Start:    $remote_fs $network
 # Required-Stop:
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
