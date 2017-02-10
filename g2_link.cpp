@@ -841,11 +841,11 @@ static bool read_config(char *cfgFile)
 	}
 	catch(const FileIOException &fioex) {
 		traceit("Can't read %s\n", cfgFile);
-		return 1;
+		return false;
 	}
 	catch(const ParseException &pex) {
 		traceit("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return 1;
+		return false;
 	}
 
 	std::string value;
@@ -854,7 +854,7 @@ static bool read_config(char *cfgFile)
 		int l = login_call.length();
 		if (l<3 || l>CALL_SIZE-2) {
 			traceit("Call '%s' is invalid length!\n", login_call.c_str());
-			return 1;
+			return false;
 		} else {
 			for (i=0; i<l; i++) {
 				if (islower(login_call[i]))
@@ -865,7 +865,7 @@ static bool read_config(char *cfgFile)
 		}
 	} else {
 		traceit("%s is not defined.\n", key.c_str());
-		return 1;
+		return false;
 	}
 
 	key = "g2_link.admin";
@@ -892,7 +892,7 @@ static bool read_config(char *cfgFile)
 			}
 		} else {
 			traceit("%s is not an array!\n", key.c_str());
-			return 1;
+			return false;
 		}
 		traceit("%s = [ ", key.c_str());
 		for (pos=admin.begin(); pos!=admin.end(); pos++) {
@@ -927,7 +927,7 @@ static bool read_config(char *cfgFile)
 			}
 		} else {
 			traceit("%s is not an array!\n", key.c_str());
-			return 1;
+			return false;
 		}
 		traceit("%s = [ ", key.c_str());
 		for (link_unlink_user_pos=link_unlink_user.begin(); link_unlink_user_pos!=link_unlink_user.end(); link_unlink_user_pos++) {
@@ -950,7 +950,7 @@ static bool read_config(char *cfgFile)
 			traceit("%s = [%s]\n", key.c_str(), owner.c_str());
 		} else {
 			traceit("%s '%s' is wrong size.\n", key.c_str(), owner.c_str());
-			return 1;
+			return false;
 		}
 	}
 
@@ -959,20 +959,20 @@ static bool read_config(char *cfgFile)
 	get_value(cfg, "g2_link.dcs_port", rmt_dcs_port, 10000, 65535, 30051);
 
 	if (! get_value(cfg, "g2_link.incoming_ip", my_g2_link_ip, 7, IP_SIZE, "0.0.0.0"))
-		return 1;
+		return false;
 	get_value(cfg, "g2_link.port", my_g2_link_port, 10000, 65535, 18997);
 
 	if (! get_value(cfg, "g2_link.g2_ircddb_ip", to_g2_external_ip, 7, IP_SIZE, "0.0.0.0"))
-		return 1;
+		return false;
 	get_value(cfg, "gateway.external.port", to_g2_external_port, 10000, 65535, 40000);
 
 	get_value(cfg, "gateway.log.qso", qso_details, true);
 
 	if (! get_value(cfg, "file.gwys", gwys, 2, FILENAME_MAX, "/usr/local/etc/gwys.txt"))
-		return 1;
+		return false;
 
 	if (! get_value(cfg, "file.status", status_file, 2, FILENAME_MAX, "/usr/local/etc/RPTR_STATUS.txt"))
-		return 1;
+		return false;
 
 	get_value(cfg, "timing.play.delay", delay_between, 9, 25, 19);
 
@@ -981,7 +981,7 @@ static bool read_config(char *cfgFile)
 	get_value(cfg, "g2_link.announce", announce, true);
 
 	if (! get_value(cfg, "file.announce_dir", announce_dir, 2, FILENAME_MAX, "/usr/local/etc"))
-		return 1;
+		return false;
 
 	get_value(cfg, "timing.play.wait", delay_before, 1, 10, 2);
 
@@ -989,7 +989,7 @@ static bool read_config(char *cfgFile)
 		if (strcasecmp(value.c_str(), "none"))
 			strcpy(link_at_startup, value.c_str());
 	} else
-		return 1;
+		return false;
 
 	int maxdongle;
 	get_value(cfg, "g2_link.max_dongles", maxdongle, 0, 10, 5);
@@ -997,7 +997,8 @@ static bool read_config(char *cfgFile)
 
 	for (i=0; i<3; i++) {
 		int timer;
-		key = "timing.inactivity." + ('a' + i);
+		key = "timing.inactivity.";
+		key += ('a' + i);
 		get_value(cfg, key.c_str(), timer, 0, 300, 0);
 		timer *= 60;
 		rf_inactivity_timer[i] = timer;
