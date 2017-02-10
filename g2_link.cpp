@@ -985,6 +985,7 @@ static bool read_config(char *cfgFile)
 
 	get_value(cfg, "timing.play.wait", delay_before, 1, 10, 2);
 
+	memset(link_at_startup, 0, CALL_SIZE+1);
 	if (get_value(cfg, "g2_link.link_at_start", value, 5, CALL_SIZE, "NONE")) {
 		if (strcasecmp(value.c_str(), "none"))
 			strcpy(link_at_startup, value.c_str());
@@ -1432,6 +1433,8 @@ static void runit()
 			memset(temp_repeater, ' ', CALL_SIZE);
 			memcpy(temp_repeater, link_at_startup + 1, 6);
 			temp_repeater[CALL_SIZE] = '\0';
+			traceit("sleep for 15 before link at startup\n");
+			sleep(15);
 			g2link(link_at_startup[0], temp_repeater, link_at_startup[7]);
 		}
 		memset(link_at_startup, '\0', sizeof(link_at_startup));
