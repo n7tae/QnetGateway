@@ -44,7 +44,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include <pthread.h>
+#include <future>
+#include <exception>
 #include <atomic>
 /* Required for Binary search trees using C++ STL */
 #include <string>
@@ -285,8 +286,8 @@ static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
 static void audio_notify(char *notify_msg);
 static void rptr_ack(short i);
 
-static void *audio_notify_run(void *arg);
-static void *rptr_ack_run(void *arg);
+static void AudioNotifyThread(char *arg);
+static void RptrAckThread(char *arg);
 
 static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr)
 {
@@ -352,9 +353,6 @@ static void send_heartbeat()
 
 static void rptr_ack(short i)
 {
-	pthread_t rptr_ack_thread;
-	pthread_attr_t attr;
-	int rc = 0;
 	static char mod_and_RADIO_ID[3][22];
 
 	struct tm tmp;
@@ -390,21 +388,19 @@ static void rptr_ack(short i)
 				memcpy(mod_and_RADIO_ID[i] + 1, outstr, 15);
 		}
 	}
-
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	rc = pthread_create(&rptr_ack_thread, &attr, rptr_ack_run, (void *)(mod_and_RADIO_ID[i]));
-	if (rc != 0)
-		traceit("failed to start rptr_ack thread for mod %c\n", mod_and_RADIO_ID[i][0]);
-	pthread_attr_destroy(&attr);
+	try {
+		std::async(std::launch::async, RptrAckThread, mod_and_RADIO_ID[i]);
+	} catch (const std::exception &e) {
+		traceit("Failed to start RptrAckThread(). Exception: %s\n", e.what());
+	}
 	return;
 }
 
-static void *rptr_ack_run(void *arg)
+static void RptrAckThread(char *arg)
 {
-	char from_mod = *((char *)arg);
+	char from_mod = arg[0];
 	char RADIO_ID[21];
-	memcpy(RADIO_ID, (char *)arg + 1, 21);
+	memcpy(RADIO_ID, arg + 1, 21);
 	unsigned char rptr_ack[56];
 	struct timespec nanos;
 	unsigned int aseed;
@@ -417,13 +413,11 @@ static void *rptr_ack_run(void *arg)
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		traceit("sigaction-TERM failed, error=%d\n", errno);
-		traceit("rptr_ack thread exiting...\n");
-		pthread_exit(NULL);
+		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
 		traceit("sigaction-INT failed, error=%d\n", errno);
-		traceit("rptr_ack thread exiting...\n");
-		pthread_exit(NULL);
+		return;
 	}
 
 	time(&tnow);
@@ -564,7 +558,7 @@ static void *rptr_ack_run(void *arg)
 	rptr_ack[26] = 0x93;
 	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
 	traceit("finished sending ACK+text to mod:[%c]\n", from_mod);
-	pthread_exit(NULL);
+	return;
 }
 
 static void print_status_file()
@@ -4098,21 +4092,15 @@ void audio_notify(char *msg)
 		i = 2;
 
 	strcpy(notify_msg[i], msg);
-
-	int rc = 0;
-	pthread_t audio_notify_thread;
-	pthread_attr_t attr;
-
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	rc = pthread_create(&audio_notify_thread, &attr, audio_notify_run, (void *)(notify_msg[i]));
-	if (rc != 0)
-		traceit("failed to start audio_notify thread for mod %c\n", *msg);
-	pthread_attr_destroy(&attr);
+	try {
+		std::async(std::launch::async, AudioNotifyThread, notify_msg[i]);
+	} catch (const std::exception &e) {
+		traceit ("Failed to start AudioNotifyThread(). Exception: %s\n", e.what());
+	}
 	return;
 }
 
-static void *audio_notify_run(void *arg)
+static void AudioNotifyThread(char *arg)
 {
 	char notify_msg[64];
 
@@ -4143,13 +4131,11 @@ static void *audio_notify_run(void *arg)
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		traceit("sigaction-TERM failed, error=%d\n", errno);
-		traceit("audio_notify thread exiting...\n");
-		pthread_exit(NULL);
+		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
 		traceit("sigaction-INT failed, error=%d\n", errno);
-		traceit("audio_notify thread exiting...\n");
-		pthread_exit(NULL);
+		return;
 	}
 
 	memset(RADIO_ID, ' ', 20);
@@ -4159,13 +4145,13 @@ static void *audio_notify_run(void *arg)
 
 	if ((mod != 'A') && (mod != 'B') && (mod != 'C')) {
 		traceit("Invalid module %c in %s\n", mod, notify_msg);
-		pthread_exit(NULL);
+		return;
 	}
 
 	p = strstr(notify_msg, ".dat");
 	if (!p) {
 		traceit("Incorrect filename in %s\n", notify_msg);
-		pthread_exit(NULL);
+		return;
 	}
 
 	if (p[4] == '_') {
@@ -4190,7 +4176,7 @@ static void *audio_notify_run(void *arg)
 	fp = fopen(temp_file, "rb");
 	if (!fp) {
 		traceit("Failed to open file %s for reading\n", temp_file);
-		pthread_exit(NULL);
+		return;
 	}
 
 	/* stupid DVTOOL + 4 byte num_of_records */
@@ -4198,12 +4184,12 @@ static void *audio_notify_run(void *arg)
 	if (nread != 1) {
 		traceit("Cant read first 10 bytes from %s\n", temp_file);
 		fclose(fp);
-		pthread_exit(NULL);
+		return;
 	}
 	if (memcmp(dstar_buf, "DVTOOL", 6) != 0) {
 		traceit("DVTOOL keyword not found in %s\n", temp_file);
 		fclose(fp);
-		pthread_exit(NULL);
+		return;
 	}
 
 	time(&tnow);
@@ -4318,8 +4304,7 @@ static void *audio_notify_run(void *arg)
 		nanosleep(&nanos,0);
 	}
 	fclose(fp);
-	traceit("finished sending File to mod:[%c]\n", mod);
-	pthread_exit(NULL);
+	return;
 }
 
 int main(int argc, char **argv)
