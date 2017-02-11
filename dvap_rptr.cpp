@@ -38,10 +38,11 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <sys/file.h>
-#include <pthread.h>
 #include "versions.h"
 
 #include <atomic>
+#include <future>
+#include <exception>
 #include <string>
 #include <libconfig.h++>
 using namespace libconfig;
@@ -256,8 +257,8 @@ static void readFrom20000();
 static REPLY_TYPE get_reply(unsigned char *buf,  unsigned int *len);
 static void syncit();
 static void calcPFCS(unsigned char *packet, unsigned char *pfcs);
-static void *readFromRF(void *arg);
-static void *rptr_ack(void *arg);
+static void ReadDVAPThread();
+static void RptrAckThread(SDVAP_ACK_ARG *parg);
 
 /*** BER stuff ***/
 static int ber_data[3];
@@ -1443,8 +1444,6 @@ int main(int argc, const char **argv)
 	int rc = -1;
 	time_t tnow = 0;
 	time_t ackpoint = 0;
-	pthread_t readFromRF_t;
-	pthread_attr_t attr;
 	short cnt = 0;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
@@ -1514,15 +1513,12 @@ int main(int argc, const char **argv)
 
 	dstar_dv_init();
 
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	rc = pthread_create(&readFromRF_t, &attr, readFromRF, (void *)0);
-	if (rc != 0) {
-		keep_running = false;
-		traceit("failed to start thread readFromRF thread\n");
-	} else
-		traceit("Started thread readFromRF\n");
-	pthread_attr_destroy(&attr);
+	try {
+		std::async(std::launch::async, ReadDVAPThread);
+	} catch (const std::exception &e) {
+		traceit("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
+	}
+	traceit("Started ReadDVAPThread()\n");
 
 	while (keep_running) {
 		time(&tnow);
@@ -1546,10 +1542,9 @@ int main(int argc, const char **argv)
 	return 0;
 }
 
-static void *rptr_ack(void *arg)
+static void RptrAckThread(SDVAP_ACK_ARG *parg)
 {
 	char mycall[8];
-	SDVAP_ACK_ARG *parg = (SDVAP_ACK_ARG *)arg;
 	memcpy(mycall, parg->mycall, 8);
 	float ber = parg->ber;
 
@@ -1571,22 +1566,18 @@ static void *rptr_ack(void *arg)
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		traceit("sigaction-TERM failed, error=%d\n", errno);
-		traceit("thread rptr_ack exiting\n");
-		pthread_exit(NULL);
+		return;
 	}
 	if (sigaction(SIGHUP, &act, 0) != 0) {
 		traceit("sigaction-HUP failed, error=%d\n", errno);
-		traceit("thread rptr_ack exiting\n");
-		pthread_exit(NULL);
+		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
 		traceit("sigaction-INT failed, error=%d\n", errno);
-		traceit("thread rptr_ack exiting\n");
-		pthread_exit(NULL);
+		return;
 	}
 
 	sleep(DELAY_BEFORE);
-	// traceit("ack-start\n");
 
 	time(&tnow);
 	aseed_ack = tnow + getpid();
@@ -1617,163 +1608,80 @@ static void *rptr_ack(void *arg)
 	nanosleep(&nanos,0);
 
 	// SYNC
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = 0x55;
-	silence[10] = 0x2d;
-	silence[11] = 0x16;
 	memcpy(dvp_buf, DVP_DAT, 18);
 	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x00;
-	dvp_buf[5] = 0x00;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	// NOTHING
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = '@' ^ 0x70;
-	silence[10] = RADIO_ID[0] ^ 0x4f;
-	silence[11] = RADIO_ID[1] ^ 0x93;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x01;
-	dvp_buf[5] = 0x01;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = RADIO_ID[2] ^ 0x70;
-	silence[10] = RADIO_ID[3] ^ 0x4f;
-	silence[11] = RADIO_ID[4] ^ 0x93;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x02;
-	dvp_buf[5] = 0x02;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = 'A' ^ 0x70;
-	silence[10] = RADIO_ID[5] ^ 0x4f;
-	silence[11] = RADIO_ID[6] ^ 0x93;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x03;
-	dvp_buf[5] = 0x03;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = RADIO_ID[7] ^ 0x70;
-	silence[10] = RADIO_ID[8] ^ 0x4f;
-	silence[11] = RADIO_ID[9] ^ 0x93;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x04;
-	dvp_buf[5] = 0x04;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = 'B' ^ 0x70;
-	silence[10] = RADIO_ID[10] ^ 0x4f;
-	silence[11] = RADIO_ID[11] ^ 0x93;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x05;
-	dvp_buf[5] = 0x05;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = RADIO_ID[12] ^ 0x70;
-	silence[10] = RADIO_ID[13] ^ 0x4f;
-	silence[11] = RADIO_ID[14] ^ 0x93;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x06;
-	dvp_buf[5] = 0x06;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = 'C' ^ 0x70;
-	silence[10] = RADIO_ID[15] ^ 0x4f;
-	silence[11] = RADIO_ID[16] ^ 0x93;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x07;
-	dvp_buf[5] = 0x07;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[9] = RADIO_ID[17] ^ 0x70;
-	silence[10] = RADIO_ID[18] ^ 0x4f;
-	silence[11] = RADIO_ID[19] ^ 0x93;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = 0x08;
-	dvp_buf[5] = 0x08;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
-
-	// END
-	while ((space < 1) && keep_running)
-		usleep(5);
-	silence[0] = 0x55;
-	silence[1] = 0xc8;
-	silence[2] = 0x7a;
-	silence[9] = 0x55;
-	silence[10] = 0x55;
-	silence[11] = 0x55;
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-	dvp_buf[4] = (0x09 | 0x40);
-	dvp_buf[5] = 0x09;
-	memcpy(dvp_buf + 6, silence, 12);
-	(void)write_to_dvp(dvp_buf, 18);
-
-	// traceit("ack-end\n");
-	pthread_exit(NULL);
+	for (int i=0; i<10; i++) {
+		while ((space < 1) && keep_running)
+			usleep(5);
+		dvp_buf[4] = dvp_buf[5] = i;
+		switch (i) {
+			case 0:
+				silence[9] = 0x55;
+				silence[10] = 0x2d;
+				silence[11] = 0x16;
+				break;
+			case 1:
+				silence[9]  = '@' ^ 0x70;
+				silence[10] = RADIO_ID[0] ^ 0x4f;
+				silence[11] = RADIO_ID[1] ^ 0x93;
+				break;
+			case 2:
+				silence[9]  = RADIO_ID[2] ^ 0x70;
+				silence[10] = RADIO_ID[3] ^ 0x4f;
+				silence[11] = RADIO_ID[4] ^ 0x93;
+				break;
+			case 3:
+				silence[9]  = 'A' ^ 0x70;
+				silence[10] = RADIO_ID[5] ^ 0x4f;
+				silence[11] = RADIO_ID[6] ^ 0x93;
+				break;
+			case 4:
+				silence[9]  = RADIO_ID[7] ^ 0x70;
+				silence[10] = RADIO_ID[8] ^ 0x4f;
+				silence[11] = RADIO_ID[9] ^ 0x93;
+				break;
+			case 5:
+				silence[9]  = 'B' ^ 0x70;
+				silence[10] = RADIO_ID[10] ^ 0x4f;
+				silence[11] = RADIO_ID[11] ^ 0x93;
+				break;
+			case 6:
+				silence[9]  = RADIO_ID[12] ^ 0x70;
+				silence[10] = RADIO_ID[13] ^ 0x4f;
+				silence[11] = RADIO_ID[14] ^ 0x93;
+				break;
+			case 7:
+				silence[9]  = 'C' ^ 0x70;
+				silence[10] = RADIO_ID[15] ^ 0x4f;
+				silence[11] = RADIO_ID[16] ^ 0x93;
+				break;
+			case 8:
+				silence[9]  = RADIO_ID[17] ^ 0x70;
+				silence[10] = RADIO_ID[18] ^ 0x4f;
+				silence[11] = RADIO_ID[19] ^ 0x93;
+				break;
+			case 9:
+				silence[0] = 0x55;
+				silence[1] = 0xc8;
+				silence[2] = 0x7a;
+				silence[9] = 0x55;
+				silence[10] = 0x55;
+				silence[11] = 0x55;
+				dvp_buf[4] |= 0x40;
+				break;
+		}
+		memcpy(dvp_buf + 6, silence, 12);
+		(void)write_to_dvp(dvp_buf, 18);
+		if (i < 9) {
+			nanos.tv_sec = 0;
+			nanos.tv_nsec = DELAY_BETWEEN * 1000000;
+			nanosleep(&nanos,0);
+		}
+	}
+	return;
 }
 
-static void *readFromRF(void *arg)
+static void ReadDVAPThread()
 {
 	REPLY_TYPE reply;
 	unsigned int len = 0;
@@ -1795,9 +1703,6 @@ static void *readFromRF(void *arg)
 	u_int16_t streamid_raw = 0;
 	short int sequence = 0x00;
 	char mycall[8];
-	pthread_t rptr_ack_t;
-	pthread_attr_t attr;
-	int rc = -1;
 	short int status_cntr = 3000;
 	char temp_yrcall[CALL_SIZE + 1];
 	char *temp_ptr = NULL;
@@ -1805,26 +1710,22 @@ static void *readFromRF(void *arg)
 	num_dv_frames = 0;
 	num_bit_errors = 0;
 
-	arg = arg;
 	act.sa_handler = sig_catch;
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		traceit("sigaction-TERM failed, error=%d\n", errno);
 		keep_running = false;
-		traceit("thread readFromRF exiting\n");
-		pthread_exit(NULL);
+		return;
 	}
 	if (sigaction(SIGHUP, &act, 0) != 0) {
 		traceit("sigaction-HUP failed, error=%d\n", errno);
 		keep_running = false;
-		traceit("thread readFromRF exiting\n");
-		pthread_exit(NULL);
+		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
 		traceit("sigaction-INT failed, error=%d\n", errno);
 		keep_running = false;
-		traceit("thread readFromRF exiting\n");
-		pthread_exit(NULL);
+		return;
 	}
 
 	/* prepare the S server status packet */
@@ -2084,14 +1985,13 @@ static void *readFromRF(void *arg)
 
 					if (RPTR_ACK && !busy20000) {
 						static SDVAP_ACK_ARG dvap_ack_arg;
-						pthread_attr_init(&attr);
-						pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 						memcpy(dvap_ack_arg.mycall, mycall, 8);
-						dvap_ack_arg.ber = (num_dv_frames == 0)?0.00:100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00));
-						rc = pthread_create(&rptr_ack_t, &attr, rptr_ack, (void *)&dvap_ack_arg);
-						if (rc != 0)
-							traceit("failed to start thread rptr_ack thread\n");
-						pthread_attr_destroy(&attr);
+						dvap_ack_arg.ber = (num_dv_frames==0) ? 0.00 : 100.00*((float)num_bit_errors/(float)(num_dv_frames*24.00));
+						try {
+							std::async(std::launch::async, RptrAckThread, &dvap_ack_arg);
+						} catch (const std::exception &e) {
+							traceit("Failed to start RptrAckThread(). Exception: %s\n", e.what());
+						}
 					}
 				}
 			}
@@ -2109,5 +2009,5 @@ static void *readFromRF(void *arg)
 	traceit("readFromRF thread exiting\n");
 
 	keep_running = false;
-	pthread_exit(NULL);
+	return;
 }
