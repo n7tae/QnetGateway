@@ -1513,13 +1513,15 @@ int main(int argc, const char **argv)
 	traceit("DVAP opened and initialized!\n");
 	dstar_dv_init();
 
+	std::future<void> readthread;
 	try {
-		std::async(std::launch::async, ReadDVAPThread);
+		readthread = std::async(std::launch::async, ReadDVAPThread);
 	} catch (const std::exception &e) {
 		traceit("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
+		keep_running = false;
 	}
 	traceit("Started ReadDVAPThread()\n");
-
+	
 	while (keep_running) {
 		time(&tnow);
 		if ((tnow - ackpoint) > 2) {
@@ -1537,6 +1539,7 @@ int main(int argc, const char **argv)
 		readFrom20000();
 	}
 
+	readthread.get();
 	close(insock);
 	traceit("dvap_rptr exiting\n");
 	return 0;
