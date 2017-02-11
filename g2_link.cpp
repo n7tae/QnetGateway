@@ -44,8 +44,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include <future>
-#include <exception>
+#include <pthread.h>
 #include <atomic>
 /* Required for Binary search trees using C++ STL */
 #include <string>
@@ -286,8 +285,8 @@ static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
 static void audio_notify(char *notify_msg);
 static void rptr_ack(short i);
 
-static void AudioNotifyThread(char *arg);
-static void RptrAckThread(char *arg);
+static void *audio_notify_run(void *arg);
+static void *rptr_ack_run(void *arg);
 
 static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr)
 {
@@ -353,6 +352,9 @@ static void send_heartbeat()
 
 static void rptr_ack(short i)
 {
+	pthread_t rptr_ack_thread;
+	pthread_attr_t attr;
+	int rc = 0;
 	static char mod_and_RADIO_ID[3][22];
 
 	struct tm tmp;
@@ -389,21 +391,21 @@ static void rptr_ack(short i)
 		}
 	}
 
-	std::future<void> ackthread;
-	try {
-		ackthread = std::async(std::launch::async, RptrAckThread, mod_and_RADIO_ID[i]);
-	} catch (const std::exception &e) {
-		traceit("Failed to launch RptrAckThread(). Exception: %s\n", e.what());
-	}
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	rc = pthread_create(&rptr_ack_thread, &attr, rptr_ack_run, (void *)(mod_and_RADIO_ID[i]));
+	if (rc != 0)
+		traceit("failed to start rptr_ack thread for mod %c\n", mod_and_RADIO_ID[i][0]);
+	pthread_attr_destroy(&attr);
 	return;
 }
 
-static void RptrAckThread(char *arg)
+static void *rptr_ack_run(void *arg)
 {
-	char from_mod = arg[0];
+	char from_mod = *((char *)arg);
 	char RADIO_ID[21];
-	memcpy(RADIO_ID, arg + 1, 21);
-	unsigned char buf[56];
+	memcpy(RADIO_ID, (char *)arg + 1, 21);
+	unsigned char rptr_ack[56];
 	struct timespec nanos;
 	unsigned int aseed;
 	time_t tnow = 0;
@@ -415,126 +417,154 @@ static void RptrAckThread(char *arg)
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		traceit("sigaction-TERM failed, error=%d\n", errno);
-		return;
+		traceit("rptr_ack thread exiting...\n");
+		pthread_exit(NULL);
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
 		traceit("sigaction-INT failed, error=%d\n", errno);
-		return;
+		traceit("rptr_ack thread exiting...\n");
+		pthread_exit(NULL);
 	}
 
 	time(&tnow);
 	aseed = tnow + pthread_self();
+
 	u_int16_t streamid_raw = (::rand_r(&aseed) % 65535U) + 1U;
 
 	sleep(delay_before);
 
 	traceit("sending ACK+text, mod:[%c], RADIO_ID=[%s]\n", from_mod, RADIO_ID);
 
-	memcpy(buf,"DSVT", 4);
-	buf[4] = 0x10;
-	buf[5] = 0x00;
-	buf[6] = 0x00;
-	buf[7] = 0x00;
+	memcpy(rptr_ack,"DSVT", 4);
+	rptr_ack[4] = 0x10;
+	rptr_ack[5] = 0x00;
+	rptr_ack[6] = 0x00;
+	rptr_ack[7] = 0x00;
 
-	buf[8] = 0x20;
-	buf[9]  = 0x00;
-	buf[10] = 0x01;
-	buf[11] = 0x00;
+	rptr_ack[8] = 0x20;
+	rptr_ack[9]  = 0x00;
+	rptr_ack[10] = 0x01;
+	rptr_ack[11] = 0x00;
 
-	buf[12] = streamid_raw / 256U;
-	buf[13] = streamid_raw % 256U;
-	buf[14] = 0x80;
-	buf[15] = 0x01; /* we do not want to set this to 0x01 */
-	buf[16] = 0x00;
-	buf[17] = 0x00;
+	rptr_ack[12] = streamid_raw / 256U;
+	rptr_ack[13] = streamid_raw % 256U;
+	rptr_ack[14] = 0x80;
+	rptr_ack[15] = 0x01; /* we do not want to set this to 0x01 */
+	rptr_ack[16] = 0x00;
+	rptr_ack[17] = 0x00;
 
-	memcpy(buf + 18, owner.c_str(), CALL_SIZE);
-	buf[25] = from_mod;
+	memcpy(rptr_ack + 18, owner.c_str(), CALL_SIZE);
+	rptr_ack[25] = from_mod;
 
-	memcpy(buf + 26,  owner.c_str(), CALL_SIZE);
-	buf[33] = 'G';
+	memcpy(rptr_ack + 26,  owner.c_str(), CALL_SIZE);
+	rptr_ack[33] = 'G';
 
-	memcpy(buf + 34, "CQCQCQ  ", CALL_SIZE);
+	memcpy(rptr_ack + 34, "CQCQCQ  ", CALL_SIZE);
 
-	memcpy(buf + 42, owner.c_str(), CALL_SIZE);
-	buf[49] = from_mod;
+	memcpy(rptr_ack + 42, owner.c_str(), CALL_SIZE);
+	rptr_ack[49] = from_mod;
 
-	memcpy(buf + 50, "RPTR", 4);
-	calcPFCS(buf,56);
-	(void)sendto(rptr_sock, (char *)buf, 56, 0, (struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	memcpy(rptr_ack + 50, "RPTR", 4);
+	calcPFCS(rptr_ack,56);
+	(void)sendto(rptr_sock,(char *)rptr_ack,56,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
 	nanos.tv_sec = 0;
 	nanos.tv_nsec = delay_between * 1000000;
 	nanosleep(&nanos,0);
 
-	buf[4] = 0x20;
+	rptr_ack[4] = 0x20;
 	memcpy((char *)rptr_ack + 15, silence, 9);
 
 	/* start sending silence + announcement text */
-	for (int i=0; i<10; i++) {
-		buf[14] = i;
-		switch (i) {
-			case 0:
-				buf[24] = 0x55;
-				buf[25] = 0x2d;
-				buf[26] = 0x16;
-				break;
-			case 1:
-				buf[24] = '@' ^ 0x70;
-				buf[25] = RADIO_ID[0] ^ 0x4f;
-				buf[26] = RADIO_ID[1] ^ 0x93;
-				break;
-			case 2:
-				buf[24] = RADIO_ID[2] ^ 0x70;
-				buf[25] = RADIO_ID[3] ^ 0x4f;
-				buf[26] = RADIO_ID[4] ^ 0x93;
-				break;
-			case 3:
-				buf[24] = 'A' ^ 0x70;
-				buf[25] = RADIO_ID[5] ^ 0x4f;
-				buf[26] = RADIO_ID[6] ^ 0x93;
-				break;
-			case 4:
-				buf[24] = RADIO_ID[7] ^ 0x70;
-				buf[25] = RADIO_ID[8] ^ 0x4f;
-				buf[26] = RADIO_ID[9] ^ 0x93;
-				break;
-			case 5:
-				buf[24] = 'B' ^ 0x70;
-				buf[25] = RADIO_ID[10] ^ 0x4f;
-				buf[26] = RADIO_ID[11] ^ 0x93;
-				break;
-			case 6:
-				buf[24] = RADIO_ID[12] ^ 0x70;
-				buf[25] = RADIO_ID[13] ^ 0x4f;
-				buf[26] = RADIO_ID[14] ^ 0x93;
-				break;
-			case 7:
-				buf[24] = 'C' ^ 0x70;
-				buf[25] = RADIO_ID[15] ^ 0x4f;
-				buf[26] = RADIO_ID[16] ^ 0x93;
-				break;
-			case 8:
-				buf[24] = RADIO_ID[17] ^ 0x70;
-				buf[25] = RADIO_ID[18] ^ 0x4f;
-				buf[26] = RADIO_ID[19] ^ 0x93;
-				break;
-			case 9:
-				buf[14] |= 0x40;
-				memset(buf + 15, 0, 9);
-				buf[24] = 0x70;
-				buf[25] = 0x4f;
-				buf[26] = 0x93;
-				break;
-		}
-		(void)sendto(rptr_sock, (char *)buf, 27, 0, (struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-		if (i < 9) {
-			nanos.tv_sec = 0;
-			nanos.tv_nsec = delay_between * 1000000;
-			nanosleep(&nanos,0);
-		}
-	}
+
+	rptr_ack[14] = 0x00;
+	rptr_ack[24] = 0x55;
+	rptr_ack[25] = 0x2d;
+	rptr_ack[26] = 0x16;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x01;
+	rptr_ack[24] = '@' ^ 0x70;
+	rptr_ack[25] = RADIO_ID[0] ^ 0x4f;
+	rptr_ack[26] = RADIO_ID[1] ^ 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x02;
+	rptr_ack[24] = RADIO_ID[2] ^ 0x70;
+	rptr_ack[25] = RADIO_ID[3] ^ 0x4f;
+	rptr_ack[26] = RADIO_ID[4] ^ 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x03;
+	rptr_ack[24] = 'A' ^ 0x70;
+	rptr_ack[25] = RADIO_ID[5] ^ 0x4f;
+	rptr_ack[26] = RADIO_ID[6] ^ 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x04;
+	rptr_ack[24] = RADIO_ID[7] ^ 0x70;
+	rptr_ack[25] = RADIO_ID[8] ^ 0x4f;
+	rptr_ack[26] = RADIO_ID[9] ^ 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x05;
+	rptr_ack[24] = 'B' ^ 0x70;
+	rptr_ack[25] = RADIO_ID[10] ^ 0x4f;
+	rptr_ack[26] = RADIO_ID[11] ^ 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x06;
+	rptr_ack[24] = RADIO_ID[12] ^ 0x70;
+	rptr_ack[25] = RADIO_ID[13] ^ 0x4f;
+	rptr_ack[26] = RADIO_ID[14] ^ 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x07;
+	rptr_ack[24] = 'C' ^ 0x70;
+	rptr_ack[25] = RADIO_ID[15] ^ 0x4f;
+	rptr_ack[26] = RADIO_ID[16] ^ 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x08;
+	rptr_ack[24] = RADIO_ID[17] ^ 0x70;
+	rptr_ack[25] = RADIO_ID[18] ^ 0x4f;
+	rptr_ack[26] = RADIO_ID[19] ^ 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	nanos.tv_sec = 0;
+	nanos.tv_nsec = delay_between * 1000000;
+	nanosleep(&nanos,0);
+
+	rptr_ack[14] = 0x09 | 0x40;
+	memset((char *)rptr_ack + 15, 0, 9);
+	rptr_ack[24] = 0x70;
+	rptr_ack[25] = 0x4f;
+	rptr_ack[26] = 0x93;
+	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
 	traceit("finished sending ACK+text to mod:[%c]\n", from_mod);
-	return;
+	pthread_exit(NULL);
 }
 
 static void print_status_file()
@@ -4069,20 +4099,24 @@ void audio_notify(char *msg)
 
 	strcpy(notify_msg[i], msg);
 
-	std::future<void> thread;
-	try {
-		thread = std::async(std::launch::async, AudioNotifyThread, notify_msg[i]);
-	} catch (const std::exception &e) {
-		traceit("failed to start AudioAckThread(). Exception: %s\n", e.what());
-	}
+	int rc = 0;
+	pthread_t audio_notify_thread;
+	pthread_attr_t attr;
+
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	rc = pthread_create(&audio_notify_thread, &attr, audio_notify_run, (void *)(notify_msg[i]));
+	if (rc != 0)
+		traceit("failed to start audio_notify thread for mod %c\n", *msg);
+	pthread_attr_destroy(&attr);
 	return;
 }
 
-static void AudioNotifyThread(char *arg)
+static void *audio_notify_run(void *arg)
 {
 	char notify_msg[64];
 
-	strcpy(notify_msg, arg);
+	strcpy(notify_msg, (char *)arg);
 
 	unsigned short rlen = 0;
 	size_t nread = 0;
@@ -4109,11 +4143,13 @@ static void AudioNotifyThread(char *arg)
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		traceit("sigaction-TERM failed, error=%d\n", errno);
-		return;
+		traceit("audio_notify thread exiting...\n");
+		pthread_exit(NULL);
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
 		traceit("sigaction-INT failed, error=%d\n", errno);
-		return;
+		traceit("audio_notify thread exiting...\n");
+		pthread_exit(NULL);
 	}
 
 	memset(RADIO_ID, ' ', 20);
@@ -4123,13 +4159,13 @@ static void AudioNotifyThread(char *arg)
 
 	if ((mod != 'A') && (mod != 'B') && (mod != 'C')) {
 		traceit("Invalid module %c in %s\n", mod, notify_msg);
-		return;
+		pthread_exit(NULL);
 	}
 
 	p = strstr(notify_msg, ".dat");
 	if (!p) {
 		traceit("Incorrect filename in %s\n", notify_msg);
-		return;
+		pthread_exit(NULL);
 	}
 
 	if (p[4] == '_') {
@@ -4154,7 +4190,7 @@ static void AudioNotifyThread(char *arg)
 	fp = fopen(temp_file, "rb");
 	if (!fp) {
 		traceit("Failed to open file %s for reading\n", temp_file);
-		return;
+		pthread_exit(NULL);
 	}
 
 	/* stupid DVTOOL + 4 byte num_of_records */
@@ -4162,12 +4198,12 @@ static void AudioNotifyThread(char *arg)
 	if (nread != 1) {
 		traceit("Cant read first 10 bytes from %s\n", temp_file);
 		fclose(fp);
-		return;
+		pthread_exit(NULL);
 	}
 	if (memcmp(dstar_buf, "DVTOOL", 6) != 0) {
 		traceit("DVTOOL keyword not found in %s\n", temp_file);
 		fclose(fp);
-		return;
+		pthread_exit(NULL);
 	}
 
 	time(&tnow);
@@ -4283,7 +4319,7 @@ static void AudioNotifyThread(char *arg)
 	}
 	fclose(fp);
 	traceit("finished sending File to mod:[%c]\n", mod);
-	return;
+	pthread_exit(NULL);
 }
 
 int main(int argc, char **argv)
