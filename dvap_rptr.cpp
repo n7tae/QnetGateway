@@ -1510,7 +1510,7 @@ int main(int argc, const char **argv)
 		close(serfd);
 		return 1;
 	}
-
+	traceit("DVAP opened and initialized!\n");
 	dstar_dv_init();
 
 	try {
@@ -2006,7 +2006,7 @@ static void ReadDVAPThread()
 	(void)write_to_dvp(DVP_RQST_STOP, 5);
 	close(serfd);
 
-	traceit("readFromRF thread exiting\n");
+	traceit("ReadDVAPThread exiting\n");
 
 	keep_running = false;
 	return;
