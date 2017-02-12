@@ -355,10 +355,6 @@ static void rptr_ack(short i)
 {
 	static char mod_and_RADIO_ID[3][22];
 
-	struct tm tmp;
-	time_t t;
-	char outstr[200];
-
 	memset(mod_and_RADIO_ID[i], ' ', 21);
 	mod_and_RADIO_ID[i][21] = '\0';
 
@@ -378,15 +374,7 @@ static void rptr_ack(short i)
 		memcpy(mod_and_RADIO_ID[i] + 11, to_remote_g2[i].to_call, CALL_SIZE);
 		mod_and_RADIO_ID[i][11 + CALL_SIZE] = to_remote_g2[i].to_mod;
 	} else {
-		time(&t);
-		if (!localtime_r(&t,&tmp))
-			memcpy(mod_and_RADIO_ID[i] + 1, "NOT LINKED", 10);
-		else {
-			if (strftime(outstr, sizeof(outstr), "%Y%m%d %H:%M   " ,&tmp) == 0)
-				memcpy(mod_and_RADIO_ID[i] + 1, "NOT LINKED", 10);
-			else
-				memcpy(mod_and_RADIO_ID[i] + 1, outstr, 15);
-		}
+		memcpy(mod_and_RADIO_ID[i] + 1, "NOT LINKED", 10);
 	}
 	try {
 		std::async(std::launch::async, RptrAckThread, mod_and_RADIO_ID[i]);
