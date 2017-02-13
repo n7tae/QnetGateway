@@ -71,46 +71,22 @@ using namespace libconfig;
 #define CLEAR_VM_CODE 'C'
 #define LINK_CODE 'L'
 
-PORTIP g2_internal, g2_external, g2_link, ircddb;
-
-static std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass;
-
-static bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header,bool_qso_details, bool_send_aprs;
-
-static int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
-
-// data needed for aprs login and aprs beacon
-// RPTR defined in aprs.h
-RPTR rptr;
-
-// local repeater modules being recorded
-// This is for echotest and voicemail
-static struct {
+typedef struct echo_tag {
 	time_t last_time;
 	unsigned char streamid[2];
 	int fd;
 	char file[FILENAME_MAX + 1];
-} recd[3], vm[3];
+} SECHO;
 
-static unsigned char recbuf[100]; /* 56 or 27, max is 56 */
-
-/* the streamids going to remote Gateways from each local module */
-static struct {
+typedef struct to_remote_g2_tag {
 	unsigned char streamid[2];
 	struct sockaddr_in toDst4;
 	time_t last_time;
-} to_remote_g2[3]; /* 0=A, 1=B, 2=C */
+} STOREMOTEG2;
 
-/* input from remote G2 gateway */
-static int g2_sock = -1;
-static unsigned char readBuffer2[2000]; /* 56 or 27, max is 56 */
-static struct sockaddr_in fromDst4;
-
-//   Incoming data from remote systems
-//   must be fed into our local repeater modules.
-static struct {
-	/* help with header re-generation */
-	unsigned char saved_hdr[58]; /* repeater format */
+typedef struct torepeater_tag {
+	// help with header re-generation
+	unsigned char saved_hdr[58]; // repeater format
 	uint32_t saved_adr;
 
 	unsigned char streamid[2];
@@ -119,26 +95,9 @@ static struct {
 	time_t last_time;
 	std::atomic<unsigned short> G2_COUNTER;
 	unsigned char sequence;
-} toRptr[3]; /* 0=A, 1=B, 2=C */
+} STOREPEATER;
 
-/* input from our own local repeater modules */
-static int srv_sock = -1;
-static unsigned char readBuffer[2000]; /* 58 or 29 or 32, max is 58 */
-static struct sockaddr_in fromRptr;
-
-static unsigned char end_of_audio[29];
-
-static std::atomic<bool> keep_running(true);
-
-/* send packets to g2_link */
-static struct sockaddr_in plug;
-
-/* for talking with the irc server */
-static CIRCDDB *ii;
-static CAPRS *aprs;
-
-/* text coming from local repeater bands */
-static struct {
+typedef struct band_txt_tag {
 	unsigned char streamID[2];
 	unsigned char flags[3];
 	char lh_mycall[CALL_SIZE + 1];
@@ -147,13 +106,13 @@ static struct {
 	char lh_rpt1[CALL_SIZE + 1];
 	char lh_rpt2[CALL_SIZE + 1];
 	time_t last_time;
-	char txt[64];   /* Only 20 are used */
+	char txt[64];   // Only 20 are used
 	unsigned short txt_cnt;
 	bool txt_stats_sent;
 
 	char dest_rptr[CALL_SIZE + 1];
 
-	/* try to process GPS mode: GPRMC and ID */
+	// try to process GPS mode: GPRMC and ID
 	char temp_line[256];
 	unsigned short temp_line_cnt;
 	char gprmc[256];
@@ -164,21 +123,71 @@ static struct {
 	int num_dv_frames;
 	int num_dv_silent_frames;
 	int num_bit_errors;
-} band_txt[3]; /* 0=A, 1=B, 2=C */
+} SBANDTXT;
+
+SPORTIP g2_internal, g2_external, g2_link, ircddb;
+
+static std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file,
+					echotest_dir, irc_pass;
+
+static bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header,
+					bool_qso_details, bool_send_aprs;
+
+static int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout,
+					from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
+
+// data needed for aprs login and aprs beacon
+// RPTR defined in aprs.h
+SRPTR rptr;
+
+// local repeater modules being recorded
+// This is for echotest and voicemail
+static SECHO recd[3], vm[3];
+
+static unsigned char recbuf[100]; // 56 or 27, max is 56
+
+// the streamids going to remote Gateways from each local module
+static STOREMOTEG2 to_remote_g2[3]; // 0=A, 1=B, 2=C
+
+// input from remote G2 gateway
+static int g2_sock = -1;
+static unsigned char readBuffer2[2000]; // 56 or 27, max is 56 
+static struct sockaddr_in fromDst4;
+
+//   Incoming data from remote systems
+//   must be fed into our local repeater modules.
+static STOREPEATER toRptr[3]; // 0=A, 1=B, 2=C
+
+// input from our own local repeater modules
+static int srv_sock = -1;
+static unsigned char readBuffer[2000]; // 58 or 29 or 32, max is 58
+static struct sockaddr_in fromRptr;
+
+static unsigned char end_of_audio[29];
+
+static std::atomic<bool> keep_running(true);
+
+// send packets to g2_link
+static struct sockaddr_in plug;
+
+// for talking with the irc server
+static CIRCDDB *ii;
+static CAPRS *aprs;
+
+// text coming from local repeater bands
+static SBANDTXT band_txt[3]; // 0=A, 1=B, 2=C
 
 /* Used to validate MYCALL input */
 static regex_t preg;
 
-/*
-   CACHE used to cache users, repeaters,
-    gateways, IP numbers coming from the irc server
-*/
+// CACHE used to cache users, repeaters,
+// gateways, IP numbers coming from the irc server
 
 static std::map<std::string, std::string> user2rptr_map, rptr2gwy_map, gwy2ip_map;
 
 static pthread_mutex_t irc_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int open_port(const PORTIP &pip);
+static int open_port(const SPORTIP &pip);
 static void calcPFCS(unsigned char *packet, int len);
 static void GetIRCDataThread();
 static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
@@ -493,7 +502,7 @@ static int read_config(char *cfgFile)
 }
 
 // Create ports
-static int open_port(const PORTIP &pip)
+static int open_port(const SPORTIP &pip)
 {
 	struct sockaddr_in sin;
 
@@ -2675,29 +2684,7 @@ int main(int argc, char **argv)
 	rptr.mod[2].band = "2m";
 
 	for (i = 0; i < 3; i++) {
-		band_txt[i].streamID[0] = band_txt[i].streamID[1] = 0x0;
-		band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
-		band_txt[i].lh_mycall[0] = band_txt[i].lh_sfx[0] = band_txt[i].lh_yrcall[0] = '\0';
-		band_txt[i].lh_rpt1[0] = band_txt[i].lh_rpt2[0] = '\0';
-
-		band_txt[i].last_time = 0;
-
-		band_txt[i].txt[0] = '\0';
-		band_txt[i].txt_cnt = 0;
-		band_txt[i].txt_stats_sent = false;
-
-		band_txt[i].dest_rptr[0] = '\0';
-
-		band_txt[i].temp_line[0] = '\0';
-		band_txt[i].temp_line_cnt = 0;
-		band_txt[i].gprmc[0] = '\0';
-		band_txt[i].gpid[0] = '\0';
-		band_txt[i].is_gps_sent = false;
-		band_txt[i].gps_last_time = 0;
-
-		band_txt[i].num_dv_frames = 0;
-		band_txt[i].num_dv_silent_frames = 0;
-		band_txt[i].num_bit_errors = 0;
+		memset(&band_txt[0], 0, sizeof(SBANDTXT));
 	}
 
 	/* process configuration file */

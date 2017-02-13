@@ -32,10 +32,10 @@ enum slow_level { sl_first, sl_second };
 typedef struct portip_tag {
 	std::string ip;
 	int port;
-} PORTIP;
+} SPORTIP;
 
 typedef struct rptr_tag{
-	PORTIP aprs;
+	SPORTIP aprs;
 	std::string aprs_filter;
 	int aprs_hash;
 	int aprs_interval;
@@ -47,11 +47,11 @@ typedef struct rptr_tag{
 		std::string band;  /* 23cm ... */
 		double frequency, offset, latitude, longitude, range, agl;
 		std::string desc1, desc2, desc, url, package_version;
-		PORTIP portip;
+		SPORTIP portip;
 	} mod[3];
-} RPTR;
+} SRPTR;
 
-extern RPTR rptr;
+extern SRPTR rptr;
 
 class CAPRS {
 public:
