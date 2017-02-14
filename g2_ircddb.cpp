@@ -192,7 +192,7 @@ static void calcPFCS(unsigned char *packet, int len);
 static void GetIRCDataThread();
 static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
 static bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
-static int read_config(char *);
+static bool read_config(char *);
 static void runit();
 static void sigCatch(int signum);
 static void PlayFileThread(char *file);
@@ -213,37 +213,31 @@ extern int dstar_dv_decode(const unsigned char *d, int data[3]);
 
 static void set_dest_rptr(int mod_ndx, char *dest_rptr)
 {
-	FILE *statusfp = NULL;
-	char statusbuf[1024];
-	char *status_local_mod = NULL;
-	char *status_remote_stm = NULL;
-	char *status_remote_mod = NULL;
-	const char *delim = ",";
-	char *saveptr = NULL;
-	char *p = NULL;
-
-	statusfp = fopen(status_file.c_str(), "r");
+	FILE *statusfp = fopen(status_file.c_str(), "r");
 	if (statusfp) {
 		setvbuf(statusfp, (char *)NULL, _IOLBF, 0);
 
+		char statusbuf[1024];
 		while (fgets(statusbuf, 1020, statusfp) != NULL) {
-			p = strchr(statusbuf, '\r');
+			char *p = strchr(statusbuf, '\r');
 			if (p)
 				*p = '\0';
 			p = strchr(statusbuf, '\n');
 			if (p)
 				*p = '\0';
 
-			status_local_mod = strtok_r(statusbuf, delim, &saveptr);
-			status_remote_stm = strtok_r(NULL, delim, &saveptr);
-			status_remote_mod = strtok_r(NULL, delim, &saveptr);
+			const char *delim = ",";
+			char *saveptr = NULL;
+			char *status_local_mod = strtok_r(statusbuf, delim, &saveptr);
+			char *status_remote_stm = strtok_r(NULL, delim, &saveptr);
+			char *status_remote_mod = strtok_r(NULL, delim, &saveptr);
 
 			if (!status_local_mod || !status_remote_stm || !status_remote_mod)
 				continue;
 
 			if ( ((*status_local_mod == 'A') && (mod_ndx == 0))  ||
-			        ((*status_local_mod == 'B') && (mod_ndx == 1))  ||
-			        ((*status_local_mod == 'C') && (mod_ndx == 2)) ) {
+			     ((*status_local_mod == 'B') && (mod_ndx == 1))  ||
+			     ((*status_local_mod == 'C') && (mod_ndx == 2)) ) {
 				strncpy(dest_rptr, status_remote_stm, CALL_SIZE);
 				dest_rptr[7] = *status_remote_mod;
 				dest_rptr[CALL_SIZE] = '\0';
@@ -252,7 +246,6 @@ static void set_dest_rptr(int mod_ndx, char *dest_rptr)
 		}
 		fclose(statusfp);
 	}
-
 	return;
 }
 
@@ -278,21 +271,24 @@ static void calcPFCS(unsigned char *packet, int len)
 		0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 	};
 	unsigned short crc_dstar_ffff = 0xffff;
-	unsigned short tmp, short_c;
 	short int low, high;
+	unsigned short tmp;
 
-	if (len == 56) {
-		low = 15;
-		high = 54;
-	} else if (len == 58) {
-		low = 17;
-		high = 56;
-	} else
-		return;
-
+	switch (len) {
+		case 56:
+			low = 15;
+			high = 54;
+			break;
+		case 58:
+			low = 17;
+			high = 56;
+			break;
+		default:
+			return;
+	}
 
 	for (unsigned short int i = low; i < high ; i++) {
-		short_c = 0x00ff & (unsigned short)packet[i];
+		unsigned short short_c = 0x00ff & (unsigned short)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
@@ -355,7 +351,7 @@ bool get_value(const Config &cfg, const char *path, std::string &value, int min,
 }
 
 /* process configuration file */
-static int read_config(char *cfgFile)
+static bool read_config(char *cfgFile)
 {
 	Config cfg;
 
@@ -363,18 +359,16 @@ static int read_config(char *cfgFile)
 	// Read the file. If there is an error, report it and exit.
 	try {
 		cfg.readFile(cfgFile);
-	}
-	catch(const FileIOException &fioex) {
+	} catch(const FileIOException &fioex) {
 		traceit("Can't read %s\n", cfgFile);
-		return 1;
-	}
-	catch(const ParseException &pex) {
+		return true;
+	} catch(const ParseException &pex) {
 		traceit("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return 1;
+		return true;
 	}
 
 	if (! get_value(cfg, "ircddb.login", owner, 3, CALL_SIZE-2, "UNDEFINED"))
-		return 1;
+		return true;
 	OWNER = owner;
 	ToLower(owner);
 	ToUpper(OWNER);
@@ -388,7 +382,7 @@ static int read_config(char *cfgFile)
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
 			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm")) {
 				traceit("%s.type '%s' is invalid\n", type.c_str());
-				return 1;
+				return true;
 			}
 			rptr.mod[m].defined = true;
 			if (0 == strcasecmp(type.c_str(), "dvap"))
@@ -398,7 +392,7 @@ static int read_config(char *cfgFile)
 			else
 				rptr.mod[m].package_version = MMDVM_VERSION;
 			if (! get_value(cfg, std::string(path+".ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, "127.0.0.1"))
-				return 1;
+				return true;
 			get_value(cfg, std::string(path+".port").c_str(), rptr.mod[m].portip.port, 16000, 65535, 19998+m);
 			get_value(cfg, std::string(path+".frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
 			get_value(cfg, std::string(path+".offset").c_str(), rptr.mod[m].offset,-1.0e12, 1.0e12, 0.0);
@@ -411,7 +405,7 @@ static int read_config(char *cfgFile)
 			if (! cfg.lookupValue(path+".desc2", rptr.mod[m].desc2))
 				rptr.mod[m].desc2 = "";
 			if (! get_value(cfg, std::string(path+".url").c_str(), rptr.mod[m].url, 0, 80, "github.com/ac2ie/g2_ircddb"))
-				return 1;
+				return true;
 			// truncate strings
 			if (rptr.mod[m].desc1.length() > 20)
 				rptr.mod[m].desc1.resize(20);
@@ -426,39 +420,39 @@ static int read_config(char *cfgFile)
 	}
 	if (false==rptr.mod[0].defined && false==rptr.mod[1].defined && false==rptr.mod[2].defined) {
 		traceit("No repeaters defined!\n");
-		return 1;
+		return true;
 	}
 
 	if (! get_value(cfg, "file.status", status_file, 1, FILENAME_MAX, "/usr/local/etc/RPTR_STATUS.txt"))
-		return 1;
+		return true;
 
 	if (! get_value(cfg, "gateway.local_irc_ip", local_irc_ip, 7, IP_SIZE, "0.0.0.0"))
-		return 1;
+		return true;
 
 	get_value(cfg, "gateway.send_qrgs_maps", bool_send_qrgs, true);
 
 	if (! get_value(cfg, "aprs.host", rptr.aprs.ip, 7, MAXHOSTNAMELEN, "rotate.aprs.net"))
-		return 1;
+		return true;
 
 	get_value(cfg, "aprs.port", rptr.aprs.port, 10000, 65535, 14580);
 
 	get_value(cfg, "aprs.interval", rptr.aprs_interval, 40, 1000, 40);
 
 	if (! get_value(cfg, "aprs.filter", rptr.aprs_filter, 0, 512, ""))
-		return 1;
+		return true;
 
 	if (! get_value(cfg, "gateway.external.ip", g2_external.ip, 7, IP_SIZE, "0.0.0.0"))
-		return 1;
+		return true;
 
 	get_value(cfg, "gateway.external.port", g2_external.port, 20001, 65535, 40000);
 
 	if (! get_value(cfg, "gateway.internal.ip", g2_internal.ip, 7, IP_SIZE, "0.0.0.0"))
-		return 1;
+		return true;
 
 	get_value(cfg, "gateway.internal.port", g2_internal.port, 16000, 65535, 19000);
 
 	if (! get_value(cfg, "g2_link.outgoing_ip", g2_link.ip, 7, IP_SIZE, "127.0.0.1"))
-		return 1;
+		return true;
 
 	get_value(cfg, "g2_link.port", g2_link.port, 16000, 65535, 18997);
 
@@ -473,7 +467,7 @@ static int read_config(char *cfgFile)
 	get_value(cfg, "gateway.aprs_send", bool_send_aprs, true);
 
 	if (! get_value(cfg, "file.echotest", echotest_dir, 2, FILENAME_MAX, "/tmp"))
-		return 1;
+		return true;
 
 	get_value(cfg, "timing.play.wait", play_wait, 1, 10, 2);
 
@@ -488,17 +482,17 @@ static int read_config(char *cfgFile)
 	get_value(cfg, "timing.timeout.local_rptr", from_local_rptr_timeout, 1, 10, 1);
 
 	if (! get_value(cfg, "ircddb.host", ircddb.ip, 3, MAXHOSTNAMELEN, "rr.openquad.net"))
-		return 1;
+		return true;
 
 	get_value(cfg, "ircddb.port", ircddb.port, 1000, 65535, 9007);
 
 	if(! get_value(cfg, "ircddb.password", irc_pass, 0, 512, "1111111111111111"))
-		return 1;
+		return true;
 
 	if (! get_value(cfg, "file.dtmf",  dtmf_dir, 2,FILENAME_MAX, "/tmp"))
-		return 1;
+		return true;
 
-	return 0;
+	return false;
 }
 
 // Create ports
@@ -532,16 +526,10 @@ static void GetIRCDataThread()
 {
 	struct timespec req;
 
-	std::string user;
-	std::string rptr;
-	std::string gateway;
-	std::string ipaddr;
+	std::string user, rptr, gateway, ipaddr;
 	DSTAR_PROTOCOL proto;
 	IRCDDB_RESPONSE_TYPE type;
-	int rc = 0;
 	struct sigaction act;
-	short threshold = 0;
-	short THRESHOLD_MAX = 100;
 	short last_status = 0;
 
 	act.sa_handler = sigCatch;
@@ -563,10 +551,11 @@ static void GetIRCDataThread()
 		return;
 	}
 
+	short threshold = 0;
 	while (keep_running) {
 		threshold++;
-		if (threshold >= THRESHOLD_MAX) {
-			rc = ii->getConnectionState();
+		if (threshold >= 100) {
+			int rc = ii->getConnectionState();
 			if ((rc == 0) || (rc == 10)) {
 				if (last_status != 0) {
 					traceit("irc status=%d, probable disconnect...\n", rc);
@@ -710,14 +699,10 @@ static int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_
 	return 2;
 }
 
-static bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs,
-                            char *mod, char *ip, char RoU)
+static bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
 {
-	int rc = 2;
-	int status = 0;
-
 	pthread_mutex_lock(&irc_data_mutex);
-	rc = get_yrcall_rptr_from_cache(call, arearp_cs, zonerp_cs, mod, ip, RoU);
+	int rc = get_yrcall_rptr_from_cache(call, arearp_cs, zonerp_cs, mod, ip, RoU);
 	pthread_mutex_unlock(&irc_data_mutex);
 	if (rc == 0)
 		return true;
@@ -726,7 +711,7 @@ static bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs,
 
 	/* at this point, the data is not in cache */
 	/* report the irc status */
-	status = ii->getConnectionState();
+	int status = ii->getConnectionState();
 	// traceit("irc status=%d\n", status);
 	if (status != 7) {
 		traceit("Remote irc database not ready, irc status is not 7, try again\n");
@@ -2279,25 +2264,21 @@ static void runit()
 static void compute_aprs_hash()
 {
 	short hash = 0x73e2;
-	short i = 0;
-	short len = 0;
-	char *p = NULL;
 	char rptr_sign[CALL_SIZE + 1];
 
 	strcpy(rptr_sign, OWNER.c_str());
-	p = strchr(rptr_sign, ' ');
+	char *p = strchr(rptr_sign, ' ');
 	if (!p) {
 		traceit("Failed to build repeater callsign for aprs hash\n");
 		return;
 	}
 	*p = '\0';
 	p = rptr_sign;
-	len = strlen(rptr_sign);
+	short int len = strlen(rptr_sign);
 
-	while (i < len) {
+	for (short int i=0; i < len; i+=2) {
 		hash ^= (*p++) << 8;
 		hash ^= (*p++);
-		i += 2;
 	}
 	traceit("aprs hash code=[%d] for %s\n", hash, OWNER.c_str());
 	rptr.aprs_hash = hash;
@@ -2309,19 +2290,10 @@ void APRSBeaconThread()
 {
 	struct timespec req;
 
-	int rc;
 	char snd_buf[512];
 	char rcv_buf[512];
-	float tmp_lat;
-	float tmp_lon;
-	float lat;
-	float lon;
-	char lat_s[15];
-	char lon_s[15];
-	time_t last_beacon_time = 0;
-	time_t last_keepalive_time = 0;
 	time_t tnow = 0;
-	short int i;
+
 	struct sigaction act;
 
 	/*
@@ -2351,6 +2323,7 @@ void APRSBeaconThread()
 		return;
 	}
 
+	time_t last_keepalive_time;
 	time(&last_keepalive_time);
 
 	/* This thread is also saying to the APRS_HOST that we are ALIVE */
@@ -2364,16 +2337,18 @@ void APRSBeaconThread()
 		}
 
 		time(&tnow);
+		time_t last_beacon_time = 0;
 		if ((tnow - last_beacon_time) > (rptr.aprs_interval * 60)) {
-			for (i = 0; i < 3; i++) {
+			for (short int i=0; i<3; i++) {
 				if (rptr.mod[i].desc[0] != '\0') {
-					tmp_lat = fabs(rptr.mod[i].latitude);
-					tmp_lon = fabs(rptr.mod[i].longitude);
-					lat = floor(tmp_lat);
-					lon = floor(tmp_lon);
+					float tmp_lat = fabs(rptr.mod[i].latitude);
+					float tmp_lon = fabs(rptr.mod[i].longitude);
+					float lat = floor(tmp_lat);
+					float lon = floor(tmp_lon);
 					lat = (tmp_lat - lat) * 60.0F + lat  * 100.0F;
 					lon = (tmp_lon - lon) * 60.0F + lon  * 100.0F;
 
+					char lat_s[15], lon_s[15];
 					if (lat >= 1000.0F)
 						sprintf(lat_s, "%.2f", lat);
 					else if (lat >= 100.0F)
@@ -2412,7 +2387,7 @@ void APRSBeaconThread()
 							else
 								THRESHOLD_COUNTDOWN = 15;
 						} else {
-							rc = aprs->WriteSock(snd_buf, strlen(snd_buf));
+							int rc = aprs->WriteSock(snd_buf, strlen(snd_buf));
 							if (rc < 0) {
 								if ((errno == EPIPE) ||
 								        (errno == ECONNRESET) ||
@@ -2442,12 +2417,12 @@ void APRSBeaconThread()
 								break;
 							}
 						}
-						rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
+						int rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
 						if (rc > 0)
 							THRESHOLD_COUNTDOWN = 15;
 					}
 				}
-				rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
+				int rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
 				if (rc > 0)
 					THRESHOLD_COUNTDOWN = 15;
 			}
@@ -2456,7 +2431,7 @@ void APRSBeaconThread()
 		/*
 		   Are we still receiving from APRS host ?
 		*/
-		rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
+		int rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
 		if (rc < 0) {
 			if ((errno == EPIPE) ||
 			        (errno == ECONNRESET) ||
@@ -2688,8 +2663,7 @@ int main(int argc, char **argv)
 	}
 
 	/* process configuration file */
-	rc = read_config(argv[1]);
-	if (rc != 0) {
+	if ( read_config(argv[1]) ) {
 		traceit("Failed to process config file %s\n", argv[1]);
 		return 1;
 	}
@@ -2876,11 +2850,32 @@ int main(int argc, char **argv)
 	return rc;
 }
 
+static bool validate_csum(SBANDTXT &bt, bool is_gps)
+{
+	const char *name = is_gps ? "GPS" : "GPRMC";
+	char *s = is_gps ? bt.gpid : bt.gprmc;
+	char *p = strrchr(s, '*');
+	if (!p) {
+		// BAD news, something went wrong
+		traceit("Missing asterisk before checksum in %s\n", name);
+		bt.gprmc[0] = bt.gpid[0] = '\0';
+		return true;
+	} else {
+		*p = '\0';
+		// verify csum in GPRMC
+		bool ok = verify_gps_csum(s + 1, p + 1);
+		if (!ok) {
+			traceit("csum in %s not good\n", name);
+			bt.gprmc[0] = bt.gpid[0] = '\0';
+			return true;
+		}
+	}
+	return false;
+}
+
 static void gps_send(short int rptr_idx)
 {
 	time_t tnow = 0;
-	char *p = NULL;
-	bool ok = false;
 	static char old_mycall[CALL_SIZE + 1] = { "        " };
 
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
@@ -2920,43 +2915,8 @@ static void gps_send(short int rptr_idx)
 	traceit("GPRMC=[%s]\n", band_txt[rptr_idx].gprmc);
 	traceit("GPS id=[%s]\n",band_txt[rptr_idx].gpid);
 
-	p = strrchr(band_txt[rptr_idx].gprmc, '*');
-	if (!p) {
-		/* BAD news, something went wrong */
-		traceit("Missing asterisk before checksum in GPRMC\n");
-		band_txt[rptr_idx].gprmc[0] = '\0';
-		band_txt[rptr_idx].gpid[0] = '\0';
+	if (validate_csum(band_txt[rptr_idx], false) || validate_csum(band_txt[rptr_idx], true))
 		return;
-	} else {
-		*p = '\0';
-		/* verify csum in GPRMC */
-		ok = verify_gps_csum(band_txt[rptr_idx].gprmc + 1, p + 1);
-		if (!ok) {
-			traceit("csum in GPRMC not good\n");
-			band_txt[rptr_idx].gprmc[0] = '\0';
-			band_txt[rptr_idx].gpid[0] = '\0';
-			return;
-		}
-	}
-
-	p = strrchr(band_txt[rptr_idx].gpid, '*');
-	if (!p) {
-		/* BAD news, something went wrong */
-		traceit("Missing asterisk before checksum in GPS id\n");
-		band_txt[rptr_idx].gprmc[0] = '\0';
-		band_txt[rptr_idx].gpid[0] = '\0';
-		return;
-	} else {
-		*p = '\0';
-		/* verify csum in GPS id */
-		ok = verify_gps_csum(band_txt[rptr_idx].gpid,  p + 1);
-		if (!ok) {
-			traceit("csum in GPS id not good\n");
-			band_txt[rptr_idx].gprmc[0] = '\0';
-			band_txt[rptr_idx].gpid[0] = '\0';
-			return;
-		}
-	}
 
 	/* now convert GPS into APRS and send it */
 	build_aprs_from_gps_and_send(rptr_idx);
@@ -2969,24 +2929,14 @@ static void gps_send(short int rptr_idx)
 static void build_aprs_from_gps_and_send(short int rptr_idx)
 {
 	char buf[512];
-	char *p = NULL;
 	const char *delim = ",";
-	int rc = 0;
 
 	char *saveptr = NULL;
 
-	/* breakdown of GPRMC */
-	//char *GPRMC = NULL;
-	//char *time_utc = NULL;
-	//char *nav = NULL;
-	char *lat_str = NULL;
-	char *lat_NS = NULL;
-	char *lon_str = NULL;
-	char *lon_EW = NULL;
 	/*** dont care about the rest */
 
 	strcpy(buf, band_txt[rptr_idx].lh_mycall);
-	p = strchr(buf, ' ');
+	char *p = strchr(buf, ' ');
 	if (p) {
 		if (band_txt[rptr_idx].lh_mycall[7] != ' ') {
 			*p = '-';
@@ -3010,10 +2960,10 @@ static void build_aprs_from_gps_and_send(short int rptr_idx)
 	strtok_r(NULL, delim, &saveptr);
 	//nav =
 	strtok_r(NULL, delim, &saveptr);
-	lat_str = strtok_r(NULL, delim, &saveptr);
-	lat_NS = strtok_r(NULL, delim, &saveptr);
-	lon_str = strtok_r(NULL, delim, &saveptr);
-	lon_EW = strtok_r(NULL, delim, &saveptr);
+	char *lat_str = strtok_r(NULL, delim, &saveptr);
+	char *lat_NS = strtok_r(NULL, delim, &saveptr);
+	char *lon_str = strtok_r(NULL, delim, &saveptr);
+	char *lon_EW = strtok_r(NULL, delim, &saveptr);
 
 	if (lat_str && lat_NS) {
 		if ((*lat_NS != 'N') && (*lat_NS != 'S')) {
@@ -3066,8 +3016,7 @@ static void build_aprs_from_gps_and_send(short int rptr_idx)
 	// traceit("Built APRS from old GPS mode=[%s]\n", buf);
 	strcat(buf, "\r\n");
 
-	rc = aprs->WriteSock(buf, strlen(buf));
-	if (rc == -1) {
+	if (-1 == aprs->WriteSock(buf, strlen(buf))) {
 		if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) ||
 		    (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) ||
 		    (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
@@ -3082,16 +3031,12 @@ static void build_aprs_from_gps_and_send(short int rptr_idx)
 
 static bool verify_gps_csum(char *gps_text, char *csum_text)
 {
-	short int len;
-	short int i;
-	char c;
 	short computed_csum = 0;
 	char computed_csum_text[16];
-	char *p = NULL;
 
-	len = strlen(gps_text);
-	for (i = 0; i < len; i++) {
-		c = gps_text[i];
+	short int len = strlen(gps_text);
+	for (short int i=0; i<len; i++) {
+		char c = gps_text[i];
 		if (computed_csum == 0)
 			computed_csum = (char)c;
 		else
@@ -3100,7 +3045,7 @@ static bool verify_gps_csum(char *gps_text, char *csum_text)
 	sprintf(computed_csum_text, "%02X", computed_csum);
 	// traceit("computed_csum_text=[%s]\n", computed_csum_text);
 
-	p = strchr(csum_text, ' ');
+	char *p = strchr(csum_text, ' ');
 	if (p)
 		*p = '\0';
 
