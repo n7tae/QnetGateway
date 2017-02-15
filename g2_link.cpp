@@ -72,24 +72,24 @@ using namespace libconfig;
 
 /* configuration data */
 static std::string login_call;
+static std::string owner;
+static std::string to_g2_external_ip;
+static std::string my_g2_link_ip;
+static std::string gwys;
+static std::string status_file;
+static std::string announce_dir;
 static bool only_admin_login;
 static bool only_link_unlink;
-static std::string owner;
+static bool qso_details;
+static bool bool_rptr_ack;
+static bool announce;
 static int rmt_xrf_port;
 static int rmt_ref_port;
 static int rmt_dcs_port;
-static std::string my_g2_link_ip;
 static int my_g2_link_port;
-static std::string to_g2_external_ip;
 static int to_g2_external_port;
-static bool qso_details;
-static std::string gwys;
-static std::string status_file;
-static bool bool_rptr_ack;
 static int delay_between;
 static int delay_before;
-static bool announce;
-static std::string announce_dir;
 static char link_at_startup[CALL_SIZE+1];
 static unsigned int max_dongles;
 static unsigned int saved_max_dongles;
@@ -97,29 +97,18 @@ static long rf_inactivity_timer[3];
 
 static unsigned char REF_ACK[3] = { 3, 96, 0 };
 
-/*
-   This is the data payload in the map: inbound_list
-   This is for inbound dongles
-*/
+// This is the data payload in the map: inbound_list
+// This is for inbound dongles
 
 struct inbound {
-	/* the callsign of the remote */
-	char call[CALL_SIZE + 1];
-
-	/* IP and port of remote */
-	struct sockaddr_in sin;
-
-	/* if countdown expires, the connection is terminated */
-	short countdown;
-
-	/* This user talked on this module */
-	char mod;  /* A B C */
-
-	/* dvap, dvdongle, ... */
-	char client;
-
+	char call[CALL_SIZE + 1];	// the callsign of the remote
+	struct sockaddr_in sin;		// IP and port of remote
+	short countdown;			// if countdown expires, the connection is terminated
+	char mod;					// A B C This user talked on this module
+	char client;				// dvap, dvdongle
 };
-/* the Key in this inbound_list map is the unique IP address of the remote */
+
+// the Key in this inbound_list map is the unique IP address of the remote
 typedef std::map<std::string, inbound *> inbound_type;
 static inbound_type inbound_list;
 
@@ -133,11 +122,6 @@ static link_unlink_user_type link_unlink_user;
 typedef std::map<std::string, std::string> dt_lh_type;
 static dt_lh_type dt_lh_list;
 
-/*
-   index 0 is from_mod=A,
-   index 1 is from_mod=B,
-   index 2 is from_mod=C
-*/
 static struct {
 	char to_call[CALL_SIZE + 1];
 	struct sockaddr_in toDst4;
@@ -145,19 +129,19 @@ static struct {
 	char to_mod;
 	short countdown;
 	bool is_connected;
-	unsigned char in_streamid[2];  /* incoming from remote systems */
-	unsigned char out_streamid[2]; /* outgoing to remote systems */
+	unsigned char in_streamid[2];  // incoming from remote systems
+	unsigned char out_streamid[2]; // outgoing to remote systems
 } to_remote_g2[3];
 
-/* broadcast for data arriving from xrf to local rptr */
+// broadcast for data arriving from xrf to local rptr
 static struct {
-	unsigned char xrf_streamid[2]; /* streamid from xrf */
-	unsigned char rptr_streamid[2][2];  /* generated streamid to rptr(s) */
+	unsigned char xrf_streamid[2];		// streamid from xrf
+	unsigned char rptr_streamid[2][2];	// generated streamid to rptr(s)
 } brd_from_xrf;
 static unsigned char from_xrf_torptr_brd[56];
 static short brd_from_xrf_idx = 0;
 
-/* broadcast for data arriving from local rptr to xrf */
+// broadcast for data arriving from local rptr to xrf
 static struct {
 	unsigned char from_rptr_streamid[2];
 	unsigned char to_rptr_streamid[2][2];
@@ -165,35 +149,30 @@ static struct {
 static unsigned char fromrptr_torptr_brd[56];
 static short brd_from_rptr_idx = 0;
 
-/*
-   index 0 is local mod=A,
-   index 1 is local mod=B,
-   index 2 is local mod=C
-*/
 static struct {
 	unsigned char streamid[2];
-	time_t last_time;  /* last time RF user talked */
-} tracing[3] = { { {0,0}, 0 },
+	time_t last_time;	// last time RF user talked
+} tracing[3] = {
+	{ {0,0}, 0 },
 	{ {0,0}, 0 },
 	{ {0,0}, 0 }
 };
 
-/* input from remote */
+// input from remote
 static int xrf_g2_sock = -1;
 static int ref_g2_sock = -1;
 static int dcs_g2_sock = -1;
 static unsigned char dcs_buf[1000];
 static unsigned char readBuffer2[1024];
 static struct sockaddr_in fromDst4;
-/*
-   After we receive it from remote g2,
-   we must feed it to our local repeater.
-*/
+
+// After we receive it from remote g2,
+// we must feed it to our local repeater.
 static struct sockaddr_in toLocalg2;
 
-/* input from our own local repeater */
+// input from our own local repeater
 static int rptr_sock = -1;
-static unsigned char readBuffer[100]; /* 58 or 29 or 32, max is 58 */
+static unsigned char readBuffer[100]; // 58 or 29 or 32, max is 58
 static struct sockaddr_in fromRptr;
 
 static fd_set fdset;
@@ -201,7 +180,7 @@ static struct timeval tv;
 
 static std::atomic<bool> keep_running(true);
 
-/* Used to validate incoming donglers */
+// Used to validate incoming donglers
 static regex_t preg;
 
 const char* G2_html = "<table border=\"0\" width=\"95%\"><tr>"
@@ -211,61 +190,27 @@ const char* G2_html = "<table border=\"0\" width=\"95%\"><tr>"
                       "</font></td>"
                       "</tr></table>";
 
-static unsigned short crc_tabccitt[256] = {
-	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,
-	0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
-	0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,
-	0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
-	0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,
-	0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
-	0x3183,0x200a,0x1291,0x0318,0x77a7,0x662e,0x54b5,0x453c,
-	0xbdcb,0xac42,0x9ed9,0x8f50,0xfbef,0xea66,0xd8fd,0xc974,
-	0x4204,0x538d,0x6116,0x709f,0x0420,0x15a9,0x2732,0x36bb,
-	0xce4c,0xdfc5,0xed5e,0xfcd7,0x8868,0x99e1,0xab7a,0xbaf3,
-	0x5285,0x430c,0x7197,0x601e,0x14a1,0x0528,0x37b3,0x263a,
-	0xdecd,0xcf44,0xfddf,0xec56,0x98e9,0x8960,0xbbfb,0xaa72,
-	0x6306,0x728f,0x4014,0x519d,0x2522,0x34ab,0x0630,0x17b9,
-	0xef4e,0xfec7,0xcc5c,0xddd5,0xa96a,0xb8e3,0x8a78,0x9bf1,
-	0x7387,0x620e,0x5095,0x411c,0x35a3,0x242a,0x16b1,0x0738,
-	0xffcf,0xee46,0xdcdd,0xcd54,0xb9eb,0xa862,0x9af9,0x8b70,
-	0x8408,0x9581,0xa71a,0xb693,0xc22c,0xd3a5,0xe13e,0xf0b7,
-	0x0840,0x19c9,0x2b52,0x3adb,0x4e64,0x5fed,0x6d76,0x7cff,
-	0x9489,0x8500,0xb79b,0xa612,0xd2ad,0xc324,0xf1bf,0xe036,
-	0x18c1,0x0948,0x3bd3,0x2a5a,0x5ee5,0x4f6c,0x7df7,0x6c7e,
-	0xa50a,0xb483,0x8618,0x9791,0xe32e,0xf2a7,0xc03c,0xd1b5,
-	0x2942,0x38cb,0x0a50,0x1bd9,0x6f66,0x7eef,0x4c74,0x5dfd,
-	0xb58b,0xa402,0x9699,0x8710,0xf3af,0xe226,0xd0bd,0xc134,
-	0x39c3,0x284a,0x1ad1,0x0b58,0x7fe7,0x6e6e,0x5cf5,0x4d7c,
-	0xc60c,0xd785,0xe51e,0xf497,0x8028,0x91a1,0xa33a,0xb2b3,
-	0x4a44,0x5bcd,0x6956,0x78df,0x0c60,0x1de9,0x2f72,0x3efb,
-	0xd68d,0xc704,0xf59f,0xe416,0x90a9,0x8120,0xb3bb,0xa232,
-	0x5ac5,0x4b4c,0x79d7,0x685e,0x1ce1,0x0d68,0x3ff3,0x2e7a,
-	0xe70e,0xf687,0xc41c,0xd595,0xa12a,0xb0a3,0x8238,0x93b1,
-	0x6b46,0x7acf,0x4854,0x59dd,0x2d62,0x3ceb,0x0e70,0x1ff9,
-	0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,
-	0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
-};
-
-/* the map of remotes */
-/* key is the callsign, data is the host */
+// the map of remotes
+// key is the callsign, data is the host
 typedef std::map<std::string, std::string> gwy_list_type;
 static gwy_list_type gwy_list;
 
 static unsigned char queryCommand[QUERY_SIZE];
 
-/* START:  TEXT crap */
+// START:  TEXT crap
 static char dtmf_mycall[3][CALL_SIZE + 1] = { {""}, {""}, {""} };
 static bool new_group[3] = { true, true, true };
 static int header_type = 0;
 static bool GPS_seen[3] = { false, false, false };
 unsigned char tmp_txt[3];
 static char *p_tmp2 = NULL;
-/* END:  TEXT crap */
+// END:  TEXT crap
 
-/* this is used for the "dashboard and qso_details" to avoid processing multiple headers */
+// this is used for the "dashboard and qso_details" to avoid processing multiple headers
 static struct {
 	unsigned char sid[2];
-} old_sid[3] = { { {0x00, 0x00} },
+} old_sid[3] = {
+	{ {0x00, 0x00} },
 	{ {0x00, 0x00} },
 	{ {0x00, 0x00} }
 };
@@ -282,10 +227,8 @@ static void runit();
 static void print_status_file();
 static void send_heartbeat();
 static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
-
 static void audio_notify(char *notify_msg);
 static void rptr_ack(short i);
-
 static void AudioNotifyThread(char *arg);
 static void RptrAckThread(char *arg);
 
@@ -294,14 +237,13 @@ static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr)
 	struct addrinfo hints;
 	struct addrinfo *res;
 	struct addrinfo *rp;
-	int rc = 0;
 	bool found = false;
 
 	memset(&hints, 0x00, sizeof(struct addrinfo));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = type;
 
-	rc = getaddrinfo(name, NULL, &hints, &res);
+	int rc = getaddrinfo(name, NULL, &hints, &res);
 	if (rc != 0) {
 		traceit("getaddrinfo return error code %d for [%s]\n", rc, name);
 		return false;
@@ -389,7 +331,7 @@ static void RptrAckThread(char *arg)
 	char from_mod = arg[0];
 	char RADIO_ID[21];
 	memcpy(RADIO_ID, arg + 1, 21);
-	unsigned char rptr_ack[56];
+	unsigned char buf[56];
 	struct timespec nanos;
 	unsigned int aseed;
 	time_t tnow = 0;
@@ -417,148 +359,121 @@ static void RptrAckThread(char *arg)
 
 	traceit("sending ACK+text, mod:[%c], RADIO_ID=[%s]\n", from_mod, RADIO_ID);
 
-	memcpy(rptr_ack,"DSVT", 4);
-	rptr_ack[4] = 0x10;
-	rptr_ack[5] = 0x00;
-	rptr_ack[6] = 0x00;
-	rptr_ack[7] = 0x00;
+	memcpy(buf,"DSVT", 4);
+	buf[4]  = 0x10;
+	buf[5]  = 0x00;
+	buf[6]  = 0x00;
+	buf[7]  = 0x00;
 
-	rptr_ack[8] = 0x20;
-	rptr_ack[9]  = 0x00;
-	rptr_ack[10] = 0x01;
-	rptr_ack[11] = 0x00;
+	buf[8]  = 0x20;
+	buf[9]  = 0x00;
+	buf[10] = 0x01;
+	buf[11] = 0x00;
 
-	rptr_ack[12] = streamid_raw / 256U;
-	rptr_ack[13] = streamid_raw % 256U;
-	rptr_ack[14] = 0x80;
-	rptr_ack[15] = 0x01; /* we do not want to set this to 0x01 */
-	rptr_ack[16] = 0x00;
-	rptr_ack[17] = 0x00;
+	buf[12] = streamid_raw / 256U;
+	buf[13] = streamid_raw % 256U;
+	buf[14] = 0x80;
+	buf[15] = 0x01; /* we do not want to set this to 0x01 */
+	buf[16] = 0x00;
+	buf[17] = 0x00;
 
-	memcpy(rptr_ack + 18, owner.c_str(), CALL_SIZE);
-	rptr_ack[25] = from_mod;
+	memcpy(buf + 18, owner.c_str(), CALL_SIZE);
+	buf[25] = from_mod;
 
-	memcpy(rptr_ack + 26,  owner.c_str(), CALL_SIZE);
-	rptr_ack[33] = 'G';
+	memcpy(buf + 26,  owner.c_str(), CALL_SIZE);
+	buf[33] = 'G';
 
-	memcpy(rptr_ack + 34, "CQCQCQ  ", CALL_SIZE);
+	memcpy(buf + 34, "CQCQCQ  ", CALL_SIZE);
 
-	memcpy(rptr_ack + 42, owner.c_str(), CALL_SIZE);
-	rptr_ack[49] = from_mod;
+	memcpy(buf + 42, owner.c_str(), CALL_SIZE);
+	buf[49] = from_mod;
 
-	memcpy(rptr_ack + 50, "RPTR", 4);
-	calcPFCS(rptr_ack,56);
-	(void)sendto(rptr_sock,(char *)rptr_ack,56,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	memcpy(buf + 50, "RPTR", 4);
+	calcPFCS(buf,56);
+	(void)sendto(rptr_sock,(char *)buf,56,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
 	nanos.tv_sec = 0;
 	nanos.tv_nsec = delay_between * 1000000;
 	nanosleep(&nanos,0);
 
-	rptr_ack[4] = 0x20;
+	buf[4] = 0x20;
 	memcpy((char *)rptr_ack + 15, silence, 9);
 
 	/* start sending silence + announcement text */
 
-	rptr_ack[14] = 0x00;
-	rptr_ack[24] = 0x55;
-	rptr_ack[25] = 0x2d;
-	rptr_ack[26] = 0x16;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x01;
-	rptr_ack[24] = '@' ^ 0x70;
-	rptr_ack[25] = RADIO_ID[0] ^ 0x4f;
-	rptr_ack[26] = RADIO_ID[1] ^ 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x02;
-	rptr_ack[24] = RADIO_ID[2] ^ 0x70;
-	rptr_ack[25] = RADIO_ID[3] ^ 0x4f;
-	rptr_ack[26] = RADIO_ID[4] ^ 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x03;
-	rptr_ack[24] = 'A' ^ 0x70;
-	rptr_ack[25] = RADIO_ID[5] ^ 0x4f;
-	rptr_ack[26] = RADIO_ID[6] ^ 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x04;
-	rptr_ack[24] = RADIO_ID[7] ^ 0x70;
-	rptr_ack[25] = RADIO_ID[8] ^ 0x4f;
-	rptr_ack[26] = RADIO_ID[9] ^ 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x05;
-	rptr_ack[24] = 'B' ^ 0x70;
-	rptr_ack[25] = RADIO_ID[10] ^ 0x4f;
-	rptr_ack[26] = RADIO_ID[11] ^ 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x06;
-	rptr_ack[24] = RADIO_ID[12] ^ 0x70;
-	rptr_ack[25] = RADIO_ID[13] ^ 0x4f;
-	rptr_ack[26] = RADIO_ID[14] ^ 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x07;
-	rptr_ack[24] = 'C' ^ 0x70;
-	rptr_ack[25] = RADIO_ID[15] ^ 0x4f;
-	rptr_ack[26] = RADIO_ID[16] ^ 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x08;
-	rptr_ack[24] = RADIO_ID[17] ^ 0x70;
-	rptr_ack[25] = RADIO_ID[18] ^ 0x4f;
-	rptr_ack[26] = RADIO_ID[19] ^ 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
-
-	rptr_ack[14] = 0x09 | 0x40;
-	memset((char *)rptr_ack + 15, 0, 9);
-	rptr_ack[24] = 0x70;
-	rptr_ack[25] = 0x4f;
-	rptr_ack[26] = 0x93;
-	(void)sendto(rptr_sock,(char *)rptr_ack,27,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
-	traceit("finished sending ACK+text to mod:[%c]\n", from_mod);
-	return;
+	for (int i=0; i<10; i++) {
+		buf[14] = (unsigned char)i;
+		switch (i) {
+			case 0:
+				buf[24] = 0x55;
+				buf[25] = 0x2d;
+				buf[26] = 0x16;
+				break;
+			case 1:
+				buf[24] = '@' ^ 0x70;
+				buf[25] = RADIO_ID[0] ^ 0x4f;
+				buf[26] = RADIO_ID[1] ^ 0x93;
+				break;
+			case 2:
+				buf[24] = RADIO_ID[2] ^ 0x70;
+				buf[25] = RADIO_ID[3] ^ 0x4f;
+				buf[26] = RADIO_ID[4] ^ 0x93;
+				break;
+			case 3:
+				buf[24] = 'A' ^ 0x70;
+				buf[25] = RADIO_ID[5] ^ 0x4f;
+				buf[26] = RADIO_ID[6] ^ 0x93;
+				break;
+			case 4:
+				buf[24] = RADIO_ID[7] ^ 0x70;
+				buf[25] = RADIO_ID[8] ^ 0x4f;
+				buf[26] = RADIO_ID[9] ^ 0x93;
+				break;
+			case 5:
+				buf[24] = 'B' ^ 0x70;
+				buf[25] = RADIO_ID[10] ^ 0x4f;
+				buf[26] = RADIO_ID[11] ^ 0x93;
+				break;
+			case 6:
+				buf[24] = RADIO_ID[12] ^ 0x70;
+				buf[25] = RADIO_ID[13] ^ 0x4f;
+				buf[26] = RADIO_ID[14] ^ 0x93;
+				break;
+			case 7:
+				buf[24] = 'C' ^ 0x70;
+				buf[25] = RADIO_ID[15] ^ 0x4f;
+				buf[26] = RADIO_ID[16] ^ 0x93;
+				break;
+			case 8:
+				buf[24] = RADIO_ID[17] ^ 0x70;
+				buf[25] = RADIO_ID[18] ^ 0x4f;
+				buf[26] = RADIO_ID[19] ^ 0x93;
+				break;
+			case 9:
+				buf[14] |= 0x40;
+				memset((char *)buf + 15, 0, 9);
+				buf[24] = 0x70;
+				buf[25] = 0x4f;
+				buf[26] = 0x93;
+				break;
+		}
+		(void)sendto(rptr_sock, (char *)buf, 27,0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
+		if (i < 9) {
+			nanos.tv_sec = 0;
+			nanos.tv_nsec = delay_between * 1000000;
+			nanosleep(&nanos,0);
+		}
+	}
 }
 
 static void print_status_file()
 {
 	struct tm tm1;
 	time_t tnow;
-	FILE *statusfp = NULL;
 	short i;
 	inbound *inbound_ptr;
 	inbound_type::iterator pos;
 
-	statusfp = fopen(status_file.c_str(), "w");
+	FILE *statusfp = fopen(status_file.c_str(), "w");
 	if (!statusfp)
 		traceit("Failed to create status file %s\n", status_file.c_str());
 	else {
@@ -600,12 +515,9 @@ static void print_status_file()
 /* Open text file of repeaters, reflectors */
 static bool load_gwys(const std::string &filename)
 {
-	FILE *fp = NULL;
 	char inbuf[1024];
-	char *p = NULL;
 	const char *delim = " ";
 
-	char *tok;
 	char call[CALL_SIZE + 1];
 	char host[MAXHOSTNAMELEN + 1];
 	char port[5 + 1];
@@ -618,7 +530,7 @@ static bool load_gwys(const std::string &filename)
 	std::pair<gwy_list_type::iterator,bool> gwy_insert_pair;
 
 	traceit("Trying to open file %s\n", filename.c_str());
-	fp = fopen(filename.c_str(), "r");
+	FILE *fp = fopen(filename.c_str(), "r");
 	if (fp == NULL) {
 		traceit("Failed to open file %s\n", filename.c_str());
 		return false;
@@ -626,7 +538,7 @@ static bool load_gwys(const std::string &filename)
 	traceit("Opened file %s OK\n", filename.c_str());
 
 	while (fgets(inbuf, 1020, fp) != NULL) {
-		p = strchr(inbuf, '\r');
+		char *p = strchr(inbuf, '\r');
 		if (p)
 			*p = '\0';
 
@@ -641,7 +553,7 @@ static bool load_gwys(const std::string &filename)
 		}
 
 		/* get the call */
-		tok = strtok(inbuf, delim);
+		char *tok = strtok(inbuf, delim);
 		if (!tok)
 			continue;
 		if ((strlen(tok) > CALL_SIZE) || (strlen(tok) < 3)) {
@@ -706,11 +618,28 @@ static bool load_gwys(const std::string &filename)
 /* compute checksum */
 static void calcPFCS(unsigned char *packet, int len)
 {
+	unsigned short crc_tabccitt[256] = {
+		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
+		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
+		0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
+		0x3183,0x200a,0x1291,0x0318,0x77a7,0x662e,0x54b5,0x453c,0xbdcb,0xac42,0x9ed9,0x8f50,0xfbef,0xea66,0xd8fd,0xc974,
+		0x4204,0x538d,0x6116,0x709f,0x0420,0x15a9,0x2732,0x36bb,0xce4c,0xdfc5,0xed5e,0xfcd7,0x8868,0x99e1,0xab7a,0xbaf3,
+		0x5285,0x430c,0x7197,0x601e,0x14a1,0x0528,0x37b3,0x263a,0xdecd,0xcf44,0xfddf,0xec56,0x98e9,0x8960,0xbbfb,0xaa72,
+		0x6306,0x728f,0x4014,0x519d,0x2522,0x34ab,0x0630,0x17b9,0xef4e,0xfec7,0xcc5c,0xddd5,0xa96a,0xb8e3,0x8a78,0x9bf1,
+		0x7387,0x620e,0x5095,0x411c,0x35a3,0x242a,0x16b1,0x0738,0xffcf,0xee46,0xdcdd,0xcd54,0xb9eb,0xa862,0x9af9,0x8b70,
+		0x8408,0x9581,0xa71a,0xb693,0xc22c,0xd3a5,0xe13e,0xf0b7,0x0840,0x19c9,0x2b52,0x3adb,0x4e64,0x5fed,0x6d76,0x7cff,
+		0x9489,0x8500,0xb79b,0xa612,0xd2ad,0xc324,0xf1bf,0xe036,0x18c1,0x0948,0x3bd3,0x2a5a,0x5ee5,0x4f6c,0x7df7,0x6c7e,
+		0xa50a,0xb483,0x8618,0x9791,0xe32e,0xf2a7,0xc03c,0xd1b5,0x2942,0x38cb,0x0a50,0x1bd9,0x6f66,0x7eef,0x4c74,0x5dfd,
+		0xb58b,0xa402,0x9699,0x8710,0xf3af,0xe226,0xd0bd,0xc134,0x39c3,0x284a,0x1ad1,0x0b58,0x7fe7,0x6e6e,0x5cf5,0x4d7c,
+		0xc60c,0xd785,0xe51e,0xf497,0x8028,0x91a1,0xa33a,0xb2b3,0x4a44,0x5bcd,0x6956,0x78df,0x0c60,0x1de9,0x2f72,0x3efb,
+		0xd68d,0xc704,0xf59f,0xe416,0x90a9,0x8120,0xb3bb,0xa232,0x5ac5,0x4b4c,0x79d7,0x685e,0x1ce1,0x0d68,0x3ff3,0x2e7a,
+		0xe70e,0xf687,0xc41c,0xd595,0xa12a,0xb0a3,0x8238,0x93b1,0x6b46,0x7acf,0x4854,0x59dd,0x2d62,0x3ceb,0x0e70,0x1ff9,
+		0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
+	};
+
 	unsigned short crc_dstar_ffff = 0xffff;
-	unsigned short tmp, short_c;
-	short int i;
-	short int low;
-	short int high;
+	unsigned short tmp;
+	short int low, high;
 
 	if (len == 56) {
 		low = 15;
@@ -721,8 +650,8 @@ static void calcPFCS(unsigned char *packet, int len)
 	} else
 		return;
 
-	for (i = low; i < high ; i++) {
-		short_c = 0x00ff & (unsigned short)packet[i];
+	for (short int i=low; i<high ; i++) {
+		unsigned short short_c = 0x00ff & (unsigned short)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
@@ -1370,7 +1299,8 @@ static void runit()
 		char mycall[9];
 		char sfx[5];
 		unsigned int dcs_rptr_seq;
-	} rptr_2_dcs[3] = { {"        ", "    ", 0},
+	} rptr_2_dcs[3] = {
+		{"        ", "    ", 0},
 		{"        ", "    ", 0},
 		{"        ", "    ", 0}
 	};
@@ -1378,7 +1308,8 @@ static void runit()
 		char mycall[9];
 		char sfx[5];
 		unsigned int dcs_rptr_seq;
-	} ref_2_dcs[3] = { {"        ", "    ", 0},
+	} ref_2_dcs[3] = {
+		{"        ", "    ", 0},
 		{"        ", "    ", 0},
 		{"        ", "    ", 0}
 	};
@@ -1386,7 +1317,8 @@ static void runit()
 		char mycall[9];
 		char sfx[5];
 		unsigned int dcs_rptr_seq;
-	} xrf_2_dcs[3] = { {"        ", "    ", 0},
+	} xrf_2_dcs[3] = {
+		{"        ", "    ", 0},
 		{"        ", "    ", 0},
 		{"        ", "    ", 0}
 	};
@@ -4299,7 +4231,6 @@ int main(int argc, char **argv)
 {
 	short i, j;
 	struct sigaction act;
-	int rc = 0;
 	char unlink_request[CALL_SIZE + 3];
 	inbound_type::iterator pos;
 	inbound *inbound_ptr;
@@ -4314,7 +4245,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	rc = regcomp(&preg,
+	int rc = regcomp(&preg,
 	             "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$",
 	             REG_EXTENDED | REG_NOSUB);
 	if (rc != 0) {
