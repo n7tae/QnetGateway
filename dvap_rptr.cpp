@@ -87,9 +87,9 @@ typedef struct dvap_hdr_tag {
 
 /* data from the local gateway */
 typedef struct hdr_tag {
-	unsigned char flags[3];
-	unsigned char rpt2[8];
+	unsigned char flag[3];
 	unsigned char rpt1[8];
+	unsigned char rpt2[8];
 	unsigned char urcall[8];
 	unsigned char mycall[8];
 	unsigned char sfx[4];
@@ -117,7 +117,7 @@ typedef struct audio_tag {
 typedef struct pkt_tag {
 	unsigned char pkt_id[4];
 	unsigned char nothing1[2];
-	unsigned char flags[2];
+	unsigned char flag[2];
 	unsigned char nothing2[2];
 	SICM myicm;
 	union {
@@ -1217,17 +1217,17 @@ static void readFrom20000()
 				}
 
 				/* check the module and gateway */
-				if (net_buf.rf_hdr.rpt2[7] != RPTR_MOD) {
+				if (net_buf.rf_hdr.rpt1[7] != RPTR_MOD) {
 					FD_CLR (insock, &readfd);
 					break;
 				}
-				memcpy(net_buf.rf_hdr.rpt1, OWNER, 7);
-				net_buf.rf_hdr.rpt1[7] = 'G';
+				memcpy(net_buf.rf_hdr.rpt2, OWNER, 7);
+				net_buf.rf_hdr.rpt2[7] = 'G';
 
 				if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
 					// restriction mode
-					memcpy(net_buf.rf_hdr.rpt1, RPTR, 7);
 					memcpy(net_buf.rf_hdr.rpt2, RPTR, 7);
+					memcpy(net_buf.rf_hdr.rpt1, RPTR, 7);
 
 					if (memcmp(net_buf.rf_hdr.mycall, OWNER, 7) == 0) {
 						/* this is an ACK back */
@@ -1235,19 +1235,19 @@ static void readFrom20000()
 					}
 				}
 
-				if ((net_buf.rf_hdr.flags[0] != 0x00) &&
-				        (net_buf.rf_hdr.flags[0] != 0x01) &&
-				        (net_buf.rf_hdr.flags[0] != 0x08) &&
-				        (net_buf.rf_hdr.flags[0] != 0x20) &&
-				        (net_buf.rf_hdr.flags[0] != 0x28) &&
-				        (net_buf.rf_hdr.flags[0] != 0x40)) {
+				if ((net_buf.rf_hdr.flag[0] != 0x00) &&
+				        (net_buf.rf_hdr.flag[0] != 0x01) &&
+				        (net_buf.rf_hdr.flag[0] != 0x08) &&
+				        (net_buf.rf_hdr.flag[0] != 0x20) &&
+				        (net_buf.rf_hdr.flag[0] != 0x28) &&
+				        (net_buf.rf_hdr.flag[0] != 0x40)) {
 					FD_CLR (insock, &readfd);
 					break;
 				}
 
 				if ((memcmp(net_buf.pkt_id, "DSTR", 4) != 0) ||
-				        (net_buf.flags[0] != 0x73) ||
-				        (net_buf.flags[1] != 0x12) ||
+				        (net_buf.flag[0] != 0x73) ||
+				        (net_buf.flag[1] != 0x12) ||
 				        (net_buf.myicm.icm_id != 0x20)) { /* voice type */
 					FD_CLR (insock, &readfd);
 					break;
@@ -1260,29 +1260,29 @@ static void readFrom20000()
 
 				traceit("Start G2: streamid=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
 				        net_buf.myicm.streamid[0], net_buf.myicm.streamid[1],
-				        net_buf.rf_hdr.flags[0], net_buf.rf_hdr.flags[1], net_buf.rf_hdr.flags[2],
+				        net_buf.rf_hdr.flag[0], net_buf.rf_hdr.flag[1], net_buf.rf_hdr.flag[2],
 				        net_buf.rf_hdr.mycall, net_buf.rf_hdr.sfx, net_buf.rf_hdr.urcall,
-				        net_buf.rf_hdr.rpt2, net_buf.rf_hdr.rpt1);
+				        net_buf.rf_hdr.rpt1, net_buf.rf_hdr.rpt2);
 
 				/* save the streamid that is winning */
 				streamid[0] = net_buf.myicm.streamid[0];
 				streamid[1] = net_buf.myicm.streamid[1];
 
-				if (net_buf.rf_hdr.flags[0] != 0x01) {
+				if (net_buf.rf_hdr.flag[0] != 0x01) {
 
-					if (net_buf.rf_hdr.flags[0] == 0x00)
-						net_buf.rf_hdr.flags[0] = 0x40;
-					else if (net_buf.rf_hdr.flags[0] == 0x08)
-						net_buf.rf_hdr.flags[0] = 0x48;
-					else if (net_buf.rf_hdr.flags[0] == 0x20)
-						net_buf.rf_hdr.flags[0] = 0x60;
-					else if (net_buf.rf_hdr.flags[0] == 0x28)
-						net_buf.rf_hdr.flags[0] = 0x68;
+					if (net_buf.rf_hdr.flag[0] == 0x00)
+						net_buf.rf_hdr.flag[0] = 0x40;
+					else if (net_buf.rf_hdr.flag[0] == 0x08)
+						net_buf.rf_hdr.flag[0] = 0x48;
+					else if (net_buf.rf_hdr.flag[0] == 0x20)
+						net_buf.rf_hdr.flag[0] = 0x60;
+					else if (net_buf.rf_hdr.flag[0] == 0x28)
+						net_buf.rf_hdr.flag[0] = 0x68;
 					else
-						net_buf.rf_hdr.flags[0] = 0x40;
+						net_buf.rf_hdr.flag[0] = 0x40;
 				}
-				net_buf.rf_hdr.flags[1] = 0x00;
-				net_buf.rf_hdr.flags[2] = 0x00;
+				net_buf.rf_hdr.flag[1] = 0x00;
+				net_buf.rf_hdr.flag[2] = 0x00;
 
 				// write the header packet to the dvap here
 				while ((space < 1) && keep_running)
@@ -1294,11 +1294,11 @@ static void readFrom20000()
 				dvp_buf[4] = 0x80;
 				dvp_buf[5] = 0;
 				memset(dvp_buf + 6, ' ', 41);
-				dvp_buf[6] = net_buf.rf_hdr.flags[0];
-				dvp_buf[7] = net_buf.rf_hdr.flags[1];
-				dvp_buf[8] = net_buf.rf_hdr.flags[2];
-				memcpy(dvp_buf + 9, net_buf.rf_hdr.rpt1, 8);
-				memcpy(dvp_buf + 17, net_buf.rf_hdr.rpt2, 8);
+				dvp_buf[6] = net_buf.rf_hdr.flag[0];
+				dvp_buf[7] = net_buf.rf_hdr.flag[1];
+				dvp_buf[8] = net_buf.rf_hdr.flag[2];
+				memcpy(dvp_buf + 9, net_buf.rf_hdr.rpt2, 8);
+				memcpy(dvp_buf + 17, net_buf.rf_hdr.rpt1, 8);
 				memcpy(dvp_buf + 25, net_buf.rf_hdr.urcall, 8);
 				memcpy(dvp_buf + 33, net_buf.rf_hdr.mycall, 8);
 				memcpy(dvp_buf + 41, net_buf.rf_hdr.sfx, 4);
@@ -1822,25 +1822,25 @@ static void ReadDVAPThread()
 			memcpy(net_buf.rf_audio.buff, dvp_buf + 6, 41);
 
 			/* RPT1 must always be the repeater + module */
-			memcpy(net_buf.rf_hdr.rpt1, RPTR_and_MOD, 8);
+			memcpy(net_buf.rf_hdr.rpt2, RPTR_and_MOD, 8);
 			/* copy RPT2 */
-			memcpy(net_buf.rf_hdr.rpt2, from_dvap_hdr->rpt1, 8);
+			memcpy(net_buf.rf_hdr.rpt1, from_dvap_hdr->rpt1, 8);
 
 			/* RPT2 must also be valid */
-			if ((net_buf.rf_hdr.rpt2[7] == 'A') ||
-			        (net_buf.rf_hdr.rpt2[7] == 'B') ||
-			        (net_buf.rf_hdr.rpt2[7] == 'C') ||
-			        (net_buf.rf_hdr.rpt2[7] == 'G'))
-				memcpy(net_buf.rf_hdr.rpt2, RPTR, 7);
+			if ((net_buf.rf_hdr.rpt1[7] == 'A') ||
+			        (net_buf.rf_hdr.rpt1[7] == 'B') ||
+			        (net_buf.rf_hdr.rpt1[7] == 'C') ||
+			        (net_buf.rf_hdr.rpt1[7] == 'G'))
+				memcpy(net_buf.rf_hdr.rpt1, RPTR, 7);
 			else
-				memset(net_buf.rf_hdr.rpt2, ' ', 8);
+				memset(net_buf.rf_hdr.rpt1, ' ', 8);
 
-			if ((memcmp(net_buf.rf_hdr.urcall, "CQCQCQ", 6) != 0) && (net_buf.rf_hdr.rpt2[0] != ' '))
-				memcpy(net_buf.rf_hdr.rpt2,  RPTR_and_G, 8);
+			if ((memcmp(net_buf.rf_hdr.urcall, "CQCQCQ", 6) != 0) && (net_buf.rf_hdr.rpt1[0] != ' '))
+				memcpy(net_buf.rf_hdr.rpt1,  RPTR_and_G, 8);
 
 			/* 8th in rpt1, rpt2 must be diff */
-			if (net_buf.rf_hdr.rpt2[7] == net_buf.rf_hdr.rpt1[7])
-				memset(net_buf.rf_hdr.rpt2, ' ', 8);
+			if (net_buf.rf_hdr.rpt1[7] == net_buf.rf_hdr.rpt2[7])
+				memset(net_buf.rf_hdr.rpt1, ' ', 8);
 
 			/*
 			   Are we restricting the RF user ?
@@ -1896,17 +1896,17 @@ static void ReadDVAPThread()
 
 				/* change the rptr flags to net flags */
 				if (from_dvap_hdr->flag1 == 0x40)
-					net_buf.rf_hdr.flags[0] = 0x00;
+					net_buf.rf_hdr.flag[0] = 0x00;
 				else if (from_dvap_hdr->flag1 == 0x48)
-					net_buf.rf_hdr.flags[0] = 0x08;
+					net_buf.rf_hdr.flag[0] = 0x08;
 				else if (from_dvap_hdr->flag1 == 0x60)
-					net_buf.rf_hdr.flags[0] = 0x20;
+					net_buf.rf_hdr.flag[0] = 0x20;
 				else if (from_dvap_hdr->flag1 == 0x68)
-					net_buf.rf_hdr.flags[0] = 0x28;
+					net_buf.rf_hdr.flag[0] = 0x28;
 				else
-					net_buf.rf_hdr.flags[0] = 0x00;
-				net_buf.rf_hdr.flags[1] = 0x00;
-				net_buf.rf_hdr.flags[2] = 0x00;
+					net_buf.rf_hdr.flag[0] = 0x00;
+				net_buf.rf_hdr.flag[1] = 0x00;
+				net_buf.rf_hdr.flag[2] = 0x00;
 
 				/* for icom g2 */
 				S_packet[5] = (unsigned char)(C_COUNTER & 0xff);
@@ -1921,15 +1921,15 @@ static void ReadDVAPThread()
 				   Before we send the data to the local gateway,
 				   set RPT1, RPT2 to be the local gateway
 				*/
-				memcpy(net_buf.rf_hdr.rpt1, OWNER, 7);
-				if (net_buf.rf_hdr.rpt2[7] != ' ')
-					memcpy(net_buf.rf_hdr.rpt2, OWNER, 7);
+				memcpy(net_buf.rf_hdr.rpt2, OWNER, 7);
+				if (net_buf.rf_hdr.rpt1[7] != ' ')
+					memcpy(net_buf.rf_hdr.rpt1, OWNER, 7);
 
 				memcpy(net_buf.pkt_id, "DSTR", 4);
 				net_buf.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
 				net_buf.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
-				net_buf.flags[0] = 0x73;
-				net_buf.flags[1] = 0x12;
+				net_buf.flag[0] = 0x73;
+				net_buf.flag[1] = 0x12;
 				net_buf.nothing2[0] = 0x00;
 				net_buf.nothing2[1] = 0x30;
 				net_buf.myicm.icm_id = 0x20;
