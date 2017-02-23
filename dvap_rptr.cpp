@@ -71,7 +71,7 @@ using namespace libconfig;
 typedef struct dvap_hdr_tag {
 	unsigned char hdr0; // 0x2f
 	unsigned char hdr1; // 0xa0
-	unsigned char streamid[2];
+	unsigned short streamid;
 	unsigned char framepos;
 	unsigned char seq;
 	unsigned char flag[3];
@@ -86,7 +86,7 @@ typedef struct dvap_hdr_tag {
 typedef struct dvap_data_tag {
 	unsigned char hdr0; // 0x12
 	unsigned char hdr1; // 0xc0
-	unsigned char streamid[2];
+	unsigned short streamid;
 	unsigned char framepos;
 	unsigned char seq;
 	unsigned char audio[12];
@@ -1195,9 +1195,9 @@ static void readFrom20000()
 	unsigned char streamid[2] = {0x00, 0x00};
 	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
 	SPKT net_buf;
-	u_int16_t stream_id_to_dvap = 0;
-	u_int8_t frame_pos_to_dvap = 0;
-	u_int8_t seq_to_dvap = 0;
+	unsigned short stream_id_to_dvap = 0;
+	unsigned char frame_pos_to_dvap = 0;
+	unsigned char seq_to_dvap = 0;
 	unsigned char silence[12] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 
 	bool written_to_q = false;
@@ -1295,8 +1295,7 @@ static void readFrom20000()
 				SDVAP_HDR dh;
 				stream_id_to_dvap = (rand_r(&aseed) % 65535U) + 1U;
 				memcpy(&dh, DVP_HDR, 2);
-				//sid = (isit_bigendian())?do_swapu16(stream_id_to_dvap):stream_id_to_dvap;
-				memcpy(&dh.streamid, &stream_id_to_dvap, 2);
+				dh.streamid = stream_id_to_dvap;
 				dh.framepos = 0x80;
 				dh.seq = 0;
 				//memset(dvp_buf + 6, ' ', 41);
@@ -1345,7 +1344,7 @@ static void readFrom20000()
 							memcpy(&dd, DVP_DAT, 2);
 							if (memcmp(net_buf.rf_audio.buff + 9, sync_codes, 3) == 0)
 								frame_pos_to_dvap = 0;
-							memcpy(dd.streamid, &stream_id_to_dvap, 2);
+							dd.streamid = stream_id_to_dvap;
 							dd.framepos = frame_pos_to_dvap;
 							if ((net_buf.myicm.ctrl & 0x40) != 0)
 								dd.framepos |= 0x40U;
@@ -1420,7 +1419,7 @@ static void readFrom20000()
 						memcpy(&dd, DVP_DAT, 2);
 						if (memcmp(silence + 9, sync_codes, 3) == 0)
 							frame_pos_to_dvap = 0;
-						memcpy(dd.streamid, &stream_id_to_dvap, 2);
+						dd.streamid = stream_id_to_dvap;
 						dd.framepos = frame_pos_to_dvap;
 						dd.seq = seq_to_dvap;
 						memcpy(dd.audio, silence, 12);
