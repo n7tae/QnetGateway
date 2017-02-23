@@ -74,9 +74,7 @@ typedef struct dvap_hdr_tag {
 	unsigned char streamid[2];
 	unsigned char framepos;
 	unsigned char seq;
-	unsigned char flag1;
-	unsigned char flag2;
-	unsigned char flag3;
+	unsigned char flag[3];
 	unsigned char rpt1[8];
 	unsigned char rpt2[8];
 	unsigned char urcall[8];
@@ -84,6 +82,15 @@ typedef struct dvap_hdr_tag {
 	unsigned char sfx[4];
 	unsigned char pfcs[2];
 } SDVAP_HDR;
+
+typedef struct dvap_data_tag {
+	unsigned char hdr0; // 0x12
+	unsigned char hdr1; // 0xc0
+	unsigned char streamid[2];
+	unsigned char framepos;
+	unsigned char seq;
+	unsigned char audio[12];
+} SDVAP_DATA;
 
 /* data from the local gateway */
 typedef struct hdr_tag {
@@ -1178,7 +1185,6 @@ static bool start_dvap()
 
 static void readFrom20000()
 {
-	unsigned char dvp_buf[200];
 	struct  sockaddr_in from;
 	socklen_t fromlen;
 	int len;
@@ -1187,7 +1193,6 @@ static void readFrom20000()
 	int inactive = 0;
 	short seq_no = 0;
 	unsigned char streamid[2] = {0x00, 0x00};
-	u_int16_t sid;
 	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
 	SPKT net_buf;
 	u_int16_t stream_id_to_dvap = 0;
@@ -1287,25 +1292,25 @@ static void readFrom20000()
 				// write the header packet to the dvap here
 				while ((space < 1) && keep_running)
 					usleep(5);
+				SDVAP_HDR dh;
 				stream_id_to_dvap = (rand_r(&aseed) % 65535U) + 1U;
-				memcpy(dvp_buf, DVP_HDR, 47);
-				sid = (isit_bigendian())?do_swapu16(stream_id_to_dvap):stream_id_to_dvap;
-				memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-				dvp_buf[4] = 0x80;
-				dvp_buf[5] = 0;
-				memset(dvp_buf + 6, ' ', 41);
-				dvp_buf[6] = net_buf.rf_hdr.flag[0];
-				dvp_buf[7] = net_buf.rf_hdr.flag[1];
-				dvp_buf[8] = net_buf.rf_hdr.flag[2];
-				memcpy(dvp_buf + 9, net_buf.rf_hdr.rpt2, 8);
-				memcpy(dvp_buf + 17, net_buf.rf_hdr.rpt1, 8);
-				memcpy(dvp_buf + 25, net_buf.rf_hdr.urcall, 8);
-				memcpy(dvp_buf + 33, net_buf.rf_hdr.mycall, 8);
-				memcpy(dvp_buf + 41, net_buf.rf_hdr.sfx, 4);
-				calcPFCS(dvp_buf + 6, dvp_buf + 45);
+				memcpy(&dh, DVP_HDR, 2);
+				//sid = (isit_bigendian())?do_swapu16(stream_id_to_dvap):stream_id_to_dvap;
+				memcpy(&dh.streamid, &stream_id_to_dvap, 2);
+				dh.framepos = 0x80;
+				dh.seq = 0;
+				//memset(dvp_buf + 6, ' ', 41);
+				for (int f=0; f<3; f++)
+					dh.flag[f] = net_buf.rf_hdr.flag[0];
+				memcpy(dh.rpt1, net_buf.rf_hdr.rpt2, 8);
+				memcpy(dh.rpt2, net_buf.rf_hdr.rpt1, 8);
+				memcpy(dh.urcall, net_buf.rf_hdr.urcall, 8);
+				memcpy(dh.mycall, net_buf.rf_hdr.mycall, 8);
+				memcpy(dh.sfx, net_buf.rf_hdr.sfx, 4);
+				calcPFCS(dh.flag, dh.pfcs);
 				frame_pos_to_dvap = 0;
 				seq_to_dvap = 0;
-				(void)write_to_dvp(dvp_buf, 47);
+				(void)write_to_dvp((unsigned char *)&dh, 47);
 
 				inactive = 0;
 				seq_no = 0;
@@ -1336,17 +1341,17 @@ static void readFrom20000()
 							// write the audio packet to the dvap here
 							while ((space < 1) && keep_running)
 								usleep(5);
-							memcpy(dvp_buf, DVP_DAT, 18);
+							SDVAP_DATA dd;
+							memcpy(&dd, DVP_DAT, 2);
 							if (memcmp(net_buf.rf_audio.buff + 9, sync_codes, 3) == 0)
 								frame_pos_to_dvap = 0;
-							sid = (isit_bigendian())?do_swapu16(stream_id_to_dvap):stream_id_to_dvap;
-							memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-							dvp_buf[4] = frame_pos_to_dvap;
-							dvp_buf[5] = seq_to_dvap;
+							memcpy(dd.streamid, &stream_id_to_dvap, 2);
+							dd.framepos = frame_pos_to_dvap;
 							if ((net_buf.myicm.ctrl & 0x40) != 0)
-								dvp_buf[4] |= 0x40U;
-							memcpy(dvp_buf + 6, net_buf.rf_audio.buff, 12);
-							(void)write_to_dvp(dvp_buf, 18);
+								dd.framepos |= 0x40U;
+							dd.seq = seq_to_dvap;
+							memcpy(dd.audio, net_buf.rf_audio.buff, 12);
+							(void)write_to_dvp((unsigned char *)&dd, 18);
 							frame_pos_to_dvap ++;
 							seq_to_dvap ++;
 
@@ -1384,11 +1389,9 @@ static void readFrom20000()
 			FD_CLR (insock, &readfd);
 		}
 
-		/*
-		   If we received a dup or select() timed out or streamids dont match,
-		   then written_to_q is false
-		*/
-		if (!written_to_q) { /* nothing was written to the adapter */
+		// If we received a dup or select() timed out or streamids dont match,
+		// then written_to_q is false
+		if (!written_to_q) {
 			if (busy20000) {
 				if (++inactive == inactiveMax) {
 					traceit("G2 Timeout...\n");
@@ -1413,19 +1416,19 @@ static void readFrom20000()
 							silence[11] = 0x93;
 						}
 
-						memcpy(dvp_buf, DVP_DAT, 18);
+						SDVAP_DATA dd;
+						memcpy(&dd, DVP_DAT, 2);
 						if (memcmp(silence + 9, sync_codes, 3) == 0)
 							frame_pos_to_dvap = 0;
-						sid = (isit_bigendian())?do_swapu16(stream_id_to_dvap):stream_id_to_dvap;
-						memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
-						dvp_buf[4] = frame_pos_to_dvap;
-						dvp_buf[5] = seq_to_dvap;
-						memcpy(dvp_buf + 6, silence, 12);
-						(void)write_to_dvp(dvp_buf, 18);
+						memcpy(dd.streamid, &stream_id_to_dvap, 2);
+						dd.framepos = frame_pos_to_dvap;
+						dd.seq = seq_to_dvap;
+						memcpy(dd.audio, silence, 12);
+						(void)write_to_dvp((unsigned char *)&dd, 18);
 						frame_pos_to_dvap ++;
-						seq_to_dvap ++;
+						seq_to_dvap++;
 
-						seq_no ++;
+						seq_no++;
 						if (seq_no == 21)
 							seq_no = 0;
 					}
@@ -1784,7 +1787,7 @@ static void ReadDVAPThread()
 			num_bit_errors = 0;
 
 			traceit("From DVAP: flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
-			        from_dvap_hdr->flag1, from_dvap_hdr->flag2, from_dvap_hdr->flag3,
+			        from_dvap_hdr->flag[0], from_dvap_hdr->flag[1], from_dvap_hdr->flag[2],
 			        from_dvap_hdr->mycall, from_dvap_hdr->sfx, from_dvap_hdr->urcall,
 			        from_dvap_hdr->rpt2, from_dvap_hdr->rpt1);
 
@@ -1793,16 +1796,16 @@ static void ReadDVAPThread()
 			/* Accept valid flags only */
 			if (ok) {
 				/* net flags */
-				if ((from_dvap_hdr->flag1 != 0x00) &&
-				        (from_dvap_hdr->flag1 != 0x08) &&
-				        (from_dvap_hdr->flag1 != 0x20) &&
-				        (from_dvap_hdr->flag1 != 0x28) &&
+				if ((from_dvap_hdr->flag[0] != 0x00) &&
+				        (from_dvap_hdr->flag[0] != 0x08) &&
+				        (from_dvap_hdr->flag[0] != 0x20) &&
+				        (from_dvap_hdr->flag[0] != 0x28) &&
 
 				        /* rptr flags */
-				        (from_dvap_hdr->flag1 != 0x40) &&
-				        (from_dvap_hdr->flag1 != 0x48) &&
-				        (from_dvap_hdr->flag1 != 0x60) &&
-				        (from_dvap_hdr->flag1 != 0x68))
+				        (from_dvap_hdr->flag[0] != 0x40) &&
+				        (from_dvap_hdr->flag[0] != 0x48) &&
+				        (from_dvap_hdr->flag[0] != 0x60) &&
+				        (from_dvap_hdr->flag[0] != 0x68))
 					ok = false;
 			}
 
@@ -1895,13 +1898,13 @@ static void ReadDVAPThread()
 					memcpy(net_buf.rf_hdr.urcall, "CQCQCQ  ", 8);
 
 				/* change the rptr flags to net flags */
-				if (from_dvap_hdr->flag1 == 0x40)
+				if (from_dvap_hdr->flag[0] == 0x40)
 					net_buf.rf_hdr.flag[0] = 0x00;
-				else if (from_dvap_hdr->flag1 == 0x48)
+				else if (from_dvap_hdr->flag[0] == 0x48)
 					net_buf.rf_hdr.flag[0] = 0x08;
-				else if (from_dvap_hdr->flag1 == 0x60)
+				else if (from_dvap_hdr->flag[0] == 0x60)
 					net_buf.rf_hdr.flag[0] = 0x20;
-				else if (from_dvap_hdr->flag1 == 0x68)
+				else if (from_dvap_hdr->flag[0] == 0x68)
 					net_buf.rf_hdr.flag[0] = 0x28;
 				else
 					net_buf.rf_hdr.flag[0] = 0x00;
@@ -1917,10 +1920,8 @@ static void ReadDVAPThread()
 				sendto(insock, (char *)S_packet, sizeof(S_packet), 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
 				C_COUNTER ++;
 
-				/*
-				   Before we send the data to the local gateway,
-				   set RPT1, RPT2 to be the local gateway
-				*/
+				// Before we send the data to the local gateway,
+				// set RPT1, RPT2 to be the local gateway
 				memcpy(net_buf.rf_hdr.rpt2, OWNER, 7);
 				if (net_buf.rf_hdr.rpt1[7] != ' ')
 					memcpy(net_buf.rf_hdr.rpt1, OWNER, 7);
