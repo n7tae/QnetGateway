@@ -396,7 +396,7 @@ static void RptrAckThread(char *arg)
 	nanosleep(&nanos,0);
 
 	buf[4] = 0x20;
-	memcpy((char *)rptr_ack + 15, silence, 9);
+	memcpy(buf + 15, silence, 9);
 
 	/* start sending silence + announcement text */
 
