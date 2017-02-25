@@ -51,27 +51,12 @@ using namespace libconfig;
 #define CALL_SIZE 8
 #define RPTR_SIZE 8
 #define IP_SIZE 15
-#define isit_bigendian() ( (*(char*)&val32bits) == 0 )
-#define do_swap16(val) \
-   ((int16_t) ( \
-    (((u_int16_t) (val) & (u_int16_t) 0x00ffU) << 8) | \
-    (((u_int16_t) (val) & (u_int16_t) 0xff00U) >> 8)))
-#define do_swapu16(val) \
-   ((u_int16_t) ( \
-    (((u_int16_t) (val) & (u_int16_t) 0x00ffU) << 8) | \
-    (((u_int16_t) (val) & (u_int16_t) 0xff00U) >> 8)))
-#define do_swapu32(val) \
-   ((u_int32_t) ( \
-    (((u_int32_t) (val) & (u_int32_t) 0x000000ffU) << 24) | \
-    (((u_int32_t) (val) & (u_int32_t) 0x0000ff00U) <<  8) | \
-    (((u_int32_t) (val) & (u_int32_t) 0x00ff0000U) >>  8) | \
-    (((u_int32_t) (val) & (u_int32_t) 0xff000000U) >> 24)))
 
 /* data from dvap */
 typedef struct dvap_hdr_tag {
 	unsigned char hdr0; // 0x2f
 	unsigned char hdr1; // 0xa0
-	unsigned short streamid;
+	uint16_t streamid;
 	unsigned char framepos;
 	unsigned char seq;
 	unsigned char flag[3];
@@ -86,7 +71,7 @@ typedef struct dvap_hdr_tag {
 typedef struct dvap_data_tag {
 	unsigned char hdr0; // 0x12
 	unsigned char hdr1; // 0xc0
-	unsigned short streamid;
+	uint16_t streamid;
 	unsigned char framepos;
 	unsigned char seq;
 	unsigned char audio[12];
@@ -108,18 +93,14 @@ typedef struct icm_tag {
 	unsigned char dst_rptr_id;
 	unsigned char snd_rptr_id;
 	unsigned char snd_term_id;
-	unsigned char streamid[2];
+	uint16_t streamid;
 	unsigned char ctrl;
 } SICM;
 
 typedef struct voice_and_text_tag {
 	unsigned char voice[9];
 	unsigned char text[3];
-} SVAT;
-
-typedef struct audio_tag {
-	unsigned char buff[sizeof(SHDR)];
-} SAUDIO;
+} SVASD;
 
 typedef struct pkt_tag {
 	unsigned char pkt_id[4];
@@ -128,9 +109,8 @@ typedef struct pkt_tag {
 	unsigned char nothing2[2];
 	SICM myicm;
 	union {
-		SAUDIO rf_audio;
-		SHDR rf_hdr;
-		SVAT vat;
+		SHDR hdr;	// 41 byte header
+		SVASD vasd;	// 12 byte voice and slow data
 	};
 } SPKT;
 
@@ -162,7 +142,6 @@ static char INVALID_YRCALL_KEY[CALL_SIZE + 1];
 static int inactiveMax = 25;
 
 /* helper data */
-static int32_t val32bits = 1;
 static unsigned char SND_TERM_ID;
 static char RPTR_and_G[9];
 static char RPTR_and_MOD[9];
@@ -1065,8 +1044,7 @@ static bool set_pwr()
 	unsigned char dvp_buf[200];
 
 	memcpy(buf, DVP_RQST_PWR, 6);
-	int16_t temp_pwr = (isit_bigendian())?do_swap16(DVP_PWR):DVP_PWR;
-	memcpy(buf + 4, &temp_pwr, sizeof(int16_t));
+	memcpy(buf + 4, &DVP_PWR, sizeof(int16_t));
 
 	int rc = write_to_dvp(buf, 6);
 	if (rc != 6) {
@@ -1098,8 +1076,7 @@ static bool set_off()
 	unsigned char dvp_buf[200];
 
 	memcpy(buf, DVP_RQST_OFF, 6);
-	int16_t temp_off = (isit_bigendian())?do_swap16(DVP_OFF):DVP_OFF;
-	memcpy(buf + 4, &temp_off, sizeof(int16_t));
+	memcpy(buf + 4, &DVP_OFF, sizeof(int16_t));
 
 	int rc = write_to_dvp(buf, 6);
 	if (rc != 6) {
@@ -1131,8 +1108,7 @@ static bool set_freq()
 	unsigned char dvp_buf[200];
 
 	memcpy(buf, DVP_RQST_FREQ, 8);
-	u_int32_t temp_freq = (isit_bigendian())?do_swapu32(DVP_FREQ):DVP_FREQ;
-	memcpy(buf + 4, &temp_freq, sizeof(u_int32_t));
+	memcpy(buf + 4, &DVP_FREQ, sizeof(u_int32_t));
 
 	int rc = write_to_dvp(buf, 8);
 	if (rc != 8) {
@@ -1192,7 +1168,7 @@ static void readFrom20000()
 	struct  timeval tv;
 	int inactive = 0;
 	short seq_no = 0;
-	unsigned char streamid[2] = {0x00, 0x00};
+	uint16_t streamid;
 	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
 	SPKT net_buf;
 	unsigned short stream_id_to_dvap = 0;
@@ -1222,30 +1198,30 @@ static void readFrom20000()
 				}
 
 				/* check the module and gateway */
-				if (net_buf.rf_hdr.rpt1[7] != RPTR_MOD) {
+				if (net_buf.hdr.rpt1[7] != RPTR_MOD) {
 					FD_CLR (insock, &readfd);
 					break;
 				}
-				memcpy(net_buf.rf_hdr.rpt2, OWNER, 7);
-				net_buf.rf_hdr.rpt2[7] = 'G';
+				memcpy(net_buf.hdr.rpt2, OWNER, 7);
+				net_buf.hdr.rpt2[7] = 'G';
 
 				if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
 					// restriction mode
-					memcpy(net_buf.rf_hdr.rpt2, RPTR, 7);
-					memcpy(net_buf.rf_hdr.rpt1, RPTR, 7);
+					memcpy(net_buf.hdr.rpt2, RPTR, 7);
+					memcpy(net_buf.hdr.rpt1, RPTR, 7);
 
-					if (memcmp(net_buf.rf_hdr.mycall, OWNER, 7) == 0) {
+					if (memcmp(net_buf.hdr.mycall, OWNER, 7) == 0) {
 						/* this is an ACK back */
-						memcpy(net_buf.rf_hdr.mycall, RPTR, 7);
+						memcpy(net_buf.hdr.mycall, RPTR, 7);
 					}
 				}
 
-				if ((net_buf.rf_hdr.flag[0] != 0x00) &&
-				        (net_buf.rf_hdr.flag[0] != 0x01) &&
-				        (net_buf.rf_hdr.flag[0] != 0x08) &&
-				        (net_buf.rf_hdr.flag[0] != 0x20) &&
-				        (net_buf.rf_hdr.flag[0] != 0x28) &&
-				        (net_buf.rf_hdr.flag[0] != 0x40)) {
+				if ((net_buf.hdr.flag[0] != 0x00) &&
+				        (net_buf.hdr.flag[0] != 0x01) &&
+				        (net_buf.hdr.flag[0] != 0x08) &&
+				        (net_buf.hdr.flag[0] != 0x20) &&
+				        (net_buf.hdr.flag[0] != 0x28) &&
+				        (net_buf.hdr.flag[0] != 0x40)) {
 					FD_CLR (insock, &readfd);
 					break;
 				}
@@ -1263,31 +1239,30 @@ static void readFrom20000()
 				ctrl_in = 0x80;
 				written_to_q = true;
 
-				traceit("Start G2: streamid=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
-				        net_buf.myicm.streamid[0], net_buf.myicm.streamid[1],
-				        net_buf.rf_hdr.flag[0], net_buf.rf_hdr.flag[1], net_buf.rf_hdr.flag[2],
-				        net_buf.rf_hdr.mycall, net_buf.rf_hdr.sfx, net_buf.rf_hdr.urcall,
-				        net_buf.rf_hdr.rpt1, net_buf.rf_hdr.rpt2);
+				traceit("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
+				        net_buf.myicm.streamid,
+				        net_buf.hdr.flag[0], net_buf.hdr.flag[1], net_buf.hdr.flag[2],
+				        net_buf.hdr.mycall, net_buf.hdr.sfx, net_buf.hdr.urcall,
+				        net_buf.hdr.rpt1, net_buf.hdr.rpt2);
 
 				/* save the streamid that is winning */
-				streamid[0] = net_buf.myicm.streamid[0];
-				streamid[1] = net_buf.myicm.streamid[1];
+				streamid = net_buf.myicm.streamid;
 
-				if (net_buf.rf_hdr.flag[0] != 0x01) {
+				if (net_buf.hdr.flag[0] != 0x01) {
 
-					if (net_buf.rf_hdr.flag[0] == 0x00)
-						net_buf.rf_hdr.flag[0] = 0x40;
-					else if (net_buf.rf_hdr.flag[0] == 0x08)
-						net_buf.rf_hdr.flag[0] = 0x48;
-					else if (net_buf.rf_hdr.flag[0] == 0x20)
-						net_buf.rf_hdr.flag[0] = 0x60;
-					else if (net_buf.rf_hdr.flag[0] == 0x28)
-						net_buf.rf_hdr.flag[0] = 0x68;
+					if (net_buf.hdr.flag[0] == 0x00)
+						net_buf.hdr.flag[0] = 0x40;
+					else if (net_buf.hdr.flag[0] == 0x08)
+						net_buf.hdr.flag[0] = 0x48;
+					else if (net_buf.hdr.flag[0] == 0x20)
+						net_buf.hdr.flag[0] = 0x60;
+					else if (net_buf.hdr.flag[0] == 0x28)
+						net_buf.hdr.flag[0] = 0x68;
 					else
-						net_buf.rf_hdr.flag[0] = 0x40;
+						net_buf.hdr.flag[0] = 0x40;
 				}
-				net_buf.rf_hdr.flag[1] = 0x00;
-				net_buf.rf_hdr.flag[2] = 0x00;
+				net_buf.hdr.flag[1] = 0x00;
+				net_buf.hdr.flag[2] = 0x00;
 
 				// write the header packet to the dvap here
 				while ((space < 1) && keep_running)
@@ -1300,12 +1275,12 @@ static void readFrom20000()
 				dh.seq = 0;
 				//memset(dvp_buf + 6, ' ', 41);
 				for (int f=0; f<3; f++)
-					dh.flag[f] = net_buf.rf_hdr.flag[0];
-				memcpy(dh.rpt1, net_buf.rf_hdr.rpt2, 8);
-				memcpy(dh.rpt2, net_buf.rf_hdr.rpt1, 8);
-				memcpy(dh.urcall, net_buf.rf_hdr.urcall, 8);
-				memcpy(dh.mycall, net_buf.rf_hdr.mycall, 8);
-				memcpy(dh.sfx, net_buf.rf_hdr.sfx, 4);
+					dh.flag[f] = net_buf.hdr.flag[0];
+				memcpy(dh.rpt1, net_buf.hdr.rpt2, 8);
+				memcpy(dh.rpt2, net_buf.hdr.rpt1, 8);
+				memcpy(dh.urcall, net_buf.hdr.urcall, 8);
+				memcpy(dh.mycall, net_buf.hdr.mycall, 8);
+				memcpy(dh.sfx, net_buf.hdr.sfx, 4);
 				calcPFCS(dh.flag, dh.pfcs);
 				frame_pos_to_dvap = 0;
 				seq_to_dvap = 0;
@@ -1315,7 +1290,7 @@ static void readFrom20000()
 				seq_no = 0;
 			} else if (len == 29) {
 				if (busy20000) {
-					if ((net_buf.myicm.streamid[0] == streamid[0]) && (net_buf.myicm.streamid[1] == streamid[1])) {
+					if (net_buf.myicm.streamid == streamid) {
 						if (net_buf.myicm.ctrl == ctrl_in) {
 							/* do not update written_to_q, ctrl_in */
 							; // traceit("dup\n");
@@ -1324,16 +1299,16 @@ static void readFrom20000()
 							written_to_q = true;
 
 							if (seq_no == 0) {
-								net_buf.rf_audio.buff[9]  = 0x55;
-								net_buf.rf_audio.buff[10] = 0x2d;
-								net_buf.rf_audio.buff[11] = 0x16;
+								net_buf.vasd.text[0] = 0x55;
+								net_buf.vasd.text[1] = 0x2d;
+								net_buf.vasd.text[2] = 0x16;
 							} else {
-								if ((net_buf.rf_audio.buff[9] == 0x55) &&
-								        (net_buf.rf_audio.buff[10] == 0x2d) &&
-								        (net_buf.rf_audio.buff[11] == 0x16)) {
-									net_buf.rf_audio.buff[9]  = 0x70;
-									net_buf.rf_audio.buff[10] = 0x4f;
-									net_buf.rf_audio.buff[11] = 0x93;
+								if ((net_buf.vasd.text[0] == 0x55) &&
+									(net_buf.vasd.text[1] == 0x2d) &&
+									(net_buf.vasd.text[2] == 0x16)) {
+									net_buf.vasd.text[0] = 0x70;
+									net_buf.vasd.text[1] = 0x4f;
+									net_buf.vasd.text[2] = 0x93;
 								}
 							}
 
@@ -1342,14 +1317,14 @@ static void readFrom20000()
 								usleep(5);
 							SDVAP_DATA dd;
 							memcpy(&dd, DVP_DAT, 2);
-							if (memcmp(net_buf.rf_audio.buff + 9, sync_codes, 3) == 0)
+							if (memcmp(net_buf.vasd.text, sync_codes, 3) == 0)
 								frame_pos_to_dvap = 0;
 							dd.streamid = stream_id_to_dvap;
 							dd.framepos = frame_pos_to_dvap;
 							if ((net_buf.myicm.ctrl & 0x40) != 0)
 								dd.framepos |= 0x40U;
 							dd.seq = seq_to_dvap;
-							memcpy(dd.audio, net_buf.rf_audio.buff, 12);
+							memcpy(dd.audio, net_buf.vasd.voice, 12);
 							(void)write_to_dvp((unsigned char *)&dd, 18);
 							frame_pos_to_dvap ++;
 							seq_to_dvap ++;
@@ -1361,10 +1336,9 @@ static void readFrom20000()
 								seq_no = 0;
 
 							if ((net_buf.myicm.ctrl & 0x40) != 0) {
-								traceit("End G2: streamid=%d,%d\n", net_buf.myicm.streamid[0], net_buf.myicm.streamid[1]);
+								traceit("End G2: streamid=%04x\n", net_buf.myicm.streamid);
 
-								streamid[0] = 0x00;
-								streamid[1] = 0x00;
+								streamid = 0;
 
 								inactive = 0;
 								FD_CLR (insock, &readfd);
@@ -1395,8 +1369,7 @@ static void readFrom20000()
 				if (++inactive == inactiveMax) {
 					traceit("G2 Timeout...\n");
 
-					streamid[0] = 0x00;
-					streamid[1] = 0x00;
+					streamid = 0;
 
 					inactive = 0;
 					// maybe put a sleep here to prevent fast voice-overs
@@ -1559,8 +1532,6 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 
 	struct sigaction act;
 	unsigned char dvp_buf[200];
-	u_int16_t stream_id_to_dvap = 0;
-	u_int16_t sid;
 	time_t tnow = 0;
 	unsigned char silence[12] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 	unsigned int aseed_ack = 0;
@@ -1586,14 +1557,13 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	time(&tnow);
 	aseed_ack = tnow + getpid();
 
-	stream_id_to_dvap = (rand_r(&aseed_ack) % 65535U) + 1U;
-	sid = (isit_bigendian())?do_swapu16(stream_id_to_dvap):stream_id_to_dvap;
+	uint16_t stream_id_to_dvap = (rand_r(&aseed_ack) % 65535U) + 1U;
 
 	// HEADER
 	while ((space < 1) && keep_running)
 		usleep(5);
 	memcpy(dvp_buf, DVP_HDR, 47);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
+	memcpy(dvp_buf + 2, &stream_id_to_dvap, sizeof(uint16_t));
 	dvp_buf[4] = 0x80;
 	dvp_buf[5] = 0;
 	memset(dvp_buf + 6, ' ', 41);
@@ -1613,7 +1583,7 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 
 	// SYNC
 	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &sid, sizeof(u_int16_t));
+	memcpy(dvp_buf + 2, &stream_id_to_dvap, sizeof(u_int16_t));
 	for (int i=0; i<10; i++) {
 		while ((space < 1) && keep_running)
 			usleep(5);
@@ -1821,28 +1791,28 @@ static void ReadDVAPThread()
 			}
 
 			/*** copy the dvap header ***/
-			memcpy(net_buf.rf_audio.buff, dvp_buf + 6, 41);
+			memcpy(&net_buf.hdr, dvp_buf + 6, 41);
 
 			/* RPT1 must always be the repeater + module */
-			memcpy(net_buf.rf_hdr.rpt2, RPTR_and_MOD, 8);
+			memcpy(net_buf.hdr.rpt2, RPTR_and_MOD, 8);
 			/* copy RPT2 */
-			memcpy(net_buf.rf_hdr.rpt1, from_dvap_hdr->rpt1, 8);
+			memcpy(net_buf.hdr.rpt1, from_dvap_hdr->rpt1, 8);
 
 			/* RPT2 must also be valid */
-			if ((net_buf.rf_hdr.rpt1[7] == 'A') ||
-			        (net_buf.rf_hdr.rpt1[7] == 'B') ||
-			        (net_buf.rf_hdr.rpt1[7] == 'C') ||
-			        (net_buf.rf_hdr.rpt1[7] == 'G'))
-				memcpy(net_buf.rf_hdr.rpt1, RPTR, 7);
+			if ((net_buf.hdr.rpt1[7] == 'A') ||
+			        (net_buf.hdr.rpt1[7] == 'B') ||
+			        (net_buf.hdr.rpt1[7] == 'C') ||
+			        (net_buf.hdr.rpt1[7] == 'G'))
+				memcpy(net_buf.hdr.rpt1, RPTR, 7);
 			else
-				memset(net_buf.rf_hdr.rpt1, ' ', 8);
+				memset(net_buf.hdr.rpt1, ' ', 8);
 
-			if ((memcmp(net_buf.rf_hdr.urcall, "CQCQCQ", 6) != 0) && (net_buf.rf_hdr.rpt1[0] != ' '))
-				memcpy(net_buf.rf_hdr.rpt1,  RPTR_and_G, 8);
+			if ((memcmp(net_buf.hdr.urcall, "CQCQCQ", 6) != 0) && (net_buf.hdr.rpt1[0] != ' '))
+				memcpy(net_buf.hdr.rpt1,  RPTR_and_G, 8);
 
 			/* 8th in rpt1, rpt2 must be diff */
-			if (net_buf.rf_hdr.rpt1[7] == net_buf.rf_hdr.rpt2[7])
-				memset(net_buf.rf_hdr.rpt1, ' ', 8);
+			if (net_buf.hdr.rpt1[7] == net_buf.hdr.rpt2[7])
+				memset(net_buf.hdr.rpt1, ' ', 8);
 
 			/*
 			   Are we restricting the RF user ?
@@ -1852,21 +1822,21 @@ static void ReadDVAPThread()
 			     otherwise we drop the rf data
 			*/
 			if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
-				if (memcmp(net_buf.rf_hdr.mycall, RPTR, RPTR_SIZE) != 0) {
-					traceit("mycall=[%.8s], not equal to %s\n", net_buf.rf_hdr.mycall, RPTR);
+				if (memcmp(net_buf.hdr.mycall, RPTR, RPTR_SIZE) != 0) {
+					traceit("mycall=[%.8s], not equal to %s\n", net_buf.hdr.mycall, RPTR);
 					ok = false;
 				}
-			} else if (memcmp(net_buf.rf_hdr.mycall, "        ", 8) == 0) {
-				traceit("Invalid value for mycall=[%.8s]\n", net_buf.rf_hdr.mycall);
+			} else if (memcmp(net_buf.hdr.mycall, "        ", 8) == 0) {
+				traceit("Invalid value for mycall=[%.8s]\n", net_buf.hdr.mycall);
 				ok = false;
 			}
 
 			if (ok) {
 				for (i = 0; i < 8; i++) {
-					if (!isupper(net_buf.rf_hdr.mycall[i]) &&
-					        !isdigit(net_buf.rf_hdr.mycall[i]) &&
-					        (net_buf.rf_hdr.mycall[i] != ' ')) {
-						memset(net_buf.rf_hdr.mycall, ' ', 8);
+					if (!isupper(net_buf.hdr.mycall[i]) &&
+					        !isdigit(net_buf.hdr.mycall[i]) &&
+					        (net_buf.hdr.mycall[i] != ' ')) {
+						memset(net_buf.hdr.mycall, ' ', 8);
 						ok = false;
 						traceit("Invalid value for MYCALL\n");
 						break;
@@ -1874,46 +1844,46 @@ static void ReadDVAPThread()
 				}
 
 				for (i = 0; i < 4; i++) {
-					if (!isupper(net_buf.rf_hdr.sfx[i]) &&
-					        !isdigit(net_buf.rf_hdr.sfx[i]) &&
-					        (net_buf.rf_hdr.sfx[i] != ' ')) {
-						memset(net_buf.rf_hdr.sfx, ' ', 4);
+					if (!isupper(net_buf.hdr.sfx[i]) &&
+					        !isdigit(net_buf.hdr.sfx[i]) &&
+					        (net_buf.hdr.sfx[i] != ' ')) {
+						memset(net_buf.hdr.sfx, ' ', 4);
 						break;
 					}
 				}
 
 				for (i = 0; i < 8; i++) {
-					if (!isupper(net_buf.rf_hdr.urcall[i]) &&
-					        !isdigit(net_buf.rf_hdr.urcall[i]) &&
-					        (net_buf.rf_hdr.urcall[i] != ' ') &&
-					        (net_buf.rf_hdr.urcall[i] != '/')) {
-						memcpy(net_buf.rf_hdr.urcall, "CQCQCQ  ", 8);
+					if (!isupper(net_buf.hdr.urcall[i]) &&
+					        !isdigit(net_buf.hdr.urcall[i]) &&
+					        (net_buf.hdr.urcall[i] != ' ') &&
+					        (net_buf.hdr.urcall[i] != '/')) {
+						memcpy(net_buf.hdr.urcall, "CQCQCQ  ", 8);
 						break;
 					}
 				}
 
 				/*** what if YRCALL is all spaces, we can NOT allow that ***/
-				if (memcmp(net_buf.rf_hdr.urcall, "        ", 8) == 0)
-					memcpy(net_buf.rf_hdr.urcall, "CQCQCQ  ", 8);
+				if (memcmp(net_buf.hdr.urcall, "        ", 8) == 0)
+					memcpy(net_buf.hdr.urcall, "CQCQCQ  ", 8);
 
 				/* change the rptr flags to net flags */
 				if (from_dvap_hdr->flag[0] == 0x40)
-					net_buf.rf_hdr.flag[0] = 0x00;
+					net_buf.hdr.flag[0] = 0x00;
 				else if (from_dvap_hdr->flag[0] == 0x48)
-					net_buf.rf_hdr.flag[0] = 0x08;
+					net_buf.hdr.flag[0] = 0x08;
 				else if (from_dvap_hdr->flag[0] == 0x60)
-					net_buf.rf_hdr.flag[0] = 0x20;
+					net_buf.hdr.flag[0] = 0x20;
 				else if (from_dvap_hdr->flag[0] == 0x68)
-					net_buf.rf_hdr.flag[0] = 0x28;
+					net_buf.hdr.flag[0] = 0x28;
 				else
-					net_buf.rf_hdr.flag[0] = 0x00;
-				net_buf.rf_hdr.flag[1] = 0x00;
-				net_buf.rf_hdr.flag[2] = 0x00;
+					net_buf.hdr.flag[0] = 0x00;
+				net_buf.hdr.flag[1] = 0x00;
+				net_buf.hdr.flag[2] = 0x00;
 
 				/* for icom g2 */
 				S_packet[5] = (unsigned char)(C_COUNTER & 0xff);
 				S_packet[4] = ((C_COUNTER >> 8) & 0xff);
-				memcpy(S_packet + 10, net_buf.rf_hdr.mycall, 8);
+				memcpy(S_packet + 10, net_buf.hdr.mycall, 8);
 				memcpy(S_packet + 18, OWNER, 8);
 				S_packet[25] = RPTR_MOD;
 				sendto(insock, (char *)S_packet, sizeof(S_packet), 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
@@ -1921,9 +1891,9 @@ static void ReadDVAPThread()
 
 				// Before we send the data to the local gateway,
 				// set RPT1, RPT2 to be the local gateway
-				memcpy(net_buf.rf_hdr.rpt2, OWNER, 7);
-				if (net_buf.rf_hdr.rpt1[7] != ' ')
-					memcpy(net_buf.rf_hdr.rpt1, OWNER, 7);
+				memcpy(net_buf.hdr.rpt2, OWNER, 7);
+				if (net_buf.hdr.rpt1[7] != ' ')
+					memcpy(net_buf.hdr.rpt1, OWNER, 7);
 
 				memcpy(net_buf.pkt_id, "DSTR", 4);
 				net_buf.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
@@ -1937,11 +1907,10 @@ static void ReadDVAPThread()
 				net_buf.myicm.snd_rptr_id = 0x01;
 				net_buf.myicm.snd_term_id = SND_TERM_ID;
 				streamid_raw = (rand_r(&aseed) % 65535U) + 1U;
-				net_buf.myicm.streamid[0] = streamid_raw / 256U;
-				net_buf.myicm.streamid[1] = streamid_raw % 256U;
+				net_buf.myicm.streamid = streamid_raw;
 				net_buf.myicm.ctrl = 0x80;
 				sequence = 0x00;
-				calcPFCS((unsigned char *)&(net_buf.rf_hdr), net_buf.rf_hdr.pfcs);
+				calcPFCS((unsigned char *)&(net_buf.hdr), net_buf.hdr.pfcs);
 				sendto(insock, (char *)&net_buf, 58, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
 				C_COUNTER ++;
 
@@ -1964,7 +1933,7 @@ static void ReadDVAPThread()
 				net_buf.myicm.ctrl = sequence++;
 				if (the_end)
 					net_buf.myicm.ctrl = sequence | 0x40;
-				memcpy(net_buf.rf_audio.buff, dvp_buf + 6, 12);
+				memcpy(&net_buf.vasd, dvp_buf + 6, 12);
 				sendto(insock, (char *)&net_buf, 29, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
 
 				ber_errs = dstar_dv_decode((unsigned char *)&net_buf + 17, ber_data);
