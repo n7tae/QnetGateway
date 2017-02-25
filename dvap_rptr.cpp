@@ -53,6 +53,7 @@ using namespace libconfig;
 #define IP_SIZE 15
 
 /* data from dvap */
+#pragma pack(push, 1)
 typedef struct dvap_hdr_tag {
 	unsigned char hdr0; // 0x2f
 	unsigned char hdr1; // 0xa0
@@ -113,6 +114,7 @@ typedef struct pkt_tag {
 		SVASD vasd;	// 12 byte voice and slow data
 	};
 } SPKT;
+#pragma pack(pop)
 
 typedef struct dvap_ack_arg_tag {
 	char mycall[8];
