@@ -52,31 +52,32 @@ using namespace libconfig;
 #define RPTR_SIZE 8
 #define IP_SIZE 15
 
-/* data from dvap */
+// we need to be sure these structures don't have any dead space
 #pragma pack(push, 1)
+/* data from dvap */
 typedef struct dvap_hdr_tag {
-	unsigned char hdr0; // 0x2f
-	unsigned char hdr1; // 0xa0
-	uint16_t streamid;
-	unsigned char framepos;
-	unsigned char seq;
-	unsigned char flag[3];
-	unsigned char rpt1[8];
-	unsigned char rpt2[8];
-	unsigned char urcall[8];
-	unsigned char mycall[8];
-	unsigned char sfx[4];
-	unsigned char pfcs[2];
-} SDVAP_HDR;
+	unsigned char hdr0; 	//  0 = 0x2f
+	unsigned char hdr1; 	//  1 = 0xa0
+	uint16_t streamid;		//  2
+	unsigned char framepos;	//  4
+	unsigned char seq;		//  5
+	unsigned char flag[3];	//	6
+	unsigned char rpt1[8];	//  9
+	unsigned char rpt2[8];	// 17
+	unsigned char urcall[8];// 25
+	unsigned char mycall[8];// 33
+	unsigned char sfx[4];	// 41
+	unsigned char pfcs[2];	// 45
+} SDVAP_HDR;				// total: 47
 
 typedef struct dvap_data_tag {
-	unsigned char hdr0; // 0x12
-	unsigned char hdr1; // 0xc0
-	uint16_t streamid;
-	unsigned char framepos;
-	unsigned char seq;
-	unsigned char audio[12];
-} SDVAP_DATA;
+	unsigned char hdr0;		//  0 = 0x12
+	unsigned char hdr1;		//  1 = 0xc0
+	uint16_t streamid;		//  2
+	unsigned char framepos;	//  4
+	unsigned char seq;		//  5
+	unsigned char audio[12];//  6
+} SDVAP_DATA;				// total: 18
 
 /* data from the local gateway */
 typedef struct hdr_tag {
@@ -1533,7 +1534,6 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	memcpy(RADIO_ID, "BER%", 4);
 
 	struct sigaction act;
-	unsigned char dvp_buf[200];
 	time_t tnow = 0;
 	unsigned char silence[12] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 	unsigned int aseed_ack = 0;
@@ -1564,32 +1564,34 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	// HEADER
 	while ((space < 1) && keep_running)
 		usleep(5);
-	memcpy(dvp_buf, DVP_HDR, 47);
-	memcpy(dvp_buf + 2, &stream_id_to_dvap, sizeof(uint16_t));
-	dvp_buf[4] = 0x80;
-	dvp_buf[5] = 0;
-	memset(dvp_buf + 6, ' ', 41);
-	dvp_buf[6] = 0x01;
-	dvp_buf[7] = 0x00;
-	dvp_buf[8] = 0x00;
-	memcpy(dvp_buf + 9, RPTR_and_MOD, 8);
-	memcpy(dvp_buf + 17, RPTR_and_G, 8);
-	memcpy(dvp_buf + 25, mycall, 8);
-	memcpy(dvp_buf + 33, RPTR_and_MOD, 8);
-	memcpy(dvp_buf + 41, (unsigned char *)"    ", 4);
-	calcPFCS(dvp_buf + 6, dvp_buf + 45);
-	(void)write_to_dvp(dvp_buf, 47);
+	SDVAP_HDR dvh;
+	dvh.hdr0 = 0x2f;
+	dvh.hdr1 = 0xa0;
+	dvh.streamid = stream_id_to_dvap;
+	dvh.framepos = 0x80;
+	dvh.seq = 0;
+	dvh.flag[0] = 0x01;
+	dvh.flag[1] = dvh.flag[2] = 0x00;
+	memcpy(dvh.rpt1, RPTR_and_MOD, 8);
+	memcpy(dvh.rpt2, RPTR_and_G, 8);
+	memcpy(dvh.urcall, mycall, 8);
+	memcpy(dvh.mycall, RPTR_and_MOD, 8);
+	memcpy(dvh.sfx, (unsigned char *)"    ", 4);
+	calcPFCS(dvh.flag, dvh.pfcs);
+	(void)write_to_dvp(&dvh.hdr0, 47);
 	nanos.tv_sec = 0;
 	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
 	nanosleep(&nanos,0);
 
 	// SYNC
-	memcpy(dvp_buf, DVP_DAT, 18);
-	memcpy(dvp_buf + 2, &stream_id_to_dvap, sizeof(u_int16_t));
+	SDVAP_DATA dvd;
+	dvd.hdr0 = 0x12;
+	dvd.hdr1 = 0xc0;
+	dvd.streamid = stream_id_to_dvap;
 	for (int i=0; i<10; i++) {
 		while ((space < 1) && keep_running)
 			usleep(5);
-		dvp_buf[4] = dvp_buf[5] = i;
+		dvd.framepos = dvd.seq = i;
 		switch (i) {
 			case 0:
 				silence[9] = 0x55;
@@ -1643,11 +1645,11 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 				silence[9] = 0x55;
 				silence[10] = 0x55;
 				silence[11] = 0x55;
-				dvp_buf[4] |= 0x40;
+				dvd.framepos |= 0x40;
 				break;
 		}
-		memcpy(dvp_buf + 6, silence, 12);
-		(void)write_to_dvp(dvp_buf, 18);
+		memcpy(dvd.audio, silence, 12);
+		(void)write_to_dvp(&dvd.hdr0, 18);
 		if (i < 9) {
 			nanos.tv_sec = 0;
 			nanos.tv_nsec = DELAY_BETWEEN * 1000000;
