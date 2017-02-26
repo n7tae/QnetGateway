@@ -79,40 +79,42 @@ typedef struct dvap_data_tag {
 	unsigned char audio[12];//  6
 } SDVAP_DATA;				// total: 18
 
-/* data from the local gateway */
-typedef struct hdr_tag {
-	unsigned char flag[3];
-	unsigned char rpt1[8];
-	unsigned char rpt2[8];
-	unsigned char urcall[8];
-	unsigned char mycall[8];
-	unsigned char sfx[4];
-	unsigned char pfcs[2];
-} SHDR;
-
-typedef struct icm_tag {
-	unsigned char icm_id;
-	unsigned char dst_rptr_id;
-	unsigned char snd_rptr_id;
-	unsigned char snd_term_id;
-	uint16_t streamid;
-	unsigned char ctrl;
-} SICM;
-
-typedef struct voice_and_text_tag {
-	unsigned char voice[9];
-	unsigned char text[3];
-} SVASD;
-
+// for communicating with the g2 gateway
 typedef struct pkt_tag {
 	unsigned char pkt_id[4];
 	unsigned char nothing1[2];
 	unsigned char flag[2];
 	unsigned char nothing2[2];
-	SICM myicm;
 	union {
-		SHDR hdr;	// 41 byte header
-		SVASD vasd;	// 12 byte voice and slow data
+		struct {
+			unsigned char mycall[8];
+			unsigned char rpt[8];
+		} spkt;
+		struct {
+			struct {
+				unsigned char icm_id;
+				unsigned char dst_rptr_id;
+				unsigned char snd_rptr_id;
+				unsigned char snd_term_id;
+				uint16_t streamid;
+				unsigned char ctrl;
+			} myicm;
+			union {
+				struct {
+					unsigned char flag[3];
+					unsigned char rpt1[8];
+					unsigned char rpt2[8];
+					unsigned char urcall[8];
+					unsigned char mycall[8];
+					unsigned char sfx[4];
+					unsigned char pfcs[2];
+				} hdr;	// 41 byte header
+				struct {
+					unsigned char voice[9];
+					unsigned char text[3];
+				} vasd;	// 12 byte voice and slow data
+			};
+		} vpkt;
 	};
 } SPKT;
 #pragma pack(pop)
@@ -1166,30 +1168,30 @@ static void readFrom20000()
 				}
 
 				/* check the module and gateway */
-				if (net_buf.hdr.rpt1[7] != RPTR_MOD) {
+				if (net_buf.vpkt.hdr.rpt1[7] != RPTR_MOD) {
 					FD_CLR (insock, &readfd);
 					break;
 				}
-				memcpy(net_buf.hdr.rpt2, OWNER, 7);
-				net_buf.hdr.rpt2[7] = 'G';
+				memcpy(net_buf.vpkt.hdr.rpt2, OWNER, 7);
+				net_buf.vpkt.hdr.rpt2[7] = 'G';
 
 				if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
 					// restriction mode
-					memcpy(net_buf.hdr.rpt2, RPTR, 7);
-					memcpy(net_buf.hdr.rpt1, RPTR, 7);
+					memcpy(net_buf.vpkt.hdr.rpt2, RPTR, 7);
+					memcpy(net_buf.vpkt.hdr.rpt1, RPTR, 7);
 
-					if (memcmp(net_buf.hdr.mycall, OWNER, 7) == 0) {
+					if (memcmp(net_buf.vpkt.hdr.mycall, OWNER, 7) == 0) {
 						/* this is an ACK back */
-						memcpy(net_buf.hdr.mycall, RPTR, 7);
+						memcpy(net_buf.vpkt.hdr.mycall, RPTR, 7);
 					}
 				}
 
-				if ((net_buf.hdr.flag[0] != 0x00) &&
-				        (net_buf.hdr.flag[0] != 0x01) &&
-				        (net_buf.hdr.flag[0] != 0x08) &&
-				        (net_buf.hdr.flag[0] != 0x20) &&
-				        (net_buf.hdr.flag[0] != 0x28) &&
-				        (net_buf.hdr.flag[0] != 0x40)) {
+				if ((net_buf.vpkt.hdr.flag[0] != 0x00) &&
+				        (net_buf.vpkt.hdr.flag[0] != 0x01) &&
+				        (net_buf.vpkt.hdr.flag[0] != 0x08) &&
+				        (net_buf.vpkt.hdr.flag[0] != 0x20) &&
+				        (net_buf.vpkt.hdr.flag[0] != 0x28) &&
+				        (net_buf.vpkt.hdr.flag[0] != 0x40)) {
 					FD_CLR (insock, &readfd);
 					break;
 				}
@@ -1197,7 +1199,7 @@ static void readFrom20000()
 				if ((memcmp(net_buf.pkt_id, "DSTR", 4) != 0) ||
 				        (net_buf.flag[0] != 0x73) ||
 				        (net_buf.flag[1] != 0x12) ||
-				        (net_buf.myicm.icm_id != 0x20)) { /* voice type */
+				        (net_buf.vpkt.myicm.icm_id != 0x20)) { /* voice type */
 					FD_CLR (insock, &readfd);
 					break;
 				}
@@ -1208,29 +1210,29 @@ static void readFrom20000()
 				written_to_q = true;
 
 				traceit("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
-				        net_buf.myicm.streamid,
-				        net_buf.hdr.flag[0], net_buf.hdr.flag[1], net_buf.hdr.flag[2],
-				        net_buf.hdr.mycall, net_buf.hdr.sfx, net_buf.hdr.urcall,
-				        net_buf.hdr.rpt1, net_buf.hdr.rpt2);
+				        net_buf.vpkt.myicm.streamid,
+				        net_buf.vpkt.hdr.flag[0], net_buf.vpkt.hdr.flag[1], net_buf.vpkt.hdr.flag[2],
+				        net_buf.vpkt.hdr.mycall, net_buf.vpkt.hdr.sfx, net_buf.vpkt.hdr.urcall,
+				        net_buf.vpkt.hdr.rpt1, net_buf.vpkt.hdr.rpt2);
 
 				/* save the streamid that is winning */
-				streamid = net_buf.myicm.streamid;
+				streamid = net_buf.vpkt.myicm.streamid;
 
-				if (net_buf.hdr.flag[0] != 0x01) {
+				if (net_buf.vpkt.hdr.flag[0] != 0x01) {
 
-					if (net_buf.hdr.flag[0] == 0x00)
-						net_buf.hdr.flag[0] = 0x40;
-					else if (net_buf.hdr.flag[0] == 0x08)
-						net_buf.hdr.flag[0] = 0x48;
-					else if (net_buf.hdr.flag[0] == 0x20)
-						net_buf.hdr.flag[0] = 0x60;
-					else if (net_buf.hdr.flag[0] == 0x28)
-						net_buf.hdr.flag[0] = 0x68;
+					if (net_buf.vpkt.hdr.flag[0] == 0x00)
+						net_buf.vpkt.hdr.flag[0] = 0x40;
+					else if (net_buf.vpkt.hdr.flag[0] == 0x08)
+						net_buf.vpkt.hdr.flag[0] = 0x48;
+					else if (net_buf.vpkt.hdr.flag[0] == 0x20)
+						net_buf.vpkt.hdr.flag[0] = 0x60;
+					else if (net_buf.vpkt.hdr.flag[0] == 0x28)
+						net_buf.vpkt.hdr.flag[0] = 0x68;
 					else
-						net_buf.hdr.flag[0] = 0x40;
+						net_buf.vpkt.hdr.flag[0] = 0x40;
 				}
-				net_buf.hdr.flag[1] = 0x00;
-				net_buf.hdr.flag[2] = 0x00;
+				net_buf.vpkt.hdr.flag[1] = 0x00;
+				net_buf.vpkt.hdr.flag[2] = 0x00;
 
 				// write the header packet to the dvap here
 				while ((space < 1) && keep_running)
@@ -1243,12 +1245,12 @@ static void readFrom20000()
 				dh.seq = 0;
 				//memset(dvp_buf + 6, ' ', 41);
 				for (int f=0; f<3; f++)
-					dh.flag[f] = net_buf.hdr.flag[0];
-				memcpy(dh.rpt1, net_buf.hdr.rpt2, 8);
-				memcpy(dh.rpt2, net_buf.hdr.rpt1, 8);
-				memcpy(dh.urcall, net_buf.hdr.urcall, 8);
-				memcpy(dh.mycall, net_buf.hdr.mycall, 8);
-				memcpy(dh.sfx, net_buf.hdr.sfx, 4);
+					dh.flag[f] = net_buf.vpkt.hdr.flag[0];
+				memcpy(dh.rpt1, net_buf.vpkt.hdr.rpt2, 8);
+				memcpy(dh.rpt2, net_buf.vpkt.hdr.rpt1, 8);
+				memcpy(dh.urcall, net_buf.vpkt.hdr.urcall, 8);
+				memcpy(dh.mycall, net_buf.vpkt.hdr.mycall, 8);
+				memcpy(dh.sfx, net_buf.vpkt.hdr.sfx, 4);
 				calcPFCS(dh.flag, dh.pfcs);
 				frame_pos_to_dvap = 0;
 				seq_to_dvap = 0;
@@ -1258,25 +1260,25 @@ static void readFrom20000()
 				seq_no = 0;
 			} else if (len == 29) {
 				if (busy20000) {
-					if (net_buf.myicm.streamid == streamid) {
-						if (net_buf.myicm.ctrl == ctrl_in) {
+					if (net_buf.vpkt.myicm.streamid == streamid) {
+						if (net_buf.vpkt.myicm.ctrl == ctrl_in) {
 							/* do not update written_to_q, ctrl_in */
 							; // traceit("dup\n");
 						} else {
-							ctrl_in = net_buf.myicm.ctrl;
+							ctrl_in = net_buf.vpkt.myicm.ctrl;
 							written_to_q = true;
 
 							if (seq_no == 0) {
-								net_buf.vasd.text[0] = 0x55;
-								net_buf.vasd.text[1] = 0x2d;
-								net_buf.vasd.text[2] = 0x16;
+								net_buf.vpkt.vasd.text[0] = 0x55;
+								net_buf.vpkt.vasd.text[1] = 0x2d;
+								net_buf.vpkt.vasd.text[2] = 0x16;
 							} else {
-								if ((net_buf.vasd.text[0] == 0x55) &&
-									(net_buf.vasd.text[1] == 0x2d) &&
-									(net_buf.vasd.text[2] == 0x16)) {
-									net_buf.vasd.text[0] = 0x70;
-									net_buf.vasd.text[1] = 0x4f;
-									net_buf.vasd.text[2] = 0x93;
+								if ((net_buf.vpkt.vasd.text[0] == 0x55) &&
+									(net_buf.vpkt.vasd.text[1] == 0x2d) &&
+									(net_buf.vpkt.vasd.text[2] == 0x16)) {
+									net_buf.vpkt.vasd.text[0] = 0x70;
+									net_buf.vpkt.vasd.text[1] = 0x4f;
+									net_buf.vpkt.vasd.text[2] = 0x93;
 								}
 							}
 
@@ -1285,14 +1287,14 @@ static void readFrom20000()
 								usleep(5);
 							SDVAP_DATA dd;
 							memcpy(&dd, DVP_DAT, 2);
-							if (memcmp(net_buf.vasd.text, sync_codes, 3) == 0)
+							if (memcmp(net_buf.vpkt.vasd.text, sync_codes, 3) == 0)
 								frame_pos_to_dvap = 0;
 							dd.streamid = stream_id_to_dvap;
 							dd.framepos = frame_pos_to_dvap;
-							if ((net_buf.myicm.ctrl & 0x40) != 0)
+							if ((net_buf.vpkt.myicm.ctrl & 0x40) != 0)
 								dd.framepos |= 0x40U;
 							dd.seq = seq_to_dvap;
-							memcpy(dd.audio, net_buf.vasd.voice, 12);
+							memcpy(dd.audio, net_buf.vpkt.vasd.voice, 12);
 							(void)write_to_dvp((unsigned char *)&dd, 18);
 							frame_pos_to_dvap ++;
 							seq_to_dvap ++;
@@ -1303,8 +1305,8 @@ static void readFrom20000()
 							if (seq_no == 21)
 								seq_no = 0;
 
-							if ((net_buf.myicm.ctrl & 0x40) != 0) {
-								traceit("End G2: streamid=%04x\n", net_buf.myicm.streamid);
+							if ((net_buf.vpkt.myicm.ctrl & 0x40) != 0) {
+								traceit("End G2: streamid=%04x\n", net_buf.vpkt.myicm.streamid);
 
 								streamid = 0;
 
@@ -1630,9 +1632,9 @@ static void ReadDVAPThread()
 	unsigned int len = 0;
 	unsigned char dvp_buf[200];
 	SPKT net_buf;
+	SPKT spack;
 	time_t tnow = 0;
 	time_t S_ctrl_msg_time = 0;
-	unsigned char S_packet[26];
 	unsigned short C_COUNTER = 0;
 	time_t last_RF_time = 0;
 	struct sigaction act;
@@ -1672,27 +1674,27 @@ static void ReadDVAPThread()
 	}
 
 	/* prepare the S server status packet */
-	memcpy(S_packet, "DSTR", 4);
-	S_packet[4] = 0x00;
-	S_packet[5] = 0x00;
-	S_packet[6] = 0x73;
-	S_packet[7] = 0x21;
-	S_packet[8] = 0x00;
-	S_packet[9] = 0x10;
+	memcpy(spack.pkt_id, "DSTR", 4);
+	spack.nothing1[0] = 0x00;
+	spack.nothing1[1] = 0x00;
+	spack.flag[0] = 0x73;
+	spack.flag[1] = 0x21;
+	spack.nothing2[0] = 0x00;
+	spack.nothing2[1] = 0x10;
 
 	while (keep_running) {
 		time(&tnow);
 
 		/* send the S packet if needed */
 		if ((tnow - S_ctrl_msg_time) > 60) {
-			S_packet[5] = (unsigned char)(C_COUNTER & 0xff);
-			S_packet[4] = ((C_COUNTER >> 8) & 0xff);
-			memcpy(S_packet + 10, OWNER, 8);
-			S_packet[17] = 'S';
-			memcpy(S_packet + 18, OWNER, 8);
-			S_packet[25] = 'S';
-			sendto(insock, (char *)S_packet, sizeof(S_packet), 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-			C_COUNTER ++;
+			spack.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
+			spack.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
+			memcpy(spack.spkt.mycall, OWNER, 7);
+			spack.spkt.mycall[7] = 'S';
+			memcpy(spack.spkt.rpt, OWNER, 7);
+			spack.spkt.rpt[7] = 'S';
+			sendto(insock, spack.pkt_id, 26, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
+			C_COUNTER++;
 			S_ctrl_msg_time = tnow;
 		}
 
@@ -1733,17 +1735,11 @@ static void ReadDVAPThread()
 
 			/* Accept valid flags only */
 			if (ok) {
-				/* net flags */
-				if ((from_dvap_hdr->flag[0] != 0x00) &&
-				        (from_dvap_hdr->flag[0] != 0x08) &&
-				        (from_dvap_hdr->flag[0] != 0x20) &&
-				        (from_dvap_hdr->flag[0] != 0x28) &&
-
-				        /* rptr flags */
-				        (from_dvap_hdr->flag[0] != 0x40) &&
-				        (from_dvap_hdr->flag[0] != 0x48) &&
-				        (from_dvap_hdr->flag[0] != 0x60) &&
-				        (from_dvap_hdr->flag[0] != 0x68))
+				if ((from_dvap_hdr->flag[0] != 0x00) && (from_dvap_hdr->flag[0] != 0x08) &&	// net
+					(from_dvap_hdr->flag[0] != 0x20) && (from_dvap_hdr->flag[0] != 0x28) &&	// flags
+					
+					(from_dvap_hdr->flag[0] != 0x40) && (from_dvap_hdr->flag[0] != 0x48) &&	// rptr
+					(from_dvap_hdr->flag[0] != 0x60) && (from_dvap_hdr->flag[0] != 0x68))	// flags
 					ok = false;
 			}
 
@@ -1759,29 +1755,28 @@ static void ReadDVAPThread()
 				}
 			}
 
-			/*** copy the dvap header ***/
-			memcpy(&net_buf.hdr, dvp_buf + 6, 41);
+			memcpy(&net_buf.vpkt.hdr, from_dvap_hdr->flag, 41);	// copy the header
 
 			/* RPT1 must always be the repeater + module */
-			memcpy(net_buf.hdr.rpt2, RPTR_and_MOD, 8);
+			memcpy(net_buf.vpkt.hdr.rpt2, RPTR_and_MOD, 8);
 			/* copy RPT2 */
-			memcpy(net_buf.hdr.rpt1, from_dvap_hdr->rpt1, 8);
+			memcpy(net_buf.vpkt.hdr.rpt1, from_dvap_hdr->rpt1, 8);
 
 			/* RPT2 must also be valid */
-			if ((net_buf.hdr.rpt1[7] == 'A') ||
-			        (net_buf.hdr.rpt1[7] == 'B') ||
-			        (net_buf.hdr.rpt1[7] == 'C') ||
-			        (net_buf.hdr.rpt1[7] == 'G'))
-				memcpy(net_buf.hdr.rpt1, RPTR, 7);
+			if ((net_buf.vpkt.hdr.rpt1[7] == 'A') ||
+				(net_buf.vpkt.hdr.rpt1[7] == 'B') ||
+				(net_buf.vpkt.hdr.rpt1[7] == 'C') ||
+				(net_buf.vpkt.hdr.rpt1[7] == 'G'))
+				memcpy(net_buf.vpkt.hdr.rpt1, RPTR, 7);
 			else
-				memset(net_buf.hdr.rpt1, ' ', 8);
+				memset(net_buf.vpkt.hdr.rpt1, ' ', 8);
 
-			if ((memcmp(net_buf.hdr.urcall, "CQCQCQ", 6) != 0) && (net_buf.hdr.rpt1[0] != ' '))
-				memcpy(net_buf.hdr.rpt1,  RPTR_and_G, 8);
+			if ((memcmp(net_buf.vpkt.hdr.urcall, "CQCQCQ", 6) != 0) && (net_buf.vpkt.hdr.rpt1[0] != ' '))
+				memcpy(net_buf.vpkt.hdr.rpt1,  RPTR_and_G, 8);
 
 			/* 8th in rpt1, rpt2 must be diff */
-			if (net_buf.hdr.rpt1[7] == net_buf.hdr.rpt2[7])
-				memset(net_buf.hdr.rpt1, ' ', 8);
+			if (net_buf.vpkt.hdr.rpt1[7] == net_buf.vpkt.hdr.rpt2[7])
+				memset(net_buf.vpkt.hdr.rpt1, ' ', 8);
 
 			/*
 			   Are we restricting the RF user ?
@@ -1791,21 +1786,21 @@ static void ReadDVAPThread()
 			     otherwise we drop the rf data
 			*/
 			if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
-				if (memcmp(net_buf.hdr.mycall, RPTR, RPTR_SIZE) != 0) {
-					traceit("mycall=[%.8s], not equal to %s\n", net_buf.hdr.mycall, RPTR);
+				if (memcmp(net_buf.vpkt.hdr.mycall, RPTR, RPTR_SIZE) != 0) {
+					traceit("mycall=[%.8s], not equal to %s\n", net_buf.vpkt.hdr.mycall, RPTR);
 					ok = false;
 				}
-			} else if (memcmp(net_buf.hdr.mycall, "        ", 8) == 0) {
-				traceit("Invalid value for mycall=[%.8s]\n", net_buf.hdr.mycall);
+			} else if (memcmp(net_buf.vpkt.hdr.mycall, "        ", 8) == 0) {
+				traceit("Invalid value for mycall=[%.8s]\n", net_buf.vpkt.hdr.mycall);
 				ok = false;
 			}
 
 			if (ok) {
 				for (i = 0; i < 8; i++) {
-					if (!isupper(net_buf.hdr.mycall[i]) &&
-					        !isdigit(net_buf.hdr.mycall[i]) &&
-					        (net_buf.hdr.mycall[i] != ' ')) {
-						memset(net_buf.hdr.mycall, ' ', 8);
+					if (!isupper(net_buf.vpkt.hdr.mycall[i]) &&
+					        !isdigit(net_buf.vpkt.hdr.mycall[i]) &&
+					        (net_buf.vpkt.hdr.mycall[i] != ' ')) {
+						memset(net_buf.vpkt.hdr.mycall, ' ', 8);
 						ok = false;
 						traceit("Invalid value for MYCALL\n");
 						break;
@@ -1813,56 +1808,55 @@ static void ReadDVAPThread()
 				}
 
 				for (i = 0; i < 4; i++) {
-					if (!isupper(net_buf.hdr.sfx[i]) &&
-					        !isdigit(net_buf.hdr.sfx[i]) &&
-					        (net_buf.hdr.sfx[i] != ' ')) {
-						memset(net_buf.hdr.sfx, ' ', 4);
+					if (!isupper(net_buf.vpkt.hdr.sfx[i]) &&
+					        !isdigit(net_buf.vpkt.hdr.sfx[i]) &&
+					        (net_buf.vpkt.hdr.sfx[i] != ' ')) {
+						memset(net_buf.vpkt.hdr.sfx, ' ', 4);
 						break;
 					}
 				}
 
 				for (i = 0; i < 8; i++) {
-					if (!isupper(net_buf.hdr.urcall[i]) &&
-					        !isdigit(net_buf.hdr.urcall[i]) &&
-					        (net_buf.hdr.urcall[i] != ' ') &&
-					        (net_buf.hdr.urcall[i] != '/')) {
-						memcpy(net_buf.hdr.urcall, "CQCQCQ  ", 8);
+					if (!isupper(net_buf.vpkt.hdr.urcall[i]) &&
+					        !isdigit(net_buf.vpkt.hdr.urcall[i]) &&
+					        (net_buf.vpkt.hdr.urcall[i] != ' ') &&
+					        (net_buf.vpkt.hdr.urcall[i] != '/')) {
+						memcpy(net_buf.vpkt.hdr.urcall, "CQCQCQ  ", 8);
 						break;
 					}
 				}
 
 				/*** what if YRCALL is all spaces, we can NOT allow that ***/
-				if (memcmp(net_buf.hdr.urcall, "        ", 8) == 0)
-					memcpy(net_buf.hdr.urcall, "CQCQCQ  ", 8);
+				if (memcmp(net_buf.vpkt.hdr.urcall, "        ", 8) == 0)
+					memcpy(net_buf.vpkt.hdr.urcall, "CQCQCQ  ", 8);
 
 				/* change the rptr flags to net flags */
 				if (from_dvap_hdr->flag[0] == 0x40)
-					net_buf.hdr.flag[0] = 0x00;
+					net_buf.vpkt.hdr.flag[0] = 0x00;
 				else if (from_dvap_hdr->flag[0] == 0x48)
-					net_buf.hdr.flag[0] = 0x08;
+					net_buf.vpkt.hdr.flag[0] = 0x08;
 				else if (from_dvap_hdr->flag[0] == 0x60)
-					net_buf.hdr.flag[0] = 0x20;
+					net_buf.vpkt.hdr.flag[0] = 0x20;
 				else if (from_dvap_hdr->flag[0] == 0x68)
-					net_buf.hdr.flag[0] = 0x28;
+					net_buf.vpkt.hdr.flag[0] = 0x28;
 				else
-					net_buf.hdr.flag[0] = 0x00;
-				net_buf.hdr.flag[1] = 0x00;
-				net_buf.hdr.flag[2] = 0x00;
+					net_buf.vpkt.hdr.flag[0] = 0x00;
+				net_buf.vpkt.hdr.flag[1] = net_buf.vpkt.hdr.flag[2] = 0x00;
 
 				/* for icom g2 */
-				S_packet[5] = (unsigned char)(C_COUNTER & 0xff);
-				S_packet[4] = ((C_COUNTER >> 8) & 0xff);
-				memcpy(S_packet + 10, net_buf.hdr.mycall, 8);
-				memcpy(S_packet + 18, OWNER, 8);
-				S_packet[25] = RPTR_MOD;
-				sendto(insock, (char *)S_packet, sizeof(S_packet), 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-				C_COUNTER ++;
+				spack.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
+				spack.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
+				memcpy(spack.spkt.mycall, net_buf.vpkt.hdr.mycall, 8);
+				memcpy(spack.spkt.rpt, OWNER, 7);
+				spack.spkt.rpt[7] = RPTR_MOD;
+				sendto(insock, spack.pkt_id, 26, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
+				C_COUNTER++;
 
 				// Before we send the data to the local gateway,
 				// set RPT1, RPT2 to be the local gateway
-				memcpy(net_buf.hdr.rpt2, OWNER, 7);
-				if (net_buf.hdr.rpt1[7] != ' ')
-					memcpy(net_buf.hdr.rpt1, OWNER, 7);
+				memcpy(net_buf.vpkt.hdr.rpt2, OWNER, 7);
+				if (net_buf.vpkt.hdr.rpt1[7] != ' ')
+					memcpy(net_buf.vpkt.hdr.rpt1, OWNER, 7);
 
 				memcpy(net_buf.pkt_id, "DSTR", 4);
 				net_buf.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
@@ -1871,16 +1865,16 @@ static void ReadDVAPThread()
 				net_buf.flag[1] = 0x12;
 				net_buf.nothing2[0] = 0x00;
 				net_buf.nothing2[1] = 0x30;
-				net_buf.myicm.icm_id = 0x20;
-				net_buf.myicm.dst_rptr_id = 0x00;
-				net_buf.myicm.snd_rptr_id = 0x01;
-				net_buf.myicm.snd_term_id = SND_TERM_ID;
+				net_buf.vpkt.myicm.icm_id = 0x20;
+				net_buf.vpkt.myicm.dst_rptr_id = 0x00;
+				net_buf.vpkt.myicm.snd_rptr_id = 0x01;
+				net_buf.vpkt.myicm.snd_term_id = SND_TERM_ID;
 				streamid_raw = (rand_r(&aseed) % 65535U) + 1U;
-				net_buf.myicm.streamid = streamid_raw;
-				net_buf.myicm.ctrl = 0x80;
+				net_buf.vpkt.myicm.streamid = streamid_raw;
+				net_buf.vpkt.myicm.ctrl = 0x80;
 				sequence = 0;
-				calcPFCS((unsigned char *)&(net_buf.hdr), net_buf.hdr.pfcs);
-				sendto(insock, (char *)&net_buf, 58, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
+				calcPFCS((unsigned char *)&(net_buf.vpkt.hdr), net_buf.vpkt.hdr.pfcs);
+				sendto(insock, &net_buf, 58, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
 				C_COUNTER ++;
 
 				// local RF user keying up, start timer
@@ -1899,14 +1893,14 @@ static void ReadDVAPThread()
 				net_buf.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
 				net_buf.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
 				net_buf.nothing2[1] = 0x13;
-				net_buf.myicm.ctrl = sequence++;
+				net_buf.vpkt.myicm.ctrl = sequence++;
 				if (the_end)
-					net_buf.myicm.ctrl = sequence | 0x40;
-				memcpy(&net_buf.vasd, dvp_buf + 6, 12);
-				sendto(insock, (char *)&net_buf, 29, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
+					net_buf.vpkt.myicm.ctrl = sequence | 0x40;
+				memcpy(&net_buf.vpkt.vasd, dvp_buf + 6, 12);
+				sendto(insock, &net_buf, 29, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
 
 				int ber_data[3];
-				int ber_errs = dstar_dv_decode(net_buf.vasd.voice, ber_data);
+				int ber_errs = dstar_dv_decode(net_buf.vpkt.vasd.voice, ber_data);
 				if (ber_data[0] != 0xf85) {
 					num_bit_errors += ber_errs;
 					num_dv_frames++;
