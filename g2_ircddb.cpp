@@ -890,7 +890,7 @@ static void runit()
 					end_of_audio[16] = toRptr[i].sequence | 0x40;
 
 					for (j = 0; j < 2; j++)
-						sendto(srv_sock, (char *)end_of_audio, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+						sendto(srv_sock, end_of_audio, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 					toRptr[i].G2_COUNTER++;
 
@@ -998,9 +998,7 @@ static void runit()
 							readBuffer[9] = 0x30;
 							readBuffer[10] = 0x20;
 							memcpy(readBuffer + 11, readBuffer2 + 9, 47);
-							sendto(srv_sock, (char *)readBuffer,58,0,
-							       (struct sockaddr *)&toRptr[i].band_addr,
-							       sizeof(struct sockaddr_in));
+							sendto(srv_sock, readBuffer, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 							/* save the header */
 							memcpy(toRptr[i].saved_hdr, readBuffer, 58);
@@ -1042,9 +1040,7 @@ static void runit()
 							readBuffer[10] = 0x20;
 							memcpy(readBuffer+11, readBuffer2+9, 18);
 
-							sendto(srv_sock, (char *)readBuffer, 29, 0,
-							       (struct sockaddr *)&toRptr[i].band_addr,
-							       sizeof(struct sockaddr_in));
+							sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 							/* timeit */
 							time(&toRptr[i].last_time);
@@ -1089,9 +1085,7 @@ static void runit()
 										toRptr[i].saved_hdr[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
 
 										/* re-generate/send the header */
-										sendto(srv_sock, (char *)toRptr[i].saved_hdr,58,0,
-										       (struct sockaddr *)&toRptr[i].band_addr,
-										       sizeof(struct sockaddr_in));
+										sendto(srv_sock, toRptr[i].saved_hdr, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 										/* bump G2 counter */
 										toRptr[i].G2_COUNTER++;
@@ -1107,9 +1101,7 @@ static void runit()
 										readBuffer[10] = 0x20;
 										memcpy(readBuffer + 11, readBuffer2 + 9, 18);
 
-										sendto(srv_sock, (char *)readBuffer,29,0,
-										       (struct sockaddr *)&toRptr[i].band_addr,
-										       sizeof(struct sockaddr_in));
+										sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 										/* make sure that any more audio arriving will be accepted */
 										toRptr[i].streamid[0] = readBuffer2[12];
@@ -1251,7 +1243,7 @@ static void runit()
 
 					/* send data g2_link */
 					if (mycall_valid == REG_NOERROR)
-						sendto(srv_sock, (char *)readBuffer, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
+						sendto(srv_sock, readBuffer, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
 					if ((mycall_valid == REG_NOERROR) &&
 					        (memcmp(readBuffer + 36, "XRF", 3) != 0) &&             /* not a reflector */
@@ -1332,9 +1324,7 @@ static void runit()
 
 											/* send to remote gateway */
 											for (j = 0; j < 5; j++)
-												sendto(g2_sock, (char *)readBuffer2, 56,
-												       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-												       sizeof(struct sockaddr_in));
+												sendto(g2_sock, readBuffer2, 56, 0,(struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 											traceit("Routing to IP=%s, streamID=%d,%d, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
 											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr),
@@ -1403,18 +1393,14 @@ static void runit()
 											/* set PFCS */
 											calcPFCS(readBuffer2, 56);
 
-											/*
-											   The remote repeater has been set, lets fill in the dest_rptr
-											   so that later we can send that to the LIVE web site
-											*/
+											// The remote repeater has been set, lets fill in the dest_rptr
+											// so that later we can send that to the LIVE web site
 											memcpy(band_txt[i].dest_rptr, readBuffer2 + 18, CALL_SIZE);
 											band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
 											/* send to remote gateway */
 											for (j = 0; j < 5; j++)
-												sendto(g2_sock, (char *)readBuffer2, 56,
-												       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-												       sizeof(struct sockaddr_in));
+												sendto(g2_sock, readBuffer2, 56, 0,(struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 											traceit("Routing to IP=%s, streamID=%d,%d, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
 											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr),
@@ -1456,9 +1442,7 @@ static void runit()
 													readBuffer[35] = 'G';
 													calcPFCS(readBuffer, 58);
 
-													sendto(srv_sock, (char *)readBuffer,58,0,
-													       (struct sockaddr *)&toRptr[i].band_addr,
-													       sizeof(struct sockaddr_in));
+													sendto(srv_sock, readBuffer, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 													/* This is the active streamid */
 													toRptr[i].streamid[0] = readBuffer[14];
@@ -1662,9 +1646,7 @@ static void runit()
 									readBuffer[35] = 'G';
 									calcPFCS(readBuffer, 58);
 
-									sendto(srv_sock, (char *)readBuffer,58,0,
-									       (struct sockaddr *)&toRptr[i].band_addr,
-									       sizeof(struct sockaddr_in));
+									sendto(srv_sock, readBuffer,58,0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 									/* This is the active streamid */
 									toRptr[i].streamid[0] = readBuffer[14];
@@ -2104,7 +2086,7 @@ static void runit()
 					}
 
 					/* send data to g2_link */
-					sendto(srv_sock, (char *)readBuffer, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
+					sendto(srv_sock, readBuffer, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
 					/* aprs processing */
 					if (bool_send_aprs)
@@ -2123,9 +2105,7 @@ static void runit()
 							else
 								memcpy(readBuffer2 + 15, readBuffer + 20, 12);
 
-							sendto(g2_sock, (char *)readBuffer2, 27,
-							       0, (struct sockaddr *)&(to_remote_g2[i].toDst4),
-							       sizeof(struct sockaddr_in));
+							sendto(g2_sock, readBuffer2, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 							time(&(to_remote_g2[i].last_time));
 
@@ -2217,9 +2197,7 @@ static void runit()
 								} else
 									/* or maybe this is cross-banding data */
 									if ((memcmp(toRptr[i].streamid, readBuffer + 14, 2) == 0) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {
-										sendto(srv_sock, (char *)readBuffer,29,0,
-										       (struct sockaddr *)&toRptr[i].band_addr,
-										       sizeof(struct sockaddr_in));
+										sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 										/* timeit */
 										time(&toRptr[i].last_time);
@@ -2583,9 +2561,7 @@ static void PlayFileThread(char *file)
 				memcpy(rptr_buf + 11, dstar_buf + 9, 18);
 			}
 
-			sendto(srv_sock, (char *)rptr_buf, rlen + 2, 0,
-			       (struct sockaddr *)&toRptr[i].band_addr,
-			       sizeof(struct sockaddr_in));
+			sendto(srv_sock, rptr_buf, rlen + 2, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 			toRptr[i].G2_COUNTER ++;
 

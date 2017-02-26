@@ -270,9 +270,7 @@ static void send_heartbeat()
 
 	for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 		inbound_ptr = (inbound *)pos->second;
-		sendto(ref_g2_sock,(char *)REF_ACK,3,0,
-		       (struct sockaddr *)&(inbound_ptr->sin),
-		       sizeof(struct sockaddr_in));
+		sendto(ref_g2_sock, REF_ACK, 3, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 
 		if (inbound_ptr->countdown >= 0)
 			inbound_ptr->countdown --;
@@ -390,7 +388,7 @@ static void RptrAckThread(char *arg)
 
 	memcpy(buf + 50, "RPTR", 4);
 	calcPFCS(buf,56);
-	(void)sendto(rptr_sock,(char *)buf,56,0,(struct sockaddr *)&toLocalg2,sizeof(toLocalg2));
+	sendto(rptr_sock, buf, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
 	nanos.tv_sec = 0;
 	nanos.tv_nsec = delay_between * 1000000;
 	nanosleep(&nanos,0);
@@ -456,7 +454,7 @@ static void RptrAckThread(char *arg)
 				buf[26] = 0x93;
 				break;
 		}
-		(void)sendto(rptr_sock, (char *)buf, 27,0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
+		sendto(rptr_sock, buf, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
 		if (i < 9) {
 			nanos.tv_sec = 0;
 			nanos.tv_nsec = delay_between * 1000000;
@@ -1179,10 +1177,8 @@ static void g2link(char from_mod, char *call, char to_mod)
 			        to_remote_g2[i].from_mod,
 			        to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
 
-			for (j = 0; j < 5; j++)
-				sendto(xrf_g2_sock,link_request, CALL_SIZE + 3,0,
-				       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-				       sizeof(to_remote_g2[i].toDst4));
+			for (j=0; j<5; j++)
+				sendto(xrf_g2_sock, link_request, CALL_SIZE + 3, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 		} else if (port_i == rmt_dcs_port) {
 			strcpy(link_request, owner.c_str());
 			link_request[8] = from_mod;
@@ -1195,10 +1191,8 @@ static void g2link(char from_mod, char *call, char to_mod)
 			        to_remote_g2[i].from_mod,
 			        to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
 // Login form 5 to 1
-			for (j = 0; j < 1; j++)
-				sendto(dcs_g2_sock,link_request, 519,0,
-				       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-				       sizeof(to_remote_g2[i].toDst4));
+			for (j=0; j<1; j++)
+				sendto(dcs_g2_sock, link_request, 519, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 		} else if (port_i == rmt_ref_port) {
 			for (counter = 0; counter < 3; counter++) {
 				if (counter != i) {
@@ -1219,9 +1213,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 				queryCommand[4] = 1;
 
 				for (j = 0; j < 1; j++)
-					sendto(ref_g2_sock,(char *)queryCommand,5,0,
-					       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-					       sizeof(to_remote_g2[i].toDst4));
+					sendto(ref_g2_sock, queryCommand, 5, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 			} else {
 				if (to_remote_g2[counter].is_connected) {
 					to_remote_g2[i].is_connected = true;
@@ -1362,22 +1354,15 @@ static void runit()
 
 			/* send heartbeat to linked XRF repeaters/reflectors */
 			if (to_remote_g2[0].toDst4.sin_port == htons(rmt_xrf_port))
-				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE + 1, 0,
-				       (struct sockaddr *)&(to_remote_g2[0].toDst4),
-				       sizeof(to_remote_g2[0].toDst4));
+				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE+1, 0, (struct sockaddr *)&(to_remote_g2[0].toDst4), sizeof(to_remote_g2[0].toDst4));
 
-			if ((to_remote_g2[1].toDst4.sin_port == htons(rmt_xrf_port)) &&
-			        (strcmp(to_remote_g2[1].to_call, to_remote_g2[0].to_call) != 0))
-				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE + 1, 0,
-				       (struct sockaddr *)&(to_remote_g2[1].toDst4),
-				       sizeof(to_remote_g2[1].toDst4));
+			if ((to_remote_g2[1].toDst4.sin_port == htons(rmt_xrf_port)) && (strcmp(to_remote_g2[1].to_call, to_remote_g2[0].to_call) != 0))
+				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE+1, 0, (struct sockaddr *)&(to_remote_g2[1].toDst4), sizeof(to_remote_g2[1].toDst4));
 
 			if ((to_remote_g2[2].toDst4.sin_port == htons(rmt_xrf_port)) &&
 			        (strcmp(to_remote_g2[2].to_call, to_remote_g2[0].to_call) != 0) &&
 			        (strcmp(to_remote_g2[2].to_call, to_remote_g2[1].to_call) != 0))
-				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE + 1, 0,
-				       (struct sockaddr *)&(to_remote_g2[2].toDst4),
-				       sizeof(to_remote_g2[2].toDst4));
+				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE+1, 0, (struct sockaddr *)&(to_remote_g2[2].toDst4), sizeof(to_remote_g2[2].toDst4));
 
 			/* send heartbeat to linked DCS reflectors */
 			if (to_remote_g2[0].toDst4.sin_port == htons(rmt_dcs_port)) {
@@ -1385,50 +1370,37 @@ static void runit()
 				cmd_2_dcs[7] = to_remote_g2[0].from_mod;
 				memcpy(cmd_2_dcs + 9, to_remote_g2[0].to_call, 8);
 				cmd_2_dcs[16] = to_remote_g2[0].to_mod;
-				sendto(dcs_g2_sock, cmd_2_dcs, 17, 0,
-				       (struct sockaddr *)&(to_remote_g2[0].toDst4),
-				       sizeof(to_remote_g2[0].toDst4));
+				sendto(dcs_g2_sock, cmd_2_dcs, 17, 0, (struct sockaddr *)&(to_remote_g2[0].toDst4), sizeof(to_remote_g2[0].toDst4));
 			}
 			if (to_remote_g2[1].toDst4.sin_port == htons(rmt_dcs_port)) {
 				strcpy(cmd_2_dcs, owner.c_str());
 				cmd_2_dcs[7] = to_remote_g2[1].from_mod;
 				memcpy(cmd_2_dcs + 9, to_remote_g2[1].to_call, 8);
 				cmd_2_dcs[16] = to_remote_g2[1].to_mod;
-				sendto(dcs_g2_sock, cmd_2_dcs, 17, 0,
-				       (struct sockaddr *)&(to_remote_g2[1].toDst4),
-				       sizeof(to_remote_g2[1].toDst4));
+				sendto(dcs_g2_sock, cmd_2_dcs, 17, 0, (struct sockaddr *)&(to_remote_g2[1].toDst4), sizeof(to_remote_g2[1].toDst4));
 			}
 			if (to_remote_g2[2].toDst4.sin_port == htons(rmt_dcs_port)) {
 				strcpy(cmd_2_dcs, owner.c_str());
 				cmd_2_dcs[7] = to_remote_g2[2].from_mod;
 				memcpy(cmd_2_dcs + 9, to_remote_g2[2].to_call, 8);
 				cmd_2_dcs[16] = to_remote_g2[2].to_mod;
-				sendto(dcs_g2_sock, cmd_2_dcs, 17, 0,
-				       (struct sockaddr *)&(to_remote_g2[2].toDst4),
-				       sizeof(to_remote_g2[2].toDst4));
+				sendto(dcs_g2_sock, cmd_2_dcs, 17, 0, (struct sockaddr *)&(to_remote_g2[2].toDst4), sizeof(to_remote_g2[2].toDst4));
 			}
 
 			/* send heartbeat to linked REF reflectors */
-			if (to_remote_g2[0].is_connected &&
-			        (to_remote_g2[0].toDst4.sin_port == htons(rmt_ref_port)))
-				sendto(ref_g2_sock,(char *)REF_ACK,3,0,
-				       (struct sockaddr *)&(to_remote_g2[0].toDst4),
-				       sizeof(to_remote_g2[0].toDst4));
+			if (to_remote_g2[0].is_connected && (to_remote_g2[0].toDst4.sin_port == htons(rmt_ref_port)))
+				sendto(ref_g2_sock, REF_ACK, 3, 0, (struct sockaddr *)&(to_remote_g2[0].toDst4), sizeof(to_remote_g2[0].toDst4));
 
 			if (to_remote_g2[1].is_connected &&
 			        (to_remote_g2[1].toDst4.sin_port == htons(rmt_ref_port)) &&
 			        (strcmp(to_remote_g2[1].to_call, to_remote_g2[0].to_call) != 0))
-				sendto(ref_g2_sock,(char *)REF_ACK,3,0,
-				       (struct sockaddr *)&(to_remote_g2[1].toDst4),
-				       sizeof(to_remote_g2[1].toDst4));
+				sendto(ref_g2_sock, REF_ACK, 3, 0, (struct sockaddr *)&(to_remote_g2[1].toDst4), sizeof(to_remote_g2[1].toDst4));
 
 			if (to_remote_g2[2].is_connected &&
 			        (to_remote_g2[2].toDst4.sin_port == htons(rmt_ref_port)) &&
 			        (strcmp(to_remote_g2[2].to_call, to_remote_g2[0].to_call) != 0) &&
 			        (strcmp(to_remote_g2[2].to_call, to_remote_g2[1].to_call) != 0))
-				sendto(ref_g2_sock,(char *)REF_ACK,3,0,
-				       (struct sockaddr *)&(to_remote_g2[2].toDst4),
-				       sizeof(to_remote_g2[2].toDst4));
+				sendto(ref_g2_sock, REF_ACK, 3, 0, (struct sockaddr *)&(to_remote_g2[2].toDst4), sizeof(to_remote_g2[2].toDst4));
 
 			for (i = 0; i < 3; i++) {
 				/* check for timeouts from remote */
@@ -1472,9 +1444,7 @@ static void runit()
 							queryCommand[2] = 24;
 							queryCommand[3] = 0;
 							queryCommand[4] = 0;
-							sendto(ref_g2_sock,(char *)queryCommand,5,0,
-							       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-							       sizeof(to_remote_g2[i].toDst4));
+							sendto(ref_g2_sock, queryCommand, 5, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 
 							/* zero out any other entries here that match that system */
 							for (j = 0; j < 3; j++) {
@@ -1487,8 +1457,7 @@ static void runit()
 										to_remote_g2[j].to_mod = ' ';
 										to_remote_g2[j].countdown = 0;
 										to_remote_g2[j].is_connected = false;
-										to_remote_g2[j].in_streamid[0] = 0x00;
-										to_remote_g2[j].in_streamid[1] = 0x00;
+										to_remote_g2[j].in_streamid[0] = to_remote_g2[j].in_streamid[1] = 0x00;
 									}
 								}
 							}
@@ -1499,9 +1468,7 @@ static void runit()
 							unlink_request[10] = '\0';
 
 							for (j = 0; j < 5; j++)
-								sendto(xrf_g2_sock,unlink_request, CALL_SIZE + 3,0,
-								       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-								       sizeof(to_remote_g2[i].toDst4));
+								sendto(xrf_g2_sock, unlink_request, CALL_SIZE+3, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 						} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
 							strcpy(cmd_2_dcs, owner.c_str());
 							cmd_2_dcs[8] = to_remote_g2[i].from_mod;
@@ -1509,10 +1476,8 @@ static void runit()
 							cmd_2_dcs[10] = '\0';
 							memcpy(cmd_2_dcs + 11, to_remote_g2[i].to_call, 8);
 
-							for (j = 0; j < 2; j++)
-								sendto(dcs_g2_sock, cmd_2_dcs, 19 ,0,
-								       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-								       sizeof(to_remote_g2[i].toDst4));
+							for (j=0; j<2; j++)
+								sendto(dcs_g2_sock, cmd_2_dcs, 19 ,0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 						}
 
 						sprintf(notify_msg, "%c_unlinked.dat_UNLINKED_TIMEOUT", to_remote_g2[i].from_mod);
@@ -1701,9 +1666,7 @@ static void runit()
 
 											/* send back an ACK */
 											memcpy(readBuffer2 + 10, "ACK", 4);
-											sendto(xrf_g2_sock, (char *)readBuffer2, CALL_SIZE + 6,
-											       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-											       sizeof(struct sockaddr_in));
+											sendto(xrf_g2_sock, readBuffer2, CALL_SIZE+6, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 											if (to_remote_g2[i].from_mod != readBuffer2[9]) {
 												to_remote_g2[i].from_mod = readBuffer2[9];
@@ -1791,18 +1754,14 @@ static void runit()
 
 									/* send back an ACK */
 									memcpy(readBuffer2 + 10, "ACK", 4);
-									sendto(xrf_g2_sock, (char *)readBuffer2, CALL_SIZE + 6,
-									       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-									       sizeof(struct sockaddr_in));
+									sendto(xrf_g2_sock, readBuffer2, CALL_SIZE+6, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 								}
 							} else {
 								if (fromDst4.sin_addr.s_addr != to_remote_g2[i].toDst4.sin_addr.s_addr) {
 									/* Our repeater module is linked to another repeater-reflector */
 									memcpy(readBuffer2 + 10, "NAK", 4);
 									fromDst4.sin_port = htons(rmt_xrf_port);
-									sendto(xrf_g2_sock, (char *)readBuffer2, CALL_SIZE + 6,
-									       0,(struct sockaddr *)&fromDst4,
-									       sizeof(struct sockaddr_in));
+									sendto(xrf_g2_sock, readBuffer2, CALL_SIZE+6, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 								}
 							}
 						}
@@ -1921,7 +1880,7 @@ static void runit()
 								}
 
 								/* relay data to our local G2 */
-								sendto(rptr_sock, (char *)readBuffer2,56,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+								sendto(rptr_sock, readBuffer2,56,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 
 								/* send data to donglers */
 								/* no changes here */
@@ -1933,9 +1892,7 @@ static void runit()
 										readBuffer[1] = (unsigned char)(readBuffer[1] | 0xFFFFFF80);
 										memcpy(readBuffer + 2, readBuffer2, 56);
 
-										sendto(ref_g2_sock, (char *)readBuffer, 58, 0,
-										       (struct sockaddr *)&(inbound_ptr->sin),
-										       sizeof(struct sockaddr_in));
+										sendto(ref_g2_sock, readBuffer, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 									} else
 										inbound_ptr->mod = readBuffer2[25];
 								}
@@ -1978,8 +1935,7 @@ static void runit()
 											calcPFCS(from_xrf_torptr_brd, 56);
 
 											/* send the data to the local gateway/repeater */
-											sendto(rptr_sock, (char *)from_xrf_torptr_brd,56,0,
-											       (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+											sendto(rptr_sock, from_xrf_torptr_brd, 56, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 
 											/* save streamid for use with the audio packets that will arrive after this header */
 
@@ -2015,19 +1971,17 @@ static void runit()
 											readBuffer2[33] = 'G';
 											calcPFCS(readBuffer2, 56);
 
-											sendto(xrf_g2_sock, (char *)readBuffer2, 56, 0,
-											       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-											       sizeof(struct sockaddr_in));
+											sendto(xrf_g2_sock, readBuffer2, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 										}
 									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
 										if ( /*** (memcmp(readBuffer2 + 42, owner, 8) != 0) && ***/         /* block repeater announcements */
-										    (memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
-										    ((readBuffer2[15] == 0x00)  ||                       /* normal */
-										     (readBuffer2[15] == 0x08)  ||                       /* EMR */
-										     (readBuffer2[15] == 0x20)  ||                       /* BK */
-										     (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
-										    (memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
-										    (readBuffer2[33] == 'G')) {
+													(memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
+													((readBuffer2[15] == 0x00)  ||                       /* normal */
+													 (readBuffer2[15] == 0x08)  ||                       /* EMR */
+													 (readBuffer2[15] == 0x20)  ||                       /* BK */
+													 (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
+													(memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
+													(readBuffer2[33] == 'G')) {
 											to_remote_g2[i].in_streamid[0] = readBuffer2[12];
 											to_remote_g2[i].in_streamid[1] = readBuffer2[13];
 
@@ -2049,19 +2003,17 @@ static void runit()
 
 											calcPFCS(readBuffer + 2, 56);
 
-											sendto(ref_g2_sock, (char *)readBuffer, 58, 0,
-											       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-											       sizeof(struct sockaddr_in));
+											sendto(ref_g2_sock, readBuffer, 58, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 										}
 									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
 										if ( /*** (memcmp(readBuffer2 + 42, owner, 8) != 0) && ***/         /* block repeater announcements */
-										    (memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
-										    ((readBuffer2[15] == 0x00)  ||                       /* normal */
-										     (readBuffer2[15] == 0x08)  ||                       /* EMR */
-										     (readBuffer2[15] == 0x20)  ||                       /* BK */
-										     (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
-										    (memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
-										    (readBuffer2[33] == 'G')) {
+												(memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
+												((readBuffer2[15] == 0x00)  ||                       /* normal */
+												 (readBuffer2[15] == 0x08)  ||                       /* EMR */
+												 (readBuffer2[15] == 0x20)  ||                       /* BK */
+												 (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
+												(memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
+												(readBuffer2[33] == 'G')) {
 											to_remote_g2[i].in_streamid[0] = readBuffer2[12];
 											to_remote_g2[i].in_streamid[1] = readBuffer2[13];
 
@@ -2088,7 +2040,7 @@ static void runit()
 							}
 
 							/* relay data to our local G2 */
-							sendto(rptr_sock, (char *)readBuffer2,27,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+							sendto(rptr_sock, readBuffer2, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 
 							/* send data to donglers */
 							/* no changes here */
@@ -2101,9 +2053,7 @@ static void runit()
 
 									memcpy(readBuffer + 2, readBuffer2, 27);
 
-									sendto(ref_g2_sock, (char *)readBuffer, 29,
-									       0,(struct sockaddr *)&(inbound_ptr->sin),
-									       sizeof(struct sockaddr_in));
+									sendto(ref_g2_sock, readBuffer, 29, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 								}
 							}
 
@@ -2115,14 +2065,14 @@ static void runit()
 								        (brd_from_xrf.rptr_streamid[0][1] != 0x00)) {
 									from_xrf_torptr_brd[12] = brd_from_xrf.rptr_streamid[0][0];
 									from_xrf_torptr_brd[13] = brd_from_xrf.rptr_streamid[0][1];
-									sendto(rptr_sock, (char *)from_xrf_torptr_brd,27,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+									sendto(rptr_sock, from_xrf_torptr_brd, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 								}
 
 								if ((brd_from_xrf.rptr_streamid[1][0] != 0x00) ||
 								        (brd_from_xrf.rptr_streamid[1][1] != 0x00)) {
 									from_xrf_torptr_brd[12] = brd_from_xrf.rptr_streamid[1][0];
 									from_xrf_torptr_brd[13] = brd_from_xrf.rptr_streamid[1][1];
-									sendto(rptr_sock, (char *)from_xrf_torptr_brd,27,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+									sendto(rptr_sock, from_xrf_torptr_brd, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 								}
 
 								if ((readBuffer2[14] & 0x40) != 0) {
@@ -2141,9 +2091,7 @@ static void runit()
 										/* inform XRF about the source */
 										readBuffer2[11] = to_remote_g2[i].from_mod;
 
-										sendto(xrf_g2_sock, (char *)readBuffer2, 27, 0,
-										       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-										       sizeof(struct sockaddr_in));
+										sendto(xrf_g2_sock, readBuffer2, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
 										readBuffer[0] = (unsigned char)(29 & 0xFF);
 										readBuffer[1] = (unsigned char)(29 >> 8 & 0x1F);
@@ -2151,9 +2099,7 @@ static void runit()
 
 										memcpy(readBuffer + 2, readBuffer2, 27);
 
-										sendto(ref_g2_sock, (char *)readBuffer, 29,
-										       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-										       sizeof(struct sockaddr_in));
+										sendto(ref_g2_sock, readBuffer, 29, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
 										memset(dcs_buf, 0x00, 600);
 										dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
@@ -2180,9 +2126,7 @@ static void runit()
 										dcs_buf[61] = 0x01;
 										dcs_buf[62] = 0x00;
 
-										sendto(dcs_g2_sock, dcs_buf, 100, 0,
-										       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-										       sizeof(to_remote_g2[i].toDst4));
+										sendto(dcs_g2_sock, dcs_buf, 100, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4),  sizeof(to_remote_g2[i].toDst4));
 									}
 
 									if ((readBuffer2[14] & 0x40) != 0) {
@@ -2272,9 +2216,7 @@ static void runit()
 							readBuffer2[4] = 0x27;
 							readBuffer2[5] = 0x00;
 
-							sendto(ref_g2_sock,(char *)readBuffer2,946,0,
-							       (struct sockaddr *)&fromDst4,
-							       sizeof(struct sockaddr_in));
+							sendto(ref_g2_sock, readBuffer2, 946, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 
 							j_idx = 0;
 						}
@@ -2290,9 +2232,7 @@ static void runit()
 						readBuffer2[4] = tmp[0];
 						readBuffer2[5] = tmp[1];
 
-						sendto(ref_g2_sock,(char *)readBuffer2, k_idx, 0,
-						       (struct sockaddr *)&fromDst4,
-						       sizeof(struct sockaddr_in));
+						sendto(ref_g2_sock, readBuffer2, k_idx, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 					}
 				}
 			} else
@@ -2362,9 +2302,7 @@ static void runit()
 									readBuffer2[4] = tmp[0];
 									readBuffer2[5] = tmp[1];
 
-									sendto(ref_g2_sock,(char *)readBuffer2,788,0,
-									       (struct sockaddr *)&fromDst4,
-									       sizeof(struct sockaddr_in));
+									sendto(ref_g2_sock, readBuffer2,788,0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 
 									j_idx = 0;
 								}
@@ -2386,9 +2324,7 @@ static void runit()
 							readBuffer2[4] = tmp[0];
 							readBuffer2[5] = tmp[1];
 
-							sendto(ref_g2_sock,(char *)readBuffer2, 8 + (j_idx * 20), 0,
-							       (struct sockaddr *)&fromDst4,
-							       sizeof(struct sockaddr_in));
+							sendto(ref_g2_sock, readBuffer2, 8+(j_idx*20), 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 						}
 					}
 				} else
@@ -2454,9 +2390,7 @@ static void runit()
 									readBuffer2[4] = tmp[0];
 									readBuffer2[5] = tmp[1];
 
-									sendto(ref_g2_sock,(char *)readBuffer2,788,0,
-									       (struct sockaddr *)&fromDst4,
-									       sizeof(struct sockaddr_in));
+									sendto(ref_g2_sock, readBuffer2, 788, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 
 									j_idx = 0;
 								}
@@ -2477,9 +2411,7 @@ static void runit()
 								readBuffer2[4] = tmp[0];
 								readBuffer2[5] = tmp[1];
 
-								sendto(ref_g2_sock,(char *)readBuffer2, 8 + (j_idx * 20), 0,
-								       (struct sockaddr *)&fromDst4,
-								       sizeof(struct sockaddr_in));
+								sendto(ref_g2_sock, readBuffer2, 8+(j_idx*20), 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 							}
 						}
 					} else
@@ -2514,9 +2446,7 @@ static void runit()
 								         tm.tm_hour,tm.tm_min,tm.tm_sec,
 								         (tzname[0] == NULL)?"     ":tzname[0]);
 
-								sendto(ref_g2_sock,(char *)readBuffer2,34,0,
-								       (struct sockaddr *)&fromDst4,
-								       sizeof(struct sockaddr_in));
+								sendto(ref_g2_sock, readBuffer2, 34, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 							}
 						} else
 							/* version request */
@@ -2537,9 +2467,7 @@ static void runit()
 									strncpy((char *)readBuffer2 + 4, VERSION, 4);
 									readBuffer2[8] = 0;
 
-									sendto(ref_g2_sock,(char *)readBuffer2,9,0,
-									       (struct sockaddr *)&fromDst4,
-									       sizeof(struct sockaddr_in));
+									sendto(ref_g2_sock, readBuffer2, 9, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 								}
 							} else if ((recvlen2 == 5) &&
 							           (readBuffer2[0] == 5) &&
@@ -2548,9 +2476,7 @@ static void runit()
 							           (readBuffer2[3] == 0) &&
 							           (readBuffer2[4] == 0)) {
 								/* reply with the same DISCONNECT */
-								sendto(ref_g2_sock,(char *)readBuffer2,5,0,
-								       (struct sockaddr *)&fromDst4,
-								       sizeof(struct sockaddr_in));
+								sendto(ref_g2_sock, readBuffer2, 5, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 
 								for (i = 0; i < 3; i++) {
 									if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
@@ -2606,12 +2532,9 @@ static void runit()
 						memset(queryCommand + 12, '\0', 8);
 						memcpy(queryCommand + 20, "DV019999", 8);
 
-						/*** ATTENTION: I should ONLY send once for each distinct
-						       remote IP, so  get out of the loop immediately
-						***/
-						sendto(ref_g2_sock,(char *)queryCommand,28,0,
-						       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-						       sizeof(to_remote_g2[i].toDst4));
+						// ATTENTION: I should ONLY send once for each distinct
+						// remote IP, so  get out of the loop immediately
+						sendto(ref_g2_sock, queryCommand,28,0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 
 						break;
 					}
@@ -2740,12 +2663,9 @@ static void runit()
 				        (readBuffer2[3] == 0) &&
 				        (readBuffer2[4] == 1)) {
 					if ((inbound_list.size() + 1) > max_dongles)
-						traceit("Inbound DONGLE-p connection from %s but over the max_dongles limit of %d\n",
-						        ip, inbound_list.size());
+						traceit("Inbound DONGLE-p connection from %s but over the max_dongles limit of %d\n", ip, inbound_list.size());
 					else
-						sendto(ref_g2_sock,(char *)readBuffer2,5,0,
-						       (struct sockaddr *)&fromDst4,
-						       sizeof(fromDst4));
+						sendto(ref_g2_sock, readBuffer2, 5, 0, (struct sockaddr *)&fromDst4, sizeof(fromDst4));
 				} else if ((recvlen2 == 28) &&
 				           (readBuffer2[0] == 28) &&
 				           (readBuffer2[1] == 192) &&
@@ -2779,9 +2699,7 @@ static void runit()
 						readBuffer2[6] = 73;
 						readBuffer2[7] = 76;
 
-						sendto(ref_g2_sock,(char *)readBuffer2,8,0,
-						       (struct sockaddr *)&fromDst4,
-						       sizeof(fromDst4));
+						sendto(ref_g2_sock, readBuffer2, 8, 0, (struct sockaddr *)&fromDst4, sizeof(fromDst4));
 					} else {
 						/* add the dongle to the inbound list */
 						inbound_ptr = (inbound *)malloc(sizeof(inbound));
@@ -2811,9 +2729,7 @@ static void runit()
 								readBuffer2[6] = 82;
 								readBuffer2[7] = 87;
 
-								sendto(ref_g2_sock,(char *)readBuffer2,8,0,
-								       (struct sockaddr *)&fromDst4,
-								       sizeof(fromDst4));
+								sendto(ref_g2_sock, readBuffer2, 8, 0, (struct sockaddr *)&fromDst4, sizeof(fromDst4));
 
 								print_status_file();
 
@@ -2828,9 +2744,7 @@ static void runit()
 								readBuffer2[6] = 73;
 								readBuffer2[7] = 76;
 
-								sendto(ref_g2_sock,(char *)readBuffer2,8,0,
-								       (struct sockaddr *)&fromDst4,
-								       sizeof(fromDst4));
+								sendto(ref_g2_sock, readBuffer2, 8, 0, (struct sockaddr *)&fromDst4, sizeof(fromDst4));
 							}
 						} else {
 							traceit("malloc() failed for call=%s,ip=%s\n",call,ip);
@@ -2841,9 +2755,7 @@ static void runit()
 							readBuffer2[6] = 73;
 							readBuffer2[7] = 76;
 
-							sendto(ref_g2_sock,(char *)readBuffer2,8,0,
-							       (struct sockaddr *)&fromDst4,
-							       sizeof(fromDst4));
+							sendto(ref_g2_sock, readBuffer2, 8, 0, (struct sockaddr *)&fromDst4, sizeof(fromDst4));
 						}
 					}
 				}
@@ -2975,15 +2887,13 @@ static void runit()
 						}
 
 						/* send the data to the local gateway/repeater */
-						sendto(rptr_sock, (char *)readBuffer2 + 2,56,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+						sendto(rptr_sock, readBuffer2+2, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 
 						/* send the data to the donglers */
 						for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 							inbound_ptr = (inbound *)pos->second;
 							if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
-								sendto(ref_g2_sock, (char *)readBuffer2, 58, 0,
-								       (struct sockaddr *)&(inbound_ptr->sin),
-								       sizeof(struct sockaddr_in));
+								sendto(ref_g2_sock, readBuffer2, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 							} else
 								inbound_ptr->mod = readBuffer2[27];
 						}
@@ -3013,13 +2923,9 @@ static void runit()
 										/* inform XRF about the source */
 										readBuffer2[13] = to_remote_g2[i].from_mod;
 
-										sendto(xrf_g2_sock, (char *)readBuffer2 + 2, 56, 0,
-										       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-										       sizeof(struct sockaddr_in));
+										sendto(xrf_g2_sock, readBuffer2 + 2, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 									} else
-										sendto(ref_g2_sock, (char *)readBuffer2, 58, 0,
-										       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-										       sizeof(struct sockaddr_in));
+										sendto(ref_g2_sock, readBuffer2, 58, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 								} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
 									memcpy(ref_2_dcs[i].mycall, readBuffer2 + 44, 8);
 									memcpy(ref_2_dcs[i].sfx, readBuffer2 + 52, 4);
@@ -3044,15 +2950,13 @@ static void runit()
 					}
 
 					/* send the data to the local gateway/repeater */
-					sendto(rptr_sock, (char *)readBuffer2 + 2,27,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+					sendto(rptr_sock, readBuffer2+2, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 
 					/* send the data to the donglers */
 					for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 						inbound_ptr = (inbound *)pos->second;
 						if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
-							sendto(ref_g2_sock, (char *)readBuffer2, 29, 0,
-							       (struct sockaddr *)&(inbound_ptr->sin),
-							       sizeof(struct sockaddr_in));
+							sendto(ref_g2_sock, readBuffer2, 29, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 						}
 					}
 
@@ -3064,13 +2968,9 @@ static void runit()
 								/* inform XRF about the source */
 								readBuffer2[13] = to_remote_g2[i].from_mod;
 
-								sendto(xrf_g2_sock, (char *)readBuffer2 + 2, 27, 0,
-								       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-								       sizeof(struct sockaddr_in));
+								sendto(xrf_g2_sock, readBuffer2+2, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 							} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))
-								sendto(ref_g2_sock, (char *)readBuffer2, 29,
-								       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-								       sizeof(struct sockaddr_in));
+								sendto(ref_g2_sock, readBuffer2, 29,  0,(struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 							else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
 								memset(dcs_buf, 0x00, 600);
 								dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
@@ -3097,9 +2997,7 @@ static void runit()
 								dcs_buf[61] = 0x01;
 								dcs_buf[62] = 0x00;
 
-								sendto(dcs_g2_sock, dcs_buf, 100, 0,
-								       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-								       sizeof(to_remote_g2[i].toDst4));
+								sendto(dcs_g2_sock, dcs_buf, 100, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 							}
 
 							if ((readBuffer2[16] & 0x40) != 0) {
@@ -3220,17 +3118,13 @@ static void runit()
 
 							/* send the header to the local gateway/repeater */
 							for (j = 0; j < 5; j++)
-								sendto(rptr_sock, (char *)readBuffer2 + 2, 56,0,
-								       (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+								sendto(rptr_sock, readBuffer2+2, 56, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 
 							/* send the data to the donglers */
 							for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 								inbound_ptr = (inbound *)pos->second;
-								for (j = 0; j < 5; j++) {
-									sendto(ref_g2_sock, (char *)readBuffer2, 58, 0,
-									       (struct sockaddr *)&(inbound_ptr->sin),
-									       sizeof(struct sockaddr_in));
-								}
+								for (j=0; j<5; j++)
+									sendto(ref_g2_sock, readBuffer2, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 							}
 						}
 
@@ -3262,15 +3156,12 @@ static void runit()
 							memcpy(readBuffer2 + 17, dcs_buf + 46, 12);
 
 							/* send the data to the local gateway/repeater */
-							sendto(rptr_sock, (char *)readBuffer2 + 2, 27,0,
-							       (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+							sendto(rptr_sock, readBuffer2+2, 27, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 
 							/* send the data to the donglers */
 							for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 								inbound_ptr = (inbound *)pos->second;
-								sendto(ref_g2_sock, (char *)readBuffer2, 29, 0,
-								       (struct sockaddr *)&(inbound_ptr->sin),
-								       sizeof(struct sockaddr_in));
+								sendto(ref_g2_sock, readBuffer2, 29, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 							}
 
 							if ((dcs_buf[45] & 0x40) != 0) {
@@ -3534,9 +3425,7 @@ static void runit()
 											queryCommand[2] = 24;
 											queryCommand[3] = 0;
 											queryCommand[4] = 0;
-											sendto(ref_g2_sock,(char *)queryCommand,5,0,
-											       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-											       sizeof(to_remote_g2[i].toDst4));
+											sendto(ref_g2_sock, queryCommand, 5, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 										}
 									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port)) {
 										strcpy(unlink_request, owner.c_str());
@@ -3545,9 +3434,7 @@ static void runit()
 										unlink_request[10] = '\0';
 
 										for (j = 0; j < 5; j++)
-											sendto(xrf_g2_sock,unlink_request, CALL_SIZE + 3,0,
-											       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-											       sizeof(to_remote_g2[i].toDst4));
+											sendto(xrf_g2_sock, unlink_request, CALL_SIZE+3, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 									} else {
 										strcpy(cmd_2_dcs, owner.c_str());
 										cmd_2_dcs[8] = to_remote_g2[i].from_mod;
@@ -3555,10 +3442,8 @@ static void runit()
 										cmd_2_dcs[10] = '\0';
 										memcpy(cmd_2_dcs + 11, to_remote_g2[i].to_call, 8);
 
-										for (j = 0; j < 5; j++)
-											sendto(dcs_g2_sock, cmd_2_dcs, 19,0,
-											       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-											       sizeof(to_remote_g2[i].toDst4));
+										for (j=0; j<5; j++)
+											sendto(dcs_g2_sock, cmd_2_dcs, 19, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 									}
 
 									traceit("Unlinked from [%s] mod %c\n",
@@ -3652,10 +3537,8 @@ static void runit()
 
 						for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 							inbound_ptr = (inbound *)pos->second;
-							for (j = 0; j < 5; j++)
-								sendto(ref_g2_sock, (char *)readBuffer2, 58,
-								       0,(struct sockaddr *)&(inbound_ptr->sin),
-								       sizeof(struct sockaddr_in));
+							for (j=0; j<5; j++)
+								sendto(ref_g2_sock, readBuffer2, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 						}
 					}
 
@@ -3703,8 +3586,7 @@ static void runit()
 
 									calcPFCS(fromrptr_torptr_brd, 56);
 
-									sendto(xrf_g2_sock, (char *)fromrptr_torptr_brd,56,0,
-									       (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+									sendto(xrf_g2_sock, fromrptr_torptr_brd, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 
 									brd_from_rptr.from_rptr_streamid[0] = readBuffer[14];
 									brd_from_rptr.from_rptr_streamid[1] = readBuffer[15];
@@ -3754,15 +3636,11 @@ static void runit()
 										/* inform XRF about the source */
 										readBuffer2[13] = to_remote_g2[i].from_mod;
 
-										for (j = 0; j < 5; j++)
-											sendto(xrf_g2_sock, (char *)readBuffer2 + 2, 56,
-											       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-											       sizeof(struct sockaddr_in));
+										for (j=0; j<5; j++)
+											sendto(xrf_g2_sock, readBuffer2+2, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 									} else {
-										for (j = 0; j < 5; j++)
-											sendto(ref_g2_sock, (char *)readBuffer2, 58,
-											       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-											       sizeof(struct sockaddr_in));
+										for (j=0; j<5; j++)
+											sendto(ref_g2_sock, readBuffer2, 58, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 									}
 								} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
 									memcpy(rptr_2_dcs[i].mycall, readBuffer + 44, 8);
@@ -3795,13 +3673,11 @@ static void runit()
 
 						for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 							inbound_ptr = (inbound *)pos->second;
-							sendto(ref_g2_sock, (char *)readBuffer2, 29, 0,
-							       (struct sockaddr *)&(inbound_ptr->sin),
-							       sizeof(struct sockaddr_in));
+							sendto(ref_g2_sock, readBuffer2, 29, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 						}
 					}
 
-					for (i = 0; i < 3; i++) {
+					for (i=0; i<3; i++) {
 						if ((to_remote_g2[i].is_connected) &&
 						        (memcmp(to_remote_g2[i].out_streamid, readBuffer + 14, 2) == 0)) {
 							/* check for broadcast */
@@ -3826,16 +3702,14 @@ static void runit()
 								        (brd_from_rptr.to_rptr_streamid[0][1] != 0x00)) {
 									fromrptr_torptr_brd[12] = brd_from_rptr.to_rptr_streamid[0][0];
 									fromrptr_torptr_brd[13] = brd_from_rptr.to_rptr_streamid[0][1];
-									sendto(xrf_g2_sock, (char *)fromrptr_torptr_brd,27,0,
-									       (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+									sendto(xrf_g2_sock, fromrptr_torptr_brd, 27, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 								}
 
 								if ((brd_from_rptr.to_rptr_streamid[1][0] != 0x00) ||
 								        (brd_from_rptr.to_rptr_streamid[1][1] != 0x00)) {
 									fromrptr_torptr_brd[12] = brd_from_rptr.to_rptr_streamid[1][0];
 									fromrptr_torptr_brd[13] = brd_from_rptr.to_rptr_streamid[1][1];
-									sendto(xrf_g2_sock, (char *)fromrptr_torptr_brd,27,0,
-									       (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+									sendto(xrf_g2_sock, fromrptr_torptr_brd, 27, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 								}
 
 								if ((readBuffer[16] & 0x40) != 0) {
@@ -3871,13 +3745,9 @@ static void runit()
 									/* inform XRF about the source */
 									readBuffer2[13] = to_remote_g2[i].from_mod;
 
-									sendto(xrf_g2_sock, (char *)readBuffer2 + 2, 27,
-									       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-									       sizeof(struct sockaddr_in));
+									sendto(xrf_g2_sock, readBuffer2+2, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 								} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))
-									sendto(ref_g2_sock, (char *)readBuffer2, 29,
-									       0,(struct sockaddr *)&(to_remote_g2[i].toDst4),
-									       sizeof(struct sockaddr_in));
+									sendto(ref_g2_sock, readBuffer2, 29, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 							} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
 								memset(dcs_buf, 0x00, 600);
 								dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
@@ -3904,9 +3774,7 @@ static void runit()
 								dcs_buf[61] = 0x01;
 								dcs_buf[62] = 0x00;
 
-								sendto(dcs_g2_sock, dcs_buf, 100, 0,
-								       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-								       sizeof(to_remote_g2[i].toDst4));
+								sendto(dcs_g2_sock, dcs_buf, 100, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 							}
 
 							if ((readBuffer[16] & 0x40) != 0) {
@@ -4216,8 +4084,7 @@ static void AudioNotifyThread(char *arg)
 					}
 				}
 			}
-			(void)sendto(rptr_sock, (char *)dstar_buf,rlen,0,
-			             (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+			sendto(rptr_sock,  dstar_buf, rlen, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 		}
 		nanos.tv_sec = 0;
 		nanos.tv_nsec = delay_between * 1000000;
@@ -4322,18 +4189,14 @@ int main(int argc, char **argv)
 	for (i = 0; i < 3; i++) {
 		if (to_remote_g2[i].to_call[0] != '\0') {
 			if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))
-				sendto(ref_g2_sock,(char *)queryCommand,5,0,
-				       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-				       sizeof(to_remote_g2[i].toDst4));
+				sendto(ref_g2_sock, queryCommand, 5, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 			else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port)) {
 				strcpy(unlink_request, owner.c_str());
 				unlink_request[8] = to_remote_g2[i].from_mod;
 				unlink_request[9] = ' ';
 				unlink_request[10] = '\0';
-				for (j = 0; j < 5; j++)
-					sendto(xrf_g2_sock,unlink_request, CALL_SIZE + 3,0,
-					       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-					       sizeof(to_remote_g2[i].toDst4));
+				for (j=0; j<5; j++)
+					sendto(xrf_g2_sock, unlink_request, CALL_SIZE+3, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 			} else {
 				strcpy(cmd_2_dcs, owner.c_str());
 				cmd_2_dcs[8] = to_remote_g2[i].from_mod;
@@ -4341,10 +4204,8 @@ int main(int argc, char **argv)
 				cmd_2_dcs[10] = '\0';
 				memcpy(cmd_2_dcs + 11, to_remote_g2[i].to_call, 8);
 
-				for (j = 0; j < 5; j++)
-					sendto(dcs_g2_sock, cmd_2_dcs, 19,0,
-					       (struct sockaddr *)&(to_remote_g2[i].toDst4),
-					       sizeof(to_remote_g2[i].toDst4));
+				for (j=0; j<5; j++)
+					sendto(dcs_g2_sock, cmd_2_dcs, 19, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 			}
 		}
 		to_remote_g2[i].to_call[0] = '\0';
@@ -4362,9 +4223,7 @@ int main(int argc, char **argv)
 	/* tell inbound dongles we are down */
 	for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 		inbound_ptr = (inbound *)pos->second;
-		sendto(ref_g2_sock,(char *)queryCommand,5,0,
-		       (struct sockaddr *)&(inbound_ptr->sin),
-		       sizeof(struct sockaddr_in));
+		sendto(ref_g2_sock, queryCommand, 5, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 	}
 	inbound_list.clear();
 
@@ -4374,4 +4233,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
