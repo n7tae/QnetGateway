@@ -1187,7 +1187,7 @@ static void ReadDVAPThread()
 		} else if (reply == RT_DAT) {
 			/* have we already received a header ? */
 			if (dvap_busy) {
-				the_end = ((dr.frame.hdr.flag[0] & 0x40) == 0x40);
+				the_end = ((dr.frame.framepos & 0x40) == 0x40);
 
 				net_buf.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
 				net_buf.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
