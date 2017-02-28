@@ -16,6 +16,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+
+ #include <stdint.h>
  
 enum REPLY_TYPE {
 	RT_TIMEOUT,
@@ -104,7 +106,7 @@ class CDVAPDongle
 		bool OpenSerial(char *device);
 		int read_from_dvp(void* buf, unsigned int len);
 		int write_to_dvp(const void* buf, const unsigned int len);
-		void syncit();
+		bool syncit();
 		bool get_ser(char *dvp, char *dvap_serial_number);
 		bool get_name();
 		bool get_fw();

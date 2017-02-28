@@ -24,10 +24,7 @@
 #include <termios.h>
 #include <time.h>
 #include <sys/file.h>
-#include <atomic>
 #include "DVAPDongle.h"
-
- extern std::atomic<bool> keep_running;
 
 CDVAPDongle::CDVAPDongle() : MAX_REPL_CNT(20u)
 {
@@ -135,7 +132,8 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 
 	uint16_t len = dr.header & 0x1fff;
 	if (len > 50) {
-		syncit();
+		if (syncit())
+			return RT_ERR;
 		return RT_TIMEOUT;
 	}
 
@@ -183,15 +181,13 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 	else if (0x5u== dr.header && 0x80u==dr.param.control)
 		return RT_SQL;
 	else {
-		syncit();
+		if (syncit())
+			return RT_ERR;
 		return RT_TIMEOUT;
 	}
-
-	/* It should never get here */
-	return RT_TIMEOUT;
 }
 
-void CDVAPDongle::syncit()
+bool CDVAPDongle::syncit()
 {
 	unsigned char data[7];
 	struct timeval tv;
@@ -212,9 +208,8 @@ void CDVAPDongle::syncit()
 		if (n <= 0) {
 			cnt ++;
 			if (cnt > 100) {
-				traceit("dvap is not responding,...stopping\n");
-				keep_running = false;
-				return;
+				traceit("syncit() uncessful...stopping\n");
+				return true;
 			}
 		} else {
 			unsigned char c;
@@ -233,7 +228,7 @@ void CDVAPDongle::syncit()
 		}
 	}
 	traceit("Stopping syncing dvap\n");
-	return;
+	return false;
 }
 
 bool CDVAPDongle::get_ser(char *dvp, char *dvap_serial_number)
