@@ -111,10 +111,10 @@ static int RPTR_PORT;
 static char G2_INTERNAL_IP[IP_SIZE + 1];
 static int G2_PORT;
 static char DVP_SERIAL[64]; /* APxxxxxx */
-static u_int32_t DVP_FREQ; /* between 144000000 and 148000000 */
-static int16_t DVP_PWR; /* between  -12 and 10 */
-static char DVP_SQL; /* between  -128 and -45 */
-static int16_t DVP_OFF; /* between -2000 and 2000 */
+static int DVP_FREQ; /* between 144000000 and 148000000 */
+static int DVP_PWR; /* between  -12 and 10 */
+static int DVP_SQL; /* between  -128 and -45 */
+static int DVP_OFF; /* between -2000 and 2000 */
 static int WAIT_FOR_PACKETS;   /* wait 25 ms in reading from local G2 */
 static int REMOTE_TIMEOUT;  /* 1 second */
 static int DELAY_BETWEEN;
@@ -371,16 +371,13 @@ static int read_config(const char *cfgFile)
 
 	double f;
 	get_value(cfg, std::string(dvap_path+".frequency").c_str(), f, 100.0, 1400.0, 145.5);
-	DVP_FREQ = (u_int32_t)(1.0e6*f);
+	DVP_FREQ = (int)(1.0e6*f);
 
-	get_value(cfg, std::string(dvap_path+".power").c_str(), i, -12, 10, 10);
-	DVP_PWR = (int16_t)i;
+	get_value(cfg, std::string(dvap_path+".power").c_str(), DVP_PWR, -12, 10, 10);
 
-	get_value(cfg, std::string(dvap_path+".squelch").c_str(), i, -128, -45, -100);
-	DVP_SQL = (char)i;
+	get_value(cfg, std::string(dvap_path+".squelch").c_str(), DVP_SQL, -128, -45, -100);
 
-	get_value(cfg, std::string(dvap_path+".offset").c_str(), i, -2000, 2000, 0.0);
-	DVP_OFF = (int16_t)i;
+	get_value(cfg, std::string(dvap_path+".offset").c_str(), DVP_OFF, -2000, 2000, 0.0);
 
 	get_value(cfg, std::string(dvap_path+".packet_wait").c_str(), WAIT_FOR_PACKETS, 6, 100, 25);
 

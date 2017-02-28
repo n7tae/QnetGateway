@@ -187,7 +187,7 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 			switch (dr.param.control) {
 				case 0x138u:
 					return RT_PWR;
-				case 0x140u:
+				case 0x400u:
 					return RT_OFF;
 			}
 			break;
