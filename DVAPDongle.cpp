@@ -124,19 +124,34 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 {
 	dr.header = dr.param.control = 0;
 	unsigned int off = 2;
-	int rc = read_from_dvp(&dr.header, 2);
+	int rc = read_from_dvp(&dr.header, 2);	// read the header
 	if (rc == 0)
 		return RT_TIMEOUT;
 	if (rc != 2)
 		return RT_ERR;
 
-	uint16_t len = dr.header & 0x1fff;
-	if (len > 50) {
-		if (syncit())
-			return RT_ERR;
-		return RT_TIMEOUT;
+	switch (dr.header) {
+		case 0x5u:
+		case 0x6u:
+		case 0x7u:
+		case 0x8u:
+		case 0xcu:
+		case 0xdu:
+		case 0x10u:
+		case 0x2005u:
+		case 0x2007u:
+		case 0x602fu:
+		case 0xa02fu:
+		case 0xc012u:
+			break;	// these are all expected headers
+		default:
+			traceit("unknown header=0x%d\n", (unsigned)dr.header);
+			if (syncit())
+				return RT_ERR;
+			return RT_TIMEOUT;
 	}
-
+	// read the rest of the register
+	uint16_t len = dr.header & 0x1fff;
 	while (off < len) {
 		uint8_t *ptr = (uint8_t *)&dr;
 		rc = read_from_dvp(ptr + off, len - off);
@@ -145,46 +160,74 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 		if (rc > 0)
 			off += rc;
 	}
-
-	if (0x2007u==dr.header && 0x90u==dr.param.control)
-		return RT_STS;
-	else if (0xc012u==dr.header)
-		return RT_DAT;
-	else if (0xa02fu==dr.header)
-		return RT_HDR;
-	else if (0x602fu==dr.header)
-		return RT_HDR_ACK;
-	else if (0x2005u==dr.header && 0x118u==dr.param.control)
-		return RT_PTT;
-	else if (0x5u==dr.header && 0x18u==dr.param.control && 0x1==dr.param.byte)
-		return RT_START;
-	else if (0x5u==dr.header && 0x18u==dr.param.control && 0x0==dr.param.byte)
-		return RT_STOP;
-	else if (0x6u==dr.header && 0x400u==dr.param.control)
-		return RT_OFF;
-	else if (0x10u==dr.header && 0x1u==dr.param.control)
-		return RT_NAME;
-	else if (0xdu==dr.header && 0x2u==dr.param.control)
-		return RT_SER;
-	else if (0x7u==dr.header && 0x4u==dr.param.control && 0x1u==dr.param.ustr[0])
-		return RT_FW;
-	else if (0x8u==dr.header && 0x220u==dr.param.control)
-		return RT_FREQ;
-	else if (0xcu==dr.header && 0x230u==dr.param.control)
-		return RT_FREQ_LIMIT;
-	else if (0x5u==dr.header && 0x28u==dr.param.control && 0x1u==dr.param.ustr[0])
-		return RT_MODU;
-	else if (0x5u==dr.header && 0x2au==dr.param.control && 0x0u==dr.param.ustr[0])
-		return RT_MODE;
-	else if (0x6u==dr.header && 0x138u==dr.param.control)
-		return RT_PWR;
-	else if (0x5u== dr.header && 0x80u==dr.param.control)
-		return RT_SQL;
-	else {
-		if (syncit())
-			return RT_ERR;
-		return RT_TIMEOUT;
+	// okay, now we'll parse the register and return its type
+	switch (dr.header) {
+		case 0x5u:
+			switch (dr.param.control) {
+				case 0x18u:
+					if (dr.param.byte)
+						return RT_START;
+					else
+						return RT_STOP;
+				case 0x28u:
+					if (0x1u==dr.param.ustr[0])
+						return RT_MODU;
+					break;
+				case 0x80u:
+					return RT_SQL;
+				case 0x2au:
+					if (0x0u==dr.param.ustr[0])
+						return RT_MODE;
+					break;
+			}
+			break;
+		case 0x6u:
+			switch (dr.param.control) {
+				case 0x138u:
+					return RT_PWR;
+				case 0x140u:
+					return RT_OFF;
+			}
+			break;
+		case 0x7u:
+			if (0x4u==dr.param.control && 0x1u==dr.param.ustr[0])
+				return RT_FW;
+			break;
+		case 0x8u:
+			if (0x220u==dr.param.control)
+				return RT_FREQ;
+			break;
+		case 0xcu:
+			if (0x230u==dr.param.control)
+				return RT_FREQ_LIMIT;
+			break;
+		case 0xdu:
+			if (0x2u==dr.param.control)
+				return RT_SER;
+			break;
+		case 0x10u:
+			if (0x1u==dr.param.control)
+				return RT_NAME;
+			break;
+		case 0x2005u:
+			if (0x118u==dr.param.control)
+				return RT_PTT;
+			break;
+		case 0x2007u:
+			if (0x90u==dr.param.control)
+				return RT_STS;
+			break;
+		case 0x602fu:
+			return RT_HDR_ACK;
+		case 0xa02fu:
+			return RT_HDR;
+		case 0xc012u:
+			return RT_DAT;
 	}
+	traceit("Unrecognized data from dvap: header=%#x control=%#x\n", (unsigned)dr.header, (unsigned)dr.param.control);
+	if (syncit())
+		return RT_ERR;
+	return RT_TIMEOUT;
 }
 
 bool CDVAPDongle::syncit()
