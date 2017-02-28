@@ -87,7 +87,7 @@ class CDVAPDongle
 		CDVAPDongle();
 		~CDVAPDongle();
 		bool Initialize(char *serialno, int frequency, int offset, int power, int squelch);
-		REPLY_TYPE get_reply(SDVAP_REGISTER &dr);
+		REPLY_TYPE GetReply(SDVAP_REGISTER &dr);
 		void Stop();
 		int KeepAlive();
 		void SendRegister(SDVAP_REGISTER &dr);

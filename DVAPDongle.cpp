@@ -123,7 +123,7 @@ bool CDVAPDongle::Initialize(char *serialno, int frequency, int offset, int powe
 	return true;
 }
 
-REPLY_TYPE CDVAPDongle::get_reply(SDVAP_REGISTER &dr)
+REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 {
 	dr.header = dr.param.control = 0;
 	unsigned int off = 2;
@@ -252,7 +252,7 @@ bool CDVAPDongle::get_ser(char *dvp, char *dvap_serial_number)
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
 			traceit("Reached max number of requests to receive dvap serial#\n");
@@ -284,7 +284,7 @@ bool CDVAPDongle::get_name()
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
 			traceit("Reached max number of requests to receive dvap name\n");
@@ -318,7 +318,7 @@ bool CDVAPDongle::get_fw()
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
 			traceit("Reached max number of requests to receive dvap fw\n");
@@ -349,7 +349,7 @@ bool CDVAPDongle::set_modu()
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
@@ -378,7 +378,7 @@ bool CDVAPDongle::set_mode()
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
@@ -415,7 +415,7 @@ bool CDVAPDongle::set_sql(int squelch)
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
@@ -452,7 +452,7 @@ bool CDVAPDongle::set_pwr(int power)
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
@@ -489,7 +489,7 @@ bool CDVAPDongle::set_off(int offset)
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
@@ -519,7 +519,7 @@ bool CDVAPDongle::set_freq(int frequency)
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 
 		cnt++;
 		if (cnt >= MAX_REPL_CNT) {
@@ -552,7 +552,7 @@ bool CDVAPDongle::set_freq(int frequency)
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
@@ -582,7 +582,7 @@ bool CDVAPDongle::start_dvap()
 	do {
 		usleep(5000);
 
-		reply = get_reply(dvapreg);
+		reply = GetReply(dvapreg);
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {

@@ -1005,7 +1005,7 @@ static void ReadDVAPThread()
 		}
 
 		// read from the dvap and process
-		reply = dongle.get_reply(dr);
+		reply = dongle.GetReply(dr);
 		if (reply == RT_ERR) {
 			traceit("Detected ERROR event from DVAP dongle, stopping...n");
 			break;
