@@ -47,6 +47,8 @@
 #include <libconfig.h++>
 using namespace libconfig;
 
+#include "DVAPDongle.h"
+
 #define VERSION DVAP_VERSION
 #define CALL_SIZE 8
 #define RPTR_SIZE 8
@@ -54,31 +56,6 @@ using namespace libconfig;
 
 // we need to be sure these structures don't have any dead space
 #pragma pack(push, 1)
-/* data from dvap */
-typedef struct dvap_hdr_tag {
-	unsigned char hdr0; 	//  0 = 0x2f
-	unsigned char hdr1; 	//  1 = 0xa0
-	uint16_t streamid;		//  2
-	unsigned char framepos;	//  4
-	unsigned char seq;		//  5
-	unsigned char flag[3];	//	6
-	unsigned char rpt1[8];	//  9
-	unsigned char rpt2[8];	// 17
-	unsigned char urcall[8];// 25
-	unsigned char mycall[8];// 33
-	unsigned char sfx[4];	// 41
-	unsigned char pfcs[2];	// 45
-} SDVAP_HDR;				// total: 47
-
-typedef struct dvap_data_tag {
-	unsigned char hdr0;		//  0 = 0x12
-	unsigned char hdr1;		//  1 = 0xc0
-	uint16_t streamid;		//  2
-	unsigned char framepos;	//  4
-	unsigned char seq;		//  5
-	unsigned char audio[12];//  6
-} SDVAP_DATA;				// total: 18
-
 // for communicating with the g2 gateway
 typedef struct pkt_tag {
 	unsigned char pkt_id[4];
@@ -154,58 +131,10 @@ static int insock = -1;
 static struct sockaddr_in outaddr;
 static int serfd = -1;
 static bool busy20000 = false;
-static std::atomic<bool> keep_running(true);
-static const unsigned char DVP_RQST_NAME[] = {0x04, 0x20, 0x01, 0x00};
-static const unsigned char DVP_REPL_NAME[] = {0x10, 0x00, 0x01, 0x00, 'D', 'V', 'A', 'P', ' ', 'D', 'o', 'n', 'g', 'l', 'e', 0x00};
-static const unsigned char DVP_RQST_SER[] = {0x04, 0x20, 0x02, 0x00};
-static const unsigned char DVP_REPL_SER[] = {0x0C, 0x00, 0x02, 0x00};
-static const unsigned char DVP_RQST_FW[] = {0x05, 0x20, 0x04, 0x00, 0x01};
-static const unsigned char DVP_REPL_FW[] = {0x07, 0x00, 0x04, 0x00, 0x01, 0x00, 0x00};
-static const unsigned char DVP_RQST_MODU[] = {0x05, 0x00, 0x28, 0x00, 0x01};
-static const unsigned char DVP_REPL_MODU[] = {0x05, 0x00, 0x28, 0x00, 0x01};
-static const unsigned char DVP_RQST_MODE[] = {0x05, 0x00, 0x2A, 0x00, 0x00};
-static const unsigned char DVP_REPL_MODE[] = {0x05, 0x00, 0x2A, 0x00, 0x00};
-static const unsigned char DVP_RQST_SQL[] = {0x05, 0x00, 0x80, 0x00, 0x00};
-static const unsigned char DVP_REPL_SQL[] = {0x05, 0x00, 0x80, 0x00, 0x00};
-static const unsigned char DVP_RQST_PWR[] = {0x06, 0x00, 0x38, 0x01, 0x00, 0x00};
-static const unsigned char DVP_REPL_PWR[] = {0x06, 0x00, 0x38, 0x01, 0x00, 0x00};
-static const unsigned char DVP_RQST_OFF[] = {0x06, 0x00, 0x00, 0x04, 0x00, 0x00};
-static const unsigned char DVP_REPL_OFF[] = {0x06, 0x00, 0x00, 0x04, 0x00, 0x00};
-static const unsigned char DVP_RQST_FREQ[] = {0x08, 0x00, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00};
-static const unsigned char DVP_REPL_FREQ[] = {0x08, 0x00, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00};
-static const unsigned char DVP_RQST_START[] = {0x05, 0x00, 0x18, 0x00, 0x01};
-static const unsigned char DVP_REPL_START[] = {0x05, 0x00, 0x18, 0x00, 0x01};
-static const unsigned char DVP_RQST_STOP[] = {0x05, 0x00, 0x18, 0x00, 0x00};
-static const unsigned char DVP_REPL_STOP[] = {0x05, 0x00, 0x18, 0x00, 0x00};
-static const unsigned char DVP_HDR[] = { 0x2F, 0xA0 };
+std::atomic<bool> keep_running(true);
 static const unsigned char DVP_REPL_HDR[] = { 0x2F, 0x60 };
 static const unsigned char DVP_REPL_PTT[] = {0x05, 0x20, 0x18, 0x01, 0x00};
-static const unsigned char DVP_DAT[] = { 0x12, 0xC0 };
 static const unsigned char DVP_STS[] = {0x07, 0x20, 0x90, 0x00, 0x00, 0x00, 0x00};
-static const unsigned char DVP_ACK[] = {0x03, 0x60, 0x00};
-static const unsigned int MAX_REPL_CNT = 20;
-enum REPLY_TYPE {
-	RT_TIMEOUT,
-	RT_ERR,
-	RT_UNKNOWN,
-	RT_NAME,
-	RT_SER,
-	RT_FW,
-	RT_START,
-	RT_STOP,
-	RT_MODU,
-	RT_MODE,
-	RT_SQL,
-	RT_PWR,
-	RT_OFF,
-	RT_FREQ,
-	RT_STS,
-	RT_PTT,
-	RT_ACK,
-	RT_HDR,
-	RT_HDR_ACK,
-	RT_DAT
-};
 
 static unsigned int space = 0;
 static unsigned int aseed = 0;
@@ -215,23 +144,7 @@ static void traceit(const char *fmt,...);
 static int read_config(const char *cfgFile);
 static void sig_catch(int signum);
 static int open_sock();
-static bool open_ser(char *dvp);
-static bool open_dvp();
-static int read_from_dvp(unsigned char* buf, unsigned int len);
-static int write_to_dvp(const unsigned char* buf, const unsigned int len);
-static bool get_name();
-static bool get_fw();
-static bool get_ser(char *dvp);
-static bool set_modu();
-static bool set_mode();
-static bool set_sql();
-static bool set_pwr();
-static bool set_off();
-static bool set_freq();
-static bool start_dvap();
 static void readFrom20000();
-static REPLY_TYPE get_reply(unsigned char *buf,  unsigned int *len);
-static void syncit();
 static void calcPFCS(unsigned char *packet, unsigned char *pfcs);
 static void ReadDVAPThread();
 static void RptrAckThread(SDVAP_ACK_ARG *parg);
@@ -239,6 +152,8 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg);
 /*** BER stuff ***/
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
+
+CDVAPDongle dongle;
 
 static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
 {
@@ -520,615 +435,6 @@ static int open_sock()
 	return 0;
 }
 
-static bool open_ser(char *dvp)
-{
-	static termios t;
-
-	serfd = open(dvp, O_RDWR | O_NOCTTY | O_NDELAY, 0);
-	if (serfd < 0) {
-		traceit("Failed to open device [%s], error=%d, message=%s\n", dvp, errno, strerror(errno));
-		return false;
-	}
-
-	if (isatty(serfd) == 0) {
-		traceit("Device %s is not a tty device\n", dvp);
-		close(serfd);
-		serfd = -1;
-		return false;
-	}
-
-	if (tcgetattr(serfd, &t) < 0) {
-		traceit("tcgetattr failed for %s, error=%d\n", dvp, errno);
-		close(serfd);
-		serfd = -1;
-		return false;
-	}
-
-	t.c_lflag    &= ~(ECHO | ECHOE | ICANON | IEXTEN | ISIG);
-	t.c_iflag    &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON | IXOFF | IXANY);
-	t.c_cflag    &= ~(CSIZE | CSTOPB | PARENB | CRTSCTS);
-	t.c_cflag    |= CS8;
-	t.c_oflag    &= ~(OPOST);
-	t.c_cc[VMIN]  = 0;
-	t.c_cc[VTIME] = 10;
-
-	cfsetospeed(&t, B230400);
-	cfsetispeed(&t, B230400);
-
-	if (tcsetattr(serfd, TCSANOW, &t) < 0) {
-		traceit("tcsetattr failed for %s, error=%d\n", dvp, errno);
-		close(serfd);
-		serfd = -1;
-		return false;
-	}
-
-	return true;
-}
-
-static bool open_dvp()
-{
-	bool ok = false;
-	char dvp_device[128];
-
-	do {
-		for (int i = 0; i < 32; i++) {
-			sprintf(dvp_device, "/dev/ttyUSB%d", i);
-
-			if (access(dvp_device, R_OK | W_OK) != 0)
-				continue;
-
-			ok = open_ser(dvp_device);
-			if (!ok)
-				continue;
-
-			if (flock(serfd, LOCK_EX | LOCK_NB) != 0) {
-				close(serfd);
-				serfd = -1;
-				ok = false;
-				traceit("Device %s is already locked/used by other dvap_rptr\n", dvp_device);
-				continue;
-			}
-			traceit("Device %s now locked for exclusive use\n", dvp_device);
-
-			ok = get_ser(dvp_device);
-			if (!ok) {
-				close(serfd);
-				serfd = -1;
-				continue;
-			}
-			break;
-		}
-		if (!ok)
-			break;
-
-		ok = get_name();
-		if (!ok)
-			break;
-
-		ok = get_fw();
-		if (!ok)
-			break;
-
-
-		ok = set_modu();
-		if (!ok)
-			break;
-
-		ok = set_mode();
-		if (!ok)
-			break;
-
-		ok = set_sql();
-		if (!ok)
-			break;
-
-		ok = set_pwr();
-		if (!ok)
-			break;
-
-		ok = set_off();
-		if (!ok)
-			break;
-
-		ok = set_freq();
-		if (!ok)
-			break;
-
-		ok = start_dvap();
-		if (!ok)
-			break;
-
-	} while (false);
-
-	if (!ok) {
-		if (serfd != -1) {
-			(void)write_to_dvp(DVP_RQST_STOP, 5);
-			close(serfd);
-			serfd = -1;
-		}
-		return false;
-	}
-	return true;
-}
-
-static int read_from_dvp(unsigned char *buf, unsigned int len)
-{
-	unsigned int off = 0;
-	fd_set fds;
-	int n;
-	struct timeval tv;
-	ssize_t temp_len;
-
-	if (len == 0)
-		return 0;
-
-	while (off < len) {
-		FD_ZERO(&fds);
-		FD_SET(serfd, &fds);
-
-		if (off == 0) {
-			tv.tv_sec  = 0;
-			tv.tv_usec = 0;
-			n = select(serfd + 1, &fds, NULL, NULL, &tv);
-			if (n == 0)
-				return 0; // nothing to read from the dvap
-		} else
-			n = select(serfd + 1, &fds, NULL, NULL, NULL);
-
-		if (n < 0) {
-			traceit("select error=%d on dvap\n", errno);
-			return -1;
-		}
-
-		if (n > 0) {
-			temp_len = read(serfd, buf + off, len - off);
-			if (temp_len > 0)
-				off += temp_len;
-		}
-	}
-
-	return len;
-}
-
-static int write_to_dvp(const unsigned char *buf, const unsigned int len)
-{
-	unsigned int ptr = 0;
-
-	if (len == 0)
-		return 0;
-
-	while (ptr < len) {
-		ssize_t n = write(serfd, buf + ptr, len - ptr);
-		if (n < 0) {
-			traceit("Error %d writing to dvap\n", errno);
-			return -1;
-		}
-
-		if (n > 0)
-			ptr += n;
-	}
-
-	return len;
-}
-
-static REPLY_TYPE get_reply(unsigned char *buf,  unsigned int *len)
-{
-	unsigned int off = 2;
-	int rc = read_from_dvp(buf, 2);
-	if (rc == 0)
-		return RT_TIMEOUT;
-	if (rc != 2)
-		return RT_ERR;
-
-	*len = buf[0] + (buf[1] & 0x1f) * 256;
-	if (*len > 50) {
-		syncit();
-		return RT_TIMEOUT;
-	}
-
-	while (off < *len) {
-		rc = read_from_dvp(buf + off, *len - off);
-		if (rc < 0)
-			return RT_TIMEOUT;
-		if (rc > 0)
-			off += rc;
-	}
-
-	if (memcmp(buf, DVP_STS, 4) == 0)
-		return RT_STS;
-	else if (memcmp(buf, DVP_DAT, 2) == 0)
-		return RT_DAT;
-	else if (memcmp(buf, DVP_HDR, 2) == 0)
-		return RT_HDR;
-	else if (memcmp(buf, DVP_REPL_HDR, 2) == 0)
-		return RT_HDR_ACK;
-	else if (memcmp(buf, DVP_REPL_PTT, 4) == 0)
-		return RT_PTT;
-	else if (memcmp(buf, DVP_REPL_START, 5) == 0)
-		return RT_START;
-	else if (memcmp(buf, DVP_REPL_STOP, 5) == 0)
-		return RT_STOP;
-	else if (memcmp(buf, DVP_REPL_OFF, 4) == 0)
-		return RT_OFF;
-	else if (memcmp(buf, DVP_REPL_NAME, 4) == 0)
-		return RT_NAME;
-	else if (memcmp(buf + 1, DVP_REPL_SER + 1, 3) == 0)
-		return RT_SER;
-	else if (memcmp(buf, DVP_REPL_FW, 5) == 0)
-		return RT_FW;
-	else if (memcmp(buf, DVP_REPL_FREQ, 4) == 0)
-		return RT_FREQ;
-	else if (memcmp(buf, DVP_REPL_MODU, 5) == 0)
-		return RT_MODU;
-	else if (memcmp(buf, DVP_REPL_MODE, 5) == 0)
-		return RT_MODE;
-	else if (memcmp(buf, DVP_REPL_PWR, 4) == 0)
-		return RT_PWR;
-	else if (memcmp(buf, DVP_REPL_SQL, 4) == 0)
-		return RT_SQL;
-	else {
-		syncit();
-		return RT_TIMEOUT;
-	}
-
-	/* It should never get here */
-	return RT_TIMEOUT;
-}
-
-static void syncit()
-{
-	unsigned char data[7];
-	struct timeval tv;
-	fd_set fds;
-	short cnt = 0;
-
-	traceit("Starting syncing dvap\n");
-	memset(data,  0x00, 7);
-
-	while (memcmp(data, DVP_STS, 4) != 0) {
-		FD_ZERO(&fds);
-		FD_SET(serfd, &fds);
-		tv.tv_sec  = 0;
-		tv.tv_usec = 1000;
-		int n = select(serfd + 1, &fds, NULL, NULL, &tv);
-		if (n <= 0) {
-			cnt ++;
-			if (cnt > 100) {
-				traceit("dvap is not responding,...stopping\n");
-				keep_running = false;
-				return;
-			}
-		} else {
-			unsigned char c;
-			n = read_from_dvp(&c, 1);
-			if (n > 0) {
-				data[0] = data[1];
-				data[1] = data[2];
-				data[2] = data[3];
-				data[3] = data[4];
-				data[4] = data[5];
-				data[5] = data[6];
-				data[6] = c;
-
-				cnt = 0;
-			}
-		}
-	}
-	traceit("Stopping syncing dvap\n");
-	return;
-}
-
-static bool get_name()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char dvp_buf[200];
-
-	int rc = write_to_dvp(DVP_RQST_NAME, 4);
-	if (rc != 4) {
-		traceit("Failed to send request to get dvap name\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to receive dvap name\n");
-			return false;
-		}
-	} while (reply != RT_NAME);
-
-	bool testit = (memcmp(dvp_buf, DVP_REPL_NAME, len) == 0);
-
-	if (!testit) {
-		traceit("Failed to receive dvap name\n");
-		return false;
-	}
-
-	traceit("Device name: %.*s\n", 11, dvp_buf + 4);
-	return true;
-}
-
-static bool get_fw()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char dvp_buf[200];
-
-	int rc = write_to_dvp(DVP_RQST_FW, 5);
-	if (rc != 5) {
-		traceit("Failed to send request to get dvap fw\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to receive dvap fw\n");
-			return false;
-		}
-	} while (reply != RT_FW);
-
-	unsigned int ver = dvp_buf[6] * 256 + dvp_buf[5];
-	traceit("dvap fw ver: %u.%u\n", ver / 100, ver % 100);
-
-	return true;
-}
-
-static bool get_ser(char *dvp)
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char dvp_buf[200];
-
-	int rc = write_to_dvp(DVP_RQST_SER, 4);
-	if (rc != 4) {
-		traceit("Failed to send request to get dvap serial#\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to receive dvap serial#\n");
-			return false;
-		}
-	} while (reply != RT_SER);
-
-	if (strcmp((char *)(dvp_buf + 4), DVP_SERIAL) == 0) {
-		traceit("Using %s:  %s, because serial number matches your dvap_rptr.cfg\n",
-		        dvp, DVP_SERIAL);
-		return true;
-	} else {
-		traceit("Device %s has serial %s, but does not match your config value %s\n", dvp, dvp_buf + 4, DVP_SERIAL);
-		return false;
-	}
-}
-
-static bool set_modu()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char dvp_buf[200];
-
-	int rc = write_to_dvp(DVP_RQST_MODU, 5);
-	if (rc != 5) {
-		traceit("Failed to send request to set dvap modulation\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap modulation\n");
-			return false;
-		}
-	} while (reply != RT_MODU);
-
-	return true;
-}
-
-static bool set_mode()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char dvp_buf[200];
-
-	int rc = write_to_dvp(DVP_RQST_MODE, 5);
-	if (rc != 5) {
-		traceit("Failed to send request to set dvap mode\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap mode\n");
-			return false;
-		}
-	} while (reply != RT_MODE);
-
-	return true;
-}
-
-static bool set_sql()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char buf[10];
-	unsigned char dvp_buf[200];
-
-	memcpy(buf, DVP_RQST_SQL, 5);
-	memcpy(buf + 4, &DVP_SQL, 1);
-
-	int rc = write_to_dvp(buf, 5);
-	if (rc != 5) {
-		traceit("Failed to send request to set dvap sql\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap sql\n");
-			return false;
-		}
-	} while (reply != RT_SQL);
-
-	return true;
-}
-
-static bool set_pwr()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char buf[10];
-	unsigned char dvp_buf[200];
-
-	memcpy(buf, DVP_RQST_PWR, 6);
-	memcpy(buf + 4, &DVP_PWR, sizeof(int16_t));
-
-	int rc = write_to_dvp(buf, 6);
-	if (rc != 6) {
-		traceit("Failed to send request to set dvap pwr\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap pwr\n");
-			return false;
-		}
-	} while (reply != RT_PWR);
-
-	return true;
-}
-
-static bool set_off()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char buf[10];
-	unsigned char dvp_buf[200];
-
-	memcpy(buf, DVP_RQST_OFF, 6);
-	memcpy(buf + 4, &DVP_OFF, sizeof(int16_t));
-
-	int rc = write_to_dvp(buf, 6);
-	if (rc != 6) {
-		traceit("Failed to send request to set dvap offset\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap offset\n");
-			return false;
-		}
-	} while (reply != RT_OFF);
-
-	return true;
-}
-
-static bool set_freq()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char buf[10];
-	unsigned char dvp_buf[200];
-
-	memcpy(buf, DVP_RQST_FREQ, 8);
-	memcpy(buf + 4, &DVP_FREQ, sizeof(u_int32_t));
-
-	int rc = write_to_dvp(buf, 8);
-	if (rc != 8) {
-		traceit("Failed to send request to set dvap frequency\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap frequency\n");
-			return false;
-		}
-	} while (reply != RT_FREQ);
-
-	return true;
-}
-
-static bool start_dvap()
-{
-	unsigned cnt = 0;
-	unsigned int len = 0;
-	REPLY_TYPE reply;
-	unsigned char dvp_buf[200];
-
-	int rc = write_to_dvp(DVP_RQST_START, 5);
-	if (rc != 5) {
-		traceit("Failed to send request to start the dvap dongle\n");
-		return false;
-	}
-
-	do {
-		usleep(5000);
-
-		reply = get_reply(dvp_buf, &len);
-
-		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to start the dvap dongle\n");
-			return false;
-		}
-	} while (reply != RT_START);
-
-	return true;
-}
-
 static void readFrom20000()
 {
 	struct  sockaddr_in from;
@@ -1160,7 +466,7 @@ static void readFrom20000()
 		select(insock + 1, &readfd, NULL, NULL, &tv);
 
 		if (FD_ISSET(insock, &readfd)) {
-			len = recvfrom (insock, (char *)&net_buf, 58, 0, (struct sockaddr *)&from, &fromlen);
+			len = recvfrom(insock, (char *)&net_buf, 58, 0, (struct sockaddr *)&from, &fromlen);
 			if (len == 58) {
 				if (busy20000) {
 					FD_CLR (insock, &readfd);
@@ -1169,7 +475,7 @@ static void readFrom20000()
 
 				/* check the module and gateway */
 				if (net_buf.vpkt.hdr.rpt1[7] != RPTR_MOD) {
-					FD_CLR (insock, &readfd);
+					FD_CLR(insock, &readfd);
 					break;
 				}
 				memcpy(net_buf.vpkt.hdr.rpt2, OWNER, 7);
@@ -1192,7 +498,7 @@ static void readFrom20000()
 				        (net_buf.vpkt.hdr.flag[0] != 0x20) &&
 				        (net_buf.vpkt.hdr.flag[0] != 0x28) &&
 				        (net_buf.vpkt.hdr.flag[0] != 0x40)) {
-					FD_CLR (insock, &readfd);
+					FD_CLR(insock, &readfd);
 					break;
 				}
 
@@ -1200,7 +506,7 @@ static void readFrom20000()
 				        (net_buf.flag[0] != 0x73) ||
 				        (net_buf.flag[1] != 0x12) ||
 				        (net_buf.vpkt.myicm.icm_id != 0x20)) { /* voice type */
-					FD_CLR (insock, &readfd);
+					FD_CLR(insock, &readfd);
 					break;
 				}
 
@@ -1231,30 +537,29 @@ static void readFrom20000()
 					else
 						net_buf.vpkt.hdr.flag[0] = 0x40;
 				}
-				net_buf.vpkt.hdr.flag[1] = 0x00;
-				net_buf.vpkt.hdr.flag[2] = 0x00;
+				net_buf.vpkt.hdr.flag[1] = net_buf.vpkt.hdr.flag[2] = 0x00;
 
 				// write the header packet to the dvap here
 				while ((space < 1) && keep_running)
 					usleep(5);
-				SDVAP_HDR dh;
+				SDVAP_REGISTER dr;
 				stream_id_to_dvap = (rand_r(&aseed) % 65535U) + 1U;
-				memcpy(&dh, DVP_HDR, 2);
-				dh.streamid = stream_id_to_dvap;
-				dh.framepos = 0x80;
-				dh.seq = 0;
+				dr.header = 0xa02f;
+				dr.frame.streamid = stream_id_to_dvap;
+				dr.frame.framepos = 0x80;
+				dr.frame.seq = 0;
 				//memset(dvp_buf + 6, ' ', 41);
 				for (int f=0; f<3; f++)
-					dh.flag[f] = net_buf.vpkt.hdr.flag[0];
-				memcpy(dh.rpt1, net_buf.vpkt.hdr.rpt2, 8);
-				memcpy(dh.rpt2, net_buf.vpkt.hdr.rpt1, 8);
-				memcpy(dh.urcall, net_buf.vpkt.hdr.urcall, 8);
-				memcpy(dh.mycall, net_buf.vpkt.hdr.mycall, 8);
-				memcpy(dh.sfx, net_buf.vpkt.hdr.sfx, 4);
-				calcPFCS(dh.flag, dh.pfcs);
+					dr.frame.hdr.flag[f] = net_buf.vpkt.hdr.flag[0];
+				memcpy(dr.frame.hdr.rpt1, net_buf.vpkt.hdr.rpt2, 8);
+				memcpy(dr.frame.hdr.rpt2, net_buf.vpkt.hdr.rpt1, 8);
+				memcpy(dr.frame.hdr.urcall, net_buf.vpkt.hdr.urcall, 8);
+				memcpy(dr.frame.hdr.mycall, net_buf.vpkt.hdr.mycall, 8);
+				memcpy(dr.frame.hdr.sfx, net_buf.vpkt.hdr.sfx, 4);
+				calcPFCS(dr.frame.hdr.flag, dr.frame.hdr.pfcs);
 				frame_pos_to_dvap = 0;
 				seq_to_dvap = 0;
-				(void)write_to_dvp((unsigned char *)&dh, 47);
+				dongle.SendRegister(dr);
 
 				inactive = 0;
 				seq_no = 0;
@@ -1285,17 +590,17 @@ static void readFrom20000()
 							// write the audio packet to the dvap here
 							while ((space < 1) && keep_running)
 								usleep(5);
-							SDVAP_DATA dd;
-							memcpy(&dd, DVP_DAT, 2);
+							SDVAP_REGISTER dr;
+							dr.header = 0xc012u;
 							if (memcmp(net_buf.vpkt.vasd.text, sync_codes, 3) == 0)
 								frame_pos_to_dvap = 0;
-							dd.streamid = stream_id_to_dvap;
-							dd.framepos = frame_pos_to_dvap;
+							dr.frame.streamid = stream_id_to_dvap;
+							dr.frame.framepos = frame_pos_to_dvap;
 							if ((net_buf.vpkt.myicm.ctrl & 0x40) != 0)
-								dd.framepos |= 0x40U;
-							dd.seq = seq_to_dvap;
-							memcpy(dd.audio, net_buf.vpkt.vasd.voice, 12);
-							(void)write_to_dvp((unsigned char *)&dd, 18);
+								dr.frame.framepos |= 0x40U;
+							dr.frame.seq = seq_to_dvap;
+							memcpy(&dr.frame.vad.voice, net_buf.vpkt.vasd.voice, 12);
+							dongle.SendRegister(dr);
 							frame_pos_to_dvap ++;
 							seq_to_dvap ++;
 
@@ -1358,15 +663,15 @@ static void readFrom20000()
 							silence[11] = 0x93;
 						}
 
-						SDVAP_DATA dd;
-						memcpy(&dd, DVP_DAT, 2);
+						SDVAP_REGISTER dr;
+						dr.header = 0xc012u;
 						if (memcmp(silence + 9, sync_codes, 3) == 0)
 							frame_pos_to_dvap = 0;
-						dd.streamid = stream_id_to_dvap;
-						dd.framepos = frame_pos_to_dvap;
-						dd.seq = seq_to_dvap;
-						memcpy(dd.audio, silence, 12);
-						(void)write_to_dvp((unsigned char *)&dd, 18);
+						dr.frame.streamid = stream_id_to_dvap;
+						dr.frame.framepos = frame_pos_to_dvap;
+						dr.frame.seq = seq_to_dvap;
+						memcpy(&dr.frame.vad.voice, silence, 12);
+						dongle.SendRegister(dr);
 						frame_pos_to_dvap ++;
 						seq_to_dvap++;
 
@@ -1445,12 +750,12 @@ int main(int argc, const char **argv)
 	}
 
 	/* open dvp */
-	if (!open_dvp())
+	if (!dongle.Initialize(DVP_SERIAL, DVP_FREQ, DVP_OFF, DVP_PWR, DVP_SQL))
 		return 1;
 
 	rc = open_sock();
 	if (rc != 0) {
-		(void)write_to_dvp(DVP_RQST_STOP, 5);
+		dongle.Stop();
 		close(serfd);
 		return 1;
 	}
@@ -1469,7 +774,7 @@ int main(int argc, const char **argv)
 	while (keep_running) {
 		time(&tnow);
 		if ((tnow - ackpoint) > 2) {
-			rc = write_to_dvp(DVP_ACK, 3);
+			rc = dongle.KeepAlive();
 			if (rc < 0) {
 				cnt ++;
 				if (cnt > 5) {
@@ -1531,34 +836,31 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	// HEADER
 	while ((space < 1) && keep_running)
 		usleep(5);
-	SDVAP_HDR dvh;
-	dvh.hdr0 = 0x2f;
-	dvh.hdr1 = 0xa0;
-	dvh.streamid = stream_id_to_dvap;
-	dvh.framepos = 0x80;
-	dvh.seq = 0;
-	dvh.flag[0] = 0x01;
-	dvh.flag[1] = dvh.flag[2] = 0x00;
-	memcpy(dvh.rpt1, RPTR_and_MOD, 8);
-	memcpy(dvh.rpt2, RPTR_and_G, 8);
-	memcpy(dvh.urcall, mycall, 8);
-	memcpy(dvh.mycall, RPTR_and_MOD, 8);
-	memcpy(dvh.sfx, (unsigned char *)"    ", 4);
-	calcPFCS(dvh.flag, dvh.pfcs);
-	(void)write_to_dvp(&dvh.hdr0, 47);
+	SDVAP_REGISTER dr;
+	dr.header = 0xa02fu;
+	dr.frame.streamid = stream_id_to_dvap;
+	dr.frame.framepos = 0x80;
+	dr.frame.seq = 0;
+	dr.frame.hdr.flag[0] = 0x01;
+	dr.frame.hdr.flag[1] = dr.frame.hdr.flag[2] = 0x00;
+	memcpy(dr.frame.hdr.rpt1, RPTR_and_MOD, 8);
+	memcpy(dr.frame.hdr.rpt2, RPTR_and_G, 8);
+	memcpy(dr.frame.hdr.urcall, mycall, 8);
+	memcpy(dr.frame.hdr.mycall, RPTR_and_MOD, 8);
+	memcpy(dr.frame.hdr.sfx, (unsigned char *)"    ", 4);
+	calcPFCS(dr.frame.hdr.flag, dr.frame.hdr.pfcs);
+	dongle.SendRegister(dr);
 	nanos.tv_sec = 0;
 	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
 	nanosleep(&nanos,0);
 
 	// SYNC
-	SDVAP_DATA dvd;
-	dvd.hdr0 = 0x12;
-	dvd.hdr1 = 0xc0;
-	dvd.streamid = stream_id_to_dvap;
+	dr.header = 0xc012u;
+	dr.frame.streamid = stream_id_to_dvap;
 	for (int i=0; i<10; i++) {
 		while ((space < 1) && keep_running)
 			usleep(5);
-		dvd.framepos = dvd.seq = i;
+		dr.frame.framepos = dr.frame.seq = i;
 		switch (i) {
 			case 0:
 				silence[9] = 0x55;
@@ -1612,11 +914,11 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 				silence[9] = 0x55;
 				silence[10] = 0x55;
 				silence[11] = 0x55;
-				dvd.framepos |= 0x40;
+				dr.frame.framepos |= 0x40;
 				break;
 		}
-		memcpy(dvd.audio, silence, 12);
-		(void)write_to_dvp(&dvd.hdr0, 18);
+		memcpy(&dr.frame.vad.voice, silence, 12);
+		dongle.SendRegister(dr);
 		if (i < 9) {
 			nanos.tv_sec = 0;
 			nanos.tv_nsec = DELAY_BETWEEN * 1000000;
@@ -1629,10 +931,9 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 static void ReadDVAPThread()
 {
 	REPLY_TYPE reply;
-	unsigned int len = 0;
-	unsigned char dvp_buf[200];
 	SPKT net_buf;
 	SPKT spack;
+	SDVAP_REGISTER dr;
 	time_t tnow = 0;
 	time_t S_ctrl_msg_time = 0;
 	unsigned short C_COUNTER = 0;
@@ -1641,8 +942,6 @@ static void ReadDVAPThread()
 	bool dvap_busy = false;
 	// bool ptt = false;
 	bool the_end = true;
-	SDVAP_HDR *from_dvap_hdr = (SDVAP_HDR *)dvp_buf;
-	// dvap_voice *from_dvap_voice = (dvap_voice *)dvp_buf;
 	bool ok = true;
 	int i = 0;
 	u_int16_t streamid_raw = 0;
@@ -1706,7 +1005,7 @@ static void ReadDVAPThread()
 		}
 
 		// read from the dvap and process
-		reply = get_reply(dvp_buf, &len);
+		reply = dongle.get_reply(dr);
 		if (reply == RT_ERR) {
 			traceit("Detected ERROR event from DVAP dongle, stopping...n");
 			break;
@@ -1719,7 +1018,7 @@ static void ReadDVAPThread()
 		// 	ptt = (dvp_buf[4] == 0x01);
 		// 	traceit("Detected PTT=%s\n", ptt?"on":"off");
 		} else if (reply == RT_STS) {
-			space = dvp_buf[6];
+			space = (unsigned int)dr.param.sstr[2];
 			if (status_cntr < 3000)
 				status_cntr += 20;
 		} else if (reply == RT_HDR) {
@@ -1727,40 +1026,40 @@ static void ReadDVAPThread()
 			num_bit_errors = 0;
 
 			traceit("From DVAP: flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
-			        from_dvap_hdr->flag[0], from_dvap_hdr->flag[1], from_dvap_hdr->flag[2],
-			        from_dvap_hdr->mycall, from_dvap_hdr->sfx, from_dvap_hdr->urcall,
-			        from_dvap_hdr->rpt2, from_dvap_hdr->rpt1);
+			        dr.frame.hdr.flag[0], dr.frame.hdr.flag[1], dr.frame.hdr.flag[2],
+			        dr.frame.hdr.mycall, dr.frame.hdr.sfx, dr.frame.hdr.urcall,
+			        dr.frame.hdr.rpt2, dr.frame.hdr.rpt1);
 
 			ok = true;
 
 			/* Accept valid flags only */
 			if (ok) {
-				if ((from_dvap_hdr->flag[0] != 0x00) && (from_dvap_hdr->flag[0] != 0x08) &&	// net
-					(from_dvap_hdr->flag[0] != 0x20) && (from_dvap_hdr->flag[0] != 0x28) &&	// flags
+				if ((dr.frame.hdr.flag[0] != 0x00) && (dr.frame.hdr.flag[0] != 0x08) &&	// net
+					(dr.frame.hdr.flag[0] != 0x20) && (dr.frame.hdr.flag[0] != 0x28) &&	// flags
 					
-					(from_dvap_hdr->flag[0] != 0x40) && (from_dvap_hdr->flag[0] != 0x48) &&	// rptr
-					(from_dvap_hdr->flag[0] != 0x60) && (from_dvap_hdr->flag[0] != 0x68))	// flags
+					(dr.frame.hdr.flag[0] != 0x40) && (dr.frame.hdr.flag[0] != 0x48) &&	// rptr
+					(dr.frame.hdr.flag[0] != 0x60) && (dr.frame.hdr.flag[0] != 0x68))	// flags
 					ok = false;
 			}
 
 			/* Reject those stupid STN stations */
 			if (ok) {
-				memcpy(temp_yrcall, from_dvap_hdr->urcall, CALL_SIZE);
+				memcpy(temp_yrcall, dr.frame.hdr.urcall, CALL_SIZE);
 				temp_yrcall[CALL_SIZE] = '\0';
 				temp_ptr = strstr(temp_yrcall, INVALID_YRCALL_KEY);
 				if (temp_ptr == temp_yrcall) { // found it at first position
 					traceit("YRCALL value [%s] starts with the INVALID_YRCALL_KEY [%s], resetting to CQCQCQ\n",
 					        temp_yrcall, INVALID_YRCALL_KEY);
-					memcpy(from_dvap_hdr->urcall, "CQCQCQ  ", 8);
+					memcpy(dr.frame.hdr.urcall, "CQCQCQ  ", 8);
 				}
 			}
 
-			memcpy(&net_buf.vpkt.hdr, from_dvap_hdr->flag, 41);	// copy the header
+			memcpy(&net_buf.vpkt.hdr, dr.frame.hdr.flag, 41);	// copy the header
 
 			/* RPT1 must always be the repeater + module */
 			memcpy(net_buf.vpkt.hdr.rpt2, RPTR_and_MOD, 8);
 			/* copy RPT2 */
-			memcpy(net_buf.vpkt.hdr.rpt1, from_dvap_hdr->rpt1, 8);
+			memcpy(net_buf.vpkt.hdr.rpt1, dr.frame.hdr.rpt1, 8);
 
 			/* RPT2 must also be valid */
 			if ((net_buf.vpkt.hdr.rpt1[7] == 'A') ||
@@ -1831,13 +1130,13 @@ static void ReadDVAPThread()
 					memcpy(net_buf.vpkt.hdr.urcall, "CQCQCQ  ", 8);
 
 				/* change the rptr flags to net flags */
-				if (from_dvap_hdr->flag[0] == 0x40)
+				if (dr.frame.hdr.flag[0] == 0x40)
 					net_buf.vpkt.hdr.flag[0] = 0x00;
-				else if (from_dvap_hdr->flag[0] == 0x48)
+				else if (dr.frame.hdr.flag[0] == 0x48)
 					net_buf.vpkt.hdr.flag[0] = 0x08;
-				else if (from_dvap_hdr->flag[0] == 0x60)
+				else if (dr.frame.hdr.flag[0] == 0x60)
 					net_buf.vpkt.hdr.flag[0] = 0x20;
-				else if (from_dvap_hdr->flag[0] == 0x68)
+				else if (dr.frame.hdr.flag[0] == 0x68)
 					net_buf.vpkt.hdr.flag[0] = 0x28;
 				else
 					net_buf.vpkt.hdr.flag[0] = 0x00;
@@ -1882,13 +1181,13 @@ static void ReadDVAPThread()
 				time(&last_RF_time);
 
 				// save mycall for the ack later
-				memcpy(mycall, from_dvap_hdr->mycall, 8);
+				memcpy(mycall, dr.frame.hdr.mycall, 8);
 
 			}
 		} else if (reply == RT_DAT) {
 			/* have we already received a header ? */
 			if (dvap_busy) {
-				the_end = ((dvp_buf[4] & 0x40) == 0x40);
+				the_end = ((dr.frame.hdr.flag[0] & 0x40) == 0x40);
 
 				net_buf.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
 				net_buf.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
@@ -1896,7 +1195,7 @@ static void ReadDVAPThread()
 				net_buf.vpkt.myicm.ctrl = sequence++;
 				if (the_end)
 					net_buf.vpkt.myicm.ctrl = sequence | 0x40;
-				memcpy(&net_buf.vpkt.vasd, dvp_buf + 6, 12);
+				memcpy(&net_buf.vpkt.vasd, &dr.frame.vad.voice, 12);
 				sendto(insock, &net_buf, 29, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
 
 				int ber_data[3];
@@ -1937,7 +1236,7 @@ static void ReadDVAPThread()
 	}
 
 	/* stop dvap */
-	(void)write_to_dvp(DVP_RQST_STOP, 5);
+	dongle.Stop();
 	close(serfd);
 
 	traceit("ReadDVAPThread exiting\n");
