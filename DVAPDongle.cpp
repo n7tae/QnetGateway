@@ -26,6 +26,8 @@
 #include <sys/file.h>
 #include "DVAPDongle.h"
 
+extern void traceit(const char *fmt,...);
+
 CDVAPDongle::CDVAPDongle() : MAX_REPL_CNT(20u)
 {
 }
@@ -760,27 +762,4 @@ int CDVAPDongle::KeepAlive()
 	dvapreg.header = 0x6003u;
 	dvapreg.nul = 0x0u;
 	return write_to_dvp(&dvapreg, 3);
-}
-
-void CDVAPDongle::traceit(const char *fmt,...)
-{
-	time_t ltime;
-	struct tm mytm;
-	const int TRACE_BFSZ = 256;
-	char trace_buf[TRACE_BFSZ];
-
-	time(&ltime);
-	localtime_r(&ltime,&mytm);
-
-	snprintf(trace_buf,TRACE_BFSZ - 1,"%02d/%02d/%02d %02d:%02d:%02d:",
-	         mytm.tm_mon+1,mytm.tm_mday,mytm.tm_year % 100,
-	         mytm.tm_hour,mytm.tm_min,mytm.tm_sec);
-
-	va_list args;
-	va_start(args,fmt);
-	vsnprintf(trace_buf + strlen(trace_buf), TRACE_BFSZ - strlen(trace_buf) - 1, fmt, args);
-	va_end(args);
-
-	fprintf(stdout, "%s", trace_buf);
-	return;
 }

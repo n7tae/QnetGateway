@@ -117,5 +117,4 @@ class CDVAPDongle
 		bool set_off(int offset);
 		bool set_freq(int frequency);
 		bool start_dvap();
-		void traceit(const char *fmt,...);
 };

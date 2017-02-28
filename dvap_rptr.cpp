@@ -132,15 +132,12 @@ static struct sockaddr_in outaddr;
 static int serfd = -1;
 static bool busy20000 = false;
 std::atomic<bool> keep_running(true);
-static const unsigned char DVP_REPL_HDR[] = { 0x2F, 0x60 };
-static const unsigned char DVP_REPL_PTT[] = {0x05, 0x20, 0x18, 0x01, 0x00};
-static const unsigned char DVP_STS[] = {0x07, 0x20, 0x90, 0x00, 0x00, 0x00, 0x00};
 
 static unsigned int space = 0;
 static unsigned int aseed = 0;
 
 /* helper routines */
-static void traceit(const char *fmt,...);
+void traceit(const char *fmt,...);
 static int read_config(const char *cfgFile);
 static void sig_catch(int signum);
 static int open_sock();
@@ -200,7 +197,7 @@ static void sig_catch(int signum)
 }
 
 /* log the event */
-static void traceit(const char *fmt,...)
+void traceit(const char *fmt,...)
 {
 	time_t ltime;
 	struct tm mytm;
