@@ -59,6 +59,7 @@ using namespace libconfig;
 #include "IRCDDB.h"
 #include "IRCutils.h"
 #include "versions.h"
+#include "g2_typedefs.h"
 #include "aprs.h"
 
 #define IP_SIZE 15
@@ -73,13 +74,13 @@ using namespace libconfig;
 
 typedef struct echo_tag {
 	time_t last_time;
-	unsigned char streamid[2];
+	unsigned short streamid;
 	int fd;
 	char file[FILENAME_MAX + 1];
 } SECHO;
 
 typedef struct to_remote_g2_tag {
-	unsigned char streamid[2];
+	unsigned short streamid;
 	struct sockaddr_in toDst4;
 	time_t last_time;
 } STOREMOTEG2;
@@ -89,7 +90,7 @@ typedef struct torepeater_tag {
 	unsigned char saved_hdr[58]; // repeater format
 	uint32_t saved_adr;
 
-	unsigned char streamid[2];
+	unsigned short streamid;
 	uint32_t adr;
 	struct sockaddr_in band_addr;
 	time_t last_time;
@@ -163,7 +164,7 @@ static int srv_sock = -1;
 static unsigned char readBuffer[2000]; // 58 or 29 or 32, max is 58
 static struct sockaddr_in fromRptr;
 
-static unsigned char end_of_audio[29];
+static SPKT end_of_audio;
 
 static std::atomic<bool> keep_running(true);
 
@@ -513,7 +514,7 @@ static int open_port(const SPORTIP &pip)
 	sin.sin_addr.s_addr = inet_addr(pip.ip.c_str());
 
 	if (bind(sock, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) != 0) {
-		traceit("filed to bind %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
+		traceit("Failed to bind %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
 		close(sock);
 		return -1;
 	}
@@ -829,10 +830,10 @@ static void runit()
 			if (recd[i].last_time != 0) {
 				time(&t_now);
 				if ((t_now - recd[i].last_time) > echotest_rec_timeout) {
-					traceit("Inactivity on echotest recording mod %d, removing stream id=%d,%d\n",
-					        i,recd[i].streamid[0], recd[i].streamid[1]);
+					traceit("Inactivity on echotest recording mod %d, removing stream id=%04x\n",
+						i, recd[i].streamid);
 
-					recd[i].streamid[0] = recd[i].streamid[1] = 0x00;
+					recd[i].streamid = 0;
 					recd[i].last_time = 0;
 					close(recd[i].fd);
 					recd[i].fd = -1;
@@ -855,10 +856,10 @@ static void runit()
 			if (vm[i].last_time != 0) {
 				time(&t_now);
 				if ((t_now - vm[i].last_time) > voicemail_rec_timeout) {
-					traceit("Inactivity on voicemail recording mod %d, removing stream id=%d,%d\n",
-					        i, vm[i].streamid[0], vm[i].streamid[1]);
+					traceit("Inactivity on voicemail recording mod %d, removing stream id=%04x\n",
+					        i, vm[i].streamid);
 
-					vm[i].streamid[0] = vm[i].streamid[1] = 0x00;
+					vm[i].streamid = 0;
 					vm[i].last_time = 0;
 					close(vm[i].fd);
 					vm[i].fd = -1;
@@ -873,28 +874,27 @@ static void runit()
 				//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
 				//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
 				if ((t_now - toRptr[i].last_time) > from_remote_g2_timeout) {
-					traceit("Inactivity to local rptr mod index %d, removing stream id %d,%d\n", i, toRptr[i].streamid[0], toRptr[i].streamid[1]);
+					traceit("Inactivity to local rptr mod index %d, removing stream id %04x\n",
+						i, toRptr[i].streamid);
 
 					// Send end_of_audio to local repeater.
 					// Let the repeater re-initialize
-					end_of_audio[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
-					end_of_audio[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
+					end_of_audio.counter = toRptr[i].G2_COUNTER;
 					if (i == 0)
-						end_of_audio[13] = 0x03;
+						end_of_audio.vpkt.myicm.snd_term_id = 0x03;
 					else if (i == 1)
-						end_of_audio[13] = 0x01;
+						end_of_audio.vpkt.myicm.snd_term_id = 0x01;
 					else
-						end_of_audio[13] = 0x02;
-					end_of_audio[14] = toRptr[i].streamid[0];
-					end_of_audio[15] = toRptr[i].streamid[1];
-					end_of_audio[16] = toRptr[i].sequence | 0x40;
+						end_of_audio.vpkt.myicm.snd_term_id = 0x02;
+					end_of_audio.vpkt.myicm.streamid = toRptr[i].streamid;
+					end_of_audio.vpkt.myicm.ctrl = toRptr[i].sequence | 0x40;
 
 					for (j = 0; j < 2; j++)
-						sendto(srv_sock, end_of_audio, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+						sendto(srv_sock, end_of_audio.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 					toRptr[i].G2_COUNTER++;
 
-					toRptr[i].streamid[0] = toRptr[i].streamid[1] = '\0';
+					toRptr[i].streamid = 0;
 					toRptr[i].adr = 0;
 					toRptr[i].last_time = 0;
 				}
@@ -933,12 +933,11 @@ static void runit()
 			if (to_remote_g2[i].toDst4.sin_addr.s_addr != 0) {
 				time(&t_now);
 				if ((t_now - to_remote_g2[i].last_time) > from_local_rptr_timeout) {
-					traceit("Inactivity from local rptr mod %d, removing stream id %d,%d\n",
-					        i, to_remote_g2[i].streamid[0], to_remote_g2[i].streamid[1]);
+					traceit("Inactivity from local rptr mod %d, removing stream id %04x\n",
+					        i, to_remote_g2[i].streamid);
 
 					memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
-					to_remote_g2[i].streamid[0] = '\0';
-					to_remote_g2[i].streamid[1] = '\0';
+					to_remote_g2[i].streamid = 0;
 					to_remote_g2[i].last_time = 0;
 				}
 			}
@@ -1005,8 +1004,7 @@ static void runit()
 							toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
 
 							/* This is the active streamid */
-							toRptr[i].streamid[0] = readBuffer2[12];
-							toRptr[i].streamid[1] = readBuffer2[13];
+							toRptr[i].streamid = readBuffer2[12] + 256u * readBuffer2[13];
 							toRptr[i].adr = fromDst4.sin_addr.s_addr;
 
 							/* time it, in case stream times out */
@@ -1028,7 +1026,7 @@ static void runit()
 					/* find out which repeater module to send the data to */
 					for (i = 0; i < 3; i++) {
 						/* streamid match ? */
-						if ((memcmp(toRptr[i].streamid, readBuffer2 + 12, 2) == 0) &&
+						if ((memcmp(&toRptr[i].streamid, readBuffer2 + 12, 2) == 0) &&
 						        (toRptr[i].adr == fromDst4.sin_addr.s_addr)) {
 							memcpy(readBuffer,"DSTR", 4);
 							readBuffer[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
@@ -1057,8 +1055,7 @@ static void runit()
 								toRptr[i].saved_adr = 0;
 
 								toRptr[i].last_time = 0;
-								toRptr[i].streamid[0] = '\0';
-								toRptr[i].streamid[1] = '\0';
+								toRptr[i].streamid = 0;
 								toRptr[i].adr = 0;
 							}
 							break;
@@ -1104,8 +1101,7 @@ static void runit()
 										sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 										/* make sure that any more audio arriving will be accepted */
-										toRptr[i].streamid[0] = readBuffer2[12];
-										toRptr[i].streamid[1] = readBuffer2[13];
+										toRptr[i].streamid = readBuffer2[12] + 256u * readBuffer2[13];
 										toRptr[i].adr = fromDst4.sin_addr.s_addr;
 
 										/* time it, in case stream times out */
@@ -1285,8 +1281,8 @@ static void runit()
 										result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
 										if (result) { /* it is a repeater */
 											/* set the destination */
-											memcpy(to_remote_g2[i].streamid, readBuffer + 14, 2);
-											memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
+											memcpy(&to_remote_g2[i].streamid, readBuffer + 14, 2);
+											memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 											to_remote_g2[i].toDst4.sin_family = AF_INET;
 											to_remote_g2[i].toDst4.sin_port = htons(g2_external.port);
 											to_remote_g2[i].toDst4.sin_addr.s_addr = inet_addr(ip);
@@ -1366,8 +1362,8 @@ static void runit()
 										/* one radio user on a repeater module at a time */
 										if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
 											/* set the destination */
-											memcpy(to_remote_g2[i].streamid, readBuffer + 14, 2);
-											memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
+											memcpy(&to_remote_g2[i].streamid, readBuffer + 14, 2);
+											memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 											to_remote_g2[i].toDst4.sin_family = AF_INET;
 											to_remote_g2[i].toDst4.sin_port = htons(g2_external.port);
 											to_remote_g2[i].toDst4.sin_addr.s_addr = inet_addr(ip);
@@ -1445,8 +1441,7 @@ static void runit()
 													sendto(srv_sock, readBuffer, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 													/* This is the active streamid */
-													toRptr[i].streamid[0] = readBuffer[14];
-													toRptr[i].streamid[1] = readBuffer[15];
+													toRptr[i].streamid = readBuffer[14] + 256u * readBuffer[15];
 													toRptr[i].adr = fromRptr.sin_addr.s_addr;
 
 													/* time it, in case stream times out */
@@ -1527,7 +1522,7 @@ static void runit()
 									        vm[i].file);
 
 									time(&vm[i].last_time);
-									memcpy(vm[i].streamid, readBuffer + 14, 2);
+									memcpy(&vm[i].streamid, readBuffer + 14, 2);
 
 									memcpy(recbuf, "DSVT", 4);
 									recbuf[4] = 0x10;
@@ -1583,7 +1578,7 @@ static void runit()
 									        recd[i].file);
 
 									time(&recd[i].last_time);
-									memcpy(recd[i].streamid, readBuffer + 14, 2);
+									memcpy(&recd[i].streamid, readBuffer + 14, 2);
 
 									memcpy(recbuf, "DSVT", 4);
 									recbuf[4] = 0x10;
@@ -1649,8 +1644,7 @@ static void runit()
 									sendto(srv_sock, readBuffer,58,0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 									/* This is the active streamid */
-									toRptr[i].streamid[0] = readBuffer[14];
-									toRptr[i].streamid[1] = readBuffer[15];
+									toRptr[i].streamid = readBuffer[14] + 256u * readBuffer[15];
 									toRptr[i].adr = fromRptr.sin_addr.s_addr;
 
 									/* time it, in case stream times out */
@@ -2095,7 +2089,7 @@ static void runit()
 
 					for (i = 0; i < 3; i++) {
 						/* find out if data must go to the remote G2 */
-						if (memcmp(to_remote_g2[i].streamid, readBuffer + 14, 2) == 0) {
+						if (memcmp(&to_remote_g2[i].streamid, readBuffer + 14, 2) == 0) {
 							memcpy(readBuffer2, "DSVT", 4);
 							readBuffer2[4] = 0x20;
 							readBuffer2[5] = readBuffer2[6] = readBuffer2[7] = 0x00;
@@ -2111,15 +2105,14 @@ static void runit()
 
 							/* Is this the end-of-stream */
 							if ((readBuffer[16] & 0x40) != 0) {
-								memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
-								to_remote_g2[i].streamid[0] = to_remote_g2[i].streamid[1] = '\0';
+								memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
+								to_remote_g2[i].streamid = 0;
 								to_remote_g2[i].last_time = 0;
 							}
 							break;
 						} else
 							/* Is the data to be recorded for echotest */
-							if ((recd[i].fd >= 0) &&
-							        (memcmp(recd[i].streamid, readBuffer + 14, 2) == 0)) {
+							if (recd[i].fd>=0 && 0==memcmp(&recd[i].streamid, readBuffer + 14, 2)) {
 								time(&recd[i].last_time);
 
 								memcpy(recbuf, "DSVT", 4);
@@ -2142,8 +2135,7 @@ static void runit()
 								(void)write(recd[i].fd, (char *)recbuf, rec_len);
 
 								if ((readBuffer[16] & 0x40) != 0) {
-									recd[i].streamid[0] = 0x00;
-									recd[i].streamid[1] = 0x00;
+									recd[i].streamid = 0;
 									recd[i].last_time = 0;
 									close(recd[i].fd);
 									recd[i].fd = -1;
@@ -2163,7 +2155,7 @@ static void runit()
 							} else
 								/* Is the data to be recorded for voicemail */
 								if ((vm[i].fd >= 0) &&
-								        (memcmp(vm[i].streamid, readBuffer + 14, 2) == 0)) {
+								        (memcmp(&vm[i].streamid, readBuffer + 14, 2) == 0)) {
 									time(&vm[i].last_time);
 
 									memcpy(recbuf, "DSVT", 4);
@@ -2186,8 +2178,7 @@ static void runit()
 									(void)write(vm[i].fd, (char *)recbuf, rec_len);
 
 									if ((readBuffer[16] & 0x40) != 0) {
-										vm[i].streamid[0] = 0x00;
-										vm[i].streamid[1] = 0x00;
+										vm[i].streamid = 0;
 										vm[i].last_time = 0;
 										close(vm[i].fd);
 										vm[i].fd = -1;
@@ -2196,7 +2187,7 @@ static void runit()
 									break;
 								} else
 									/* or maybe this is cross-banding data */
-									if ((memcmp(toRptr[i].streamid, readBuffer + 14, 2) == 0) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {
+									if ((memcmp(&toRptr[i].streamid, readBuffer + 14, 2) == 0) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {
 										sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 										/* timeit */
@@ -2210,8 +2201,7 @@ static void runit()
 										/* End of stream ? */
 										if ((readBuffer[16] & 0x40) != 0) {
 											toRptr[i].last_time = 0;
-											toRptr[i].streamid[0] = '\0';
-											toRptr[i].streamid[1] = '\0';
+											toRptr[i].streamid = 0;
 											toRptr[i].adr = 0;
 										}
 										break;
@@ -2220,7 +2210,7 @@ static void runit()
 
 					if ((readBuffer[16] & 0x40) != 0) {
 						if (bool_qso_details)
-							traceit("END from rptr: cntr=%02x %02x, streamID=%d,%d, %d bytes\n",
+							traceit("END from rptr: cntr=%02x %02x, streamID=%02x,%02x, %d bytes\n",
 							        readBuffer[4], readBuffer[5],
 							        readBuffer[14],readBuffer[15],recvlen);
 					}
@@ -2715,13 +2705,13 @@ int main(int argc, char **argv)
 		for (i = 0; i < 3; i++) {
 			// recording for echotest on local repeater modules
 			recd[i].last_time = 0;
-			recd[i].streamid[0] = recd[i].streamid[1] = 0x0;
+			recd[i].streamid = 0;
 			recd[i].fd = -1;
 			memset(recd[i].file, 0, sizeof(recd[i].file));
 
 			// recording for voicemail on local repeater modules 
 			vm[i].last_time = 0;
-			vm[i].streamid[0] = vm[i].streamid[1] = 0x0;
+			vm[i].streamid = 0;
 			vm[i].fd = -1;
 			memset(vm[i].file, 0, sizeof(vm[i].file));
 
@@ -2738,7 +2728,7 @@ int main(int argc, char **argv)
 			memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
 			toRptr[i].saved_adr = 0;
 
-			toRptr[i].streamid[0] = toRptr[i].streamid[1] = '\0';
+			toRptr[i].streamid = 0;
 			toRptr[i].adr = 0;
 
 			toRptr[i].band_addr.sin_family = AF_INET;
@@ -2755,24 +2745,23 @@ int main(int argc, char **argv)
 		   Initialize the end_of_audio that will be sent to the local repeater
 		   when audio from remote G2 has timed out
 		*/
-		memcpy(end_of_audio, "DSTR", 4);
-		end_of_audio[6] = 0x73;
-		end_of_audio[7] = 0x12;
-		end_of_audio[8] = 0x00;
-		end_of_audio[9] = 0x13;
-		end_of_audio[10] = 0x20;
-		end_of_audio[11] = 0x00;
-		end_of_audio[12] = 0x01;
-		memset(end_of_audio + 17, '\0', 9);
-		end_of_audio[26] = 0x70;
-		end_of_audio[27] = 0x4f;
-		end_of_audio[28] = 0x93;
+		memcpy(end_of_audio.pkt_id, "DSTR", 4);
+		end_of_audio.flag[0] = 0x73;
+		end_of_audio.flag[1] = 0x12;
+		end_of_audio.nothing2[0] = 0x00;
+		end_of_audio.nothing2[1] = 0x13;
+		end_of_audio.vpkt.myicm.icm_id = 0x20;
+		end_of_audio.vpkt.myicm.dst_rptr_id = 0x00;
+		end_of_audio.vpkt.myicm.snd_rptr_id = 0x01;
+		memset(end_of_audio.vpkt.vasd.voice, '\0', 9);
+		end_of_audio.vpkt.vasd.text[0] = 0x70;
+		end_of_audio.vpkt.vasd.text[1] = 0x4f;
+		end_of_audio.vpkt.vasd.text[2] = 0x93;
 
 		/* to remote systems */
 		for (i = 0; i < 3; i++) {
-			memset(&(to_remote_g2[i].toDst4), 0, sizeof(struct sockaddr_in));
-			to_remote_g2[i].streamid[0] = '\0';
-			to_remote_g2[i].streamid[1] = '\0';
+			memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
+			to_remote_g2[i].streamid = 0;
 			to_remote_g2[i].last_time = 0;
 		}
 
@@ -2812,7 +2801,7 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < 3; i++) {
 		recd[i].last_time = 0;
-		recd[i].streamid[0] = recd[i].streamid[1] = 0x0;
+		recd[i].streamid = 0;
 		if (recd[i].fd >= 0) {
 			close(recd[i].fd);
 			unlink(recd[i].file);

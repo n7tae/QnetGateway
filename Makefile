@@ -29,13 +29,13 @@ IRCDDBOBJS = IRCDDB.o IRCClient.o IRCReceiver.o IRCMessageQueue.o IRCProtocol.o 
 
 all : $(PROGRAMS)
 
-g2_ircddb : g2_ircddb.cpp $(IRCDDBOBJS) versions.h
+g2_ircddb : g2_ircddb.cpp $(IRCDDBOBJS) aprs.h g2_typedefs.h versions.h
 	g++ $(CPPFLAGS) -o g2_ircddb g2_ircddb.cpp $(IRCDDBOBJS) $(LDFLAGS) -pthread
 
 g2_link : g2_link.cpp versions.h
 	g++ $(CPPFLAGS) -o g2_link g2_link.cpp -lrt -lconfig++ -pthread
 
-dvap_rptr : dvap_rptr.cpp DVAPDongle.o dstar_dv.o golay23.o DVAPDongle.h versions.h
+dvap_rptr : dvap_rptr.cpp DVAPDongle.o dstar_dv.o golay23.o DVAPDongle.h g2_typedefs.h versions.h
 	g++ $(CPPFLAGS) -o dvap_rptr  dvap_rptr.cpp  DVAPDongle.o golay23.o dstar_dv.o -I/usr/include -L/usr/lib -lrt -lconfig++ -pthread
 
 dvrptr : dvrptr.cpp dstar_dv.o golay23.o

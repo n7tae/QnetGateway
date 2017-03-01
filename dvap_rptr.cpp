@@ -48,53 +48,12 @@
 using namespace libconfig;
 
 #include "DVAPDongle.h"
+#include "g2_typedefs.h"
 
 #define VERSION DVAP_VERSION
 #define CALL_SIZE 8
 #define RPTR_SIZE 8
 #define IP_SIZE 15
-
-// we need to be sure these structures don't have any dead space
-#pragma pack(push, 1)
-// for communicating with the g2 gateway
-typedef struct pkt_tag {
-	unsigned char pkt_id[4];
-	unsigned char nothing1[2];
-	unsigned char flag[2];
-	unsigned char nothing2[2];
-	union {
-		struct {
-			unsigned char mycall[8];
-			unsigned char rpt[8];
-		} spkt;
-		struct {
-			struct {
-				unsigned char icm_id;
-				unsigned char dst_rptr_id;
-				unsigned char snd_rptr_id;
-				unsigned char snd_term_id;
-				uint16_t streamid;
-				unsigned char ctrl;
-			} myicm;
-			union {
-				struct {
-					unsigned char flag[3];
-					unsigned char rpt1[8];
-					unsigned char rpt2[8];
-					unsigned char urcall[8];
-					unsigned char mycall[8];
-					unsigned char sfx[4];
-					unsigned char pfcs[2];
-				} hdr;	// 41 byte header
-				struct {
-					unsigned char voice[9];
-					unsigned char text[3];
-				} vasd;	// 12 byte voice and slow data
-			};
-		} vpkt;
-	};
-} SPKT;
-#pragma pack(pop)
 
 typedef struct dvap_ack_arg_tag {
 	char mycall[8];
@@ -431,8 +390,6 @@ static int open_sock()
 
 static void readFrom20000()
 {
-	struct  sockaddr_in from;
-	socklen_t fromlen;
 	int len;
 	fd_set  readfd;
 	struct  timeval tv;
@@ -454,13 +411,12 @@ static void readFrom20000()
 
 		tv.tv_sec = 0;
 		tv.tv_usec = WAIT_FOR_PACKETS;
-		fromlen = sizeof(struct sockaddr);
 		FD_ZERO (&readfd);
 		FD_SET (insock, &readfd);
 		select(insock + 1, &readfd, NULL, NULL, &tv);
 
 		if (FD_ISSET(insock, &readfd)) {
-			len = recvfrom(insock, (char *)&net_buf, 58, 0, (struct sockaddr *)&from, &fromlen);
+			len = recv(insock, (char *)&net_buf, 58, 0);
 			if (len == 58) {
 				if (busy20000) {
 					FD_CLR (insock, &readfd);
@@ -968,8 +924,7 @@ static void ReadDVAPThread()
 
 	/* prepare the S server status packet */
 	memcpy(spack.pkt_id, "DSTR", 4);
-	spack.nothing1[0] = 0x00;
-	spack.nothing1[1] = 0x00;
+	spack.counter = 0;
 	spack.flag[0] = 0x73;
 	spack.flag[1] = 0x21;
 	spack.nothing2[0] = 0x00;
@@ -980,8 +935,7 @@ static void ReadDVAPThread()
 
 		/* send the S packet if needed */
 		if ((tnow - S_ctrl_msg_time) > 60) {
-			spack.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
-			spack.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
+			spack.counter = C_COUNTER;
 			memcpy(spack.spkt.mycall, OWNER, 7);
 			spack.spkt.mycall[7] = 'S';
 			memcpy(spack.spkt.rpt, OWNER, 7);
@@ -1137,8 +1091,7 @@ static void ReadDVAPThread()
 				net_buf.vpkt.hdr.flag[1] = net_buf.vpkt.hdr.flag[2] = 0x00;
 
 				/* for icom g2 */
-				spack.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
-				spack.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
+				spack.counter = C_COUNTER;
 				memcpy(spack.spkt.mycall, net_buf.vpkt.hdr.mycall, 8);
 				memcpy(spack.spkt.rpt, OWNER, 7);
 				spack.spkt.rpt[7] = RPTR_MOD;
@@ -1152,8 +1105,7 @@ static void ReadDVAPThread()
 					memcpy(net_buf.vpkt.hdr.rpt1, OWNER, 7);
 
 				memcpy(net_buf.pkt_id, "DSTR", 4);
-				net_buf.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
-				net_buf.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
+				net_buf.counter = C_COUNTER;
 				net_buf.flag[0] = 0x73;
 				net_buf.flag[1] = 0x12;
 				net_buf.nothing2[0] = 0x00;
@@ -1183,8 +1135,7 @@ static void ReadDVAPThread()
 			if (dvap_busy) {
 				the_end = ((dr.frame.framepos & 0x40) == 0x40);
 
-				net_buf.nothing1[0] = ((C_COUNTER >> 8) & 0xff);
-				net_buf.nothing1[1] = (unsigned char)(C_COUNTER & 0xff);
+				net_buf.counter = C_COUNTER;
 				net_buf.nothing2[1] = 0x13;
 				net_buf.vpkt.myicm.ctrl = sequence++;
 				if (the_end)
