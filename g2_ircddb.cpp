@@ -145,7 +145,7 @@ SRPTR rptr;
 // This is for echotest and voicemail
 static SECHO recd[3], vm[3];
 
-static unsigned char recbuf[100]; // 56 or 27, max is 56
+SDSVT recbuf; // 56 or 27, max is 56
 
 // the streamids going to remote Gateways from each local module
 static STOREMOTEG2 to_remote_g2[3]; // 0=A, 1=B, 2=C
@@ -1524,31 +1524,29 @@ static void runit()
 									time(&vm[i].last_time);
 									memcpy(&vm[i].streamid, readBuffer + 14, 2);
 
-									memcpy(recbuf, "DSVT", 4);
-									recbuf[4] = 0x10;
-									recbuf[5] = 0x00;
-									recbuf[6] = 0x00;
-									recbuf[7] = 0x00;
-									recbuf[8] =  readBuffer[10];
-									recbuf[9] =  readBuffer[11];
-									recbuf[10] = readBuffer[12];
-									recbuf[11] = readBuffer[13];
-									memcpy(recbuf + 12, readBuffer + 14, 44);
-									memset(recbuf + 18, ' ', CALL_SIZE);
-									memcpy(recbuf + 18, OWNER.c_str(), OWNER.length());
-									recbuf[25] = readBuffer[35];
-									memset(recbuf + 26, ' ', CALL_SIZE);
-									memcpy(recbuf + 26,  OWNER.c_str(), OWNER.length());
-									recbuf[33] = 'G';
-									memcpy(recbuf + 34, "CQCQCQ  ", 8);
+									memcpy(recbuf.title, "DSVT", 4);
+									recbuf.config = 0x10;
+									for (int k=0; k<3; k++) {
+										recbuf.flaga[k] = 0;
+										recbuf.flagb[k] = readBuffer[k+11];
+									}
+									recbuf.id =  readBuffer[10];
+									memcpy(&recbuf.streamid, readBuffer + 14, 44);
+									memset(recbuf.hdr.rpt1, ' ', 8);
+									memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
+									recbuf.hdr.rpt1[7] = readBuffer[35];
+									memset(recbuf.hdr.rpt2, ' ', 8);
+									memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
+									recbuf.hdr.rpt2[7] = 'G';
+									memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
 
-									calcPFCS(recbuf,56);
+									calcPFCS(recbuf.title, 56);
 
 									rec_len = 56;
 									(void)write(vm[i].fd, "DVTOOL", 6);
 									(void)write(vm[i].fd, &num_recs, 4);
 									(void)write(vm[i].fd, &rec_len, 2);
-									(void)write(vm[i].fd, (char *)recbuf, rec_len);
+									(void)write(vm[i].fd, &recbuf, rec_len);
 								}
 							}
 						}
@@ -1580,31 +1578,29 @@ static void runit()
 									time(&recd[i].last_time);
 									memcpy(&recd[i].streamid, readBuffer + 14, 2);
 
-									memcpy(recbuf, "DSVT", 4);
-									recbuf[4] = 0x10;
-									recbuf[5] = 0x00;
-									recbuf[6] = 0x00;
-									recbuf[7] = 0x00;
-									recbuf[8] =  readBuffer[10];
-									recbuf[9] =  readBuffer[11];
-									recbuf[10] = readBuffer[12];
-									recbuf[11] = readBuffer[13];
-									memcpy(recbuf + 12, readBuffer + 14, 44);
-									memset(recbuf + 18, ' ', CALL_SIZE);
-									memcpy(recbuf + 18, OWNER.c_str(), OWNER.length());
-									recbuf[25] = readBuffer[35];
-									memset(recbuf + 26, ' ', CALL_SIZE);
-									memcpy(recbuf + 26,  OWNER.c_str(), OWNER.length());
-									recbuf[33] = 'G';
-									memcpy(recbuf + 34, "CQCQCQ  ", 8);
+									memcpy(recbuf.title, "DSVT", 4);
+									recbuf.config = 0x10;
+									for (int k=0; k<3; k++) {
+										recbuf.flaga[k] = 0;
+										recbuf.flagb[k] = readBuffer[k+11];
+									}
+									recbuf.id =  readBuffer[10];
+									memcpy(&recbuf.streamid, readBuffer + 14, 44);
+									memset(recbuf.hdr.rpt1, ' ', 8);
+									memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
+									recbuf.hdr.rpt1[7] = readBuffer[35];
+									memset(recbuf.hdr.rpt2, ' ', 8);
+									memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
+									recbuf.hdr.rpt2[7] = 'G';
+									memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
 
-									calcPFCS(recbuf,56);
+									calcPFCS(recbuf.title, 56);
 
 									rec_len = 56;
 									(void)write(recd[i].fd, "DVTOOL", 6);
 									(void)write(recd[i].fd, &num_recs, 4);
 									(void)write(recd[i].fd, &rec_len, 2);
-									(void)write(recd[i].fd, (char *)recbuf, rec_len);
+									(void)write(recd[i].fd, &recbuf, rec_len);
 								}
 							}
 						}
@@ -2115,24 +2111,22 @@ static void runit()
 							if (recd[i].fd>=0 && 0==memcmp(&recd[i].streamid, readBuffer + 14, 2)) {
 								time(&recd[i].last_time);
 
-								memcpy(recbuf, "DSVT", 4);
-								recbuf[4] = 0x20;
-								recbuf[5] = 0x00;
-								recbuf[6] = 0x00;
-								recbuf[7] = 0x00;
-								recbuf[8] = readBuffer[10];
-								recbuf[9] = readBuffer[11];
-								recbuf[10] = readBuffer[12];
-								recbuf[11] = readBuffer[13];
-								memcpy(recbuf + 12, readBuffer + 14, 3);
+								memcpy(recbuf.title, "DSVT", 4);
+								recbuf.config = 0x20;
+								for (int k=0; k<3; k++) {
+									recbuf.flaga[k] = 0;
+									recbuf.flagb[k] = readBuffer[k+11];
+								}
+								recbuf.id = readBuffer[10];
+								memcpy(&recbuf.streamid, readBuffer + 14, 3);
 								if (recvlen == 29)
-									memcpy(recbuf + 15, readBuffer + 17, 12);
+									memcpy(recbuf.vasd.voice, readBuffer + 17, 12);
 								else
-									memcpy(recbuf + 15, readBuffer + 20, 12);
+									memcpy(recbuf.vasd.voice, readBuffer + 20, 12);
 
 								rec_len = 27;
 								(void)write(recd[i].fd, &rec_len, 2);
-								(void)write(recd[i].fd, (char *)recbuf, rec_len);
+								(void)write(recd[i].fd, &recbuf, rec_len);
 
 								if ((readBuffer[16] & 0x40) != 0) {
 									recd[i].streamid = 0;
@@ -2158,24 +2152,22 @@ static void runit()
 								        (memcmp(&vm[i].streamid, readBuffer + 14, 2) == 0)) {
 									time(&vm[i].last_time);
 
-									memcpy(recbuf, "DSVT", 4);
-									recbuf[4] = 0x20;
-									recbuf[5] = 0x00;
-									recbuf[6] = 0x00;
-									recbuf[7] = 0x00;
-									recbuf[8] = readBuffer[10];
-									recbuf[9] = readBuffer[11];
-									recbuf[10] = readBuffer[12];
-									recbuf[11] = readBuffer[13];
-									memcpy(recbuf + 12, readBuffer + 14, 3);
+									memcpy(recbuf.title, "DSVT", 4);
+									recbuf.config = 0x20;
+									for (int k=0; k<3; k++) {
+										recbuf.flaga[k] = 0;
+										recbuf.flagb[k] = readBuffer[k+11];
+									}
+									recbuf.id = readBuffer[10];
+									memcpy(&recbuf.streamid, readBuffer + 14, 3);
 									if (recvlen == 29)
-										memcpy(recbuf + 15, readBuffer + 17, 12);
+										memcpy(recbuf.vasd.voice, readBuffer + 17, 12);
 									else
-										memcpy(recbuf + 15, readBuffer + 20, 12);
+										memcpy(recbuf.vasd.voice, readBuffer + 20, 12);
 
 									rec_len = 27;
 									(void)write(vm[i].fd, &rec_len, 2);
-									(void)write(vm[i].fd, (char *)recbuf, rec_len);
+									(void)write(vm[i].fd, &recbuf, rec_len);
 
 									if ((readBuffer[16] & 0x40) != 0) {
 										vm[i].streamid = 0;

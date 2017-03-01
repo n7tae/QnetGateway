@@ -59,3 +59,29 @@ typedef struct pkt_tag {
 } SPKT;
 #pragma pack(pop)
 
+#pragma pack(push, 1)
+typedef struct dsvt_tag {
+	unsigned char title[4];	// "DSVT"
+	unsigned char config;	// 0x10 is hdr 0x20 is vasd
+	unsigned char flaga[3];	// zeros
+	unsigned char id;		// 0x20 
+	unsigned char flagb[3];	// 0x0 0x1 0x1
+	unsigned short streamid;
+	unsigned char counter;	// hdr: 0x80 vsad: framecounter (mod 21)
+	union {
+		struct {
+			unsigned char flag[3];
+			unsigned char rpt1[8];
+			unsigned char rpt2[8];
+			unsigned char urcall[8];
+			unsigned char mycall[8];
+			unsigned char sfx[4];
+			unsigned char pfcs[2];
+		} hdr;
+		struct {
+			unsigned char voice[9];
+			unsigned char text[3];
+		} vasd;
+	};
+} SDSVT;
+#pragma pack(pop)
