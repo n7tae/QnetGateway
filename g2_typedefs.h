@@ -38,7 +38,7 @@ typedef struct pkt_tag {
 				unsigned char snd_term_id;
 				uint16_t streamid;
 				unsigned char ctrl;
-			} myicm;
+			} icm;
 			union {
 				struct {
 					unsigned char flag[3];

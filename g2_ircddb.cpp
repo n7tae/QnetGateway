@@ -881,13 +881,13 @@ static void runit()
 					// Let the repeater re-initialize
 					end_of_audio.counter = toRptr[i].G2_COUNTER;
 					if (i == 0)
-						end_of_audio.vpkt.myicm.snd_term_id = 0x03;
+						end_of_audio.vpkt.icm.snd_term_id = 0x03;
 					else if (i == 1)
-						end_of_audio.vpkt.myicm.snd_term_id = 0x01;
+						end_of_audio.vpkt.icm.snd_term_id = 0x01;
 					else
-						end_of_audio.vpkt.myicm.snd_term_id = 0x02;
-					end_of_audio.vpkt.myicm.streamid = toRptr[i].streamid;
-					end_of_audio.vpkt.myicm.ctrl = toRptr[i].sequence | 0x40;
+						end_of_audio.vpkt.icm.snd_term_id = 0x02;
+					end_of_audio.vpkt.icm.streamid = toRptr[i].streamid;
+					end_of_audio.vpkt.icm.ctrl = toRptr[i].sequence | 0x40;
 
 					for (j = 0; j < 2; j++)
 						sendto(srv_sock, end_of_audio.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
@@ -2750,9 +2750,9 @@ int main(int argc, char **argv)
 		end_of_audio.flag[1] = 0x12;
 		end_of_audio.nothing2[0] = 0x00;
 		end_of_audio.nothing2[1] = 0x13;
-		end_of_audio.vpkt.myicm.icm_id = 0x20;
-		end_of_audio.vpkt.myicm.dst_rptr_id = 0x00;
-		end_of_audio.vpkt.myicm.snd_rptr_id = 0x01;
+		end_of_audio.vpkt.icm.icm_id = 0x20;
+		end_of_audio.vpkt.icm.dst_rptr_id = 0x00;
+		end_of_audio.vpkt.icm.snd_rptr_id = 0x01;
 		memset(end_of_audio.vpkt.vasd.voice, '\0', 9);
 		end_of_audio.vpkt.vasd.text[0] = 0x70;
 		end_of_audio.vpkt.vasd.text[1] = 0x4f;

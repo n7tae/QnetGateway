@@ -455,7 +455,7 @@ static void readFrom20000()
 				if ((memcmp(net_buf.pkt_id, "DSTR", 4) != 0) ||
 				        (net_buf.flag[0] != 0x73) ||
 				        (net_buf.flag[1] != 0x12) ||
-				        (net_buf.vpkt.myicm.icm_id != 0x20)) { /* voice type */
+				        (net_buf.vpkt.icm.icm_id != 0x20)) { /* voice type */
 					FD_CLR(insock, &readfd);
 					break;
 				}
@@ -466,13 +466,13 @@ static void readFrom20000()
 				written_to_q = true;
 
 				traceit("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
-				        net_buf.vpkt.myicm.streamid,
+				        net_buf.vpkt.icm.streamid,
 				        net_buf.vpkt.hdr.flag[0], net_buf.vpkt.hdr.flag[1], net_buf.vpkt.hdr.flag[2],
 				        net_buf.vpkt.hdr.mycall, net_buf.vpkt.hdr.sfx, net_buf.vpkt.hdr.urcall,
 				        net_buf.vpkt.hdr.rpt1, net_buf.vpkt.hdr.rpt2);
 
 				/* save the streamid that is winning */
-				streamid = net_buf.vpkt.myicm.streamid;
+				streamid = net_buf.vpkt.icm.streamid;
 
 				if (net_buf.vpkt.hdr.flag[0] != 0x01) {
 
@@ -515,12 +515,12 @@ static void readFrom20000()
 				seq_no = 0;
 			} else if (len == 29) {
 				if (busy20000) {
-					if (net_buf.vpkt.myicm.streamid == streamid) {
-						if (net_buf.vpkt.myicm.ctrl == ctrl_in) {
+					if (net_buf.vpkt.icm.streamid == streamid) {
+						if (net_buf.vpkt.icm.ctrl == ctrl_in) {
 							/* do not update written_to_q, ctrl_in */
 							; // traceit("dup\n");
 						} else {
-							ctrl_in = net_buf.vpkt.myicm.ctrl;
+							ctrl_in = net_buf.vpkt.icm.ctrl;
 							written_to_q = true;
 
 							if (seq_no == 0) {
@@ -546,7 +546,7 @@ static void readFrom20000()
 								frame_pos_to_dvap = 0;
 							dr.frame.streamid = stream_id_to_dvap;
 							dr.frame.framepos = frame_pos_to_dvap;
-							if ((net_buf.vpkt.myicm.ctrl & 0x40) != 0)
+							if ((net_buf.vpkt.icm.ctrl & 0x40) != 0)
 								dr.frame.framepos |= 0x40U;
 							dr.frame.seq = seq_to_dvap;
 							memcpy(&dr.frame.vad.voice, net_buf.vpkt.vasd.voice, 12);
@@ -560,8 +560,8 @@ static void readFrom20000()
 							if (seq_no == 21)
 								seq_no = 0;
 
-							if ((net_buf.vpkt.myicm.ctrl & 0x40) != 0) {
-								traceit("End G2: streamid=%04x\n", net_buf.vpkt.myicm.streamid);
+							if ((net_buf.vpkt.icm.ctrl & 0x40) != 0) {
+								traceit("End G2: streamid=%04x\n", net_buf.vpkt.icm.streamid);
 
 								streamid = 0;
 
@@ -1110,13 +1110,13 @@ static void ReadDVAPThread()
 				net_buf.flag[1] = 0x12;
 				net_buf.nothing2[0] = 0x00;
 				net_buf.nothing2[1] = 0x30;
-				net_buf.vpkt.myicm.icm_id = 0x20;
-				net_buf.vpkt.myicm.dst_rptr_id = 0x00;
-				net_buf.vpkt.myicm.snd_rptr_id = 0x01;
-				net_buf.vpkt.myicm.snd_term_id = SND_TERM_ID;
+				net_buf.vpkt.icm.icm_id = 0x20;
+				net_buf.vpkt.icm.dst_rptr_id = 0x00;
+				net_buf.vpkt.icm.snd_rptr_id = 0x01;
+				net_buf.vpkt.icm.snd_term_id = SND_TERM_ID;
 				streamid_raw = (rand_r(&aseed) % 65535U) + 1U;
-				net_buf.vpkt.myicm.streamid = streamid_raw;
-				net_buf.vpkt.myicm.ctrl = 0x80;
+				net_buf.vpkt.icm.streamid = streamid_raw;
+				net_buf.vpkt.icm.ctrl = 0x80;
 				sequence = 0;
 				calcPFCS((unsigned char *)&(net_buf.vpkt.hdr), net_buf.vpkt.hdr.pfcs);
 				sendto(insock, &net_buf, 58, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
@@ -1137,9 +1137,9 @@ static void ReadDVAPThread()
 
 				net_buf.counter = C_COUNTER;
 				net_buf.nothing2[1] = 0x13;
-				net_buf.vpkt.myicm.ctrl = sequence++;
+				net_buf.vpkt.icm.ctrl = sequence++;
 				if (the_end)
-					net_buf.vpkt.myicm.ctrl = sequence | 0x40;
+					net_buf.vpkt.icm.ctrl = sequence | 0x40;
 				memcpy(&net_buf.vpkt.vasd, &dr.frame.vad.voice, 12);
 				sendto(insock, &net_buf, 29, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
 
