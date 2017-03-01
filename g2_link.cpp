@@ -1510,8 +1510,7 @@ static void runit()
 
 		if (FD_ISSET(xrf_g2_sock, &fdset)) {
 			fromlen = sizeof(struct sockaddr_in);
-			recvlen2 = recvfrom(xrf_g2_sock,(char *)readBuffer2,100,
-			                    0,(struct sockaddr *)&fromDst4,&fromlen);
+			recvlen2 = recvfrom(xrf_g2_sock, (char *)readBuffer2, 100, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
 			strncpy(ip, inet_ntoa(fromDst4.sin_addr),IP_SIZE);
 			ip[IP_SIZE] = '\0';
@@ -2860,7 +2859,7 @@ static void runit()
 								        &readBuffer2[44],
 								        &readBuffer2[52], &readBuffer2[36],
 								        &readBuffer2[20], &readBuffer2[28],
-								        recvlen2,inet_ntoa(fromDst4.sin_addr), source_stn);
+								        recvlen2, inet_ntoa(fromDst4.sin_addr), source_stn);
 
 							// put user into tmp1
 							memcpy(tmp1, readBuffer2 + 44, 8);

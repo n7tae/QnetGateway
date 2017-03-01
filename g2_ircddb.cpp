@@ -152,7 +152,6 @@ static STOREMOTEG2 to_remote_g2[3]; // 0=A, 1=B, 2=C
 
 // input from remote G2 gateway
 static int g2_sock = -1;
-static unsigned char readBuffer2[2000]; // 56 or 27, max is 56 
 static struct sockaddr_in fromDst4;
 
 //   Incoming data from remote systems
@@ -755,12 +754,13 @@ static void sigCatch(int signum)
 /* run the main loop for g2_ircddb */
 static void runit()
 {
+	SDSVT g2buf;
 	fd_set fdset;
 	struct timeval tv;
 
 	socklen_t fromlen;
 	int recvlen;
-	int recvlen2;
+	int g2buflen;
 
 	short i,j;
 
@@ -881,13 +881,13 @@ static void runit()
 					// Let the repeater re-initialize
 					end_of_audio.counter = toRptr[i].G2_COUNTER;
 					if (i == 0)
-						end_of_audio.vpkt.icm.snd_term_id = 0x03;
+						end_of_audio.vpkt.snd_term_id = 0x03;
 					else if (i == 1)
-						end_of_audio.vpkt.icm.snd_term_id = 0x01;
+						end_of_audio.vpkt.snd_term_id = 0x01;
 					else
-						end_of_audio.vpkt.icm.snd_term_id = 0x02;
-					end_of_audio.vpkt.icm.streamid = toRptr[i].streamid;
-					end_of_audio.vpkt.icm.ctrl = toRptr[i].sequence | 0x40;
+						end_of_audio.vpkt.snd_term_id = 0x02;
+					end_of_audio.vpkt.streamid = toRptr[i].streamid;
+					end_of_audio.vpkt.ctrl = toRptr[i].sequence | 0x40;
 
 					for (j = 0; j < 2; j++)
 						sendto(srv_sock, end_of_audio.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
@@ -954,39 +954,37 @@ static void runit()
 		/* process packets coming from remote G2 */
 		if (FD_ISSET(g2_sock, &fdset)) {
 			fromlen = sizeof(struct sockaddr_in);
-			recvlen2 = recvfrom(g2_sock, (char *)readBuffer2, 2000, 0, (struct sockaddr *)&fromDst4, &fromlen);
+			g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
-			if ( ((recvlen2 == 56) || (recvlen2 == 27)) &&
-			      (memcmp(readBuffer2, "DSVT", 4) == 0) &&
-			      ((readBuffer2[4] == 0x10) || (readBuffer2[4] == 0x20)) &&  /* header or voiceframe */
-			        (readBuffer2[8] == 0x20)) {    /* voice type */
-				if (recvlen2 == 56) {
+			if ( ((g2buflen == 56) || (g2buflen == 27)) &&
+			      (0==memcmp(g2buf.title, "DSVT", 4)) &&
+			      ((g2buf.config == 0x10) || (g2buf.config == 0x20)) &&  /* header or voiceframe */
+			        (g2buf.id == 0x20)) {    /* voice type */
+				if (g2buflen == 56) {
 
 					// Find out the local repeater module IP/port
 					// to send the data to
-					i = readBuffer2[25] - 'A';
+					i = g2buf.hdr.rpt1[7] - 'A';
 
 					/* valid repeater module? */
 					if (i>=0 && i<3) {
-						/*
-						   toRptr[i] is active if a remote system is talking to it or
-						   toRptr[i] is receiving data from a cross-band
-						*/
+						// toRptr[i] is active if a remote system is talking to it or
+						// toRptr[i] is receiving data from a cross-band
 						if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0) &&
-						        ((readBuffer2[15] == 0x00) ||
-						         (readBuffer2[15] == 0x01) || /* allow the announcements from g2_link */
-						         (readBuffer2[15] == 0x08) ||
-						         (readBuffer2[15] == 0x20) ||
-						         (readBuffer2[15] == 0x28) ||
-						         (readBuffer2[15] == 0x40))) {
+						        ((g2buf.hdr.flag[0] == 0x00) ||
+						         (g2buf.hdr.flag[0] == 0x01) || /* allow the announcements from g2_link */
+						         (g2buf.hdr.flag[0] == 0x08) ||
+						         (g2buf.hdr.flag[0] == 0x20) ||
+						         (g2buf.hdr.flag[0] == 0x28) ||
+						         (g2buf.hdr.flag[0] == 0x40))) {
 							if (bool_qso_details)
-								traceit("START from g2: streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
-								        readBuffer2[12],readBuffer2[13],
-								        readBuffer2[15], readBuffer2[16], readBuffer2[17],
-								        &readBuffer2[42],
-								        &readBuffer2[50], &readBuffer2[34],
-								        &readBuffer2[18], &readBuffer2[26],
-								        recvlen2,inet_ntoa(fromDst4.sin_addr));
+								traceit("START from g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
+								        g2buf.streamid,
+								        g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2],
+								        g2buf.hdr.mycall,
+								        g2buf.hdr.sfx, g2buf.hdr.urcall,
+								        g2buf.hdr.rpt1, g2buf.hdr.rpt2,
+								        g2buflen, inet_ntoa(fromDst4.sin_addr));
 
 							memcpy(readBuffer,"DSTR", 4);
 							readBuffer[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
@@ -996,7 +994,7 @@ static void runit()
 							readBuffer[8] = 0x00;
 							readBuffer[9] = 0x30;
 							readBuffer[10] = 0x20;
-							memcpy(readBuffer + 11, readBuffer2 + 9, 47);
+							memcpy(readBuffer + 11, g2buf.flagb, 47);
 							sendto(srv_sock, readBuffer, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 							/* save the header */
@@ -1004,7 +1002,7 @@ static void runit()
 							toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
 
 							/* This is the active streamid */
-							toRptr[i].streamid = readBuffer2[12] + 256u * readBuffer2[13];
+							toRptr[i].streamid = g2buf.streamid;
 							toRptr[i].adr = fromDst4.sin_addr.s_addr;
 
 							/* time it, in case stream times out */
@@ -1017,16 +1015,16 @@ static void runit()
 						}
 					}
 				} else {
-					if ((readBuffer2[14] & 0x40) != 0) {
+					if (g2buf.counter & 0x40) {
 						if (bool_qso_details)
-							traceit("END from g2: streamID=%d,%d, %d bytes from IP=%s\n",
-								readBuffer2[12], readBuffer2[13], recvlen2,inet_ntoa(fromDst4.sin_addr));
+							traceit("END from g2: streamID=%04x, %d bytes from IP=%s\n",
+								g2buf.streamid, g2buflen,inet_ntoa(fromDst4.sin_addr));
 					}
 
 					/* find out which repeater module to send the data to */
 					for (i = 0; i < 3; i++) {
 						/* streamid match ? */
-						if ((memcmp(&toRptr[i].streamid, readBuffer2 + 12, 2) == 0) &&
+						if ((toRptr[i].streamid==g2buf.streamid) &&
 						        (toRptr[i].adr == fromDst4.sin_addr.s_addr)) {
 							memcpy(readBuffer,"DSTR", 4);
 							readBuffer[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
@@ -1036,7 +1034,7 @@ static void runit()
 							readBuffer[8] = 0x00;
 							readBuffer[9] = 0x13;
 							readBuffer[10] = 0x20;
-							memcpy(readBuffer+11, readBuffer2+9, 18);
+							memcpy(readBuffer+11, g2buf.flagb, 18);
 
 							sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
@@ -1049,7 +1047,7 @@ static void runit()
 							toRptr[i].sequence = readBuffer[16];
 
 							/* End of stream ? */
-							if ((readBuffer2[14] & 0x40) != 0) {
+							if (g2buf.counter & 0x40) {
 								/* clear the saved header */
 								memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
 								toRptr[i].saved_adr = 0;
@@ -1066,17 +1064,17 @@ static void runit()
 					if ((i == 3) && bool_regen_header) {
 						/* check if this a continuation of audio that timed out */
 
-						if ((readBuffer2[14] & 0x40) != 0)
+						if (g2buf.counter & 0x40)
 							;  /* we do not care about end-of-QSO */
 						else {
 							/* for which repeater this stream has timed out ?  */
 							for (i = 0; i < 3; i++) {
 								/* match saved stream ? */
-								if ((memcmp(toRptr[i].saved_hdr + 14, readBuffer2 + 12, 2) == 0) &&
+								if ((memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) == 0) &&
 								        (toRptr[i].saved_adr == fromDst4.sin_addr.s_addr)) {
 									/* repeater module is inactive ?  */
 									if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-										traceit("Re-generating header for streamID=%d,%d\n", readBuffer2[12],readBuffer2[13]);
+										traceit("Re-generating header for streamID=%04x\n", g2buf.streamid);
 
 										toRptr[i].saved_hdr[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
 										toRptr[i].saved_hdr[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
@@ -1096,12 +1094,12 @@ static void runit()
 										readBuffer[8] = 0x00;
 										readBuffer[9] = 0x13;
 										readBuffer[10] = 0x20;
-										memcpy(readBuffer + 11, readBuffer2 + 9, 18);
+										memcpy(readBuffer + 11, g2buf.flagb, 18);
 
 										sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 										/* make sure that any more audio arriving will be accepted */
-										toRptr[i].streamid = readBuffer2[12] + 256u * readBuffer2[13];
+										toRptr[i].streamid = g2buf.streamid;
 										toRptr[i].adr = fromDst4.sin_addr.s_addr;
 
 										/* time it, in case stream times out */
@@ -1126,8 +1124,7 @@ static void runit()
 		/* process data coming from local repeater modules */
 		if (FD_ISSET(srv_sock, &fdset)) {
 			fromlen = sizeof(struct sockaddr_in);
-			recvlen = recvfrom(srv_sock,(char *)readBuffer,2000,
-			                   0,(struct sockaddr *)&fromRptr,&fromlen);
+			recvlen = recvfrom(srv_sock,(char *)readBuffer, 2000,  0, (struct sockaddr *)&fromRptr, &fromlen);
 
 			/* DV */
 			if ( ((recvlen == 58) || (recvlen == 29) || (recvlen == 32)) &&
@@ -1287,46 +1284,44 @@ static void runit()
 											to_remote_g2[i].toDst4.sin_port = htons(g2_external.port);
 											to_remote_g2[i].toDst4.sin_addr.s_addr = inet_addr(ip);
 
-											memcpy(readBuffer2, "DSVT", 4);
-											readBuffer2[4] = 0x10;
-											readBuffer2[5] = 0x00;
-											readBuffer2[6] = 0x00;
-											readBuffer2[7] = 0x00;
-											readBuffer2[8] =  readBuffer[10];
-											readBuffer2[9] =  readBuffer[11];
-											readBuffer2[10] = readBuffer[12];
-											readBuffer2[11] = readBuffer[13];
-											memcpy(readBuffer2 + 12, readBuffer + 14, 44);
+											memcpy(g2buf.title, "DSVT", 4);
+											g2buf.config = 0x10;
+											g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
+											g2buf.id =  readBuffer[10];
+											g2buf.flagb[0] =  readBuffer[11];
+											g2buf.flagb[1] = readBuffer[12];
+											g2buf.flagb[2] = readBuffer[13];
+											memcpy(&g2buf.streamid, readBuffer + 14, 44);
 											/* set rpt1 */
-											memset(readBuffer2 + 18, ' ', CALL_SIZE);
-											memcpy(readBuffer2 + 18, arearp_cs, strlen(arearp_cs));
-											readBuffer2[25] = temp_mod;
+											memset(g2buf.hdr.rpt1, ' ', CALL_SIZE);
+											memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+											g2buf.hdr.rpt1[7] = temp_mod;
 											/* set rpt2 */
-											memset(readBuffer2 + 26, ' ', CALL_SIZE);
-											memcpy(readBuffer2 + 26, zonerp_cs, strlen(zonerp_cs));
-											readBuffer2[33] = 'G';
+											memset(g2buf.hdr.rpt2, ' ', CALL_SIZE);
+											memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+											g2buf.hdr.rpt2[7] = 'G';
 											/* set yrcall, can NOT let it be slash and repeater + module */
-											memcpy(readBuffer2 + 34, "CQCQCQ  ", 8);
+											memcpy(g2buf.hdr.urcall, "CQCQCQ  ", 8);
 
 											/* set PFCS */
-											calcPFCS(readBuffer2, 56);
+											calcPFCS(g2buf.title, 56);
 
 											/*
 											   The remote repeater has been set, lets fill in the dest_rptr
 											   so that later we can send that to the LIVE web site
 											*/
-											memcpy(band_txt[i].dest_rptr, readBuffer2 + 18, CALL_SIZE);
+											memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
 											band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
 											/* send to remote gateway */
 											for (j = 0; j < 5; j++)
-												sendto(g2_sock, readBuffer2, 56, 0,(struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+												sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-											traceit("Routing to IP=%s, streamID=%d,%d, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
+											traceit("Routing to IP=%s, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
 											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr),
-											        readBuffer2[12],readBuffer2[13],&readBuffer2[42],
-											        &readBuffer2[50], &readBuffer2[34],
-											        &readBuffer2[18], &readBuffer2[26],
+											        g2buf.streamid, g2buf.hdr.mycall,
+											        g2buf.hdr.sfx, g2buf.hdr.urcall,
+											        g2buf.hdr.rpt1, &g2buf.hdr.rpt2,
 											        56);
 
 											time(&(to_remote_g2[i].last_time));
@@ -1368,41 +1363,39 @@ static void runit()
 											to_remote_g2[i].toDst4.sin_port = htons(g2_external.port);
 											to_remote_g2[i].toDst4.sin_addr.s_addr = inet_addr(ip);
 
-											memcpy(readBuffer2, "DSVT", 4);
-											readBuffer2[4] = 0x10;
-											readBuffer2[5] = 0x00;
-											readBuffer2[6] = 0x00;
-											readBuffer2[7] = 0x00;
-											readBuffer2[8] =  readBuffer[10];
-											readBuffer2[9] =  readBuffer[11];
-											readBuffer2[10] = readBuffer[12];
-											readBuffer2[11] = readBuffer[13];
-											memcpy(readBuffer2 + 12, readBuffer + 14, 44);
+											memcpy(g2buf.title, "DSVT", 4);
+											g2buf.config = 0x10;
+											g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
+											g2buf.id = readBuffer[10];
+											g2buf.flagb[0] = readBuffer[11];
+											g2buf.flagb[1] = readBuffer[12];
+											g2buf.flagb[2] = readBuffer[13];
+											memcpy(&g2buf.streamid, readBuffer + 14, 44);
 											/* set rpt1 */
-											memset(readBuffer2 + 18, ' ', CALL_SIZE);
-											memcpy(readBuffer2 + 18, arearp_cs, strlen(arearp_cs));
-											readBuffer2[25] = temp_mod;
+											memset(g2buf.hdr.rpt1, ' ', CALL_SIZE);
+											memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+											g2buf.hdr.rpt1[7] = temp_mod;
 											/* set rpt2 */
-											memset(readBuffer2 + 26, ' ', CALL_SIZE);
-											memcpy(readBuffer2 + 26, zonerp_cs, strlen(zonerp_cs));
-											readBuffer2[33] = 'G';
+											memset(g2buf.hdr.rpt2, ' ', CALL_SIZE);
+											memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+											g2buf.hdr.rpt2[7] = 'G';
 											/* set PFCS */
-											calcPFCS(readBuffer2, 56);
+											calcPFCS(g2buf.title, 56);
 
 											// The remote repeater has been set, lets fill in the dest_rptr
 											// so that later we can send that to the LIVE web site
-											memcpy(band_txt[i].dest_rptr, readBuffer2 + 18, CALL_SIZE);
+											memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
 											band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
 											/* send to remote gateway */
 											for (j = 0; j < 5; j++)
-												sendto(g2_sock, readBuffer2, 56, 0,(struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+												sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-											traceit("Routing to IP=%s, streamID=%d,%d, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
+											traceit("Routing to IP=%s, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
 											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr),
-											        readBuffer2[12],readBuffer2[13],&readBuffer2[42],
-											        &readBuffer2[50], &readBuffer2[34],
-											        &readBuffer2[18], &readBuffer2[26],
+											        g2buf.streamid, g2buf.hdr.mycall,
+											        g2buf.hdr.sfx, g2buf.hdr.urcall,
+											        g2buf.hdr.rpt1, g2buf.hdr.rpt2,
 											        56);
 
 											time(&(to_remote_g2[i].last_time));
@@ -2086,21 +2079,21 @@ static void runit()
 					for (i = 0; i < 3; i++) {
 						/* find out if data must go to the remote G2 */
 						if (memcmp(&to_remote_g2[i].streamid, readBuffer + 14, 2) == 0) {
-							memcpy(readBuffer2, "DSVT", 4);
-							readBuffer2[4] = 0x20;
-							readBuffer2[5] = readBuffer2[6] = readBuffer2[7] = 0x00;
-							memcpy(readBuffer2 + 8, readBuffer + 10, 7);
+							memcpy(g2buf.title, "DSVT", 4);
+							g2buf.config = 0x20;
+							g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
+							memcpy(&g2buf.id, readBuffer + 10, 7);
 							if (recvlen == 29)
-								memcpy(readBuffer2 + 15, readBuffer + 17, 12);
+								memcpy(g2buf.vasd.voice, readBuffer + 17, 12);
 							else
-								memcpy(readBuffer2 + 15, readBuffer + 20, 12);
+								memcpy(g2buf.vasd.voice, readBuffer + 20, 12);
 
-							sendto(g2_sock, readBuffer2, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+							sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 							time(&(to_remote_g2[i].last_time));
 
 							/* Is this the end-of-stream */
-							if ((readBuffer[16] & 0x40) != 0) {
+							if (readBuffer[16] & 0x40) {
 								memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
 								to_remote_g2[i].streamid = 0;
 								to_remote_g2[i].last_time = 0;
@@ -2742,9 +2735,9 @@ int main(int argc, char **argv)
 		end_of_audio.flag[1] = 0x12;
 		end_of_audio.nothing2[0] = 0x00;
 		end_of_audio.nothing2[1] = 0x13;
-		end_of_audio.vpkt.icm.icm_id = 0x20;
-		end_of_audio.vpkt.icm.dst_rptr_id = 0x00;
-		end_of_audio.vpkt.icm.snd_rptr_id = 0x01;
+		end_of_audio.vpkt.icm_id = 0x20;
+		end_of_audio.vpkt.dst_rptr_id = 0x00;
+		end_of_audio.vpkt.snd_rptr_id = 0x01;
 		memset(end_of_audio.vpkt.vasd.voice, '\0', 9);
 		end_of_audio.vpkt.vasd.text[0] = 0x70;
 		end_of_audio.vpkt.vasd.text[1] = 0x4f;
