@@ -21,10 +21,10 @@
 
 #pragma pack(push, 1)	// we need to be sure these structures don't have any dead space
 typedef struct pkt_tag {
-	unsigned char pkt_id[4];		//  0
-	unsigned short counter;			//  4
-	unsigned char flag[2];			//  6
-	unsigned char nothing2[2];		//  8
+	unsigned char pkt_id[4];	//  0
+	unsigned short counter;		//  4
+	unsigned char flag[2];		//  6
+	unsigned char nothing2[2];	//  8 nothing[1] is the number of bytes left in the packet
 	union {
 		struct {
 			unsigned char mycall[8];	// 10
@@ -47,10 +47,17 @@ typedef struct pkt_tag {
 					unsigned char sfx[4];	// 52
 					unsigned char pfcs[2];	// 56
 				} hdr;						// total 58
-				struct {
-					unsigned char voice[9];	// 17
-					unsigned char text[3];	// 26
-				} vasd;						// total 29
+				union {
+					struct {
+						unsigned char voice[9];	// 17
+						unsigned char text[3];	// 26
+					} vasd;						// total 29
+					struct {
+						unsigned char UNKNOWN[3];	// 17 not sure what this is, but g2_ doesn't seem to need it
+						unsigned char voice[9];		// 20
+						unsigned char text[3];		// 29
+					} vasd1;						// total 32
+				};
 			};
 		} vpkt;
 	};
@@ -75,11 +82,11 @@ typedef struct dsvt_tag {
 			unsigned char mycall[8];// 42
 			unsigned char sfx[4];   // 50
 			unsigned char pfcs[2];  // 54
-		} hdr;
+		} hdr;						// total 56
 		struct {
 			unsigned char voice[9]; // 15
 			unsigned char text[3];  // 24
-		} vasd;
+		} vasd;						// total 27
 	};
 } SDSVT;
 #pragma pack(pop)

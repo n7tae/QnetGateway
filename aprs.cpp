@@ -27,7 +27,7 @@
  #include "aprs.h"
 
 // This is called when header comes in from repeater
-void CAPRS::SelectBand(short int rptr_idx, unsigned char *streamID)
+void CAPRS::SelectBand(short int rptr_idx, unsigned short streamID)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
 		traceit("ERROR in aprs_select_band, invalid mod %d\n", rptr_idx);
@@ -35,8 +35,7 @@ void CAPRS::SelectBand(short int rptr_idx, unsigned char *streamID)
 	}
 
 	/* lock on the streamID */
-	aprs_streamID[rptr_idx].streamID[0] = streamID[0];
-	aprs_streamID[rptr_idx].streamID[1] = streamID[1];
+	aprs_streamID[rptr_idx].streamID = streamID;
 	// aprs_streamID[rptr_idx].last_time = 0;
 
 	Reset(rptr_idx);
@@ -50,7 +49,7 @@ void CAPRS::SelectBand(short int rptr_idx, unsigned char *streamID)
 // Parameter len is either 12 or 15, because we took passed over the first 17 bytes
 //           in the repeater data
 // Paramter seq is the byte at pos# 16(counting from zero) in the repeater data
-void CAPRS::ProcessText(unsigned char *streamID, unsigned char seq, unsigned char *buf, unsigned int len)
+void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf, unsigned int len)
 {
 	unsigned char aprs_data[200];
 	char aprs_buf[1024];
@@ -61,7 +60,7 @@ void CAPRS::ProcessText(unsigned char *streamID, unsigned char seq, unsigned cha
 	len = len;
 
 	for (short int i = 0; i < 3; i++) {
-		if (memcmp(streamID, aprs_streamID[i].streamID, 2) == 0) {
+		if (streamID == aprs_streamID[i].streamID) {
 			rptr_idx = i;
 			break;
 		}
@@ -150,8 +149,7 @@ void CAPRS::Init()
 	}
 
 	for (short int i = 0; i < 3; i++) {
-		aprs_streamID[i].streamID[0] = 0x00;
-		aprs_streamID[i].streamID[1] = 0x00;
+		aprs_streamID[i].streamID = 0;
 		aprs_streamID[i].last_time = 0;
 	}
 	

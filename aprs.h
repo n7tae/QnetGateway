@@ -58,8 +58,8 @@ public:
 	// functions
 	CAPRS() {};
 	~CAPRS() {};
-	void SelectBand(short int rptr_idx, unsigned char *streamID);
-	void ProcessText(unsigned char *streamID, unsigned char seq, unsigned char *buf, unsigned int len);
+	void SelectBand(short int rptr_idx, unsigned short streamID);
+	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf, unsigned int len);
 	ssize_t WriteSock(char *buffer, size_t n);
 	void Open(const std::string OWNER);
 	void Init();
@@ -82,7 +82,7 @@ private:
 	} aprs_pack[3];
 	// lock down a stream per band 
 	struct {
-		unsigned char streamID[2];
+		unsigned short streamID;
 		time_t last_time;
 	} aprs_streamID[3];
 

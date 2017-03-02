@@ -1,6 +1,8 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
  *
+ *   Copyright 2017 by Thomas Early, AC2IE
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -99,7 +101,7 @@ typedef struct torepeater_tag {
 } STOREPEATER;
 
 typedef struct band_txt_tag {
-	unsigned char streamID[2];
+	unsigned short streamID;
 	unsigned char flags[3];
 	char lh_mycall[CALL_SIZE + 1];
 	char lh_sfx[5];
@@ -144,7 +146,6 @@ SRPTR rptr;
 // local repeater modules being recorded
 // This is for echotest and voicemail
 static SECHO recd[3], vm[3];
-
 SDSVT recbuf; // 56 or 27, max is 56
 
 // the streamids going to remote Gateways from each local module
@@ -160,7 +161,7 @@ static STOREPEATER toRptr[3]; // 0=A, 1=B, 2=C
 
 // input from our own local repeater modules
 static int srv_sock = -1;
-static unsigned char readBuffer[2000]; // 58 or 29 or 32, max is 58
+static SPKT rptrbuf; // 58 or 29 or 32, max is 58
 static struct sockaddr_in fromRptr;
 
 static SPKT end_of_audio;
@@ -172,6 +173,7 @@ static struct sockaddr_in plug;
 
 // for talking with the irc server
 static CIRCDDB *ii;
+// for handling APRS stuff
 static CAPRS *aprs;
 
 // text coming from local repeater bands
@@ -906,9 +908,9 @@ static void runit()
 				if ((t_now - band_txt[i].last_time) > from_local_rptr_timeout) {
 					/* This local stream never went to a remote system, so trace the timeout */
 					if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0)
-						traceit("Inactivity from local rptr band %d, removing stream id %d,%d\n", i, band_txt[i].streamID[0], band_txt[i].streamID[1]);
+						traceit("Inactivity from local rptr band %d, removing stream id %04x\n", i, band_txt[i].streamID);
 
-					band_txt[i].streamID[0] = band_txt[i].streamID[1] = 0x0;
+					band_txt[i].streamID = 0;
 					band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
 					band_txt[i].lh_mycall[0] = '\0';
 					band_txt[i].lh_sfx[0] = '\0';
@@ -986,19 +988,18 @@ static void runit()
 								        g2buf.hdr.rpt1, g2buf.hdr.rpt2,
 								        g2buflen, inet_ntoa(fromDst4.sin_addr));
 
-							memcpy(readBuffer,"DSTR", 4);
-							readBuffer[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
-							readBuffer[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
-							readBuffer[6] = 0x73;
-							readBuffer[7] = 0x12;
-							readBuffer[8] = 0x00;
-							readBuffer[9] = 0x30;
-							readBuffer[10] = 0x20;
-							memcpy(readBuffer + 11, g2buf.flagb, 47);
-							sendto(srv_sock, readBuffer, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+							memcpy(rptrbuf.pkt_id, "DSTR", 4);
+							rptrbuf.counter = toRptr[i].G2_COUNTER;
+							rptrbuf.flag[0] = 0x73;
+							rptrbuf.flag[1] = 0x12;
+							rptrbuf.nothing2[0] = 0x00;
+							rptrbuf.nothing2[1] = 0x30;
+							rptrbuf.vpkt.icm_id = 0x20;
+							memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 47);
+							sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 							/* save the header */
-							memcpy(toRptr[i].saved_hdr, readBuffer, 58);
+							memcpy(toRptr[i].saved_hdr, rptrbuf.pkt_id, 58);
 							toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
 
 							/* This is the active streamid */
@@ -1011,7 +1012,7 @@ static void runit()
 							/* bump the G2 counter */
 							toRptr[i].G2_COUNTER++;
 
-							toRptr[i].sequence = readBuffer[16];
+							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 						}
 					}
 				} else {
@@ -1026,17 +1027,16 @@ static void runit()
 						/* streamid match ? */
 						if ((toRptr[i].streamid==g2buf.streamid) &&
 						        (toRptr[i].adr == fromDst4.sin_addr.s_addr)) {
-							memcpy(readBuffer,"DSTR", 4);
-							readBuffer[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
-							readBuffer[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
-							readBuffer[6] = 0x73;
-							readBuffer[7] = 0x12;
-							readBuffer[8] = 0x00;
-							readBuffer[9] = 0x13;
-							readBuffer[10] = 0x20;
-							memcpy(readBuffer+11, g2buf.flagb, 18);
+							memcpy(rptrbuf.pkt_id, "DSTR", 4);
+							rptrbuf.counter = toRptr[i].G2_COUNTER;
+							rptrbuf.flag[0] = 0x73;
+							rptrbuf.flag[1] = 0x12;
+							rptrbuf.nothing2[0] = 0x00;
+							rptrbuf.nothing2[1]= 0x13;
+							rptrbuf.vpkt.icm_id = 0x20;
+							memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
 
-							sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+							sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 							/* timeit */
 							time(&toRptr[i].last_time);
@@ -1044,7 +1044,7 @@ static void runit()
 							/* bump G2 counter */
 							toRptr[i].G2_COUNTER++;
 
-							toRptr[i].sequence = readBuffer[16];
+							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 
 							/* End of stream ? */
 							if (g2buf.counter & 0x40) {
@@ -1086,17 +1086,16 @@ static void runit()
 										toRptr[i].G2_COUNTER++;
 
 										/* send this audio packet to repeater */
-										memcpy(readBuffer,"DSTR", 4);
-										readBuffer[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
-										readBuffer[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
-										readBuffer[6] = 0x73;
-										readBuffer[7] = 0x12;
-										readBuffer[8] = 0x00;
-										readBuffer[9] = 0x13;
-										readBuffer[10] = 0x20;
-										memcpy(readBuffer + 11, g2buf.flagb, 18);
+										memcpy(rptrbuf.pkt_id, "DSTR", 4);
+										rptrbuf.counter = toRptr[i].G2_COUNTER;
+										rptrbuf.flag[0] = 0x73;
+										rptrbuf.flag[1] = 0x12;
+										rptrbuf.nothing2[0] = 0x00;
+										rptrbuf.nothing2[1] = 0x13;
+										rptrbuf.vpkt.icm_id = 0x20;
+										memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
 
-										sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+										sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 										/* make sure that any more audio arriving will be accepted */
 										toRptr[i].streamid = g2buf.streamid;
@@ -1108,7 +1107,7 @@ static void runit()
 										/* bump the G2 counter */
 										toRptr[i].G2_COUNTER++;
 
-										toRptr[i].sequence = readBuffer[16];
+										toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 
 									}
 									break;
@@ -1124,16 +1123,16 @@ static void runit()
 		/* process data coming from local repeater modules */
 		if (FD_ISSET(srv_sock, &fdset)) {
 			fromlen = sizeof(struct sockaddr_in);
-			recvlen = recvfrom(srv_sock,(char *)readBuffer, 2000,  0, (struct sockaddr *)&fromRptr, &fromlen);
+			recvlen = recvfrom(srv_sock, rptrbuf.pkt_id, 58,  0, (struct sockaddr *)&fromRptr, &fromlen);
 
 			/* DV */
 			if ( ((recvlen == 58) || (recvlen == 29) || (recvlen == 32)) &&
-			        (readBuffer[6] == 0x73) && (readBuffer[7] == 0x12) &&
-			        (memcmp(readBuffer,"DSTR", 4) == 0) &&
-			        (readBuffer[10] == 0x20) && (readBuffer[8] == 0x00) &&
-			        ((readBuffer[9] == 0x30) ||    /* 48 bytes follow */
-			         (readBuffer[9] == 0x13) ||    /* 19 bytes follow */
-			         (readBuffer[9] == 0x16)) ) {  /* 22 bytes follow */
+			        (rptrbuf.flag[0] == 0x73) && (rptrbuf.flag[1] == 0x12) &&
+			        (0 == memcmp(rptrbuf.pkt_id,"DSTR", 4)) &&
+			        (rptrbuf.vpkt.icm_id == 0x20) && (rptrbuf.nothing2[0] == 0x00) &&
+			        ((rptrbuf.nothing2[1] == 0x30) ||    /* 48 bytes follow */
+			         (rptrbuf.nothing2[1] == 0x13) ||    /* 19 bytes follow */
+			         (rptrbuf.nothing2[1] == 0x16)) ) {  /* 22 bytes follow */
 
 				int dtmf_buf_count[3] = {0, 0, 0};
 				char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
@@ -1142,21 +1141,21 @@ static void runit()
 				if (recvlen == 58) {
 					
 					if (bool_qso_details)
-						traceit("START from rptr: cntr=%02x %02x, streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
-						        readBuffer[4], readBuffer[5],
-						        readBuffer[14], readBuffer[15],
-						        readBuffer[17], readBuffer[18], readBuffer[19],
-						        readBuffer + 44, readBuffer + 52, readBuffer + 36,
-						        readBuffer + 28, readBuffer + 20, recvlen, inet_ntoa(fromRptr.sin_addr));
+						traceit("START from rptr: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
+						        rptrbuf.counter,
+						        rptrbuf.vpkt.streamid,
+						        rptrbuf.vpkt.hdr.flag[0], rptrbuf.vpkt.hdr.flag[1], rptrbuf.vpkt.hdr.flag[2],
+						        rptrbuf.vpkt.hdr.mycall, rptrbuf.vpkt.hdr.sfx, rptrbuf.vpkt.hdr.urcall,
+						        rptrbuf.vpkt.hdr.rpt2, rptrbuf.vpkt.hdr.rpt1, recvlen, inet_ntoa(fromRptr.sin_addr));
 
-					if ((memcmp(readBuffer + 28, OWNER.c_str(), 7) == 0) &&  /* rpt1 is this repeater */
-					        /*** (memcmp(readBuffer + 44, OWNER, 7) != 0) && ***/  /* MYCALL is NOT this repeater */
-					        ((readBuffer[17] == 0x00) ||                 /* normal */
-					         (readBuffer[17] == 0x08) ||                 /* EMR */
-					         (readBuffer[17] == 0x20) ||                 /* BREAK */
-					         (readBuffer[17] == 0x28))) {                /* EMR + BREAK */
+					if ((memcmp(rptrbuf.vpkt.hdr.rpt2, OWNER.c_str(), 7) == 0) &&  /* rpt1 is this repeater */
+					        /*** (memcmp(rptrbuf + 44, OWNER, 7) != 0) && ***/  /* MYCALL is NOT this repeater */
+					        ((rptrbuf.vpkt.hdr.flag[0] == 0x00) ||                 /* normal */
+					         (rptrbuf.vpkt.hdr.flag[0] == 0x08) ||                 /* EMR */
+					         (rptrbuf.vpkt.hdr.flag[0] == 0x20) ||                 /* BREAK */
+					         (rptrbuf.vpkt.hdr.flag[0] == 0x28))) {                /* EMR + BREAK */
 
-						i = readBuffer[35] - 'A';
+						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0  && i<3) {
 							dtmf_last_frame[i] = 0;
@@ -1166,27 +1165,24 @@ static void runit()
 
 							/* Initialize the LAST HEARD data for the band */
 
-							band_txt[i].streamID[0] = readBuffer[14];
-							band_txt[i].streamID[1] = readBuffer[15];
+							band_txt[i].streamID = rptrbuf.vpkt.streamid;
 
-							band_txt[i].flags[0] = readBuffer[17];
-							band_txt[i].flags[1] = readBuffer[18];
-							band_txt[i].flags[2] = readBuffer[19];
+							memcpy(band_txt[i].flags, rptrbuf.vpkt.hdr.flag, 3);
 
-							memcpy(band_txt[i].lh_mycall, readBuffer + 44, CALL_SIZE);
-							band_txt[i].lh_mycall[CALL_SIZE] = '\0';
+							memcpy(band_txt[i].lh_mycall, rptrbuf.vpkt.hdr.mycall, 8);
+							band_txt[i].lh_mycall[8] = '\0';
 
-							memcpy(band_txt[i].lh_sfx, readBuffer + 52, 4);
+							memcpy(band_txt[i].lh_sfx, rptrbuf.vpkt.hdr.sfx, 4);
 							band_txt[i].lh_sfx[4] = '\0';
 
-							memcpy(band_txt[i].lh_yrcall, readBuffer + 36, CALL_SIZE);
-							band_txt[i].lh_yrcall[CALL_SIZE] = '\0';
+							memcpy(band_txt[i].lh_yrcall, rptrbuf.vpkt.hdr.urcall, 8);
+							band_txt[i].lh_yrcall[8] = '\0';
 
-							memcpy(band_txt[i].lh_rpt1, readBuffer + 28, CALL_SIZE);
-							band_txt[i].lh_rpt1[CALL_SIZE] = '\0';
+							memcpy(band_txt[i].lh_rpt1, rptrbuf.vpkt.hdr.rpt2, 8);
+							band_txt[i].lh_rpt1[8] = '\0';
 
-							memcpy(band_txt[i].lh_rpt2, readBuffer + 20, CALL_SIZE);
-							band_txt[i].lh_rpt2[CALL_SIZE] = '\0';
+							memcpy(band_txt[i].lh_rpt2, rptrbuf.vpkt.hdr.rpt1, 8);
+							band_txt[i].lh_rpt2[8] = '\0';
 
 							time(&band_txt[i].last_time);
 
@@ -1214,14 +1210,14 @@ static void runit()
 
 							/* select the band for aprs processing, and lock on the stream ID */
 							if (bool_send_aprs)
-								aprs->SelectBand(i, readBuffer + 14);
+								aprs->SelectBand(i, rptrbuf.vpkt.streamid);
 						}
 					}
 
 					/* Is MYCALL valid ? */
-					memset(temp_radio_user, ' ', CALL_SIZE);
-					memcpy(temp_radio_user, readBuffer + 44, 8);
-					temp_radio_user[CALL_SIZE] = '\0';
+					memset(temp_radio_user, ' ', 8);
+					memcpy(temp_radio_user, rptrbuf.vpkt.hdr.mycall, 8);
+					temp_radio_user[8] = '\0';
 
 					mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
 
@@ -1236,30 +1232,30 @@ static void runit()
 
 					/* send data g2_link */
 					if (mycall_valid == REG_NOERROR)
-						sendto(srv_sock, readBuffer, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
+						sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
 					if ((mycall_valid == REG_NOERROR) &&
-					        (memcmp(readBuffer + 36, "XRF", 3) != 0) &&             /* not a reflector */
-					        (memcmp(readBuffer + 36, "REF", 3) != 0) &&             /* not a reflector */
-					        (memcmp(readBuffer + 36, "DCS", 3) != 0) &&             /* not a reflector */
-					        (readBuffer[36] != ' ') &&                              /* must have something */
-					        (memcmp(readBuffer + 36, "CQCQCQ", 6) != 0)) {          /* urcall is NOT CQCQCQ */
-						if ((readBuffer[36] == '/') &&                           /* urcall starts with a slash */
-						        (memcmp(readBuffer + 28, OWNER.c_str(), 7) == 0) &&          /* rpt1 is this repeater */
-						        ((readBuffer[35] == 'A') ||
-						         (readBuffer[35] == 'B') ||
-						         (readBuffer[35] == 'C')) &&                         /* mod is A,B,C */
-						        (memcmp(readBuffer + 20, OWNER.c_str(), 7) == 0) &&          /* rpt2 is this repeater */
-						        (readBuffer[27] == 'G') &&                           /* local Gateway */
-						        /*** (memcmp(readBuffer + 44, OWNER, 7) != 0) && ***/   /* mycall is NOT this repeater */
+					        (memcmp(rptrbuf.vpkt.hdr.urcall, "XRF", 3) != 0) &&             /* not a reflector */
+					        (memcmp(rptrbuf.vpkt.hdr.urcall, "REF", 3) != 0) &&             /* not a reflector */
+					        (memcmp(rptrbuf.vpkt.hdr.urcall, "DCS", 3) != 0) &&             /* not a reflector */
+					        (rptrbuf.vpkt.hdr.urcall[0] != ' ') &&                          /* must have something */
+					        (memcmp(rptrbuf.vpkt.hdr.urcall, "CQCQCQ", 6) != 0)) {          /* urcall is NOT CQCQCQ */
+						if ((rptrbuf.vpkt.hdr.urcall[0] == '/') &&                          /* urcall starts with a slash */
+						        (memcmp(rptrbuf.vpkt.hdr.rpt2, OWNER.c_str(), 7) == 0) &&   /* rpt1 is this repeater */
+						        ((rptrbuf.vpkt.hdr.rpt2[7] == 'A') ||
+						         (rptrbuf.vpkt.hdr.rpt2[7] == 'B') ||
+						         (rptrbuf.vpkt.hdr.rpt2[7] == 'C')) &&                      /* mod is A,B,C */
+						        (memcmp(rptrbuf.vpkt.hdr.rpt1, OWNER.c_str(), 7) == 0) &&   /* rpt2 is this repeater */
+						        (rptrbuf.vpkt.hdr.rpt1[7] == 'G') &&                        /* local Gateway */
+						        /*** (memcmp(rptrbuf + 44, OWNER, 7) != 0) && ***/          /* mycall is NOT this repeater */
 
-						        ((readBuffer[17] == 0x00) ||                         /* normal */
-						         (readBuffer[17] == 0x08) ||                         /* EMR */
-						         (readBuffer[17] == 0x20) ||                         /* BK */
-						         (readBuffer[17] == 0x28))                           /* EMR + BK */
+						        ((rptrbuf.vpkt.hdr.flag[0] == 0x00) ||                         /* normal */
+						         (rptrbuf.vpkt.hdr.flag[0] == 0x08) ||                         /* EMR */
+						         (rptrbuf.vpkt.hdr.flag[0] == 0x20) ||                         /* BK */
+						         (rptrbuf.vpkt.hdr.flag[0] == 0x28))                           /* EMR + BK */
 						   ) {
-							if (memcmp(readBuffer + 37, OWNER.c_str(), 6) != 0) {         /* the value after the slash in urcall, is NOT this repeater */
-								i = readBuffer[35] - 'A';
+							if (memcmp(rptrbuf.vpkt.hdr.urcall+1, OWNER.c_str(), 6) != 0) {   /* the value after the slash in urcall, is NOT this repeater */
+								i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 								if (i>=0 && i<3) {
 									/* one radio user on a repeater module at a time */
@@ -1267,10 +1263,10 @@ static void runit()
 										/* YRCALL=/repeater + mod */
 										/* YRCALL=/KJ4NHFB */
 
-										memset(temp_radio_user, ' ', CALL_SIZE);
-										memcpy(temp_radio_user, readBuffer + 37, 6);
+										memset(temp_radio_user, ' ', 8);
+										memcpy(temp_radio_user, rptrbuf.vpkt.hdr.urcall+1, 6);
 										temp_radio_user[6] = ' ';
-										temp_radio_user[7] = readBuffer[43];
+										temp_radio_user[7] = rptrbuf.vpkt.hdr.urcall[7];
 										if (temp_radio_user[7] == ' ')
 											temp_radio_user[7] = 'A';
 										temp_radio_user[CALL_SIZE] = '\0';
@@ -1278,7 +1274,7 @@ static void runit()
 										result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
 										if (result) { /* it is a repeater */
 											/* set the destination */
-											memcpy(&to_remote_g2[i].streamid, readBuffer + 14, 2);
+											to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
 											memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 											to_remote_g2[i].toDst4.sin_family = AF_INET;
 											to_remote_g2[i].toDst4.sin_port = htons(g2_external.port);
@@ -1287,17 +1283,17 @@ static void runit()
 											memcpy(g2buf.title, "DSVT", 4);
 											g2buf.config = 0x10;
 											g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-											g2buf.id =  readBuffer[10];
-											g2buf.flagb[0] =  readBuffer[11];
-											g2buf.flagb[1] = readBuffer[12];
-											g2buf.flagb[2] = readBuffer[13];
-											memcpy(&g2buf.streamid, readBuffer + 14, 44);
+											g2buf.id =  rptrbuf.vpkt.icm_id;
+											g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+											g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+											g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+											memcpy(&g2buf.streamid, &rptrbuf.vpkt.streamid, 44);
 											/* set rpt1 */
-											memset(g2buf.hdr.rpt1, ' ', CALL_SIZE);
+											memset(g2buf.hdr.rpt1, ' ', 8);
 											memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
 											g2buf.hdr.rpt1[7] = temp_mod;
 											/* set rpt2 */
-											memset(g2buf.hdr.rpt2, ' ', CALL_SIZE);
+											memset(g2buf.hdr.rpt2, ' ', 8);
 											memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
 											g2buf.hdr.rpt2[7] = 'G';
 											/* set yrcall, can NOT let it be slash and repeater + module */
@@ -1329,35 +1325,35 @@ static void runit()
 									}
 								}
 							}
-						} else if ((memcmp(readBuffer + 36, OWNER.c_str(), 7) != 0) &&          /* urcall is not this repeater */
-						           (memcmp(readBuffer + 28, OWNER.c_str(), 7) == 0) &&             /* rpt1 is this repeater */
-						           ((readBuffer[35] == 'A') ||
-						            (readBuffer[35] == 'B') ||
-						            (readBuffer[35] == 'C')) &&                            /* mod is A,B,C */
-						           (memcmp(readBuffer + 20, OWNER.c_str(), 7) == 0) &&             /* rpt2 is this repeater */
-						           (readBuffer[27] == 'G') &&                              /* local Gateway */
-						           /*** (memcmp(readBuffer + 44, OWNER, 7) != 0) && ***/   /* mycall is NOT this repeater */
+						} else if ((memcmp(rptrbuf.vpkt.hdr.urcall, OWNER.c_str(), 7) != 0) &&	/* urcall is not this repeater */
+						           (memcmp(rptrbuf.vpkt.hdr.rpt2, OWNER.c_str(), 7) == 0) &&	/* rpt1 is this repeater */
+						           ((rptrbuf.vpkt.hdr.rpt2[7] == 'A') ||
+						            (rptrbuf.vpkt.hdr.rpt2[7] == 'B') ||
+						            (rptrbuf.vpkt.hdr.rpt2[7] == 'C')) &&						/* mod is A,B,C */
+						           (memcmp(rptrbuf.vpkt.hdr.rpt1, OWNER.c_str(), 7) == 0) &&	/* rpt2 is this repeater */
+						           (rptrbuf.vpkt.hdr.rpt1[7] == 'G') &&							/* local Gateway */
+						           /*** (memcmp(rptrbuf + 44, OWNER, 7) != 0) && ***/			/* mycall is NOT this repeater */
 
-						           ((readBuffer[17] == 0x00) ||                         /* normal */
-						            (readBuffer[17] == 0x08) ||                         /* EMR */
-						            (readBuffer[17] == 0x20) ||                         /* BK */
-						            (readBuffer[17] == 0x28))                           /* EMR + BK */
+						           ((rptrbuf.vpkt.hdr.flag[0] == 0x00) ||						/* normal */
+						            (rptrbuf.vpkt.hdr.flag[0] == 0x08) ||						/* EMR */
+						            (rptrbuf.vpkt.hdr.flag[0] == 0x20) ||						/* BK */
+						            (rptrbuf.vpkt.hdr.flag[0] == 0x28))							/* EMR + BK */
 						          ) {
 
-							memset(temp_radio_user, ' ', CALL_SIZE);
-							memcpy(temp_radio_user, readBuffer + 36, CALL_SIZE);
-							temp_radio_user[CALL_SIZE] = '\0';
+							memset(temp_radio_user, ' ', 8);
+							memcpy(temp_radio_user, rptrbuf.vpkt.hdr.urcall, 8);
+							temp_radio_user[8] = '\0';
 							result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
 							if (result) {
 								/* destination is a remote system */
 								if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
-									i = readBuffer[35] - 'A';
+									i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 									if (i>=0 && i<3) {
 										/* one radio user on a repeater module at a time */
 										if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
 											/* set the destination */
-											memcpy(&to_remote_g2[i].streamid, readBuffer + 14, 2);
+											to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
 											memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 											to_remote_g2[i].toDst4.sin_family = AF_INET;
 											to_remote_g2[i].toDst4.sin_port = htons(g2_external.port);
@@ -1366,17 +1362,17 @@ static void runit()
 											memcpy(g2buf.title, "DSVT", 4);
 											g2buf.config = 0x10;
 											g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-											g2buf.id = readBuffer[10];
-											g2buf.flagb[0] = readBuffer[11];
-											g2buf.flagb[1] = readBuffer[12];
-											g2buf.flagb[2] = readBuffer[13];
-											memcpy(&g2buf.streamid, readBuffer + 14, 44);
+											g2buf.id = rptrbuf.vpkt.icm_id;
+											g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+											g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+											g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+											memcpy(&g2buf.streamid, &rptrbuf.vpkt.streamid, 44);
 											/* set rpt1 */
-											memset(g2buf.hdr.rpt1, ' ', CALL_SIZE);
+											memset(g2buf.hdr.rpt1, ' ', 8);
 											memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
 											g2buf.hdr.rpt1[7] = temp_mod;
 											/* set rpt2 */
-											memset(g2buf.hdr.rpt2, ' ', CALL_SIZE);
+											memset(g2buf.hdr.rpt2, ' ', 8);
 											memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
 											g2buf.hdr.rpt2[7] = 'G';
 											/* set PFCS */
@@ -1402,19 +1398,19 @@ static void runit()
 										}
 									}
 								} else {
-									i = readBuffer[35] - 'A';
+									i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 									if (i>=0 && i<3) {
 										/* the user we are trying to contact is on our gateway */
 										/* make sure they are on a different module */
-										if (temp_mod != readBuffer[35]) {
+										if (temp_mod != rptrbuf.vpkt.hdr.rpt2[7]) {
 											/*
 											   The remote repeater has been set, lets fill in the dest_rptr
 											   so that later we can send that to the LIVE web site
 											*/
-											memcpy(band_txt[i].dest_rptr, readBuffer + 20, CALL_SIZE);
+											memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.rpt1, 8);
 											band_txt[i].dest_rptr[7] = temp_mod;
-											band_txt[i].dest_rptr[CALL_SIZE] = '\0';
+											band_txt[i].dest_rptr[8] = '\0';
 
 											i = temp_mod - 'A';
 
@@ -1425,16 +1421,16 @@ static void runit()
 												   band_txt[i] :  local RF is talking.
 												*/
 												if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-													traceit("CALLmode cross-banding from mod %c to %c\n",  readBuffer[35], temp_mod);
+													traceit("CALLmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.rpt2[7], temp_mod);
 
-													readBuffer[27] = temp_mod;
-													readBuffer[35] = 'G';
-													calcPFCS(readBuffer, 58);
+													rptrbuf.vpkt.hdr.rpt1[7] = temp_mod;
+													rptrbuf.vpkt.hdr.rpt2[7] = 'G';
+													calcPFCS(rptrbuf.pkt_id, 58);
 
-													sendto(srv_sock, readBuffer, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+													sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 													/* This is the active streamid */
-													toRptr[i].streamid = readBuffer[14] + 256u * readBuffer[15];
+													toRptr[i].streamid = rptrbuf.vpkt.streamid;
 													toRptr[i].adr = fromRptr.sin_addr.s_addr;
 
 													/* time it, in case stream times out */
@@ -1443,19 +1439,19 @@ static void runit()
 													/* bump the G2 counter */
 													toRptr[i].G2_COUNTER++;
 
-													toRptr[i].sequence = readBuffer[16];
+													toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 												}
 											}
 										} else
-											traceit("icom rule: no routing from %.8s to %s%c\n", readBuffer + 28, arearp_cs,temp_mod);
+											traceit("icom rule: no routing from %.8s to %s%c\n", rptrbuf.vpkt.hdr.rpt2, arearp_cs, temp_mod);
 									}
 								}
 							}
 						}
-					} else if ((readBuffer[43] == '0') &&
-					           (readBuffer[42] == CLEAR_VM_CODE) &&
-					           (readBuffer[36] == ' ')) {
-						i = readBuffer[35] - 'A';
+					} else if ((rptrbuf.vpkt.hdr.urcall[7] == '0') &&
+					           (rptrbuf.vpkt.hdr.urcall[6] == CLEAR_VM_CODE) &&
+					           (rptrbuf.vpkt.hdr.urcall[0] == ' ')) {
+						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0 && i<3) {
 							/* voicemail file is closed */
@@ -1466,16 +1462,21 @@ static void runit()
 							} else
 								traceit("No voicemail to clear or still recording\n");
 						}
-					} else if ((readBuffer[43] == '0') &&
-					           (readBuffer[42] == RECALL_VM_CODE) &&
-					           (readBuffer[36] == ' ')) {
+					} else if ((rptrbuf.vpkt.hdr.urcall[7] == '0') &&
+					           (rptrbuf.vpkt.hdr.urcall[6] == RECALL_VM_CODE) &&
+					           (rptrbuf.vpkt.hdr.urcall[0] == ' ')) {
 						i = -1;
-						if (readBuffer[35] == 'A')
-							i = 0;
-						else if (readBuffer[35] == 'B')
-							i = 1;
-						else if (readBuffer[35] == 'C')
-							i = 2;
+						switch (rptrbuf.vpkt.hdr.rpt2[7]) {
+							case 'A':
+								i = 0;
+								break;
+							case 'B':
+								i = 1;
+								break;
+							case 'C':
+								i = 2;
+								break;
+						}
 
 						if (i >= 0) {
 							/* voicemail file is closed */
@@ -1488,10 +1489,10 @@ static void runit()
 							} else
 								traceit("No voicemail to recall or still recording\n");
 						}
-					} else if ((readBuffer[43] == '0') &&
-					           (readBuffer[42] == STORE_VM_CODE) &&
-					           (readBuffer[36] == ' ')) {
-						i = readBuffer[35] - 'A';
+					} else if ((rptrbuf.vpkt.hdr.urcall[7] == '0') &&
+					           (rptrbuf.vpkt.hdr.urcall[6] == STORE_VM_CODE) &&
+					           (rptrbuf.vpkt.hdr.urcall[0] == ' ')) {
+						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0 && i<3) {
 							if (vm[i].fd >= 0)
@@ -1500,7 +1501,7 @@ static void runit()
 								memset(tempfile, '\0', sizeof(tempfile));
 								snprintf(tempfile, FILENAME_MAX, "%s/%c_%s",
 								         echotest_dir.c_str(),
-								         readBuffer[35],
+								         rptrbuf.vpkt.hdr.rpt2[7],
 								         "voicemail.dat");
 
 								vm[i].fd = open(tempfile,
@@ -1511,23 +1512,23 @@ static void runit()
 								else {
 									strcpy(vm[i].file, tempfile);
 									traceit("Recording mod %c for voicemail into file:[%s]\n",
-									        readBuffer[35],
+									        rptrbuf.vpkt.hdr.rpt2[7],
 									        vm[i].file);
 
 									time(&vm[i].last_time);
-									memcpy(&vm[i].streamid, readBuffer + 14, 2);
+									vm[i].streamid = rptrbuf.vpkt.streamid;
 
 									memcpy(recbuf.title, "DSVT", 4);
 									recbuf.config = 0x10;
-									for (int k=0; k<3; k++) {
-										recbuf.flaga[k] = 0;
-										recbuf.flagb[k] = readBuffer[k+11];
-									}
-									recbuf.id =  readBuffer[10];
-									memcpy(&recbuf.streamid, readBuffer + 14, 44);
+									recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+									recbuf.id =  rptrbuf.vpkt.icm_id;
+									recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+									recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+									recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+									memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
 									memset(recbuf.hdr.rpt1, ' ', 8);
 									memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
-									recbuf.hdr.rpt1[7] = readBuffer[35];
+									recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.rpt2[7];
 									memset(recbuf.hdr.rpt2, ' ', 8);
 									memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
 									recbuf.hdr.rpt2[7] = 'G';
@@ -1543,19 +1544,16 @@ static void runit()
 								}
 							}
 						}
-					} else if ((readBuffer[43] == ECHO_CODE) &&
-					           (readBuffer[36] == ' ')) {
-						i = readBuffer[35] - 'A';
+					} else if ((rptrbuf.vpkt.hdr.urcall[7] == ECHO_CODE) && (rptrbuf.vpkt.hdr.urcall[0] == ' ')) {
+						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0 && i<3) {
 							if (recd[i].fd >= 0)
 								traceit("Already recording for echotest on mod %d\n", i);
 							else {
 								memset(tempfile, '\0', sizeof(tempfile));
-								snprintf(tempfile, FILENAME_MAX, "%s/%c_%s",
-								         echotest_dir.c_str(),
-								         readBuffer[35],
-								         "echotest.dat");
+								snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(),
+														rptrbuf.vpkt.hdr.rpt2[7], "echotest.dat");
 
 								recd[i].fd = open(tempfile,
 								                  O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND,
@@ -1565,23 +1563,22 @@ static void runit()
 								else {
 									strcpy(recd[i].file, tempfile);
 									traceit("Recording mod %c for echotest into file:[%s]\n",
-									        readBuffer[35],
-									        recd[i].file);
+														rptrbuf.vpkt.hdr.rpt2[7], recd[i].file);
 
 									time(&recd[i].last_time);
-									memcpy(&recd[i].streamid, readBuffer + 14, 2);
+									recd[i].streamid = rptrbuf.vpkt.streamid;
 
 									memcpy(recbuf.title, "DSVT", 4);
 									recbuf.config = 0x10;
-									for (int k=0; k<3; k++) {
-										recbuf.flaga[k] = 0;
-										recbuf.flagb[k] = readBuffer[k+11];
-									}
-									recbuf.id =  readBuffer[10];
-									memcpy(&recbuf.streamid, readBuffer + 14, 44);
+									recbuf.id =  rptrbuf.vpkt.icm_id;
+									recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+									recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+									recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+									recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+									memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
 									memset(recbuf.hdr.rpt1, ' ', 8);
 									memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
-									recbuf.hdr.rpt1[7] = readBuffer[35];
+									recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.rpt2[7];
 									memset(recbuf.hdr.rpt2, ' ', 8);
 									memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
 									recbuf.hdr.rpt2[7] = 'G';
@@ -1599,41 +1596,41 @@ static void runit()
 						}
 					} else
 						/* check for cross-banding */
-						if ((memcmp(readBuffer + 36, "CQCQCQ", 6) == 0) && /* yrcall is CQCQCQ */
-						        (memcmp(readBuffer + 28, OWNER.c_str(), 7) == 0) &&    /* rpt1 is this repeater */
-						        (memcmp(readBuffer + 20, OWNER.c_str(), 7) == 0) &&    /* rpt2 is this repeater */
-						        ((readBuffer[35] == 'A') ||
-						         (readBuffer[35] == 'B') ||
-						         (readBuffer[35] == 'C')) &&                   /* mod of rpt1 is A,B,C */
-						        ((readBuffer[27] == 'A') ||
-						         (readBuffer[27] == 'B') ||
-						         (readBuffer[27] == 'C')) &&           /* !!! usually a G of rpt2, but we see A,B,C */
-						        (readBuffer[35] != readBuffer[27])) {  /* cross-banding? make sure NOT the same */
-							i = readBuffer[35] - 'A';
+						if (0 == (memcmp(rptrbuf.vpkt.hdr.urcall, "CQCQCQ", 6)) &&			/* yrcall is CQCQCQ */
+						        (0 == memcmp(rptrbuf.vpkt.hdr.rpt1, OWNER.c_str(), 7)) && 	/* rpt1 is this repeater */
+						        (0 == memcmp(rptrbuf.vpkt.hdr.rpt2, OWNER.c_str(), 7)) &&	/* rpt2 is this repeater */
+						        ((rptrbuf.vpkt.hdr.rpt2[7] == 'A') ||
+						         (rptrbuf.vpkt.hdr.rpt2[7] == 'B') ||
+						         (rptrbuf.vpkt.hdr.rpt2[7] == 'C')) &&                   /* mod of rpt1 is A,B,C */
+						        ((rptrbuf.vpkt.hdr.rpt1[7] == 'A') ||
+						         (rptrbuf.vpkt.hdr.rpt1[7] == 'B') ||
+						         (rptrbuf.vpkt.hdr.rpt1[7] == 'C')) &&           /* !!! usually a G of rpt2, but we see A,B,C */
+						        (rptrbuf.vpkt.hdr.rpt1[7] != rptrbuf.vpkt.hdr.rpt2[7])) {  /* cross-banding? make sure NOT the same */
+							i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 							if (i>=0 && i<3) {
 								// The remote repeater has been set, lets fill in the dest_rptr
 								// so that later we can send that to the LIVE web site
-								memcpy(band_txt[i].dest_rptr, readBuffer + 20, CALL_SIZE);
-								band_txt[i].dest_rptr[CALL_SIZE] = '\0';
+								memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.rpt1, 8);
+								band_txt[i].dest_rptr[8] = '\0';
 							}
 
-							i = readBuffer[27] - 'A';
+							i = rptrbuf.vpkt.hdr.rpt1[7] - 'A';
 
 							/* valid destination repeater module? */
 							if (i>=0 && i<3) {
 								// toRptr[i] :    receiving from a remote system or cross-band
 								// band_txt[i] :  local RF is talking.
 								if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-									traceit("ZONEmode cross-banding from mod %c to %c\n",  readBuffer[35], readBuffer[27]);
+									traceit("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.rpt2[7], rptrbuf.vpkt.hdr.rpt1[7]);
 
-									readBuffer[35] = 'G';
-									calcPFCS(readBuffer, 58);
+									rptrbuf.vpkt.hdr.rpt2[7] = 'G';
+									calcPFCS(rptrbuf.pkt_id, 58);
 
-									sendto(srv_sock, readBuffer,58,0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+									sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 									/* This is the active streamid */
-									toRptr[i].streamid = readBuffer[14] + 256u * readBuffer[15];
+									toRptr[i].streamid = rptrbuf.vpkt.streamid;
 									toRptr[i].adr = fromRptr.sin_addr.s_addr;
 
 									/* time it, in case stream times out */
@@ -1642,16 +1639,16 @@ static void runit()
 									/* bump the G2 counter */
 									toRptr[i].G2_COUNTER ++;
 
-									toRptr[i].sequence = readBuffer[16];
+									toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 								}
 							}
 						}
 				} else {
 					for (i = 0; i < 3; i++) {
-						if (memcmp(band_txt[i].streamID, readBuffer + 14, 2) == 0) {
+						if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
 							time(&band_txt[i].last_time);
 
-							if ((readBuffer[16] & 0x40) != 0) {
+							if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
 								if (dtmf_buf_count[i] > 0) {
 									dtmf_file = dtmf_dir;
 									dtmf_file.push_back('/');
@@ -1685,8 +1682,8 @@ static void runit()
 								                         band_txt[i].num_dv_silent_frames,
 								                         band_txt[i].num_bit_errors);
 
-								band_txt[i].streamID[0] = band_txt[i].streamID[1] = 0x0;
-								band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
+								band_txt[i].streamID = 0;
+								band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
 								band_txt[i].lh_mycall[0] = '\0';
 								band_txt[i].lh_sfx[0] = '\0';
 								band_txt[i].lh_yrcall[0] = '\0';
@@ -1705,11 +1702,11 @@ static void runit()
 								band_txt[i].num_bit_errors = 0;
 
 							} else {
-								ber_errs = dstar_dv_decode(readBuffer + 17, ber_data);
+								ber_errs = dstar_dv_decode(rptrbuf.vpkt.vasd.voice, ber_data);
 								if (ber_data[0] == 0xf85)
-									band_txt[i].num_dv_silent_frames ++;
+									band_txt[i].num_dv_silent_frames++;
 								band_txt[i].num_bit_errors += ber_errs;
-								band_txt[i].num_dv_frames ++;
+								band_txt[i].num_dv_frames++;
 
 								if ((ber_data[0] & 0x0ffc) == 0xfc0) {
 									dtmf_digit = (ber_data[0] & 0x03) | ((ber_data[2] & 0x60) >> 3);
@@ -1728,7 +1725,7 @@ static void runit()
 										}
 									}
 									const unsigned char silence[9] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8 };
-									memcpy(readBuffer + 17, silence, 9);
+									memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
 								} else
 									dtmf_counter[i] = 0;
 							}
@@ -1737,9 +1734,9 @@ static void runit()
 					}
 
 					if (recvlen == 29)
-						memcpy(tmp_txt, readBuffer + 26, 3);
+						memcpy(tmp_txt, rptrbuf.vpkt.vasd.text, 3);
 					else
-						memcpy(tmp_txt, readBuffer + 29, 3);
+						memcpy(tmp_txt, rptrbuf.vpkt.vasd1.text, 3);
 
 					// traceit("%x%x%x\n", tmp_txt[0], tmp_txt[1], tmp_txt[2]);
 					// traceit("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
@@ -1750,7 +1747,7 @@ static void runit()
 						// traceit("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
 
 						for (i = 0; i < 3; i++) {
-							if (memcmp(band_txt[i].streamID, readBuffer + 14, 2) == 0) {
+							if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
 								if (new_group[i]) {
 									tmp_txt[0] = tmp_txt[0] ^ 0x70;
 									header_type = tmp_txt[0] & 0xf0;
@@ -1861,13 +1858,13 @@ static void runit()
 										*/
 										if (band_txt[i].txt_stats_sent) {
 											if (recvlen == 29) {
-												readBuffer[26] = 0x70;
-												readBuffer[27] = 0x4f;
-												readBuffer[28] = 0x93;
+												rptrbuf.vpkt.vasd.text[0] = 0x70;
+												rptrbuf.vpkt.vasd.text[1] = 0x4f;
+												rptrbuf.vpkt.vasd.text[2] = 0x93;
 											} else {
-												readBuffer[29] = 0x70;
-												readBuffer[30] = 0x4f;
-												readBuffer[31] = 0x93;
+												rptrbuf.vpkt.vasd1.text[0] = 0x70;
+												rptrbuf.vpkt.vasd1.text[1] = 0x4f;
+												rptrbuf.vpkt.vasd1.text[2] = 0x93;
 											}
 										}
 
@@ -1912,13 +1909,13 @@ static void runit()
 											*/
 											if (band_txt[i].txt_stats_sent) {
 												if (recvlen == 29) {
-													readBuffer[26] = 0x70;
-													readBuffer[27] = 0x4f;
-													readBuffer[28] = 0x93;
+													rptrbuf.vpkt.vasd.text[0] = 0x70;
+													rptrbuf.vpkt.vasd.text[1] = 0x4f;
+													rptrbuf.vpkt.vasd.text[2] = 0x93;
 												} else {
-													readBuffer[29] = 0x70;
-													readBuffer[30] = 0x4f;
-													readBuffer[31] = 0x93;
+													rptrbuf.vpkt.vasd1.text[0] = 0x70;
+													rptrbuf.vpkt.vasd1.text[1] = 0x4f;
+													rptrbuf.vpkt.vasd1.text[2] = 0x93;
 												}
 											}
 
@@ -2069,31 +2066,31 @@ static void runit()
 					}
 
 					/* send data to g2_link */
-					sendto(srv_sock, readBuffer, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
+					sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
 					/* aprs processing */
 					if (bool_send_aprs)
-						//                streamID       seq             audio+text     size
-						aprs->ProcessText(readBuffer+14, readBuffer[16], readBuffer+17, (recvlen == 29)?12:15);
+						//                             streamID               seq                     audio+text             size
+						aprs->ProcessText(rptrbuf.vpkt.streamid, rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice, (recvlen == 29)?12:15);
 
 					for (i = 0; i < 3; i++) {
 						/* find out if data must go to the remote G2 */
-						if (memcmp(&to_remote_g2[i].streamid, readBuffer + 14, 2) == 0) {
+						if (to_remote_g2[i].streamid == rptrbuf.vpkt.streamid) {
 							memcpy(g2buf.title, "DSVT", 4);
 							g2buf.config = 0x20;
 							g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-							memcpy(&g2buf.id, readBuffer + 10, 7);
+							memcpy(&g2buf.id, &rptrbuf.vpkt.icm_id, 7);
 							if (recvlen == 29)
-								memcpy(g2buf.vasd.voice, readBuffer + 17, 12);
+								memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
 							else
-								memcpy(g2buf.vasd.voice, readBuffer + 20, 12);
+								memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
 
 							sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 							time(&(to_remote_g2[i].last_time));
 
 							/* Is this the end-of-stream */
-							if (readBuffer[16] & 0x40) {
+							if (rptrbuf.vpkt.ctrl & 0x40) {
 								memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
 								to_remote_g2[i].streamid = 0;
 								to_remote_g2[i].last_time = 0;
@@ -2101,27 +2098,27 @@ static void runit()
 							break;
 						} else
 							/* Is the data to be recorded for echotest */
-							if (recd[i].fd>=0 && 0==memcmp(&recd[i].streamid, readBuffer + 14, 2)) {
+							if (recd[i].fd>=0 && recd[i].streamid==rptrbuf.vpkt.streamid) {
 								time(&recd[i].last_time);
 
 								memcpy(recbuf.title, "DSVT", 4);
 								recbuf.config = 0x20;
-								for (int k=0; k<3; k++) {
-									recbuf.flaga[k] = 0;
-									recbuf.flagb[k] = readBuffer[k+11];
-								}
-								recbuf.id = readBuffer[10];
-								memcpy(&recbuf.streamid, readBuffer + 14, 3);
+								recbuf.id = rptrbuf.vpkt.icm_id;
+								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[20] = 0;
+								recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+								recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+								recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+								memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
 								if (recvlen == 29)
-									memcpy(recbuf.vasd.voice, readBuffer + 17, 12);
+									memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
 								else
-									memcpy(recbuf.vasd.voice, readBuffer + 20, 12);
+									memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
 
 								rec_len = 27;
 								(void)write(recd[i].fd, &rec_len, 2);
 								(void)write(recd[i].fd, &recbuf, rec_len);
 
-								if ((readBuffer[16] & 0x40) != 0) {
+								if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
 									recd[i].streamid = 0;
 									recd[i].last_time = 0;
 									close(recd[i].fd);
@@ -2141,28 +2138,27 @@ static void runit()
 								break;
 							} else
 								/* Is the data to be recorded for voicemail */
-								if ((vm[i].fd >= 0) &&
-								        (memcmp(&vm[i].streamid, readBuffer + 14, 2) == 0)) {
+								if ((vm[i].fd >= 0) && (vm[i].streamid==rptrbuf.vpkt.streamid)) {
 									time(&vm[i].last_time);
 
 									memcpy(recbuf.title, "DSVT", 4);
 									recbuf.config = 0x20;
-									for (int k=0; k<3; k++) {
-										recbuf.flaga[k] = 0;
-										recbuf.flagb[k] = readBuffer[k+11];
-									}
-									recbuf.id = readBuffer[10];
-									memcpy(&recbuf.streamid, readBuffer + 14, 3);
+									recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+									recbuf.id = rptrbuf.vpkt.icm_id;
+									recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+									recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+									recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+									memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
 									if (recvlen == 29)
-										memcpy(recbuf.vasd.voice, readBuffer + 17, 12);
+										memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
 									else
-										memcpy(recbuf.vasd.voice, readBuffer + 20, 12);
+										memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
 
 									rec_len = 27;
 									(void)write(vm[i].fd, &rec_len, 2);
 									(void)write(vm[i].fd, &recbuf, rec_len);
 
-									if ((readBuffer[16] & 0x40) != 0) {
+									if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
 										vm[i].streamid = 0;
 										vm[i].last_time = 0;
 										close(vm[i].fd);
@@ -2172,8 +2168,8 @@ static void runit()
 									break;
 								} else
 									/* or maybe this is cross-banding data */
-									if ((memcmp(&toRptr[i].streamid, readBuffer + 14, 2) == 0) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {
-										sendto(srv_sock, readBuffer, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+									if ((toRptr[i].streamid==rptrbuf.vpkt.streamid) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {
+										sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 										/* timeit */
 										time(&toRptr[i].last_time);
@@ -2181,10 +2177,10 @@ static void runit()
 										/* bump G2 counter */
 										toRptr[i].G2_COUNTER ++;
 
-										toRptr[i].sequence = readBuffer[16];
+										toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 
 										/* End of stream ? */
-										if ((readBuffer[16] & 0x40) != 0) {
+										if (rptrbuf.vpkt.ctrl & 0x40) {
 											toRptr[i].last_time = 0;
 											toRptr[i].streamid = 0;
 											toRptr[i].adr = 0;
@@ -2193,11 +2189,9 @@ static void runit()
 									}
 					}
 
-					if ((readBuffer[16] & 0x40) != 0) {
+					if (rptrbuf.vpkt.ctrl & 0x40) {
 						if (bool_qso_details)
-							traceit("END from rptr: cntr=%02x %02x, streamID=%02x,%02x, %d bytes\n",
-							        readBuffer[4], readBuffer[5],
-							        readBuffer[14],readBuffer[15],recvlen);
+							traceit("END from rptr: cntr=%04x, streamID=%04x, %d bytes\n", rptrbuf.counter, rptrbuf.vpkt.streamid, recvlen);
 					}
 				}
 			}

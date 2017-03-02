@@ -1548,10 +1548,10 @@ static void runit()
 						to_remote_g2[i].countdown = TIMEOUT;
 					}
 				}
-			} else
+			} else if (recvlen2 == (CALL_SIZE + 6)) {
 				/* A packet of length (CALL_SIZE + 6) is either an ACK or a NAK from repeater-reflector */
 				/* Because we sent a request before asking to link */
-				if (recvlen2 == (CALL_SIZE + 6)) {
+				
 					for (i = 0; i < 3; i++) {
 						if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
 						        (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port))) {
@@ -1598,545 +1598,543 @@ static void runit()
 							}
 						}
 					}
-				} else
-					/*
-					   A packet of length (CALL_SIZE + 3) is a request
-					   from a remote repeater to link-unlink with our repeater
-					*/
-					if (recvlen2 == CALL_SIZE + 3) {
-						/* Check our linked repeaters/reflectors */
-						for (i = 0; i < 3; i++) {
-							if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-							        (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port))) {
-								if (to_remote_g2[i].to_mod == readBuffer2[8]) {
-									/* unlink request from remote repeater that we know */
-									if (readBuffer2[9] == ' ') {
-										traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
-										traceit("Module %c to [%s] %c is unlinked\n",
-										        to_remote_g2[i].from_mod,
-										        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
+			} else if (recvlen2 == CALL_SIZE + 3) {
+			/*
+			   A packet of length (CALL_SIZE + 3) is a request
+			   from a remote repeater to link-unlink with our repeater
+			*/
+			
+				/* Check our linked repeaters/reflectors */
+				for (i = 0; i < 3; i++) {
+					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
+							(to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port))) {
+						if (to_remote_g2[i].to_mod == readBuffer2[8]) {
+							/* unlink request from remote repeater that we know */
+							if (readBuffer2[9] == ' ') {
+								traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
+								traceit("Module %c to [%s] %c is unlinked\n",
+										to_remote_g2[i].from_mod,
+										to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-										sprintf(notify_msg, "%c_unlinked.dat_UNLINKED", to_remote_g2[i].from_mod);
-										audio_notify(notify_msg);
+								sprintf(notify_msg, "%c_unlinked.dat_UNLINKED", to_remote_g2[i].from_mod);
+								audio_notify(notify_msg);
 
-										to_remote_g2[i].to_call[0] = '\0';
-										memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
-										to_remote_g2[i].from_mod = ' ';
-										to_remote_g2[i].to_mod = ' ';
-										to_remote_g2[i].countdown = 0;
-										to_remote_g2[i].is_connected = false;
-										to_remote_g2[i].in_streamid[0] = 0x00;
-										to_remote_g2[i].in_streamid[1] = 0x00;
+								to_remote_g2[i].to_call[0] = '\0';
+								memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
+								to_remote_g2[i].from_mod = ' ';
+								to_remote_g2[i].to_mod = ' ';
+								to_remote_g2[i].countdown = 0;
+								to_remote_g2[i].is_connected = false;
+								to_remote_g2[i].in_streamid[0] = 0x00;
+								to_remote_g2[i].in_streamid[1] = 0x00;
 
-										print_status_file();
-									} else
-										/* link request from a remote repeater that we know */
-										if (
-										    ((i == 0) && (readBuffer2[9] == 'A')) ||
-										    ((i == 1) && (readBuffer2[9] == 'B')) ||
-										    ((i == 2) && (readBuffer2[9] == 'C'))
-										) {
+								print_status_file();
+							} else
+								/* link request from a remote repeater that we know */
+								if (
+									((i == 0) && (readBuffer2[9] == 'A')) ||
+									((i == 1) && (readBuffer2[9] == 'B')) ||
+									((i == 2) && (readBuffer2[9] == 'C'))
+								) {
 
-											/*
-											   I HAVE TO ADD CODE here to PREVENT the REMOTE NODE
-											   from LINKING one of their remote modules to
-											   more than one of our local modules
-											*/
-
-											traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
-
-											strncpy(to_remote_g2[i].to_call, (char *)readBuffer2,CALL_SIZE);
-											to_remote_g2[i].to_call[CALL_SIZE] = '\0';
-											memcpy(&(to_remote_g2[i].toDst4), &fromDst4, sizeof(struct sockaddr_in));
-											to_remote_g2[i].toDst4.sin_port = htons(rmt_xrf_port);
-											to_remote_g2[i].to_mod = readBuffer2[8];
-											to_remote_g2[i].countdown = TIMEOUT;
-											to_remote_g2[i].is_connected = true;
-											to_remote_g2[i].in_streamid[0] = 0x00;
-											to_remote_g2[i].in_streamid[1] = 0x00;
-
-											traceit("Module %c to [%s] %c linked\n",
-											        readBuffer2[9],
-											        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
-
-											tracing[i].last_time = time(NULL);
-
-											print_status_file();
-
-											/* send back an ACK */
-											memcpy(readBuffer2 + 10, "ACK", 4);
-											sendto(xrf_g2_sock, readBuffer2, CALL_SIZE+6, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-
-											if (to_remote_g2[i].from_mod != readBuffer2[9]) {
-												to_remote_g2[i].from_mod = readBuffer2[9];
-
-												strcpy(linked_remote_system, to_remote_g2[i].to_call);
-												space_p = strchr(linked_remote_system, ' ');
-												if (space_p)
-													*space_p = '\0';
-												sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
-												        to_remote_g2[i].from_mod,
-												        linked_remote_system,
-												        to_remote_g2[i].to_mod);
-												audio_notify(notify_msg);
-											}
-										}
-								}
-							}
-						}
-
-						/* link request from remote repeater that is not yet linked to our system */
-						/* find out which of our local modules the remote repeater is interested in */
-						i = -1;
-						if (readBuffer2[9] == 'A')
-							i = 0;
-						else if (readBuffer2[9] == 'B')
-							i = 1;
-						else if (readBuffer2[9] == 'C')
-							i = 2;
-
-						/* Is this repeater listed in gwys.txt? */
-						gwy_pos = gwy_list.find(call);
-						if (gwy_pos == gwy_list.end()) {
-							/* We did NOT find this repeater in gwys.txt, reject the incoming link request */
-							traceit("Incoming link from %s,%s but not found in gwys.txt\n",call,ip);
-							i = -1;
-						} else {
-							rc = regexec(&preg, call, 0, NULL, 0);
-							if (rc != 0) {
-								traceit("Invalid repeater %s,%s requesting to link\n", call, ip);
-								i = -1;
-							}
-						}
-
-						if (i >= 0) {
-							/* Is the local repeater module linked to anything ? */
-							if (to_remote_g2[i].to_mod == ' ') {
-								if ((readBuffer2[8] == 'A') || (readBuffer2[8] == 'B') || (readBuffer2[8] == 'C') ||
-								        (readBuffer2[8] == 'D') || (readBuffer2[8] == 'E')) {
 									/*
 									   I HAVE TO ADD CODE here to PREVENT the REMOTE NODE
 									   from LINKING one of their remote modules to
 									   more than one of our local modules
 									*/
 
-									/* now it can be added as a repeater */
-									strcpy(to_remote_g2[i].to_call, call);
+									traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
+
+									strncpy(to_remote_g2[i].to_call, (char *)readBuffer2,CALL_SIZE);
 									to_remote_g2[i].to_call[CALL_SIZE] = '\0';
 									memcpy(&(to_remote_g2[i].toDst4), &fromDst4, sizeof(struct sockaddr_in));
 									to_remote_g2[i].toDst4.sin_port = htons(rmt_xrf_port);
-									to_remote_g2[i].from_mod = readBuffer2[9];
 									to_remote_g2[i].to_mod = readBuffer2[8];
 									to_remote_g2[i].countdown = TIMEOUT;
 									to_remote_g2[i].is_connected = true;
 									to_remote_g2[i].in_streamid[0] = 0x00;
 									to_remote_g2[i].in_streamid[1] = 0x00;
 
-									print_status_file();
+									traceit("Module %c to [%s] %c linked\n",
+											readBuffer2[9],
+											to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
 									tracing[i].last_time = time(NULL);
 
-									traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
-									traceit("Module %c to [%s] %c linked\n",
-									        to_remote_g2[i].from_mod,
-									        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
-
-									strcpy(linked_remote_system, to_remote_g2[i].to_call);
-									space_p = strchr(linked_remote_system, ' ');
-									if (space_p)
-										*space_p = '\0';
-									sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
-									        to_remote_g2[i].from_mod,
-									        linked_remote_system,
-									        to_remote_g2[i].to_mod);
-									audio_notify(notify_msg);
+									print_status_file();
 
 									/* send back an ACK */
 									memcpy(readBuffer2 + 10, "ACK", 4);
 									sendto(xrf_g2_sock, readBuffer2, CALL_SIZE+6, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+
+									if (to_remote_g2[i].from_mod != readBuffer2[9]) {
+										to_remote_g2[i].from_mod = readBuffer2[9];
+
+										strcpy(linked_remote_system, to_remote_g2[i].to_call);
+										space_p = strchr(linked_remote_system, ' ');
+										if (space_p)
+											*space_p = '\0';
+										sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
+												to_remote_g2[i].from_mod,
+												linked_remote_system,
+												to_remote_g2[i].to_mod);
+										audio_notify(notify_msg);
+									}
 								}
-							} else {
-								if (fromDst4.sin_addr.s_addr != to_remote_g2[i].toDst4.sin_addr.s_addr) {
-									/* Our repeater module is linked to another repeater-reflector */
-									memcpy(readBuffer2 + 10, "NAK", 4);
-									fromDst4.sin_port = htons(rmt_xrf_port);
-									sendto(xrf_g2_sock, readBuffer2, CALL_SIZE+6, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+						}
+					}
+				}
+
+				/* link request from remote repeater that is not yet linked to our system */
+				/* find out which of our local modules the remote repeater is interested in */
+				i = -1;
+				if (readBuffer2[9] == 'A')
+					i = 0;
+				else if (readBuffer2[9] == 'B')
+					i = 1;
+				else if (readBuffer2[9] == 'C')
+					i = 2;
+
+				/* Is this repeater listed in gwys.txt? */
+				gwy_pos = gwy_list.find(call);
+				if (gwy_pos == gwy_list.end()) {
+					/* We did NOT find this repeater in gwys.txt, reject the incoming link request */
+					traceit("Incoming link from %s,%s but not found in gwys.txt\n",call,ip);
+					i = -1;
+				} else {
+					rc = regexec(&preg, call, 0, NULL, 0);
+					if (rc != 0) {
+						traceit("Invalid repeater %s,%s requesting to link\n", call, ip);
+						i = -1;
+					}
+				}
+
+				if (i >= 0) {
+					/* Is the local repeater module linked to anything ? */
+					if (to_remote_g2[i].to_mod == ' ') {
+						if ((readBuffer2[8] == 'A') || (readBuffer2[8] == 'B') || (readBuffer2[8] == 'C') ||
+								(readBuffer2[8] == 'D') || (readBuffer2[8] == 'E')) {
+							/*
+							   I HAVE TO ADD CODE here to PREVENT the REMOTE NODE
+							   from LINKING one of their remote modules to
+							   more than one of our local modules
+							*/
+
+							/* now it can be added as a repeater */
+							strcpy(to_remote_g2[i].to_call, call);
+							to_remote_g2[i].to_call[CALL_SIZE] = '\0';
+							memcpy(&(to_remote_g2[i].toDst4), &fromDst4, sizeof(struct sockaddr_in));
+							to_remote_g2[i].toDst4.sin_port = htons(rmt_xrf_port);
+							to_remote_g2[i].from_mod = readBuffer2[9];
+							to_remote_g2[i].to_mod = readBuffer2[8];
+							to_remote_g2[i].countdown = TIMEOUT;
+							to_remote_g2[i].is_connected = true;
+							to_remote_g2[i].in_streamid[0] = 0x00;
+							to_remote_g2[i].in_streamid[1] = 0x00;
+
+							print_status_file();
+
+							tracing[i].last_time = time(NULL);
+
+							traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
+							traceit("Module %c to [%s] %c linked\n",
+									to_remote_g2[i].from_mod,
+									to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
+
+							strcpy(linked_remote_system, to_remote_g2[i].to_call);
+							space_p = strchr(linked_remote_system, ' ');
+							if (space_p)
+								*space_p = '\0';
+							sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
+									to_remote_g2[i].from_mod,
+									linked_remote_system,
+									to_remote_g2[i].to_mod);
+							audio_notify(notify_msg);
+
+							/* send back an ACK */
+							memcpy(readBuffer2 + 10, "ACK", 4);
+							sendto(xrf_g2_sock, readBuffer2, CALL_SIZE+6, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+						}
+					} else {
+						if (fromDst4.sin_addr.s_addr != to_remote_g2[i].toDst4.sin_addr.s_addr) {
+							/* Our repeater module is linked to another repeater-reflector */
+							memcpy(readBuffer2 + 10, "NAK", 4);
+							fromDst4.sin_port = htons(rmt_xrf_port);
+							sendto(xrf_g2_sock, readBuffer2, CALL_SIZE+6, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+						}
+					}
+				}
+			} else if ( ((recvlen2 == 56) || (recvlen2 == 27)) &&
+						(0 == memcmp(readBuffer2, "DSVT", 4)) &&
+						((readBuffer2[4] == 0x10) || (readBuffer2[4] == 0x20)) &&
+						(readBuffer2[8] == 0x20)) {
+				/* reset countdown and protect against hackers */
+
+				found = false;
+				for (i = 0; i < 3; i++) {
+					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
+							(to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port))) {
+						to_remote_g2[i].countdown = TIMEOUT;
+						found = true;
+					}
+				}
+
+				/* process header */
+
+				if ((recvlen2 == 56) && found) {
+					memset(source_stn, ' ', 9);
+					source_stn[8] = '\0';
+
+					/* some bad hotspot programs out there using INCORRECT flag */
+					if (readBuffer2[15] == 0x40)
+						readBuffer2[15] = 0x00;
+					else if (readBuffer2[15] == 0x48)
+						readBuffer2[15] = 0x08;
+					else if (readBuffer2[15] == 0x60)
+						readBuffer2[15] = 0x20;
+					else if (readBuffer2[15] == 0x68)
+						readBuffer2[15] = 0x28;
+
+					/* A reflector will send to us its own RPT1 */
+					/* A repeater will send to us our RPT1 */
+
+					for (i = 0; i < 3; i++) {
+						if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
+								(to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port))) {
+							/* it is a reflector, reflector's rpt1 */
+							if ((memcmp(readBuffer2 + 18, to_remote_g2[i].to_call, 7) == 0) &&
+									(readBuffer2[25] == to_remote_g2[i].to_mod)) {
+								memcpy(&readBuffer2[18], owner.c_str(), CALL_SIZE);
+								readBuffer2[25] = to_remote_g2[i].from_mod;
+								memcpy(&readBuffer2[34], "CQCQCQ  ", 8);
+
+								memcpy(source_stn, to_remote_g2[i].to_call, 8);
+								source_stn[7] = to_remote_g2[i].to_mod;
+								break;
+							} else
+								/* it is a repeater, our rpt1 */
+								if ((memcmp(readBuffer2 + 18, owner.c_str(), CALL_SIZE-1)) &&
+										(readBuffer2[25] == to_remote_g2[i].from_mod)) {
+									memcpy(source_stn, to_remote_g2[i].to_call, 8);
+									source_stn[7] = to_remote_g2[i].to_mod;
+									break;
+								}
+						}
+					}
+
+					/* somebody's crazy idea of having a personal callsign in RPT2 */
+					/* we must set it to our gateway callsign */
+					memcpy(&readBuffer2[26], owner.c_str(), CALL_SIZE);
+					readBuffer2[33] = 'G';
+					calcPFCS(readBuffer2,56);
+
+					/* At this point, all data have our RPT1 and RPT2 */
+
+					/* send the data to the repeater/reflector that is linked to our RPT1 */
+					i = -1;
+					if (readBuffer2[25] == 'A')
+						i = 0;
+					else if (readBuffer2[25] == 'B')
+						i = 1;
+					else if (readBuffer2[25] == 'C')
+						i = 2;
+
+					/* are we sure that RPT1 is our system? */
+					if ((memcmp(readBuffer2 + 18, owner.c_str(), CALL_SIZE-1) == 0) && (i >= 0)) {
+						/* Last Heard */
+						if (memcmp(old_sid[i].sid, readBuffer2 + 12, 2) != 0) {
+							if (qso_details)
+								traceit("START from remote g2: streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
+										readBuffer2[12],readBuffer2[13],
+										readBuffer2[15], readBuffer2[16], readBuffer2[17],
+										&readBuffer2[42],
+										&readBuffer2[50], &readBuffer2[34],
+										&readBuffer2[18], &readBuffer2[26],
+										recvlen2,inet_ntoa(fromDst4.sin_addr), source_stn);
+
+							// put user into tmp1
+							memcpy(tmp1, readBuffer2 + 42, 8);
+							tmp1[8] = '\0';
+
+							// delete the user if exists
+							for (dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
+								if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0) {
+									dt_lh_list.erase(dt_lh_pos);
+									break;
+								}
+							}
+							/* Limit?, delete oldest user */
+							if (dt_lh_list.size() == LH_MAX_SIZE) {
+								dt_lh_pos = dt_lh_list.begin();
+								dt_lh_list.erase(dt_lh_pos);
+							}
+							// add user
+							time(&tnow);
+							sprintf(tmp2, "%ld=r%.6s%c%c", tnow, source_stn, source_stn[7], readBuffer2[25]);
+							dt_lh_list[tmp2] = tmp1;
+
+							memcpy(old_sid[i].sid, readBuffer2 + 12, 2);
+						}
+
+						/* relay data to our local G2 */
+						sendto(rptr_sock, readBuffer2,56,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+
+						/* send data to donglers */
+						/* no changes here */
+						for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+							inbound_ptr = (inbound *)pos->second;
+							if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
+								readBuffer[0] = (unsigned char)(58 & 0xFF);
+								readBuffer[1] = (unsigned char)(58 >> 8 & 0x1F);
+								readBuffer[1] = (unsigned char)(readBuffer[1] | 0xFFFFFF80);
+								memcpy(readBuffer + 2, readBuffer2, 56);
+
+								sendto(ref_g2_sock, readBuffer, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
+							} else
+								inbound_ptr->mod = readBuffer2[25];
+						}
+
+						/* send the data to the repeater/reflector that is linked to our RPT1 */
+
+						/* Is there another local module linked to the remote same xrf mod ? */
+						/* If Yes, then broadcast */
+						k = i + 1;
+
+						if (k < 3) {
+							brd_from_xrf_idx = 0;
+							streamid_raw = (readBuffer2[12] * 256U) + readBuffer2[13];
+
+							/* We can only enter this loop up to 2 times max */
+							for (j = k; j < 3; j++) {
+								/* it is a remote gateway, not a dongle user */
+								if ((fromDst4.sin_addr.s_addr == to_remote_g2[j].toDst4.sin_addr.s_addr) &&
+										/* it is xrf */
+										(to_remote_g2[j].toDst4.sin_port == htons(rmt_xrf_port)) &&
+										(memcmp(to_remote_g2[j].to_call, "XRF", 3) == 0) &&
+										/* it is the same xrf and xrf module */
+										(memcmp(to_remote_g2[j].to_call, to_remote_g2[i].to_call, 8) == 0) &&
+										(to_remote_g2[j].to_mod == to_remote_g2[i].to_mod)) {
+									/* send the packet to another module of our local repeater: this is multi-link */
+
+									/* generate new packet */
+									memcpy(from_xrf_torptr_brd, readBuffer2, 56);
+
+									/* different repeater module */
+									from_xrf_torptr_brd[25] = to_remote_g2[j].from_mod;
+
+									/* assign new streamid */
+									streamid_raw ++;
+									if (streamid_raw == 0)
+										streamid_raw ++;
+									from_xrf_torptr_brd[12] = streamid_raw / 256U;
+									from_xrf_torptr_brd[13] = streamid_raw % 256U;
+
+									calcPFCS(from_xrf_torptr_brd, 56);
+
+									/* send the data to the local gateway/repeater */
+									sendto(rptr_sock, from_xrf_torptr_brd, 56, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+
+									/* save streamid for use with the audio packets that will arrive after this header */
+
+									brd_from_xrf.xrf_streamid[0] = readBuffer2[12];
+									brd_from_xrf.xrf_streamid[1] = readBuffer2[13];
+									brd_from_xrf.rptr_streamid[brd_from_xrf_idx][0] = from_xrf_torptr_brd[12];
+									brd_from_xrf.rptr_streamid[brd_from_xrf_idx][1] = from_xrf_torptr_brd[13];
+									brd_from_xrf_idx ++;
 								}
 							}
 						}
-					} else if ( ((recvlen2 == 56) ||
-					             (recvlen2 == 27)) &&
-					            (memcmp(readBuffer2, "DSVT", 4) == 0) &&
-					            ((readBuffer2[4] == 0x10) ||
-					             (readBuffer2[4] == 0x20)) &&
-					            (readBuffer2[8] == 0x20)) {
-						/* reset countdown and protect against hackers */
 
-						found = false;
-						for (i = 0; i < 3; i++) {
-							if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-							        (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port))) {
-								to_remote_g2[i].countdown = TIMEOUT;
-								found = true;
-							}
-						}
+						if ((to_remote_g2[i].toDst4.sin_addr.s_addr != fromDst4.sin_addr.s_addr) &&
+								to_remote_g2[i].is_connected) {
+							if (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port)) {
+								if ( /*** (memcmp(readBuffer2 + 42, owner, 8) != 0) && ***/         /* block repeater announcements */
+									(memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
+									((readBuffer2[15] == 0x00)  ||                       /* normal */
+									 (readBuffer2[15] == 0x08)  ||                       /* EMR */
+									 (readBuffer2[15] == 0x20)  ||                       /* BK */
+									 (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
+									(memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
+									(readBuffer2[33] == 'G')) {
+									to_remote_g2[i].in_streamid[0] = readBuffer2[12];
+									to_remote_g2[i].in_streamid[1] = readBuffer2[13];
 
-						/* process header */
+									/* inform XRF about the source */
+									readBuffer2[11] = to_remote_g2[i].from_mod;
 
-						if ((recvlen2 == 56) && found) {
-							memset(source_stn, ' ', 9);
-							source_stn[8] = '\0';
+									memcpy((char *)readBuffer2 + 18, to_remote_g2[i].to_call, CALL_SIZE);
+									readBuffer2[25] = to_remote_g2[i].to_mod;
+									memcpy((char *)readBuffer2 + 26, to_remote_g2[i].to_call, CALL_SIZE);
+									readBuffer2[33] = 'G';
+									calcPFCS(readBuffer2, 56);
 
-							/* some bad hotspot programs out there using INCORRECT flag */
-							if (readBuffer2[15] == 0x40)
-								readBuffer2[15] = 0x00;
-							else if (readBuffer2[15] == 0x48)
-								readBuffer2[15] = 0x08;
-							else if (readBuffer2[15] == 0x60)
-								readBuffer2[15] = 0x20;
-							else if (readBuffer2[15] == 0x68)
-								readBuffer2[15] = 0x28;
-
-							/* A reflector will send to us its own RPT1 */
-							/* A repeater will send to us our RPT1 */
-
-							for (i = 0; i < 3; i++) {
-								if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-								        (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port))) {
-									/* it is a reflector, reflector's rpt1 */
-									if ((memcmp(readBuffer2 + 18, to_remote_g2[i].to_call, 7) == 0) &&
-									        (readBuffer2[25] == to_remote_g2[i].to_mod)) {
-										memcpy(&readBuffer2[18], owner.c_str(), CALL_SIZE);
-										readBuffer2[25] = to_remote_g2[i].from_mod;
-										memcpy(&readBuffer2[34], "CQCQCQ  ", 8);
-
-										memcpy(source_stn, to_remote_g2[i].to_call, 8);
-										source_stn[7] = to_remote_g2[i].to_mod;
-										break;
-									} else
-										/* it is a repeater, our rpt1 */
-										if ((memcmp(readBuffer2 + 18, owner.c_str(), CALL_SIZE-1)) &&
-										        (readBuffer2[25] == to_remote_g2[i].from_mod)) {
-											memcpy(source_stn, to_remote_g2[i].to_call, 8);
-											source_stn[7] = to_remote_g2[i].to_mod;
-											break;
-										}
+									sendto(xrf_g2_sock, readBuffer2, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 								}
-							}
+							} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
+								if ( /*** (memcmp(readBuffer2 + 42, owner, 8) != 0) && ***/         /* block repeater announcements */
+											(memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
+											((readBuffer2[15] == 0x00)  ||                       /* normal */
+											 (readBuffer2[15] == 0x08)  ||                       /* EMR */
+											 (readBuffer2[15] == 0x20)  ||                       /* BK */
+											 (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
+											(memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
+											(readBuffer2[33] == 'G')) {
+									to_remote_g2[i].in_streamid[0] = readBuffer2[12];
+									to_remote_g2[i].in_streamid[1] = readBuffer2[13];
 
-							/* somebody's crazy idea of having a personal callsign in RPT2 */
-							/* we must set it to our gateway callsign */
-							memcpy(&readBuffer2[26], owner.c_str(), CALL_SIZE);
-							readBuffer2[33] = 'G';
-							calcPFCS(readBuffer2,56);
-
-							/* At this point, all data have our RPT1 and RPT2 */
-
-							/* send the data to the repeater/reflector that is linked to our RPT1 */
-							i = -1;
-							if (readBuffer2[25] == 'A')
-								i = 0;
-							else if (readBuffer2[25] == 'B')
-								i = 1;
-							else if (readBuffer2[25] == 'C')
-								i = 2;
-
-							/* are we sure that RPT1 is our system? */
-							if ((memcmp(readBuffer2 + 18, owner.c_str(), CALL_SIZE-1) == 0) && (i >= 0)) {
-								/* Last Heard */
-								if (memcmp(old_sid[i].sid, readBuffer2 + 12, 2) != 0) {
-									if (qso_details)
-										traceit("START from remote g2: streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
-										        readBuffer2[12],readBuffer2[13],
-										        readBuffer2[15], readBuffer2[16], readBuffer2[17],
-										        &readBuffer2[42],
-										        &readBuffer2[50], &readBuffer2[34],
-										        &readBuffer2[18], &readBuffer2[26],
-										        recvlen2,inet_ntoa(fromDst4.sin_addr), source_stn);
-
-									// put user into tmp1
-									memcpy(tmp1, readBuffer2 + 42, 8);
-									tmp1[8] = '\0';
-
-									// delete the user if exists
-									for (dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
-										if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0) {
-											dt_lh_list.erase(dt_lh_pos);
-											break;
-										}
-									}
-									/* Limit?, delete oldest user */
-									if (dt_lh_list.size() == LH_MAX_SIZE) {
-										dt_lh_pos = dt_lh_list.begin();
-										dt_lh_list.erase(dt_lh_pos);
-									}
-									// add user
-									time(&tnow);
-									sprintf(tmp2, "%ld=r%.6s%c%c", tnow, source_stn, source_stn[7], readBuffer2[25]);
-									dt_lh_list[tmp2] = tmp1;
-
-									memcpy(old_sid[i].sid, readBuffer2 + 12, 2);
-								}
-
-								/* relay data to our local G2 */
-								sendto(rptr_sock, readBuffer2,56,0,(struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
-
-								/* send data to donglers */
-								/* no changes here */
-								for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
-									inbound_ptr = (inbound *)pos->second;
-									if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
-										readBuffer[0] = (unsigned char)(58 & 0xFF);
-										readBuffer[1] = (unsigned char)(58 >> 8 & 0x1F);
-										readBuffer[1] = (unsigned char)(readBuffer[1] | 0xFFFFFF80);
-										memcpy(readBuffer + 2, readBuffer2, 56);
-
-										sendto(ref_g2_sock, readBuffer, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
-									} else
-										inbound_ptr->mod = readBuffer2[25];
-								}
-
-								/* send the data to the repeater/reflector that is linked to our RPT1 */
-
-								/* Is there another local module linked to the remote same xrf mod ? */
-								/* If Yes, then broadcast */
-								k = i + 1;
-
-								if (k < 3) {
-									brd_from_xrf_idx = 0;
-									streamid_raw = (readBuffer2[12] * 256U) + readBuffer2[13];
-
-									/* We can only enter this loop up to 2 times max */
-									for (j = k; j < 3; j++) {
-										/* it is a remote gateway, not a dongle user */
-										if ((fromDst4.sin_addr.s_addr == to_remote_g2[j].toDst4.sin_addr.s_addr) &&
-										        /* it is xrf */
-										        (to_remote_g2[j].toDst4.sin_port == htons(rmt_xrf_port)) &&
-										        (memcmp(to_remote_g2[j].to_call, "XRF", 3) == 0) &&
-										        /* it is the same xrf and xrf module */
-										        (memcmp(to_remote_g2[j].to_call, to_remote_g2[i].to_call, 8) == 0) &&
-										        (to_remote_g2[j].to_mod == to_remote_g2[i].to_mod)) {
-											/* send the packet to another module of our local repeater: this is multi-link */
-
-											/* generate new packet */
-											memcpy(from_xrf_torptr_brd, readBuffer2, 56);
-
-											/* different repeater module */
-											from_xrf_torptr_brd[25] = to_remote_g2[j].from_mod;
-
-											/* assign new streamid */
-											streamid_raw ++;
-											if (streamid_raw == 0)
-												streamid_raw ++;
-											from_xrf_torptr_brd[12] = streamid_raw / 256U;
-											from_xrf_torptr_brd[13] = streamid_raw % 256U;
-
-											calcPFCS(from_xrf_torptr_brd, 56);
-
-											/* send the data to the local gateway/repeater */
-											sendto(rptr_sock, from_xrf_torptr_brd, 56, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
-
-											/* save streamid for use with the audio packets that will arrive after this header */
-
-											brd_from_xrf.xrf_streamid[0] = readBuffer2[12];
-											brd_from_xrf.xrf_streamid[1] = readBuffer2[13];
-											brd_from_xrf.rptr_streamid[brd_from_xrf_idx][0] = from_xrf_torptr_brd[12];
-											brd_from_xrf.rptr_streamid[brd_from_xrf_idx][1] = from_xrf_torptr_brd[13];
-											brd_from_xrf_idx ++;
-										}
-									}
-								}
-
-								if ((to_remote_g2[i].toDst4.sin_addr.s_addr != fromDst4.sin_addr.s_addr) &&
-								        to_remote_g2[i].is_connected) {
-									if (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port)) {
-										if ( /*** (memcmp(readBuffer2 + 42, owner, 8) != 0) && ***/         /* block repeater announcements */
-										    (memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
-										    ((readBuffer2[15] == 0x00)  ||                       /* normal */
-										     (readBuffer2[15] == 0x08)  ||                       /* EMR */
-										     (readBuffer2[15] == 0x20)  ||                       /* BK */
-										     (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
-										    (memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
-										    (readBuffer2[33] == 'G')) {
-											to_remote_g2[i].in_streamid[0] = readBuffer2[12];
-											to_remote_g2[i].in_streamid[1] = readBuffer2[13];
-
-											/* inform XRF about the source */
-											readBuffer2[11] = to_remote_g2[i].from_mod;
-
-											memcpy((char *)readBuffer2 + 18, to_remote_g2[i].to_call, CALL_SIZE);
-											readBuffer2[25] = to_remote_g2[i].to_mod;
-											memcpy((char *)readBuffer2 + 26, to_remote_g2[i].to_call, CALL_SIZE);
-											readBuffer2[33] = 'G';
-											calcPFCS(readBuffer2, 56);
-
-											sendto(xrf_g2_sock, readBuffer2, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-										}
-									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
-										if ( /*** (memcmp(readBuffer2 + 42, owner, 8) != 0) && ***/         /* block repeater announcements */
-													(memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
-													((readBuffer2[15] == 0x00)  ||                       /* normal */
-													 (readBuffer2[15] == 0x08)  ||                       /* EMR */
-													 (readBuffer2[15] == 0x20)  ||                       /* BK */
-													 (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
-													(memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
-													(readBuffer2[33] == 'G')) {
-											to_remote_g2[i].in_streamid[0] = readBuffer2[12];
-											to_remote_g2[i].in_streamid[1] = readBuffer2[13];
-
-											readBuffer[0] = (unsigned char)(58 & 0xFF);
-											readBuffer[1] = (unsigned char)(58 >> 8 & 0x1F);
-											readBuffer[1] = (unsigned char)(readBuffer[1] | 0xFFFFFF80);
-
-											memcpy(readBuffer + 2, readBuffer2, 56);
-
-											memset(readBuffer + 20, ' ', CALL_SIZE);
-											memcpy(readBuffer + 20, to_remote_g2[i].to_call,
-											       strlen(to_remote_g2[i].to_call));
-											readBuffer[27] = to_remote_g2[i].to_mod;
-											memset(readBuffer + 28, ' ', CALL_SIZE);
-											memcpy(readBuffer + 28, to_remote_g2[i].to_call,
-											       strlen(to_remote_g2[i].to_call));
-											readBuffer[35] = 'G';
-											memcpy(&readBuffer[36], "CQCQCQ  ", 8);
-
-											calcPFCS(readBuffer + 2, 56);
-
-											sendto(ref_g2_sock, readBuffer, 58, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-										}
-									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
-										if ( /*** (memcmp(readBuffer2 + 42, owner, 8) != 0) && ***/         /* block repeater announcements */
-												(memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
-												((readBuffer2[15] == 0x00)  ||                       /* normal */
-												 (readBuffer2[15] == 0x08)  ||                       /* EMR */
-												 (readBuffer2[15] == 0x20)  ||                       /* BK */
-												 (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
-												(memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
-												(readBuffer2[33] == 'G')) {
-											to_remote_g2[i].in_streamid[0] = readBuffer2[12];
-											to_remote_g2[i].in_streamid[1] = readBuffer2[13];
-
-											memcpy(xrf_2_dcs[i].mycall, readBuffer2 + 42, 8);
-											memcpy(xrf_2_dcs[i].sfx, readBuffer2 + 50, 4);
-											xrf_2_dcs[i].dcs_rptr_seq = 0;
-										}
-									}
-								}
-							}
-						} else if (found) {
-							if ((readBuffer2[14] & 0x40) != 0) {
-								for (i = 0; i < 3; i++) {
-									if (memcmp(old_sid[i].sid, readBuffer2 + 12, 2) == 0) {
-										if (qso_details)
-											traceit("END from remote g2: streamID=%d,%d, %d bytes from IP=%s\n",
-											        readBuffer2[12],readBuffer2[13],recvlen2,inet_ntoa(fromDst4.sin_addr));
-
-										memset(old_sid[i].sid, 0x00, 2);
-
-										break;
-									}
-								}
-							}
-
-							/* relay data to our local G2 */
-							sendto(rptr_sock, readBuffer2, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
-
-							/* send data to donglers */
-							/* no changes here */
-							for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
-								inbound_ptr = (inbound *)pos->second;
-								if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
-									readBuffer[0] = (unsigned char)(29 & 0xFF);
-									readBuffer[1] = (unsigned char)(29 >> 8 & 0x1F);
+									readBuffer[0] = (unsigned char)(58 & 0xFF);
+									readBuffer[1] = (unsigned char)(58 >> 8 & 0x1F);
 									readBuffer[1] = (unsigned char)(readBuffer[1] | 0xFFFFFF80);
 
-									memcpy(readBuffer + 2, readBuffer2, 27);
+									memcpy(readBuffer + 2, readBuffer2, 56);
 
-									sendto(ref_g2_sock, readBuffer, 29, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
+									memset(readBuffer + 20, ' ', CALL_SIZE);
+									memcpy(readBuffer + 20, to_remote_g2[i].to_call,
+										   strlen(to_remote_g2[i].to_call));
+									readBuffer[27] = to_remote_g2[i].to_mod;
+									memset(readBuffer + 28, ' ', CALL_SIZE);
+									memcpy(readBuffer + 28, to_remote_g2[i].to_call,
+										   strlen(to_remote_g2[i].to_call));
+									readBuffer[35] = 'G';
+									memcpy(&readBuffer[36], "CQCQCQ  ", 8);
+
+									calcPFCS(readBuffer + 2, 56);
+
+									sendto(ref_g2_sock, readBuffer, 58, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 								}
-							}
+							} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
+								if ( /*** (memcmp(readBuffer2 + 42, owner, 8) != 0) && ***/         /* block repeater announcements */
+										(memcmp(readBuffer2 + 34, "CQCQCQ", 6) == 0) &&     /* CQ calls only */
+										((readBuffer2[15] == 0x00)  ||                       /* normal */
+										 (readBuffer2[15] == 0x08)  ||                       /* EMR */
+										 (readBuffer2[15] == 0x20)  ||                       /* BK */
+										 (readBuffer2[15] == 0x28)) &&                       /* EMR + BK */
+										(memcmp(readBuffer2 + 26, owner.c_str(), CALL_SIZE-1) == 0) &&         /* rpt2 must be us */
+										(readBuffer2[33] == 'G')) {
+									to_remote_g2[i].in_streamid[0] = readBuffer2[12];
+									to_remote_g2[i].in_streamid[1] = readBuffer2[13];
 
-							/* do we have to broadcast ? */
-							if (memcmp(brd_from_xrf.xrf_streamid, readBuffer2 + 12, 2) == 0) {
-								memcpy(from_xrf_torptr_brd, readBuffer2, 27);
-
-								if ((brd_from_xrf.rptr_streamid[0][0] != 0x00) ||
-								        (brd_from_xrf.rptr_streamid[0][1] != 0x00)) {
-									from_xrf_torptr_brd[12] = brd_from_xrf.rptr_streamid[0][0];
-									from_xrf_torptr_brd[13] = brd_from_xrf.rptr_streamid[0][1];
-									sendto(rptr_sock, from_xrf_torptr_brd, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
-								}
-
-								if ((brd_from_xrf.rptr_streamid[1][0] != 0x00) ||
-								        (brd_from_xrf.rptr_streamid[1][1] != 0x00)) {
-									from_xrf_torptr_brd[12] = brd_from_xrf.rptr_streamid[1][0];
-									from_xrf_torptr_brd[13] = brd_from_xrf.rptr_streamid[1][1];
-									sendto(rptr_sock, from_xrf_torptr_brd, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
-								}
-
-								if ((readBuffer2[14] & 0x40) != 0) {
-									brd_from_xrf.xrf_streamid[0] = brd_from_xrf.xrf_streamid[1] = 0x00;
-									brd_from_xrf.rptr_streamid[0][0] = brd_from_xrf.rptr_streamid[0][1] = 0x00;
-									brd_from_xrf.rptr_streamid[1][0] = brd_from_xrf.rptr_streamid[1][1] = 0x00;
-									brd_from_xrf_idx = 0;
-								}
-							}
-
-							for (i = 0; i < 3; i++) {
-								if ((to_remote_g2[i].is_connected) &&
-								        (to_remote_g2[i].toDst4.sin_addr.s_addr != fromDst4.sin_addr.s_addr) &&
-								        (memcmp(to_remote_g2[i].in_streamid, readBuffer2 + 12, 2) == 0)) {
-									if (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port)) {
-										/* inform XRF about the source */
-										readBuffer2[11] = to_remote_g2[i].from_mod;
-
-										sendto(xrf_g2_sock, readBuffer2, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
-										readBuffer[0] = (unsigned char)(29 & 0xFF);
-										readBuffer[1] = (unsigned char)(29 >> 8 & 0x1F);
-										readBuffer[1] = (unsigned char)(readBuffer[1] | 0xFFFFFF80);
-
-										memcpy(readBuffer + 2, readBuffer2, 27);
-
-										sendto(ref_g2_sock, readBuffer, 29, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-									} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
-										memset(dcs_buf, 0x00, 600);
-										dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
-										dcs_buf[3] = '1';
-										dcs_buf[4] = dcs_buf[5] = dcs_buf[6] = 0x00;
-										memcpy(dcs_buf + 7, to_remote_g2[i].to_call, 8);
-										dcs_buf[14] = to_remote_g2[i].to_mod;
-										memcpy(dcs_buf + 15, owner.c_str(), CALL_SIZE);
-										dcs_buf[22] =  to_remote_g2[i].from_mod;
-										memcpy(dcs_buf + 23, "CQCQCQ  ", 8);
-										memcpy(dcs_buf + 31, xrf_2_dcs[i].mycall, 8);
-										memcpy(dcs_buf + 39, xrf_2_dcs[i].sfx, 4);
-										dcs_buf[43] = readBuffer2[12];  /* streamid0 */
-										dcs_buf[44] = readBuffer2[13];  /* streamid1 */
-										dcs_buf[45] = readBuffer2[14];  /* cycle sequence */
-										memcpy(dcs_buf + 46, readBuffer2 + 15, 12);
-
-										dcs_buf[58] = (xrf_2_dcs[i].dcs_rptr_seq >> 0)  & 0xff;
-										dcs_buf[59] = (xrf_2_dcs[i].dcs_rptr_seq >> 8)  & 0xff;
-										dcs_buf[60] = (xrf_2_dcs[i].dcs_rptr_seq >> 16) & 0xff;
-
-										xrf_2_dcs[i].dcs_rptr_seq ++;
-
-										dcs_buf[61] = 0x01;
-										dcs_buf[62] = 0x00;
-
-										sendto(dcs_g2_sock, dcs_buf, 100, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4),  sizeof(to_remote_g2[i].toDst4));
-									}
-
-									if ((readBuffer2[14] & 0x40) != 0) {
-										to_remote_g2[i].in_streamid[0] = 0x00;
-										to_remote_g2[i].in_streamid[1] = 0x00;
-									}
-									break;
+									memcpy(xrf_2_dcs[i].mycall, readBuffer2 + 42, 8);
+									memcpy(xrf_2_dcs[i].sfx, readBuffer2 + 50, 4);
+									xrf_2_dcs[i].dcs_rptr_seq = 0;
 								}
 							}
 						}
 					}
+				} else if (found) {
+					if ((readBuffer2[14] & 0x40) != 0) {
+						for (i = 0; i < 3; i++) {
+							if (memcmp(old_sid[i].sid, readBuffer2 + 12, 2) == 0) {
+								if (qso_details)
+									traceit("END from remote g2: streamID=%d,%d, %d bytes from IP=%s\n",
+											readBuffer2[12],readBuffer2[13],recvlen2,inet_ntoa(fromDst4.sin_addr));
+
+								memset(old_sid[i].sid, 0x00, 2);
+
+								break;
+							}
+						}
+					}
+
+					/* relay data to our local G2 */
+					sendto(rptr_sock, readBuffer2, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+
+					/* send data to donglers */
+					/* no changes here */
+					for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+						inbound_ptr = (inbound *)pos->second;
+						if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
+							readBuffer[0] = (unsigned char)(29 & 0xFF);
+							readBuffer[1] = (unsigned char)(29 >> 8 & 0x1F);
+							readBuffer[1] = (unsigned char)(readBuffer[1] | 0xFFFFFF80);
+
+							memcpy(readBuffer + 2, readBuffer2, 27);
+
+							sendto(ref_g2_sock, readBuffer, 29, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
+						}
+					}
+
+					/* do we have to broadcast ? */
+					if (memcmp(brd_from_xrf.xrf_streamid, readBuffer2 + 12, 2) == 0) {
+						memcpy(from_xrf_torptr_brd, readBuffer2, 27);
+
+						if ((brd_from_xrf.rptr_streamid[0][0] != 0x00) ||
+								(brd_from_xrf.rptr_streamid[0][1] != 0x00)) {
+							from_xrf_torptr_brd[12] = brd_from_xrf.rptr_streamid[0][0];
+							from_xrf_torptr_brd[13] = brd_from_xrf.rptr_streamid[0][1];
+							sendto(rptr_sock, from_xrf_torptr_brd, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+						}
+
+						if ((brd_from_xrf.rptr_streamid[1][0] != 0x00) ||
+								(brd_from_xrf.rptr_streamid[1][1] != 0x00)) {
+							from_xrf_torptr_brd[12] = brd_from_xrf.rptr_streamid[1][0];
+							from_xrf_torptr_brd[13] = brd_from_xrf.rptr_streamid[1][1];
+							sendto(rptr_sock, from_xrf_torptr_brd, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+						}
+
+						if ((readBuffer2[14] & 0x40) != 0) {
+							brd_from_xrf.xrf_streamid[0] = brd_from_xrf.xrf_streamid[1] = 0x00;
+							brd_from_xrf.rptr_streamid[0][0] = brd_from_xrf.rptr_streamid[0][1] = 0x00;
+							brd_from_xrf.rptr_streamid[1][0] = brd_from_xrf.rptr_streamid[1][1] = 0x00;
+							brd_from_xrf_idx = 0;
+						}
+					}
+
+					for (i = 0; i < 3; i++) {
+						if ((to_remote_g2[i].is_connected) &&
+								(to_remote_g2[i].toDst4.sin_addr.s_addr != fromDst4.sin_addr.s_addr) &&
+								(memcmp(to_remote_g2[i].in_streamid, readBuffer2 + 12, 2) == 0)) {
+							if (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port)) {
+								/* inform XRF about the source */
+								readBuffer2[11] = to_remote_g2[i].from_mod;
+
+								sendto(xrf_g2_sock, readBuffer2, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+							} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
+								readBuffer[0] = (unsigned char)(29 & 0xFF);
+								readBuffer[1] = (unsigned char)(29 >> 8 & 0x1F);
+								readBuffer[1] = (unsigned char)(readBuffer[1] | 0xFFFFFF80);
+
+								memcpy(readBuffer + 2, readBuffer2, 27);
+
+								sendto(ref_g2_sock, readBuffer, 29, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+							} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
+								memset(dcs_buf, 0x00, 600);
+								dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
+								dcs_buf[3] = '1';
+								dcs_buf[4] = dcs_buf[5] = dcs_buf[6] = 0x00;
+								memcpy(dcs_buf + 7, to_remote_g2[i].to_call, 8);
+								dcs_buf[14] = to_remote_g2[i].to_mod;
+								memcpy(dcs_buf + 15, owner.c_str(), CALL_SIZE);
+								dcs_buf[22] =  to_remote_g2[i].from_mod;
+								memcpy(dcs_buf + 23, "CQCQCQ  ", 8);
+								memcpy(dcs_buf + 31, xrf_2_dcs[i].mycall, 8);
+								memcpy(dcs_buf + 39, xrf_2_dcs[i].sfx, 4);
+								dcs_buf[43] = readBuffer2[12];  /* streamid0 */
+								dcs_buf[44] = readBuffer2[13];  /* streamid1 */
+								dcs_buf[45] = readBuffer2[14];  /* cycle sequence */
+								memcpy(dcs_buf + 46, readBuffer2 + 15, 12);
+
+								dcs_buf[58] = (xrf_2_dcs[i].dcs_rptr_seq >> 0)  & 0xff;
+								dcs_buf[59] = (xrf_2_dcs[i].dcs_rptr_seq >> 8)  & 0xff;
+								dcs_buf[60] = (xrf_2_dcs[i].dcs_rptr_seq >> 16) & 0xff;
+
+								xrf_2_dcs[i].dcs_rptr_seq ++;
+
+								dcs_buf[61] = 0x01;
+								dcs_buf[62] = 0x00;
+
+								sendto(dcs_g2_sock, dcs_buf, 100, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4),  sizeof(to_remote_g2[i].toDst4));
+							}
+
+							if ((readBuffer2[14] & 0x40) != 0) {
+								to_remote_g2[i].in_streamid[0] = 0x00;
+								to_remote_g2[i].in_streamid[1] = 0x00;
+							}
+							break;
+						}
+					}
+				}
+			}
 			FD_CLR (xrf_g2_sock,&fdset);
 		}
 
@@ -2234,276 +2232,272 @@ static void runit()
 						sendto(ref_g2_sock, readBuffer2, k_idx, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 					}
 				}
-			} else
-				/* linked repeaters request */
-				if ((recvlen2 == 4) &&
-				        (readBuffer2[0] == 4) &&
-				        (readBuffer2[1] == 192) &&
-				        (readBuffer2[2] == 5) &&
-				        (readBuffer2[3] == 0)) {
-					unsigned short i_idx = 0;
-					unsigned short j_idx = 0;
-					unsigned short k_idx = 0;
-					unsigned char tmp[2];
-					unsigned short total = 0;
+			/* linked repeaters request */
+			} else if ((recvlen2 == 4) &&
+					(readBuffer2[0] == 4) &&
+					(readBuffer2[1] == 192) &&
+					(readBuffer2[2] == 5) &&
+					(readBuffer2[3] == 0)) {
+				unsigned short i_idx = 0;
+				unsigned short j_idx = 0;
+				unsigned short k_idx = 0;
+				unsigned char tmp[2];
+				unsigned short total = 0;
 
-					pos = inbound_list.find(ip);
-					if (pos != inbound_list.end()) {
-						inbound_ptr = (inbound *)pos->second;
-						// traceit("Remote station %s %s requested linked repeaters list\n", inbound_ptr->call, ip);
+				pos = inbound_list.find(ip);
+				if (pos != inbound_list.end()) {
+					inbound_ptr = (inbound *)pos->second;
+					// traceit("Remote station %s %s requested linked repeaters list\n", inbound_ptr->call, ip);
 
-						/* header is 8 bytes */
+					/* header is 8 bytes */
 
-						/* reply type */
-						readBuffer2[2] = 5;
-						readBuffer2[3] = 1;
+					/* reply type */
+					readBuffer2[2] = 5;
+					readBuffer2[3] = 1;
 
-						/* we can have up to 3 linked systems */
-						total = 3;
-						memcpy(tmp, (char *)&total, 2);
-						readBuffer2[6] = tmp[0];
-						readBuffer2[7] = tmp[1];
+					/* we can have up to 3 linked systems */
+					total = 3;
+					memcpy(tmp, (char *)&total, 2);
+					readBuffer2[6] = tmp[0];
+					readBuffer2[7] = tmp[1];
 
-						for (i = 0, i_idx = 0; i < 3;  i++, i_idx++) {
-							/* each entry has 20 bytes */
-							if (to_remote_g2[i].to_mod != ' ') {
-								if (i == 0)
-									readBuffer2[8 + (20 * j_idx)] = 'A';
-								else if (i == 1)
-									readBuffer2[8 + (20 * j_idx)] = 'B';
-								else if (i == 2)
-									readBuffer2[8 + (20 * j_idx)] = 'C';
+					for (i = 0, i_idx = 0; i < 3;  i++, i_idx++) {
+						/* each entry has 20 bytes */
+						if (to_remote_g2[i].to_mod != ' ') {
+							if (i == 0)
+								readBuffer2[8 + (20 * j_idx)] = 'A';
+							else if (i == 1)
+								readBuffer2[8 + (20 * j_idx)] = 'B';
+							else if (i == 2)
+								readBuffer2[8 + (20 * j_idx)] = 'C';
 
-								strcpy((char *)readBuffer2 + 9 + (20 * j_idx), to_remote_g2[i].to_call);
-								readBuffer2[16 + (20 * j_idx)] = to_remote_g2[i].to_mod;
+							strcpy((char *)readBuffer2 + 9 + (20 * j_idx), to_remote_g2[i].to_call);
+							readBuffer2[16 + (20 * j_idx)] = to_remote_g2[i].to_mod;
 
-								readBuffer2[17 + (20 * j_idx)] = 0;
-								readBuffer2[18 + (20 * j_idx)] = 0;
-								readBuffer2[19 + (20 * j_idx)] = 0;
-								readBuffer2[20 + (20 * j_idx)] = 0x50;
-								readBuffer2[21 + (20 * j_idx)] = 0x04;
-								readBuffer2[22 + (20 * j_idx)] = 0x32;
-								readBuffer2[23 + (20 * j_idx)] = 0x4d;
-								readBuffer2[24 + (20 * j_idx)] = 0x9f;
-								readBuffer2[25 + (20 * j_idx)] = 0xdb;
-								readBuffer2[26 + (20 * j_idx)] = 0x0e;
-								readBuffer2[27 + (20 * j_idx)] = 0;
+							readBuffer2[17 + (20 * j_idx)] = 0;
+							readBuffer2[18 + (20 * j_idx)] = 0;
+							readBuffer2[19 + (20 * j_idx)] = 0;
+							readBuffer2[20 + (20 * j_idx)] = 0x50;
+							readBuffer2[21 + (20 * j_idx)] = 0x04;
+							readBuffer2[22 + (20 * j_idx)] = 0x32;
+							readBuffer2[23 + (20 * j_idx)] = 0x4d;
+							readBuffer2[24 + (20 * j_idx)] = 0x9f;
+							readBuffer2[25 + (20 * j_idx)] = 0xdb;
+							readBuffer2[26 + (20 * j_idx)] = 0x0e;
+							readBuffer2[27 + (20 * j_idx)] = 0;
 
-								j_idx++;
+							j_idx++;
 
-								if (j_idx == 39) {
-									/* 20 bytes for each user, so 39 * 20 = 780 bytes + 8 bytes header = 788 */
-									readBuffer2[0] = 0x14;
-									readBuffer2[1] = 0xc3;
+							if (j_idx == 39) {
+								/* 20 bytes for each user, so 39 * 20 = 780 bytes + 8 bytes header = 788 */
+								readBuffer2[0] = 0x14;
+								readBuffer2[1] = 0xc3;
 
-									k_idx = i_idx - 38;
-									memcpy(tmp, (char *)&k_idx, 2);
-									readBuffer2[4] = tmp[0];
-									readBuffer2[5] = tmp[1];
-
-									sendto(ref_g2_sock, readBuffer2,788,0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
-
-									j_idx = 0;
-								}
-							}
-						}
-
-						if (j_idx != 0) {
-							k_idx = 8 + (j_idx * 20);
-							memcpy(tmp, (char *)&k_idx, 2);
-							readBuffer2[0] = tmp[0];
-							readBuffer2[1] = tmp[1] | 0xc0;
-
-							if (i_idx > j_idx)
-								k_idx = i_idx - j_idx;
-							else
-								k_idx = 0;
-
-							memcpy(tmp, (char *)&k_idx, 2);
-							readBuffer2[4] = tmp[0];
-							readBuffer2[5] = tmp[1];
-
-							sendto(ref_g2_sock, readBuffer2, 8+(j_idx*20), 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
-						}
-					}
-				} else
-					/* connected user list request */
-					if ((recvlen2 == 4) &&
-					        (readBuffer2[0] == 4) &&
-					        (readBuffer2[1] == 192) &&
-					        (readBuffer2[2] == 6) &&
-					        (readBuffer2[3] == 0)) {
-						unsigned short i_idx = 0;
-						unsigned short j_idx = 0;
-						unsigned short k_idx = 0;
-						unsigned char tmp[2];
-						unsigned short total = 0;
-
-						pos = inbound_list.find(ip);
-						if (pos != inbound_list.end()) {
-							inbound_ptr = (inbound *)pos->second;
-							// traceit("Remote station %s %s requested connected user list\n", inbound_ptr->call, ip);
-
-							/* header is 8 bytes */
-
-							/* reply type */
-							readBuffer2[2] = 6;
-							readBuffer2[3] = 0;
-
-							/* total connected users */
-							total =  inbound_list.size();
-							memcpy(tmp, (char *)&total, 2);
-							readBuffer2[6] = tmp[0];
-							readBuffer2[7] = tmp[1];
-
-							for (pos = inbound_list.begin(), i_idx = 0; pos != inbound_list.end();  pos++, i_idx++) {
-								/* each entry has 20 bytes */
-								readBuffer2[8 + (20 * j_idx)] = ' ';
-								inbound_ptr = (inbound *)pos->second;
-
-								readBuffer2[8 + (20 * j_idx)] = inbound_ptr->mod;
-								strcpy((char *)readBuffer2 + 9 + (20 * j_idx), inbound_ptr->call);
-
-								readBuffer2[17 + (20 * j_idx)] = 0;
-								/* readBuffer2[18 + (20 * j_idx)] = 0; */
-								readBuffer2[18 + (20 * j_idx)] = inbound_ptr->client;
-								readBuffer2[19 + (20 * j_idx)] = 0;
-								readBuffer2[20 + (20 * j_idx)] = 0x0d;
-								readBuffer2[21 + (20 * j_idx)] = 0x4d;
-								readBuffer2[22 + (20 * j_idx)] = 0x37;
-								readBuffer2[23 + (20 * j_idx)] = 0x4d;
-								readBuffer2[24 + (20 * j_idx)] = 0x6f;
-								readBuffer2[25 + (20 * j_idx)] = 0x98;
-								readBuffer2[26 + (20 * j_idx)] = 0x04;
-								readBuffer2[27 + (20 * j_idx)] = 0;
-
-								j_idx++;
-
-								if (j_idx == 39) {
-									/* 20 bytes for each user, so 39 * 20 = 788 bytes + 8 bytes header = 788 */
-									readBuffer2[0] = 0x14;
-									readBuffer2[1] = 0xc3;
-
-									k_idx = i_idx - 38;
-									memcpy(tmp, (char *)&k_idx, 2);
-									readBuffer2[4] = tmp[0];
-									readBuffer2[5] = tmp[1];
-
-									sendto(ref_g2_sock, readBuffer2, 788, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
-
-									j_idx = 0;
-								}
-							}
-
-							if (j_idx != 0) {
-								k_idx = 8 + (j_idx * 20);
-								memcpy(tmp, (char *)&k_idx, 2);
-								readBuffer2[0] = tmp[0];
-								readBuffer2[1] = tmp[1] | 0xc0;
-
-								if (i_idx > j_idx)
-									k_idx = i_idx - j_idx;
-								else
-									k_idx = 0;
-
+								k_idx = i_idx - 38;
 								memcpy(tmp, (char *)&k_idx, 2);
 								readBuffer2[4] = tmp[0];
 								readBuffer2[5] = tmp[1];
 
-								sendto(ref_g2_sock, readBuffer2, 8+(j_idx*20), 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+								sendto(ref_g2_sock, readBuffer2,788,0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+
+								j_idx = 0;
 							}
 						}
-					} else
-						/* date request */
-						if ((recvlen2 == 4) &&
-						        (readBuffer2[0] == 4) &&
-						        (readBuffer2[1] == 192) &&
-						        (readBuffer2[2] == 8) &&
-						        (readBuffer2[3] == 0)) {
-							time_t ltime;
-							struct tm tm;
+					}
 
-							pos = inbound_list.find(ip);
-							if (pos != inbound_list.end()) {
-								inbound_ptr = (inbound *)pos->second;
-								// traceit("Remote station %s %s requested date\n", inbound_ptr->call, ip);
+					if (j_idx != 0) {
+						k_idx = 8 + (j_idx * 20);
+						memcpy(tmp, (char *)&k_idx, 2);
+						readBuffer2[0] = tmp[0];
+						readBuffer2[1] = tmp[1] | 0xc0;
 
-								time(&ltime);
-								localtime_r(&ltime,&tm);
+						if (i_idx > j_idx)
+							k_idx = i_idx - j_idx;
+						else
+							k_idx = 0;
 
-								readBuffer2[0] = 34;
-								readBuffer2[1] = 192;
-								readBuffer2[2] = 8;
-								readBuffer2[3] = 0;
-								readBuffer2[4] = 0xb5;
-								readBuffer2[5] = 0xae;
-								readBuffer2[6] = 0x37;
-								readBuffer2[7] = 0x4d;
-								snprintf((char *)readBuffer2 + 8, 1024 - 1,
-								         "20%02d/%02d/%02d %02d:%02d:%02d %5.5s",
-								         tm.tm_year % 100, tm.tm_mon+1,tm.tm_mday,
-								         tm.tm_hour,tm.tm_min,tm.tm_sec,
-								         (tzname[0] == NULL)?"     ":tzname[0]);
+						memcpy(tmp, (char *)&k_idx, 2);
+						readBuffer2[4] = tmp[0];
+						readBuffer2[5] = tmp[1];
 
-								sendto(ref_g2_sock, readBuffer2, 34, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
-							}
-						} else
-							/* version request */
-							if ((recvlen2 == 4) &&
-							        (readBuffer2[0] == 4) &&
-							        (readBuffer2[1] == 192) &&
-							        (readBuffer2[2] == 3) &&
-							        (readBuffer2[3] == 0)) {
-								pos = inbound_list.find(ip);
-								if (pos != inbound_list.end()) {
-									inbound_ptr = (inbound *)pos->second;
-									// traceit("Remote station %s %s requested version\n", inbound_ptr->call, ip);
+						sendto(ref_g2_sock, readBuffer2, 8+(j_idx*20), 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+					}
+				}
+			/* connected user list request */
+			} else if ((recvlen2 == 4) &&
+					(readBuffer2[0] == 4) &&
+					(readBuffer2[1] == 192) &&
+					(readBuffer2[2] == 6) &&
+					(readBuffer2[3] == 0)) {
+				unsigned short i_idx = 0;
+				unsigned short j_idx = 0;
+				unsigned short k_idx = 0;
+				unsigned char tmp[2];
+				unsigned short total = 0;
 
-									readBuffer2[0] = 9;
-									readBuffer2[1] = 192;
-									readBuffer2[2] = 3;
-									readBuffer2[3] = 0;
-									strncpy((char *)readBuffer2 + 4, VERSION, 4);
-									readBuffer2[8] = 0;
+				pos = inbound_list.find(ip);
+				if (pos != inbound_list.end()) {
+					inbound_ptr = (inbound *)pos->second;
+					// traceit("Remote station %s %s requested connected user list\n", inbound_ptr->call, ip);
 
-									sendto(ref_g2_sock, readBuffer2, 9, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
-								}
-							} else if ((recvlen2 == 5) &&
-							           (readBuffer2[0] == 5) &&
-							           (readBuffer2[1] == 0) &&
-							           (readBuffer2[2] == 24) &&
-							           (readBuffer2[3] == 0) &&
-							           (readBuffer2[4] == 0)) {
-								/* reply with the same DISCONNECT */
-								sendto(ref_g2_sock, readBuffer2, 5, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+					/* header is 8 bytes */
 
-								for (i = 0; i < 3; i++) {
-									if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-									        (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))) {
-										traceit("Call %s disconnected\n", to_remote_g2[i].to_call);
+					/* reply type */
+					readBuffer2[2] = 6;
+					readBuffer2[3] = 0;
 
-										to_remote_g2[i].to_call[0] = '\0';
-										memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
-										to_remote_g2[i].from_mod = ' ';
-										to_remote_g2[i].to_mod = ' ';
-										to_remote_g2[i].countdown = 0;
-										to_remote_g2[i].is_connected = false;
-										to_remote_g2[i].in_streamid[0] = 0x00;
-										to_remote_g2[i].in_streamid[1] = 0x00;
-									}
-								}
+					/* total connected users */
+					total =  inbound_list.size();
+					memcpy(tmp, (char *)&total, 2);
+					readBuffer2[6] = tmp[0];
+					readBuffer2[7] = tmp[1];
 
-								pos = inbound_list.find(ip);
-								if (pos != inbound_list.end()) {
-									inbound_ptr = (inbound *)pos->second;
-									if (memcmp(inbound_ptr->call, "1NFO", 4) != 0)
-										traceit("Call %s disconnected\n", inbound_ptr->call);
-									free(pos->second);
-									pos->second = NULL;
-									inbound_list.erase(pos);
-								}
-								print_status_file();
-							}
+					for (pos = inbound_list.begin(), i_idx = 0; pos != inbound_list.end();  pos++, i_idx++) {
+						/* each entry has 20 bytes */
+						readBuffer2[8 + (20 * j_idx)] = ' ';
+						inbound_ptr = (inbound *)pos->second;
+
+						readBuffer2[8 + (20 * j_idx)] = inbound_ptr->mod;
+						strcpy((char *)readBuffer2 + 9 + (20 * j_idx), inbound_ptr->call);
+
+						readBuffer2[17 + (20 * j_idx)] = 0;
+						/* readBuffer2[18 + (20 * j_idx)] = 0; */
+						readBuffer2[18 + (20 * j_idx)] = inbound_ptr->client;
+						readBuffer2[19 + (20 * j_idx)] = 0;
+						readBuffer2[20 + (20 * j_idx)] = 0x0d;
+						readBuffer2[21 + (20 * j_idx)] = 0x4d;
+						readBuffer2[22 + (20 * j_idx)] = 0x37;
+						readBuffer2[23 + (20 * j_idx)] = 0x4d;
+						readBuffer2[24 + (20 * j_idx)] = 0x6f;
+						readBuffer2[25 + (20 * j_idx)] = 0x98;
+						readBuffer2[26 + (20 * j_idx)] = 0x04;
+						readBuffer2[27 + (20 * j_idx)] = 0;
+
+						j_idx++;
+
+						if (j_idx == 39) {
+							/* 20 bytes for each user, so 39 * 20 = 788 bytes + 8 bytes header = 788 */
+							readBuffer2[0] = 0x14;
+							readBuffer2[1] = 0xc3;
+
+							k_idx = i_idx - 38;
+							memcpy(tmp, (char *)&k_idx, 2);
+							readBuffer2[4] = tmp[0];
+							readBuffer2[5] = tmp[1];
+
+							sendto(ref_g2_sock, readBuffer2, 788, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+
+							j_idx = 0;
+						}
+					}
+
+					if (j_idx != 0) {
+						k_idx = 8 + (j_idx * 20);
+						memcpy(tmp, (char *)&k_idx, 2);
+						readBuffer2[0] = tmp[0];
+						readBuffer2[1] = tmp[1] | 0xc0;
+
+						if (i_idx > j_idx)
+							k_idx = i_idx - j_idx;
+						else
+							k_idx = 0;
+
+						memcpy(tmp, (char *)&k_idx, 2);
+						readBuffer2[4] = tmp[0];
+						readBuffer2[5] = tmp[1];
+
+						sendto(ref_g2_sock, readBuffer2, 8+(j_idx*20), 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+					}
+				}
+			/* date request */
+			} else if ((recvlen2 == 4) &&
+					(readBuffer2[0] == 4) &&
+					(readBuffer2[1] == 192) &&
+					(readBuffer2[2] == 8) &&
+					(readBuffer2[3] == 0)) {
+				time_t ltime;
+				struct tm tm;
+
+				pos = inbound_list.find(ip);
+				if (pos != inbound_list.end()) {
+					inbound_ptr = (inbound *)pos->second;
+					// traceit("Remote station %s %s requested date\n", inbound_ptr->call, ip);
+
+					time(&ltime);
+					localtime_r(&ltime,&tm);
+
+					readBuffer2[0] = 34;
+					readBuffer2[1] = 192;
+					readBuffer2[2] = 8;
+					readBuffer2[3] = 0;
+					readBuffer2[4] = 0xb5;
+					readBuffer2[5] = 0xae;
+					readBuffer2[6] = 0x37;
+					readBuffer2[7] = 0x4d;
+					snprintf((char *)readBuffer2 + 8, 1024 - 1,
+							 "20%02d/%02d/%02d %02d:%02d:%02d %5.5s",
+							 tm.tm_year % 100, tm.tm_mon+1,tm.tm_mday,
+							 tm.tm_hour,tm.tm_min,tm.tm_sec,
+							 (tzname[0] == NULL)?"     ":tzname[0]);
+
+					sendto(ref_g2_sock, readBuffer2, 34, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+				}
+			/* version request */
+			} else if ((recvlen2 == 4) &&
+					(readBuffer2[0] == 4) &&
+					(readBuffer2[1] == 192) &&
+					(readBuffer2[2] == 3) &&
+					(readBuffer2[3] == 0)) {
+				pos = inbound_list.find(ip);
+				if (pos != inbound_list.end()) {
+					inbound_ptr = (inbound *)pos->second;
+					// traceit("Remote station %s %s requested version\n", inbound_ptr->call, ip);
+
+					readBuffer2[0] = 9;
+					readBuffer2[1] = 192;
+					readBuffer2[2] = 3;
+					readBuffer2[3] = 0;
+					strncpy((char *)readBuffer2 + 4, VERSION, 4);
+					readBuffer2[8] = 0;
+
+					sendto(ref_g2_sock, readBuffer2, 9, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+				}
+			} else if ((recvlen2 == 5) &&
+					   (readBuffer2[0] == 5) &&
+					   (readBuffer2[1] == 0) &&
+					   (readBuffer2[2] == 24) &&
+					   (readBuffer2[3] == 0) &&
+					   (readBuffer2[4] == 0)) {
+				/* reply with the same DISCONNECT */
+				sendto(ref_g2_sock, readBuffer2, 5, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
+
+				for (i = 0; i < 3; i++) {
+					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
+							(to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))) {
+						traceit("Call %s disconnected\n", to_remote_g2[i].to_call);
+
+						to_remote_g2[i].to_call[0] = '\0';
+						memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
+						to_remote_g2[i].from_mod = ' ';
+						to_remote_g2[i].to_mod = ' ';
+						to_remote_g2[i].countdown = 0;
+						to_remote_g2[i].is_connected = false;
+						to_remote_g2[i].in_streamid[0] = 0x00;
+						to_remote_g2[i].in_streamid[1] = 0x00;
+					}
+				}
+
+				pos = inbound_list.find(ip);
+				if (pos != inbound_list.end()) {
+					inbound_ptr = (inbound *)pos->second;
+					if (memcmp(inbound_ptr->call, "1NFO", 4) != 0)
+						traceit("Call %s disconnected\n", inbound_ptr->call);
+					free(pos->second);
+					pos->second = NULL;
+					inbound_list.erase(pos);
+				}
+				print_status_file();
+			}
 
 			for (i = 0; i < 3; i++) {
 				if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
@@ -3182,30 +3176,67 @@ static void runit()
 				;
 			else if (recvlen2 == 35)
 				;
-			else
-				/* is this a keepalive 22 bytes */
-				if (recvlen2 == 22) {
-					i = -1;
-					if (dcs_buf[17] == 'A')
-						i = 0;
-					else if (dcs_buf[17] == 'B')
-						i = 1;
-					else if (dcs_buf[17] == 'C')
-						i = 2;
+			/* is this a keepalive 22 bytes */
+			else if (recvlen2 == 22) {
+				i = -1;
+				if (dcs_buf[17] == 'A')
+					i = 0;
+				else if (dcs_buf[17] == 'B')
+					i = 1;
+				else if (dcs_buf[17] == 'C')
+					i = 2;
 
-					/* It is one of our valid repeaters */
-					// DG1HT from owner 8 to 7
-					if ((i >= 0) && (memcmp(dcs_buf + 9, owner.c_str(), CALL_SIZE-1) == 0)) {
-						/* is that the remote system that we asked to connect to? */
-						if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-						        (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) &&
-						        (memcmp(to_remote_g2[i].to_call, dcs_buf, 7) == 0) &&
-						        (to_remote_g2[i].to_mod == dcs_buf[7])) {
+				/* It is one of our valid repeaters */
+				// DG1HT from owner 8 to 7
+				if ((i >= 0) && (memcmp(dcs_buf + 9, owner.c_str(), CALL_SIZE-1) == 0)) {
+					/* is that the remote system that we asked to connect to? */
+					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
+							(to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) &&
+							(memcmp(to_remote_g2[i].to_call, dcs_buf, 7) == 0) &&
+							(to_remote_g2[i].to_mod == dcs_buf[7])) {
+						if (!to_remote_g2[i].is_connected) {
+							tracing[i].last_time = time(NULL);
+
+							to_remote_g2[i].is_connected = true;
+							traceit("Connected from: %.*s\n", 8, dcs_buf);
+							print_status_file();
+
+							strcpy(linked_remote_system, to_remote_g2[i].to_call);
+							space_p = strchr(linked_remote_system, ' ');
+							if (space_p)
+								*space_p = '\0';
+							sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
+									to_remote_g2[i].from_mod,
+									linked_remote_system,
+									to_remote_g2[i].to_mod);
+							audio_notify(notify_msg);
+						}
+						to_remote_g2[i].countdown = TIMEOUT;
+					}
+				}
+			} else if (recvlen2 == 14) {	/* is this a reply to our link/unlink request: 14 bytes */
+				i = -1;
+				if (dcs_buf[8] == 'A')
+					i = 0;
+				else if (dcs_buf[8] == 'B')
+					i = 1;
+				else if (dcs_buf[8] == 'C')
+					i = 2;
+
+				/* It is one of our valid repeaters */
+				if ((i >= 0) && (memcmp(dcs_buf, owner.c_str(), CALL_SIZE) == 0)) {
+					/* It is from a remote that we contacted */
+					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
+							(to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) &&
+							(to_remote_g2[i].from_mod == dcs_buf[8])) {
+						if ((to_remote_g2[i].to_mod == dcs_buf[9]) &&
+								(memcmp(dcs_buf + 10, "ACK", 3) == 0)) {
+							to_remote_g2[i].countdown = TIMEOUT;
 							if (!to_remote_g2[i].is_connected) {
 								tracing[i].last_time = time(NULL);
 
 								to_remote_g2[i].is_connected = true;
-								traceit("Connected from: %.*s\n", 8, dcs_buf);
+								traceit("Connected from: %.*s\n", 8, to_remote_g2[i].to_call);
 								print_status_file();
 
 								strcpy(linked_remote_system, to_remote_g2[i].to_call);
@@ -3213,74 +3244,34 @@ static void runit()
 								if (space_p)
 									*space_p = '\0';
 								sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
-								        to_remote_g2[i].from_mod,
-								        linked_remote_system,
-								        to_remote_g2[i].to_mod);
+										to_remote_g2[i].from_mod,
+										linked_remote_system,
+										to_remote_g2[i].to_mod);
 								audio_notify(notify_msg);
 							}
-							to_remote_g2[i].countdown = TIMEOUT;
+						} else if (memcmp(dcs_buf + 10, "NAK", 3) == 0) {
+							traceit("Link module %c to [%s] %c is unlinked\n",
+									to_remote_g2[i].from_mod, to_remote_g2[i].to_call,
+									to_remote_g2[i].to_mod);
+
+							sprintf(notify_msg, "%c_failed_linked.dat_UNLINKED",
+									to_remote_g2[i].from_mod);
+							audio_notify(notify_msg);
+
+							to_remote_g2[i].to_call[0] = '\0';
+							memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
+							to_remote_g2[i].from_mod = ' ';
+							to_remote_g2[i].to_mod = ' ';
+							to_remote_g2[i].countdown = 0;
+							to_remote_g2[i].is_connected = false;
+							to_remote_g2[i].in_streamid[0] = 0x00;
+							to_remote_g2[i].in_streamid[1] = 0x00;
+
+							print_status_file();
 						}
 					}
 				}
-			/* is this a reply to our link/unlink request: 14 bytes */
-				else if (recvlen2 == 14) {
-					i = -1;
-					if (dcs_buf[8] == 'A')
-						i = 0;
-					else if (dcs_buf[8] == 'B')
-						i = 1;
-					else if (dcs_buf[8] == 'C')
-						i = 2;
-
-					/* It is one of our valid repeaters */
-					if ((i >= 0) && (memcmp(dcs_buf, owner.c_str(), CALL_SIZE) == 0)) {
-						/* It is from a remote that we contacted */
-						if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-						        (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) &&
-						        (to_remote_g2[i].from_mod == dcs_buf[8])) {
-							if ((to_remote_g2[i].to_mod == dcs_buf[9]) &&
-							        (memcmp(dcs_buf + 10, "ACK", 3) == 0)) {
-								to_remote_g2[i].countdown = TIMEOUT;
-								if (!to_remote_g2[i].is_connected) {
-									tracing[i].last_time = time(NULL);
-
-									to_remote_g2[i].is_connected = true;
-									traceit("Connected from: %.*s\n", 8, to_remote_g2[i].to_call);
-									print_status_file();
-
-									strcpy(linked_remote_system, to_remote_g2[i].to_call);
-									space_p = strchr(linked_remote_system, ' ');
-									if (space_p)
-										*space_p = '\0';
-									sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
-									        to_remote_g2[i].from_mod,
-									        linked_remote_system,
-									        to_remote_g2[i].to_mod);
-									audio_notify(notify_msg);
-								}
-							} else if (memcmp(dcs_buf + 10, "NAK", 3) == 0) {
-								traceit("Link module %c to [%s] %c is unlinked\n",
-								        to_remote_g2[i].from_mod, to_remote_g2[i].to_call,
-								        to_remote_g2[i].to_mod);
-
-								sprintf(notify_msg, "%c_failed_linked.dat_UNLINKED",
-								        to_remote_g2[i].from_mod);
-								audio_notify(notify_msg);
-
-								to_remote_g2[i].to_call[0] = '\0';
-								memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
-								to_remote_g2[i].from_mod = ' ';
-								to_remote_g2[i].to_mod = ' ';
-								to_remote_g2[i].countdown = 0;
-								to_remote_g2[i].is_connected = false;
-								to_remote_g2[i].in_streamid[0] = 0x00;
-								to_remote_g2[i].in_streamid[1] = 0x00;
-
-								print_status_file();
-							}
-						}
-					}
-				}
+			}
 			FD_CLR (dcs_g2_sock,&fdset);
 		}
 
