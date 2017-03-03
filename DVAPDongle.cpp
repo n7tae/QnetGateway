@@ -750,16 +750,18 @@ bool CDVAPDongle::OpenSerial(char *device)
 
 void CDVAPDongle::Stop()
 {
-	dvapreg.header = 0x5u;
-	dvapreg.param.control = 0x18u;
-	dvapreg.param.byte = 0;
-	write_to_dvp(&dvapreg, 5);
+	SDVAP_REGISTER dvap;
+	dvap.header = 0x5u;
+	dvap.param.control = 0x18u;
+	dvap.param.byte = 0;
+	write_to_dvp(&dvap, 5);
 	return;
 }
 
 int CDVAPDongle::KeepAlive()
 {
-	dvapreg.header = 0x6003u;
-	dvapreg.nul = 0x0u;
-	return write_to_dvp(&dvapreg, 3);
+	SDVAP_REGISTER dvap;
+	dvap.header = 0x6003u;
+	dvap.nul = 0x0u;
+	return write_to_dvp(&dvap, 3);
 }
