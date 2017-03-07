@@ -162,8 +162,6 @@ static struct {
 static int xrf_g2_sock = -1;
 static int ref_g2_sock = -1;
 static int dcs_g2_sock = -1;
-static unsigned char dcs_buf[1000];
-static unsigned char readBuffer2[1024];
 static struct sockaddr_in fromDst4;
 
 // After we receive it from remote g2,
@@ -172,7 +170,6 @@ static struct sockaddr_in toLocalg2;
 
 // input from our own local repeater
 static int rptr_sock = -1;
-static unsigned char readBuffer[100]; // 58 or 29 or 32, max is 58
 static struct sockaddr_in fromRptr;
 
 static fd_set fdset;
@@ -1272,6 +1269,9 @@ static void runit()
 
 	char tmp1[CALL_SIZE + 1];
 	char tmp2[36]; // 8 for rpt1 + 24 for time_t in std::string format
+	unsigned char readBuffer[100]; // 58 or 29 or 32, max is 58
+	unsigned char readBuffer2[1024];
+	unsigned char dcs_buf[1000];
 	dt_lh_type::iterator dt_lh_pos;
 	dt_lh_type::reverse_iterator r_dt_lh_pos;
 
@@ -2140,8 +2140,7 @@ static void runit()
 
 		if (FD_ISSET(ref_g2_sock, &fdset)) {
 			fromlen = sizeof(struct sockaddr_in);
-			recvlen2 = recvfrom(ref_g2_sock,(char *)readBuffer2,100,
-			                    0,(struct sockaddr *)&fromDst4,&fromlen);
+			recvlen2 = recvfrom(ref_g2_sock, (char *)readBuffer2, 100, 0, (struct sockaddr *)&fromDst4,&fromlen);
 
 			strncpy(ip, inet_ntoa(fromDst4.sin_addr),IP_SIZE);
 			ip[IP_SIZE] = '\0';
@@ -3277,20 +3276,15 @@ static void runit()
 
 		if (FD_ISSET(rptr_sock, &fdset)) {
 			fromlen = sizeof(struct sockaddr_in);
-			recvlen = recvfrom(rptr_sock,(char *)readBuffer,100,
-			                   0,(struct sockaddr *)&fromRptr,&fromlen);
+			recvlen = recvfrom(rptr_sock, (char *)readBuffer, 100, 0, (struct sockaddr *)&fromRptr,&fromlen);
 
-			if ( ((recvlen == 58) ||
-			        (recvlen == 29) ||
-			        (recvlen == 32)) &&
+			if ( ((recvlen == 58) || (recvlen == 29) || (recvlen == 32)) &&
 			        (readBuffer[6] == 0x73) &&
 			        (readBuffer[7] == 0x12) &&
 			        ((memcmp(readBuffer,"DSTR", 4) == 0) || (memcmp(readBuffer,"CCS_", 4) == 0)) &&
 			        (readBuffer[10] == 0x20) &&
 			        (readBuffer[8] == 0x00) &&
-			        ((readBuffer[9] == 0x30) ||
-			         (readBuffer[9] == 0x13) ||
-			         (readBuffer[9] == 0x16)) ) {
+			        ((readBuffer[9] == 0x30) || (readBuffer[9] == 0x13) || (readBuffer[9] == 0x16)) ) {
 
 				if (recvlen == 58) {
 					if (qso_details)

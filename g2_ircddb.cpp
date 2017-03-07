@@ -1594,55 +1594,54 @@ static void runit()
 								}
 							}
 						}
-					} else
-						/* check for cross-banding */
-						if (0 == (memcmp(rptrbuf.vpkt.hdr.urcall, "CQCQCQ", 6)) &&			/* yrcall is CQCQCQ */
-						        (0 == memcmp(rptrbuf.vpkt.hdr.rpt1, OWNER.c_str(), 7)) && 	/* rpt1 is this repeater */
-						        (0 == memcmp(rptrbuf.vpkt.hdr.rpt2, OWNER.c_str(), 7)) &&	/* rpt2 is this repeater */
-						        ((rptrbuf.vpkt.hdr.rpt2[7] == 'A') ||
-						         (rptrbuf.vpkt.hdr.rpt2[7] == 'B') ||
-						         (rptrbuf.vpkt.hdr.rpt2[7] == 'C')) &&                   /* mod of rpt1 is A,B,C */
-						        ((rptrbuf.vpkt.hdr.rpt1[7] == 'A') ||
-						         (rptrbuf.vpkt.hdr.rpt1[7] == 'B') ||
-						         (rptrbuf.vpkt.hdr.rpt1[7] == 'C')) &&           /* !!! usually a G of rpt2, but we see A,B,C */
-						        (rptrbuf.vpkt.hdr.rpt1[7] != rptrbuf.vpkt.hdr.rpt2[7])) {  /* cross-banding? make sure NOT the same */
-							i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+					/* check for cross-banding */
+					} else if (0 == (memcmp(rptrbuf.vpkt.hdr.urcall, "CQCQCQ", 6)) &&			/* yrcall is CQCQCQ */
+							(0 == memcmp(rptrbuf.vpkt.hdr.rpt1, OWNER.c_str(), 7)) && 	/* rpt1 is this repeater */
+							(0 == memcmp(rptrbuf.vpkt.hdr.rpt2, OWNER.c_str(), 7)) &&	/* rpt2 is this repeater */
+							((rptrbuf.vpkt.hdr.rpt2[7] == 'A') ||
+							 (rptrbuf.vpkt.hdr.rpt2[7] == 'B') ||
+							 (rptrbuf.vpkt.hdr.rpt2[7] == 'C')) &&                   /* mod of rpt1 is A,B,C */
+							((rptrbuf.vpkt.hdr.rpt1[7] == 'A') ||
+							 (rptrbuf.vpkt.hdr.rpt1[7] == 'B') ||
+							 (rptrbuf.vpkt.hdr.rpt1[7] == 'C')) &&           /* !!! usually a G of rpt2, but we see A,B,C */
+							(rptrbuf.vpkt.hdr.rpt1[7] != rptrbuf.vpkt.hdr.rpt2[7])) {  /* cross-banding? make sure NOT the same */
+						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
-							if (i>=0 && i<3) {
-								// The remote repeater has been set, lets fill in the dest_rptr
-								// so that later we can send that to the LIVE web site
-								memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.rpt1, 8);
-								band_txt[i].dest_rptr[8] = '\0';
-							}
+						if (i>=0 && i<3) {
+							// The remote repeater has been set, lets fill in the dest_rptr
+							// so that later we can send that to the LIVE web site
+							memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.rpt1, 8);
+							band_txt[i].dest_rptr[8] = '\0';
+						}
 
-							i = rptrbuf.vpkt.hdr.rpt1[7] - 'A';
+						i = rptrbuf.vpkt.hdr.rpt1[7] - 'A';
 
-							/* valid destination repeater module? */
-							if (i>=0 && i<3) {
-								// toRptr[i] :    receiving from a remote system or cross-band
-								// band_txt[i] :  local RF is talking.
-								if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-									traceit("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.rpt2[7], rptrbuf.vpkt.hdr.rpt1[7]);
+						/* valid destination repeater module? */
+						if (i>=0 && i<3) {
+							// toRptr[i] :    receiving from a remote system or cross-band
+							// band_txt[i] :  local RF is talking.
+							if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
+								traceit("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.rpt2[7], rptrbuf.vpkt.hdr.rpt1[7]);
 
-									rptrbuf.vpkt.hdr.rpt2[7] = 'G';
-									calcPFCS(rptrbuf.pkt_id, 58);
+								rptrbuf.vpkt.hdr.rpt2[7] = 'G';
+								calcPFCS(rptrbuf.pkt_id, 58);
 
-									sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+								sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
-									/* This is the active streamid */
-									toRptr[i].streamid = rptrbuf.vpkt.streamid;
-									toRptr[i].adr = fromRptr.sin_addr.s_addr;
+								/* This is the active streamid */
+								toRptr[i].streamid = rptrbuf.vpkt.streamid;
+								toRptr[i].adr = fromRptr.sin_addr.s_addr;
 
-									/* time it, in case stream times out */
-									time(&toRptr[i].last_time);
+								/* time it, in case stream times out */
+								time(&toRptr[i].last_time);
 
-									/* bump the G2 counter */
-									toRptr[i].G2_COUNTER ++;
+								/* bump the G2 counter */
+								toRptr[i].G2_COUNTER ++;
 
-									toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-								}
+								toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 							}
 						}
+					}
 				} else {
 					for (i = 0; i < 3; i++) {
 						if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
