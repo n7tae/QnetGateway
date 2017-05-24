@@ -4,7 +4,7 @@
 #
 # 73
 #
-# Tom, ac2ie@arrl.net
+# Tom, n7tae@arrl.net
 
 if [ -e gwys.txt ]; then
 	mv -f gwys.txt gwys.txt.orig

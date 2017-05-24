@@ -406,7 +406,7 @@ static bool read_config(char *cfgFile)
 				rptr.mod[m].desc1 = "";
 			if (! cfg.lookupValue(path+".desc2", rptr.mod[m].desc2))
 				rptr.mod[m].desc2 = "";
-			if (! get_value(cfg, std::string(path+".url").c_str(), rptr.mod[m].url, 0, 80, "github.com/ac2ie/g2_ircddb"))
+			if (! get_value(cfg, std::string(path+".url").c_str(), rptr.mod[m].url, 0, 80, "github.com/n7tae/g2_ircddb"))
 				return true;
 			// truncate strings
 			if (rptr.mod[m].desc1.length() > 20)

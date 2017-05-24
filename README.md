@@ -31,7 +31,7 @@ and maybe a few more of your favorite packages. Here is one of my favorites: `su
 
 After you install all the required packages, the g2_ircddb gateway installation can begin. Go to your login home directory and (without root privileges) type:
 ```
-git clone git://github.com/ac2ie/g2_ircddb.git
+git clone git://github.com/n7tae/g2_ircddb.git
 ```
 Then cd into the new g2_ircddb directory and review the `BUILDING` and `CONFIGURING` file for further instructions, here is an outline:
 ```

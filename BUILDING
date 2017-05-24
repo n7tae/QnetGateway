@@ -53,7 +53,7 @@ After you configure you RPi or BBB, update, upgrade and install all the required
 packages, the gateway installation can begin. Go to your login home directory and
 (without root privileges type:
 
-git clone git://github.com/ac2ie/g2_ircddb.git
+git clone git://github.com/n7tae/g2_ircddb.git
 
 This will create a g2_ircddb directory with everything you need to build a dvap or
 dvrptr ircddb gateway.
@@ -148,4 +148,4 @@ If you want to uninstall everything return to the build directory and type eithe
 uninstalldtmfs".  This will shutdown and remove the service scripts and links and
 remove most everything from /usr/local.
 
-Tom Early, ac2ie@arrl.net
+Tom Early, n7tae@arrl.net
