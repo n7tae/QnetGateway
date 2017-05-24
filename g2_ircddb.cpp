@@ -1,7 +1,7 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
  *
- *   Copyright 2017 by Thomas Early, AC2IE
+ *   Copyright 2017 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  */
 
 
-/* by KI4LKF, AC2IE */
+/* by KI4LKF, N7TAE */
 /*
    g2_ircddb is a dstar G2 gateway, using irc routing
        adapted from the OpenG2 G2 gateway

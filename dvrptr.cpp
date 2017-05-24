@@ -1,6 +1,6 @@
 /*
  * DVRPTR Repeater for Linux
- * Autor: DG1HT DH2YBE KI4LKF AC2IE
+ * Autor: DG1HT DH2YBE KI4LKF N7TAE
  *
  --------------------------------------------------------------------------------------------------------*/
 #include <stdio.h>

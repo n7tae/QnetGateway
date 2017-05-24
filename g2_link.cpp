@@ -2,7 +2,7 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
  *   Additional:
- *   Copyright (C) 2015 by Thomas A. Early AC2IE
+ *   Copyright (C) 2015 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  */
 
 
-/* by KI4LKF and AC2IE*/
+/* by KI4LKF and N7TAE*/
 
 #include <stdio.h>
 #include <fcntl.h>
