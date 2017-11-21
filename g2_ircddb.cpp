@@ -2673,7 +2673,7 @@ int main(int argc, char **argv)
 			break;
 		}
 
-		/* Open udp INTERNAL port */
+		/* Open udp INTERNAL port (default: 19000) */
 		srv_sock = open_port(g2_internal);
 		if (0 > srv_sock) {
 			traceit("Can't open %s:%d\n", g2_internal.ip.c_str(), g2_internal.port);

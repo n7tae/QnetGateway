@@ -21,7 +21,7 @@ public:
 	unsigned int usn;
 
 	IRCDDBAppUserObject() {
-		IRCDDBAppUserObject ("", "", "");
+//		IRCDDBAppUserObject ("", "", "");
 	}
 
 	IRCDDBAppUserObject(const std::string &n, const std::string &nm, const std::string &h) {

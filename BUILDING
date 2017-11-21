@@ -98,7 +98,15 @@ so that it only contains DCS x-reflectors (DCSXXX), DStar reflectors (REFXXX) an
 X-reflectors (XRFXXX) and it will put all x-reflectors on port 20001 so you won't
 need any port-forwarding on your home router.
 
-Based on the above discussion, execute either "./get_reflectors.sh" or
+There is another script, reflist.sh, that will download REF, XRF and DCS reflectors
+from the W6KD file server. This has the advantage over VA3UV in that the reflector
+IP address are in dotted-name format, rather than dotted-number format. These
+dotted-name IP address will be resolved to dotted-number by g2_link when it starts
+up. The hope is that dotted-name IP addresses will change less frequently than
+dotted-number addresses, so this method should last longer than the other two
+methods.
+
+Based on the above discussion, execute either "./reflist.sh", "./get_reflectors.sh" or
 "./get_gwy_list.sh". If you want to be able to update your hotspot dynamically,
 you can modify either one of these scripts by adding a "reboot" or "service
 g2_link restart" command at the end and moving it to /usr/local/etc/exec_?X.sh
