@@ -27,7 +27,7 @@ sudo apt-get upgrade
 sudo apt-get install make g++ unzip git libconfig++-dev
 ```
 
-and maybe a few more of your favorite packages. Here is one of my favorites: `sudo apt-get install avahi-daemon`. Then you can `ssh user@hostname.local` instead of `ssh user@ip_address`.
+and maybe a few more of your favorite packages. Here is one of my favorites: `sudo apt-get install avahi-daemon`. Then you can `ssh user@hostname.local` instead of `ssh user@ip_address`. If you are starting with a "bare bones" distribution, you may need usb support: `sudo apt-get install usbutils`.
 
 After you install all the required packages, the g2_ircddb gateway installation can begin. Go to your login home directory and (without root privileges) type:
 ```
