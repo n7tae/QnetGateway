@@ -1,5 +1,5 @@
 /*
- *   Copyright 2017 by Thomas Early, N7TAE
+ *   Copyright 2017-2018 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 #include <termios.h>
 #include <time.h>
 #include <sys/file.h>
+#include <sys/select.h>
+
 #include "DVAPDongle.h"
 
 extern void traceit(const char *fmt,...);
@@ -303,7 +305,7 @@ bool CDVAPDongle::get_ser(char *dvp, char *dvap_serial_number)
 	if (0 == strcmp(dvapreg.param.sstr, dvap_serial_number)) {
 		traceit("Using %s:  %s, because serial number matches your dvap_rptr.cfg\n", dvp, dvap_serial_number);
 		return true;
-	} 
+	}
 	traceit("Device %s has serial %s, but does not match your config value %s\n", dvp, dvapreg.param.sstr, dvap_serial_number);
 	return false;
 }
@@ -434,7 +436,7 @@ bool CDVAPDongle::set_sql(int squelch)
 {
 	unsigned cnt = 0;
 	REPLY_TYPE reply;
-	
+
 	dvapreg.header = 0x5u;
 	dvapreg.param.control = 0x80u;
 	if (squelch < -128) {
@@ -471,7 +473,7 @@ bool CDVAPDongle::set_pwr(int power)
 {
 	unsigned cnt = 0;
 	REPLY_TYPE reply;
-	
+
 	dvapreg.header = 0x6u;
 	dvapreg.param.control = 0x138u;
 	if (power < -12) {
@@ -582,7 +584,7 @@ bool CDVAPDongle::set_freq(int frequency)
 	dvapreg.header = 0x8u;
 	dvapreg.param.control = 0x220u;
 	dvapreg.param.dword = frequency;
-	
+
 	rc = write_to_dvp(&dvapreg, 8);
 	if (rc != 8) {
 		traceit("Failed to send request to set dvap frequency\n");

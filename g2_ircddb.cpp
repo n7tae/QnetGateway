@@ -36,7 +36,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
-#include <time.h>
 #include <math.h>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -53,6 +52,8 @@
 #include <future>
 #include <exception>
 #include <string>
+#include <thread>
+#include <chrono>
 #include <map>
 #include <libconfig.h++>
 using namespace libconfig;
@@ -519,15 +520,13 @@ static int open_port(const SPORTIP &pip)
 		close(sock);
 		return -1;
 	}
-	
+
 	return sock;
 }
 
 /* receive data from the irc server and save it */
 static void GetIRCDataThread()
 {
-	struct timespec req;
-
 	std::string user, rptr, gateway, ipaddr;
 	DSTAR_PROTOCOL proto;
 	IRCDDB_RESPONSE_TYPE type;
@@ -632,9 +631,7 @@ static void GetIRCDataThread()
 				}
 			}
 		}
-		req.tv_sec = 0;
-		req.tv_nsec = 500000000; // 500 milli
-		nanosleep(&req, NULL);
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 	traceit("GetIRCDataThread exiting...\n");
 	return;
@@ -1139,7 +1136,7 @@ static void runit()
 				int dtmf_last_frame[3] = { 0, 0, 0 };
 				unsigned int dtmf_counter[3] = { 0, 0, 0 };
 				if (recvlen == 58) {
-					
+
 					if (bool_qso_details)
 						traceit("START from rptr: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
 						        rptrbuf.counter,
@@ -2234,8 +2231,6 @@ static void compute_aprs_hash()
 
 void APRSBeaconThread()
 {
-	struct timespec req;
-
 	char snd_buf[512];
 	char rcv_buf[512];
 	time_t tnow = 0;
@@ -2350,9 +2345,7 @@ void APRSBeaconThread()
 									close(aprs->GetSock());
 									aprs->SetSock( -1 );
 								} else if (errno == EWOULDBLOCK) {
-									req.tv_sec = 0;
-									req.tv_nsec = 100000000; // 100 milli
-									nanosleep(&req, NULL);
+									std::this_thread::sleep_for(std::chrono::milliseconds(100));
 								} else {
 									/* Cant do nothing about it */
 									traceit("send_aprs_beacon failed, error=%d\n", errno);
@@ -2401,9 +2394,7 @@ void APRSBeaconThread()
 		} else
 			THRESHOLD_COUNTDOWN = 15;
 
-		req.tv_sec = 0;
-		req.tv_nsec = 100000000; // 100 milli
-		nanosleep(&req, NULL);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 		/* 20 seconds passed already ? */
 		time(&tnow);
@@ -2429,8 +2420,6 @@ void APRSBeaconThread()
 
 static void PlayFileThread(char *file)
 {
-	struct timespec req;
-
 	unsigned short rlen = 0;
 	unsigned char dstar_buf[56];
 	unsigned char rptr_buf[58];
@@ -2533,9 +2522,7 @@ static void PlayFileThread(char *file)
 
 			toRptr[i].G2_COUNTER ++;
 
-			req.tv_sec = 0;
-			req.tv_nsec = play_delay * 1000000;
-			nanosleep(&req, NULL);
+			std::this_thread::sleep_for(std::chrono::milliseconds(play_delay));
 		}
 	}
 	fclose(fp);
@@ -2687,7 +2674,7 @@ int main(int argc, char **argv)
 			recd[i].fd = -1;
 			memset(recd[i].file, 0, sizeof(recd[i].file));
 
-			// recording for voicemail on local repeater modules 
+			// recording for voicemail on local repeater modules
 			vm[i].last_time = 0;
 			vm[i].streamid = 0;
 			vm[i].fd = -1;

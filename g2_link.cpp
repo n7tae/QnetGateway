@@ -1,8 +1,7 @@
 
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *   Additional:
- *   Copyright (C) 2015 by Thomas A. Early N7TAE
+ *   Copyright (C) 2015,2018 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -31,8 +30,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
-#include <time.h>
-
 #include <regex.h>
 
 #include <sys/stat.h>
@@ -52,6 +49,8 @@
 #include <set>
 #include <map>
 #include <utility>
+#include <thread>
+#include <chrono>
 #include <libconfig.h++>
 #include "versions.h"
 using namespace libconfig;
@@ -327,7 +326,6 @@ static void RptrAckThread(char *arg)
 	char RADIO_ID[21];
 	memcpy(RADIO_ID, arg + 1, 21);
 	unsigned char buf[56];
-	struct timespec nanos;
 	unsigned int aseed;
 	time_t tnow = 0;
 	unsigned char silence[12] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
@@ -386,9 +384,7 @@ static void RptrAckThread(char *arg)
 	memcpy(buf + 50, "RPTR", 4);
 	calcPFCS(buf,56);
 	sendto(rptr_sock, buf, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = delay_between * 1000000;
-	nanosleep(&nanos,0);
+	std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 
 	buf[4] = 0x20;
 	memcpy(buf + 15, silence, 9);
@@ -452,11 +448,8 @@ static void RptrAckThread(char *arg)
 				break;
 		}
 		sendto(rptr_sock, buf, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
-		if (i < 9) {
-			nanos.tv_sec = 0;
-			nanos.tv_nsec = delay_between * 1000000;
-			nanosleep(&nanos,0);
-		}
+		if (i < 9)
+			std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 	}
 }
 
@@ -910,7 +903,7 @@ static bool read_config(char *cfgFile)
 		timer *= 60;
 		rf_inactivity_timer[i] = timer;
 	}
-	
+
 	return true;
 }
 
@@ -1551,7 +1544,7 @@ static void runit()
 			} else if (recvlen2 == (CALL_SIZE + 6)) {
 				/* A packet of length (CALL_SIZE + 6) is either an ACK or a NAK from repeater-reflector */
 				/* Because we sent a request before asking to link */
-				
+
 					for (i = 0; i < 3; i++) {
 						if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
 						        (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port))) {
@@ -1603,7 +1596,7 @@ static void runit()
 			   A packet of length (CALL_SIZE + 3) is a request
 			   from a remote repeater to link-unlink with our repeater
 			*/
-			
+
 				/* Check our linked repeaters/reflectors */
 				for (i = 0; i < 3; i++) {
 					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
@@ -3889,7 +3882,6 @@ static void AudioNotifyThread(char *arg)
 	char mod;
 	char *p = NULL;
 	u_int16_t streamid_raw = 0;
-	struct timespec nanos;
 	unsigned int aseed;
 	time_t tnow = 0;
 	struct sigaction act;
@@ -4070,9 +4062,7 @@ static void AudioNotifyThread(char *arg)
 			}
 			sendto(rptr_sock,  dstar_buf, rlen, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 		}
-		nanos.tv_sec = 0;
-		nanos.tv_nsec = delay_between * 1000000;
-		nanosleep(&nanos,0);
+		std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 	}
 	fclose(fp);
 	return;

@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2016 by Thomas A. Early N7TAE
+ *   Copyright (C) 2016-2018 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,9 @@
  #include <sys/socket.h>
  #include <netdb.h>
  #include <netinet/tcp.h>
+
+ #include <thread>
+ #include <chrono>
 
  #include "aprs.h"
 
@@ -152,7 +155,7 @@ void CAPRS::Init()
 		aprs_streamID[i].streamID = 0;
 		aprs_streamID[i].last_time = 0;
 	}
-	
+
 	/* Initialize the APRS host */
 	memset(&aprs_addr,0,sizeof(struct sockaddr_in));
 	aprs_addr_len = sizeof(aprs_addr);
@@ -253,8 +256,6 @@ unsigned int CAPRS::GetData(short int rptr_idx, unsigned char *data, unsigned in
 
 void CAPRS::Open(const std::string OWNER)
 {
-	struct timespec req;
-
 	fd_set fdset;
 	struct timeval tv;
 	short int MAX_WAIT = 15; /* 15 seconds wait time MAX */
@@ -356,9 +357,7 @@ void CAPRS::Open(const std::string OWNER)
 		if (rc < 0) {
 			if (errno == EWOULDBLOCK) {
 				recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
-				req.tv_sec = 0;
-				req.tv_nsec = 100000000; // 100 milli
-				nanosleep(&req, NULL);
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			} else {
 				traceit("APRS login command failed, error=%d\n", errno);
 				break;
@@ -501,7 +500,7 @@ ssize_t CAPRS::WriteSock(char *buffer, size_t n)
 	ssize_t num_written = 0;
 	size_t tot_written = 0;
 	char *buf = buffer;
-	
+
 	for (tot_written = 0; tot_written < n;) {
 		num_written = write(aprs_sock, buf, n - tot_written);
 		if (num_written <= 0) {

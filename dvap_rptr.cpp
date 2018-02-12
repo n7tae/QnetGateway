@@ -32,7 +32,6 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <signal.h>
-#include <time.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <sys/ioctl.h>
@@ -43,6 +42,8 @@
 #include <atomic>
 #include <future>
 #include <exception>
+#include <thread>
+#include <chrono>
 #include <string>
 #include <libconfig.h++>
 using namespace libconfig;
@@ -276,7 +277,7 @@ static int read_config(const char *cfgFile)
 		traceit("%s.login is not defined!\n", dvap_path.c_str());
 		return 1;
 	}
-	
+
 	if (cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
@@ -720,7 +721,7 @@ int main(int argc, const char **argv)
 		keep_running = false;
 	}
 	traceit("Started ReadDVAPThread()\n");
-	
+
 	while (keep_running) {
 		time(&tnow);
 		if ((tnow - ackpoint) > 2) {
@@ -759,7 +760,6 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	time_t tnow = 0;
 	unsigned char silence[12] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 	unsigned int aseed_ack = 0;
-	struct timespec nanos;
 
 	act.sa_handler = sig_catch;
 	sigemptyset(&act.sa_mask);
@@ -800,9 +800,7 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	memcpy(dr.frame.hdr.sfx, (unsigned char *)"    ", 4);
 	calcPFCS(dr.frame.hdr.flag, dr.frame.hdr.pfcs);
 	dongle.SendRegister(dr);
-	nanos.tv_sec = 0;
-	nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-	nanosleep(&nanos,0);
+	std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_BETWEEN));
 
 	// SYNC
 	dr.header = 0xc012u;
@@ -869,11 +867,8 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 		}
 		memcpy(&dr.frame.vad.voice, silence, 12);
 		dongle.SendRegister(dr);
-		if (i < 9) {
-			nanos.tv_sec = 0;
-			nanos.tv_nsec = DELAY_BETWEEN * 1000000;
-			nanosleep(&nanos,0);
-		}
+		if (i < 9)
+			std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_BETWEEN));
 	}
 	return;
 }
@@ -984,7 +979,7 @@ static void ReadDVAPThread()
 			if (ok) {
 				if ((dr.frame.hdr.flag[0] != 0x00) && (dr.frame.hdr.flag[0] != 0x08) &&	// net
 					(dr.frame.hdr.flag[0] != 0x20) && (dr.frame.hdr.flag[0] != 0x28) &&	// flags
-					
+
 					(dr.frame.hdr.flag[0] != 0x40) && (dr.frame.hdr.flag[0] != 0x48) &&	// rptr
 					(dr.frame.hdr.flag[0] != 0x60) && (dr.frame.hdr.flag[0] != 0x68))	// flags
 					ok = false;
