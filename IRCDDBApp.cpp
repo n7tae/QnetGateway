@@ -20,9 +20,7 @@ public:
 	bool op;
 	unsigned int usn;
 
-	IRCDDBAppUserObject() {
-//		IRCDDBAppUserObject ("", "", "");
-	}
+	IRCDDBAppUserObject() {}
 
 	IRCDDBAppUserObject(const std::string &n, const std::string &nm, const std::string &h) {
 		nick = n;
@@ -311,10 +309,7 @@ void IRCDDBApp::userJoin(const std::string &nick, const std::string &name, const
 	//traceit("user %d\n", u.usn);
 }
 
-
-
-
-void IRCDDBApp::userLeave (const std::string &nick)
+void IRCDDBApp::userLeave(const std::string &nick)
 {
 	std::string lnick = nick;
 	ToLower(lnick);
@@ -421,11 +416,11 @@ bool IRCDDBApp::findServerUser()
 	return found;
 }
 
-void IRCDDBApp::userChanOp (const std::string &nick, bool op)
+void IRCDDBApp::userChanOp(const std::string &nick, bool op)
 {
 	std::string lnick = nick;
 	ToLower(lnick);
-	
+
 	d->userMapMutex.lock();
 	if (d->user.count(lnick) == 1) {
 		d->user[lnick].op = op;
@@ -465,7 +460,6 @@ std::string IRCDDBApp::getIPAddress(std::string &zonerp_cs)
 	d->userMapMutex.unlock();
 	return ipAddr;
 }
-
 
 bool IRCDDBApp::findGateway(const std::string &gwCall)
 {
@@ -546,12 +540,16 @@ bool IRCDDBApp::findRepeater(const std::string &rptrCall)
 	return true;
 }
 
-
-bool IRCDDBApp::sendHeard(const std::string &myCall, const std::string &myCallExt,
-                          const std::string &yourCall, const std::string &rpt1,
-                          const std::string &rpt2, unsigned char flag1,
-                          unsigned char flag2, unsigned char flag3,
-                          const std::string &destination, const std::string &tx_msg,
+bool IRCDDBApp::sendHeard(const std::string &myCall,
+                          const std::string &myCallExt,
+                          const std::string &yourCall,
+                          const std::string &rpt1,
+                          const std::string &rpt2,
+                          unsigned char flag1,
+                          unsigned char flag2,
+                          unsigned char flag3,
+                          const std::string &destination,
+                          const std::string &tx_msg,
                           const std::string &tx_stats)
 {
 
@@ -657,14 +655,12 @@ bool IRCDDBApp::findUser(const std::string &usrCall)
 	return true;
 }
 
-
 void IRCDDBApp::msgChannel(IRCMessage *m)
 {
 	if (0==m->getPrefixNick().compare(0, 2, "s-") && (m->numParams >= 2)) { // server msg
 		doUpdate(m->params[1]);
 	}
 }
-
 
 void IRCDDBApp::doNotFound(std::string &msg, std::string &retval)
 {
@@ -810,14 +806,13 @@ void IRCDDBApp::doUpdate(std::string &msg)
 				m2->addParam(ip_addr);
 				m2->addParam(tk + std::string(" ") + timeToken);
 				d->replyQ.putMessage(m2);
-				
+
 				d->rptrMapMutex.unlock();
 
 			}
 		}
 	}
 }
-
 
 static std::string getTableIDString(int tableID, bool spaceBeforeNumber)
 {
@@ -833,7 +828,6 @@ static std::string getTableIDString(int tableID, bool spaceBeforeNumber)
 		return std::string(" TABLE_ID_OUT_OF_RANGE ");
 	}
 }
-
 
 void IRCDDBApp::msgQuery(IRCMessage *m)
 {
@@ -891,7 +885,6 @@ void IRCDDBApp::msgQuery(IRCMessage *m)
 	}
 }
 
-
 void IRCDDBApp::setSendQ(IRCMessageQueue *s)
 {
 	d->sendQ = s;
@@ -901,7 +894,6 @@ IRCMessageQueue *IRCDDBApp::getSendQ()
 {
 	return d->sendQ;
 }
-
 
 static std::string getLastEntryTime(int tableID)
 {
@@ -917,16 +909,8 @@ static std::string getLastEntryTime(int tableID)
 	return "DBERROR";
 }
 
-
-static bool needsDatabaseUpdate(int tableID)
-{
-	return 1==tableID;
-}
-
-
 void IRCDDBApp::Entry()
 {
-
 	int sendlistTableID = 0;
 
 	while (!d->terminateThread) {
@@ -991,7 +975,7 @@ void IRCDDBApp::Entry()
 			if (getSendQ() == NULL) {
 				d->state = 10; // disconnect DB
 			} else {
-				if (needsDatabaseUpdate(sendlistTableID)) {
+				if (1 == sendlistTableID) {
 					IRCMessage *m = new IRCMessage(d->currentServer, std::string("SENDLIST") + getTableIDString(sendlistTableID, true)
 					                                + std::string(" ") + getLastEntryTime(sendlistTableID));
 
@@ -1001,7 +985,7 @@ void IRCDDBApp::Entry()
 
 					d->state = 5; // wait for answers
 				} else
-					d->state = 3; // don't send SENDLIST for this table, go to next table
+					d->state = 3; // don't send SENDLIST for this table (tableID 0), go to next table
 			}
 			break;
 
@@ -1122,7 +1106,3 @@ void IRCDDBApp::Entry()
 
 	return;
 } // Entry()
-
-
-
-
