@@ -94,7 +94,7 @@ clean :
 	/bin/rm -f *.o
 
 realclean :
-	/bin/rm -f *.o $(PROGRAMS) g2link_test
+	/bin/rm -f *.o $(PROGRAMS)
 
 installdvap : dvap_rptr g2_link g2_ircddb
 	######### g2_ircddb #########
