@@ -775,7 +775,7 @@ static bool read_config(char *cfgFile)
 			for (i=0; i<userlist.getLength(); i++) {
 				value = (const char *)userlist[i];
 				int l = value.length();
-				if (l>2 && l<CALL_SIZE-2) {
+				if (l>2 && l<=CALL_SIZE-2) {
 					for (unsigned int j=0; j<value.length(); j++) {
 						if (islower(value[j]))
 							value[j] = toupper(value[j]);
