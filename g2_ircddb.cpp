@@ -447,7 +447,7 @@ static bool read_config(char *cfgFile)
 	if (! get_value(cfg, "gateway.external.ip", g2_external.ip, 7, IP_SIZE, "0.0.0.0"))
 		return true;
 
-	get_value(cfg, "gateway.external.port", g2_external.port, 20001, 65535, 40000);
+	get_value(cfg, "gateway.external.port", g2_external.port, 1024, 65535, 40000);
 
 	if (! get_value(cfg, "gateway.internal.ip", g2_internal.ip, 7, IP_SIZE, "0.0.0.0"))
 		return true;

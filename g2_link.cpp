@@ -863,7 +863,7 @@ static bool read_config(char *cfgFile)
 
 	if (! get_value(cfg, "g2_link.g2_ircddb_ip", to_g2_external_ip, 7, IP_SIZE, "0.0.0.0"))
 		return false;
-	get_value(cfg, "gateway.external.port", to_g2_external_port, 10000, 65535, 40000);
+	get_value(cfg, "gateway.external.port", to_g2_external_port, 1024, 65535, 40000);
 
 	get_value(cfg, "gateway.log.qso", qso_details, true);
 
