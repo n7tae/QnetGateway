@@ -51,13 +51,12 @@ typedef struct rptr_tag{
 	} mod[3];
 } SRPTR;
 
-extern SRPTR rptr;
-
 class CAPRS {
 public:
 	// functions
-	CAPRS() {};
-	~CAPRS() {};
+	CAPRS(SRPTR *prptr);
+	~CAPRS();
+	SRPTR *m_rptr;
 	void SelectBand(short int rptr_idx, unsigned short streamID);
 	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf, unsigned int len);
 	ssize_t WriteSock(char *buffer, size_t n);
@@ -65,7 +64,7 @@ public:
 	void Init();
 	int GetSock();
 	void SetSock(int value);
-	
+
 private:
 	// data
 	// the aprs TCP socket
@@ -80,7 +79,7 @@ private:
 		slow_level sl;
 		bool is_sent;
 	} aprs_pack[3];
-	// lock down a stream per band 
+	// lock down a stream per band
 	struct {
 		unsigned short streamID;
 		time_t last_time;

@@ -112,7 +112,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 	p = strchr(aud, '\r');
 	*p = '\0';
 
-	sprintf(aprs_buf, "%s,qAR,%s:%s\r\n", hdr, rptr.mod[rptr_idx].call.c_str(), aud);
+	sprintf(aprs_buf, "%s,qAR,%s:%s\r\n", hdr, m_rptr->mod[rptr_idx].call.c_str(), aud);
 	// traceit("GPS-A=%s", aprs_buf);
 	int rc = WriteSock(aprs_buf, strlen(aprs_buf));
 	if (rc == -1) {
@@ -264,15 +264,15 @@ void CAPRS::Open(const std::string OWNER)
 	char snd_buf[512];
 	char rcv_buf[512];
 
-	bool ok = ResolveRmt(rptr.aprs.ip.c_str(), SOCK_STREAM, &aprs_addr);
+	bool ok = ResolveRmt(m_rptr->aprs.ip.c_str(), SOCK_STREAM, &aprs_addr);
 	if (!ok) {
-		traceit("Can't resolve APRS_HOST %s\n", rptr.aprs.ip.c_str());
+		traceit("Can't resolve APRS_HOST %s\n", m_rptr->aprs.ip.c_str());
 		return;
 	}
 
 	/* fill it in */
 	aprs_addr.sin_family = AF_INET;
-	aprs_addr.sin_port = htons(rptr.aprs.port);
+	aprs_addr.sin_port = htons(m_rptr->aprs.port);
 
 	aprs_addr_len = sizeof(aprs_addr);
 
@@ -339,15 +339,15 @@ void CAPRS::Open(const std::string OWNER)
 			return;
 		}
 	}
-	traceit("Connected to APRS %s:%d\n", rptr.aprs.ip.c_str(), rptr.aprs.port);
+	traceit("Connected to APRS %s:%d\n", m_rptr->aprs.ip.c_str(), m_rptr->aprs.port);
 
 	/* login to aprs */
-	sprintf(snd_buf, "user %s pass %d vers g2_ircddb 2.99 UDP 5 ", OWNER.c_str(), rptr.aprs_hash);
+	sprintf(snd_buf, "user %s pass %d vers g2_ircddb 2.99 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
 
 	/* add the user's filter */
-	if (rptr.aprs_filter.length()) {
+	if (m_rptr->aprs_filter.length()) {
 		strcat(snd_buf, "filter ");
-		strcat(snd_buf, rptr.aprs_filter.c_str());
+		strcat(snd_buf, m_rptr->aprs_filter.c_str());
 	}
 	// traceit("APRS login command:[%s]\n", snd_buf);
 	strcat(snd_buf, "\r\n");
@@ -542,4 +542,13 @@ bool CAPRS::ResolveRmt(const char *name, int type, struct sockaddr_in *addr)
 	}
 	freeaddrinfo(res);
 	return found;
+}
+
+CAPRS::CAPRS(SRPTR *prptr)
+{
+	m_rptr = prptr;
+}
+
+CAPRS::~CAPRS()
+{
 }
