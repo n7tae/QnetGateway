@@ -608,16 +608,7 @@ void CG2_ircddb::runit()
 {
 	SDSVT g2buf;
 	fd_set fdset;
-	struct timeval tv;
 
-	socklen_t fromlen;
-	int recvlen;
-	int g2buflen;
-
-	short i,j;
-
-	bool result = false;
-	int mycall_valid = REG_NOERROR;
 	char temp_radio_user[CALL_SIZE + 1];
 	char temp_mod;
 	time_t t_now;
@@ -641,8 +632,8 @@ void CG2_ircddb::runit()
 	unsigned char tmp_txt[3];
 	/* END:  TEXT crap */
 
-	int ber_data[3];
-	int ber_errs;
+	//int ber_data[3];
+	//int ber_errs;
 
 	int max_nfds = 0;
 
@@ -677,7 +668,7 @@ void CG2_ircddb::runit()
 	ii->kickWatchdog(IRCDDB_VERSION);
 
 	while (keep_running) {
-		for (i = 0; i < 3; i++) {
+		for (int i=0; i<3; i++) {
 			/* echotest recording timed out? */
 			if (recd[i].last_time != 0) {
 				time(&t_now);
@@ -741,7 +732,7 @@ void CG2_ircddb::runit()
 					end_of_audio.vpkt.streamid = toRptr[i].streamid;
 					end_of_audio.vpkt.ctrl = toRptr[i].sequence | 0x40;
 
-					for (j = 0; j < 2; j++)
+					for (int j=0; j<2; j++)
 						sendto(srv_sock, end_of_audio.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 					toRptr[i].G2_COUNTER++;
@@ -799,14 +790,15 @@ void CG2_ircddb::runit()
 		FD_ZERO(&fdset);
 		FD_SET(g2_sock, &fdset);
 		FD_SET(srv_sock, &fdset);
+		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000; /* 20 ms */
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
 		/* process packets coming from remote G2 */
 		if (FD_ISSET(g2_sock, &fdset)) {
-			fromlen = sizeof(struct sockaddr_in);
-			g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
+			socklen_t fromlen = sizeof(struct sockaddr_in);
+			int g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
 			if ( ((g2buflen == 56) || (g2buflen == 27)) &&
 			      (0==memcmp(g2buf.title, "DSVT", 4)) &&
@@ -816,7 +808,7 @@ void CG2_ircddb::runit()
 
 					// Find out the local repeater module IP/port
 					// to send the data to
-					i = g2buf.hdr.rpt1[7] - 'A';
+					int i = g2buf.hdr.rpt1[7] - 'A';
 
 					/* valid repeater module? */
 					if (i>=0 && i<3) {
@@ -873,7 +865,8 @@ void CG2_ircddb::runit()
 					}
 
 					/* find out which repeater module to send the data to */
-					for (i = 0; i < 3; i++) {
+					int i;
+					for (i=0; i<3; i++) {
 						/* streamid match ? */
 						if ((toRptr[i].streamid==g2buf.streamid) &&
 						        (toRptr[i].adr == fromDst4.sin_addr.s_addr)) {
@@ -972,8 +965,8 @@ void CG2_ircddb::runit()
 
 		/* process data coming from local repeater modules */
 		if (FD_ISSET(srv_sock, &fdset)) {
-			fromlen = sizeof(struct sockaddr_in);
-			recvlen = recvfrom(srv_sock, rptrbuf.pkt_id, 58,  0, (struct sockaddr *)&fromRptr, &fromlen);
+			socklen_t fromlen = sizeof(struct sockaddr_in);
+			int recvlen = recvfrom(srv_sock, rptrbuf.pkt_id, 58,  0, (struct sockaddr *)&fromRptr, &fromlen);
 
 			/* DV */
 			if ( ((recvlen == 58) || (recvlen == 29) || (recvlen == 32)) &&
@@ -1005,7 +998,7 @@ void CG2_ircddb::runit()
 					         (rptrbuf.vpkt.hdr.flag[0] == 0x20) ||                 /* BREAK */
 					         (rptrbuf.vpkt.hdr.flag[0] == 0x28))) {                /* EMR + BREAK */
 
-						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+						int i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0  && i<3) {
 							dtmf_last_frame[i] = 0;
@@ -1069,7 +1062,7 @@ void CG2_ircddb::runit()
 					memcpy(temp_radio_user, rptrbuf.vpkt.hdr.mycall, 8);
 					temp_radio_user[8] = '\0';
 
-					mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
+					int mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
 
 					if (mycall_valid == REG_NOERROR)
 						; // traceit("MYCALL [%s] passed IRC expression validation\n", temp_radio_user);
@@ -1105,7 +1098,7 @@ void CG2_ircddb::runit()
 						         (rptrbuf.vpkt.hdr.flag[0] == 0x28))                           /* EMR + BK */
 						   ) {
 							if (memcmp(rptrbuf.vpkt.hdr.urcall+1, OWNER.c_str(), 6) != 0) {   /* the value after the slash in urcall, is NOT this repeater */
-								i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+								int i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 								if (i>=0 && i<3) {
 									/* one radio user on a repeater module at a time */
@@ -1121,7 +1114,7 @@ void CG2_ircddb::runit()
 											temp_radio_user[7] = 'A';
 										temp_radio_user[CALL_SIZE] = '\0';
 
-										result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
+										bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
 										if (result) { /* it is a repeater */
 											/* set the destination */
 											to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
@@ -1160,7 +1153,7 @@ void CG2_ircddb::runit()
 											band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
 											/* send to remote gateway */
-											for (j = 0; j < 5; j++)
+											for (int j=0; j<5; j++)
 												sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 											traceit("Routing to IP=%s, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
@@ -1193,11 +1186,11 @@ void CG2_ircddb::runit()
 							memset(temp_radio_user, ' ', 8);
 							memcpy(temp_radio_user, rptrbuf.vpkt.hdr.urcall, 8);
 							temp_radio_user[8] = '\0';
-							result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
+							bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
 							if (result) {
 								/* destination is a remote system */
 								if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
-									i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+									int i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 									if (i>=0 && i<3) {
 										/* one radio user on a repeater module at a time */
@@ -1234,7 +1227,7 @@ void CG2_ircddb::runit()
 											band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
 											/* send to remote gateway */
-											for (j = 0; j < 5; j++)
+											for (int j=0; j<5; j++)
 												sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 											traceit("Routing to IP=%s, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
@@ -1248,7 +1241,7 @@ void CG2_ircddb::runit()
 										}
 									}
 								} else {
-									i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+									int i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 									if (i>=0 && i<3) {
 										/* the user we are trying to contact is on our gateway */
@@ -1301,7 +1294,7 @@ void CG2_ircddb::runit()
 					} else if ((rptrbuf.vpkt.hdr.urcall[7] == '0') &&
 					           (rptrbuf.vpkt.hdr.urcall[6] == 'C') &&
 					           (rptrbuf.vpkt.hdr.urcall[0] == ' ')) {
-						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+						int i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0 && i<3) {
 							/* voicemail file is closed */
@@ -1315,7 +1308,7 @@ void CG2_ircddb::runit()
 					} else if ((rptrbuf.vpkt.hdr.urcall[7] == '0') &&
 					           (rptrbuf.vpkt.hdr.urcall[6] == 'R') &&
 					           (rptrbuf.vpkt.hdr.urcall[0] == ' ')) {
-						i = -1;
+						int i = -1;
 						switch (rptrbuf.vpkt.hdr.rpt2[7]) {
 							case 'A':
 								i = 0;
@@ -1342,7 +1335,7 @@ void CG2_ircddb::runit()
 					} else if ((rptrbuf.vpkt.hdr.urcall[7] == '0') &&
 					           (rptrbuf.vpkt.hdr.urcall[6] == 'S') &&
 					           (rptrbuf.vpkt.hdr.urcall[0] == ' ')) {
-						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+						int i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0 && i<3) {
 							if (vm[i].fd >= 0)
@@ -1395,7 +1388,7 @@ void CG2_ircddb::runit()
 							}
 						}
 					} else if (('E' == rptrbuf.vpkt.hdr.urcall[7]) && (' ' == rptrbuf.vpkt.hdr.urcall[0])) {
-						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+						int i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0 && i<3) {
 							if (recd[i].fd >= 0)
@@ -1455,7 +1448,7 @@ void CG2_ircddb::runit()
 							 (rptrbuf.vpkt.hdr.rpt1[7] == 'B') ||
 							 (rptrbuf.vpkt.hdr.rpt1[7] == 'C')) &&           /* !!! usually a G of rpt2, but we see A,B,C */
 							(rptrbuf.vpkt.hdr.rpt1[7] != rptrbuf.vpkt.hdr.rpt2[7])) {  /* cross-banding? make sure NOT the same */
-						i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
+						int i = rptrbuf.vpkt.hdr.rpt2[7] - 'A';
 
 						if (i>=0 && i<3) {
 							// The remote repeater has been set, lets fill in the dest_rptr
@@ -1493,7 +1486,7 @@ void CG2_ircddb::runit()
 						}
 					}
 				} else {
-					for (i = 0; i < 3; i++) {
+					for (int i=0; i<3; i++) {
 						if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
 							time(&band_txt[i].last_time);
 
@@ -1551,7 +1544,8 @@ void CG2_ircddb::runit()
 								band_txt[i].num_bit_errors = 0;
 
 							} else {
-								ber_errs = dstar_dv_decode(rptrbuf.vpkt.vasd.voice, ber_data);
+								int ber_data[3];
+								int ber_errs = dstar_dv_decode(rptrbuf.vpkt.vasd.voice, ber_data);
 								if (ber_data[0] == 0xf85)
 									band_txt[i].num_dv_silent_frames++;
 								band_txt[i].num_bit_errors += ber_errs;
@@ -1595,7 +1589,7 @@ void CG2_ircddb::runit()
 						// traceit("%x%x%x\n", tmp_txt[0], tmp_txt[1], tmp_txt[2]);
 						// traceit("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
 
-						for (i = 0; i < 3; i++) {
+						for (int i=0; i<3; i++) {
 							if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
 								if (new_group[i]) {
 									tmp_txt[0] = tmp_txt[0] ^ 0x70;
@@ -1922,7 +1916,7 @@ void CG2_ircddb::runit()
 						//                             streamID               seq                     audio+text             size
 						aprs->ProcessText(rptrbuf.vpkt.streamid, rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice, (recvlen == 29)?12:15);
 
-					for (i = 0; i < 3; i++) {
+					for (int i=0; i<3; i++) {
 						/* find out if data must go to the remote G2 */
 						if (to_remote_g2[i].streamid == rptrbuf.vpkt.streamid) {
 							memcpy(g2buf.title, "DSVT", 4);
