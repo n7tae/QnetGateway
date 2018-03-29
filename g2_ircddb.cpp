@@ -796,8 +796,8 @@ void CG2_ircddb::process()
 			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr))
 				traceit("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
 			else {
-				if (fromDst4.sin_port != portmap[fromDst4.sin_addr.s_addr])
-					traceit("New g2 port from %s is now %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+				if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr])
+					traceit("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
 			}
 			portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
 
