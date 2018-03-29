@@ -1,5 +1,5 @@
 /*
- *   Copyright 2018 by Thomas Early N7TAE
+ *   Copyright (C) 2018 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -92,6 +92,8 @@ private:
 
 	int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
 
+	std::map <uint32_t, uint16_t> portmap;
+
 	// data needed for aprs login and aprs beacon
 	// RPTR defined in aprs.h
 	SRPTR rptr;
@@ -167,6 +169,6 @@ private:
 	bool validate_csum(SBANDTXT &bt, bool is_gps);
 
 public:
-	void runit();
+	void process();
 	int init(char *cfgfile);
 };

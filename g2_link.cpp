@@ -62,12 +62,6 @@ using namespace libconfig;
 #define QUERY_SIZE 56
 #define MAXHOSTNAMELEN 64
 #define TIMEOUT 50
-#define LINK_CODE 'L'
-#define UNLINK_CODE 'U'
-#define INFO_CODE 'I'
-#define EXEC_CODE 'X'
-#define DONGLE_CODE 'D'
-#define FILE_REFRESH_GWYS_CODE 'F'
 
 /* configuration data */
 static std::string login_call;
@@ -1094,13 +1088,10 @@ static void g2link(char from_mod, char *call, char to_mod)
 	strcpy(to_remote_g2[i].to_call, call);
 	to_remote_g2[i].to_mod = to_mod;
 
-	if ((memcmp(call, "REF", 3) == 0) ||
-	        (memcmp(call, "DCS", 3) == 0)) {
+	if ((memcmp(call, "REF", 3) == 0) || (memcmp(call, "DCS", 3) == 0)) {
 		for (counter = 0; counter < 3; counter++) {
 			if (counter != i) {
-				if ( (to_remote_g2[counter].to_call[0] != '\0') &&
-				        (strcmp(to_remote_g2[counter].to_call,to_remote_g2[i].to_call) == 0) &&
-				        (to_remote_g2[counter].to_mod == to_remote_g2[i].to_mod) )
+				if ('\0'!=to_remote_g2[counter].to_call[0] && !strcmp(to_remote_g2[counter].to_call,to_remote_g2[i].to_call) && to_remote_g2[counter].to_mod==to_remote_g2[i].to_mod)
 					break;
 			}
 		}
@@ -1108,11 +1099,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 		to_remote_g2[i].to_mod = ' ';
 
 		if (counter < 3) {
-			traceit("Another mod(%c) is already linked to %s %c\n",
-			        to_remote_g2[counter].from_mod,
-			        to_remote_g2[counter].to_call,
-			        to_remote_g2[counter].to_mod);
-
+			traceit("Another mod(%c) is already linked to %s %c\n", to_remote_g2[counter].from_mod, to_remote_g2[counter].to_call, to_remote_g2[counter].to_mod);
 			return;
 		}
 	}
@@ -1140,8 +1127,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 	if (host[0] != '\0') {
 		ok = resolve_rmt(host, SOCK_DGRAM, &(to_remote_g2[i].toDst4));
 		if (!ok) {
-			traceit("Call %s is host %s but could not resolve to IP\n",
-			        call, host);
+			traceit("Call %s is host %s but could not resolve to IP\n", call, host);
 			memset(&to_remote_g2[i], 0, sizeof(to_remote_g2[i]));
 			return;
 		}
@@ -1163,9 +1149,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 			link_request[9] = to_mod;
 			link_request[10] = '\0';
 
-			traceit("sending link request from mod %c to link with: [%s] mod %c [%s]\n",
-			        to_remote_g2[i].from_mod,
-			        to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
+			traceit("sending link request from mod %c to link with: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
 
 			for (j=0; j<5; j++)
 				sendto(xrf_g2_sock, link_request, CALL_SIZE + 3, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
@@ -1177,12 +1161,8 @@ static void g2link(char from_mod, char *call, char to_mod)
 			memcpy(link_request + 11, to_remote_g2[i].to_call, 8);
 			strcpy(link_request + 19, G2_html);
 
-			traceit("sending link request from mod %c to link with: [%s] mod %c [%s]\n",
-			        to_remote_g2[i].from_mod,
-			        to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
-// Login form 5 to 1
-			for (j=0; j<1; j++)
-				sendto(dcs_g2_sock, link_request, 519, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
+			traceit("sending link request from mod %c to link with: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
+			sendto(dcs_g2_sock, link_request, 519, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 		} else if (port_i == rmt_ref_port) {
 			for (counter = 0; counter < 3; counter++) {
 				if (counter != i) {
@@ -1192,9 +1172,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 				}
 			}
 			if (counter > 2) {
-				traceit("sending link command from mod %c to: [%s] mod %c [%s]\n",
-				        to_remote_g2[i].from_mod,
-				        to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
+				traceit("sending link command from mod %c to: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
 
 				queryCommand[0] = 5;
 				queryCommand[1] = 0;
@@ -1202,13 +1180,11 @@ static void g2link(char from_mod, char *call, char to_mod)
 				queryCommand[3] = 0;
 				queryCommand[4] = 1;
 
-				for (j = 0; j < 1; j++)
-					sendto(ref_g2_sock, queryCommand, 5, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
+				sendto(ref_g2_sock, queryCommand, 5, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 			} else {
 				if (to_remote_g2[counter].is_connected) {
 					to_remote_g2[i].is_connected = true;
-					traceit("Local module %c is also connected to %s %c\n",
-					        from_mod, call, to_mod);
+					traceit("Local module %c is also connected to %s %c\n", from_mod, call, to_mod);
 
 					print_status_file();
 					tracing[i].last_time = time(NULL);
@@ -1218,10 +1194,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 					space_p = strchr(linked_remote_system, ' ');
 					if (space_p)
 						*space_p = '\0';
-					sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
-					        to_remote_g2[i].from_mod,
-					        linked_remote_system,
-					        to_remote_g2[i].to_mod);
+					sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 					audio_notify(notify_msg);
 				} else
 					traceit("status from %s %c pending\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
@@ -3342,13 +3315,13 @@ static void runit()
 
 					if ((memcmp(readBuffer + 36, "CQCQCQ", 6) != 0) && (i >= 0)) {
 						if ((memcmp(readBuffer + 36, owner.c_str(), CALL_SIZE-1) != 0) &&
-						        (readBuffer[43] == LINK_CODE) &&
+						        (readBuffer[43] == 'L') &&
 						        (memcmp(readBuffer + 20, owner.c_str(), CALL_SIZE-1) == 0) &&
 						        (readBuffer[27] == 'G') &&
-						        ((readBuffer[17] == 0x00) ||
-						         (readBuffer[17] == 0x08) ||
-						         (readBuffer[17] == 0x20) ||
-						         (readBuffer[17] == 0x28))) {
+						       ((readBuffer[17] == 0x00) ||
+						        (readBuffer[17] == 0x08) ||
+						        (readBuffer[17] == 0x20) ||
+						        (readBuffer[17] == 0x28))) {
 							if (only_link_unlink &&
 							        (link_unlink_user.find(call) == link_unlink_user.end())) {
 								traceit("link request denied, unauthorized rf user [%s]\n", call);
@@ -3374,10 +3347,8 @@ static void runit()
 									audio_notify(notify_msg);
 								}
 							}
-						} else if ((readBuffer[43] == UNLINK_CODE) &&
-						           (readBuffer[36] == ' ')) {
-							if (only_link_unlink &&
-							        (link_unlink_user.find(call) == link_unlink_user.end())) {
+						} else if ((readBuffer[43] == 'U') && (readBuffer[36] == ' ')) {
+							if (only_link_unlink && (link_unlink_user.find(call) == link_unlink_user.end())) {
 								traceit("unlink request denied, unauthorized rf user [%s]\n", call);
 							} else {
 								if (to_remote_g2[i].to_call[0] != '\0') {
@@ -3444,8 +3415,7 @@ static void runit()
 									audio_notify(notify_msg);
 								}
 							}
-						} else if ((readBuffer[43] == INFO_CODE) &&
-						           (readBuffer[36] == ' ')) {
+						} else if ((readBuffer[43] == 'I') && (readBuffer[36] == ' ')) {
 							if (to_remote_g2[i].is_connected) {
 								strcpy(linked_remote_system, to_remote_g2[i].to_call);
 								space_p = strchr(linked_remote_system, ' ');
@@ -3460,9 +3430,7 @@ static void runit()
 								sprintf(notify_msg, "%c_id.dat_%s_NOT_LINKED", readBuffer[35], owner.c_str());
 								audio_notify(notify_msg);
 							}
-						} else if ((readBuffer[43] == EXEC_CODE) &&
-						           (readBuffer[36] == ' ') &&
-						           (admin.find(call) != admin.end())) { // only ADMIN can execute scripts
+						} else if ((readBuffer[43] == 'X') && (readBuffer[36] == ' ') && (admin.find(call) != admin.end())) { // only ADMIN can execute scripts
 							if (readBuffer[42] != ' ') {
 								memset(system_cmd, '\0', sizeof(system_cmd));
 								snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &",
@@ -3471,9 +3439,7 @@ static void runit()
 								traceit("Executing %s\n", system_cmd);
 								system(system_cmd);
 							}
-						} else if ((readBuffer[42] == DONGLE_CODE) &&
-						           (readBuffer[36] == ' ') &&
-						           (admin.find(call) != admin.end())) { // only ADMIN can block dongle users
+						} else if ((readBuffer[42] == 'D') && (readBuffer[36] == ' ') && (admin.find(call) != admin.end())) { // only ADMIN can block dongle users
 							if (readBuffer[43] == '1') {
 								max_dongles = saved_max_dongles;
 								traceit("Dongle connections are now allowed\n");
@@ -3482,9 +3448,7 @@ static void runit()
 								max_dongles = 0;
 								traceit("Dongle connections are now disallowed\n");
 							}
-						} else if ((readBuffer[43] == FILE_REFRESH_GWYS_CODE) &&
-						           (readBuffer[36] == ' ') &&
-						           (admin.find(call) != admin.end())) { // only ADMIN can reload gwys.txt
+						} else if ((readBuffer[43] == 'F') && (readBuffer[36] == ' ') && (admin.find(call) != admin.end())) { // only ADMIN can reload gwys.txt
 							gwy_list.clear();
 							load_gwys(gwys);
 						}
@@ -4086,9 +4050,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	int rc = regcomp(&preg,
-	             "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$",
-	             REG_EXTENDED | REG_NOSUB);
+	int rc = regcomp(&preg, "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", REG_EXTENDED | REG_NOSUB);
 	if (rc != 0) {
 		traceit("The IRC regular expression is NOT valid\n");
 		return 1;

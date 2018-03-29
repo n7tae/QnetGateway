@@ -1,7 +1,6 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *
- *   Copyright 2017-2018 by Thomas Early N7TAE
+ *   Copyright (C) 2017-2018 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,7 +16,6 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-
 
 /* by KI4LKF, N7TAE */
 /*
@@ -323,7 +321,7 @@ bool CG2_ircddb::read_config(char *cfgFile)
 
 	get_value(cfg, "g2_link.port", g2_link.port, 16000, 65535, 18997);
 
-	get_value(cfg, "log.qso", bool_qso_details, true);
+	get_value(cfg, "log.qso", bool_qso_details, false);
 
 	get_value(cfg, "log.irc", bool_irc_debug, false);
 
@@ -504,9 +502,6 @@ void CG2_ircddb::GetIRCDataThread()
 /* return codes: 0=OK(found it), 1=TRY AGAIN, 2=FAILED(bad data) */
 int CG2_ircddb::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
 {
-	std::map<std::string, std::string>::iterator user_pos = user2rptr_map.end();
-	std::map<std::string, std::string>::iterator rptr_pos = rptr2gwy_map.end();
-	std::map<std::string, std::string>::iterator gwy_pos = gwy2ip_map.end();
 	char temp[CALL_SIZE + 1];
 
 	memset(arearp_cs, ' ', CALL_SIZE);
@@ -517,7 +512,7 @@ int CG2_ircddb::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zo
 
 	/* find the user in the CACHE */
 	if (RoU == 'U') {
-		user_pos = user2rptr_map.find(call);
+		auto user_pos = user2rptr_map.find(call);
 		if (user_pos != user2rptr_map.end()) {
 			memcpy(arearp_cs, user_pos->second.c_str(), 7);
 			*mod = user_pos->second.c_str()[7];
@@ -540,14 +535,14 @@ int CG2_ircddb::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zo
 	temp[7] = *mod;
 	temp[CALL_SIZE] = '\0';
 
-	rptr_pos = rptr2gwy_map.find(temp);
+	auto rptr_pos = rptr2gwy_map.find(temp);
 	if (rptr_pos != rptr2gwy_map.end()) {
 		memcpy(zonerp_cs, rptr_pos->second.c_str(), CALL_SIZE);
 		zonerp_cs[CALL_SIZE] = '\0';
 
-		gwy_pos = gwy2ip_map.find(zonerp_cs);
+		auto gwy_pos = gwy2ip_map.find(zonerp_cs);
 		if (gwy_pos != gwy2ip_map.end()) {
-			strncpy(ip, gwy_pos->second.c_str(),IP_SIZE);
+			strncpy(ip, gwy_pos->second.c_str(), IP_SIZE);
 			ip[IP_SIZE] = '\0';
 			return 0;
 		} else {
@@ -604,7 +599,7 @@ bool CG2_ircddb::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, c
 }
 
 /* run the main loop for g2_ircddb */
-void CG2_ircddb::runit()
+void CG2_ircddb::process()
 {
 	SDSVT g2buf;
 	fd_set fdset;
@@ -631,9 +626,6 @@ void CG2_ircddb::runit()
 	bool C_seen[3] = { false, false, false };
 	unsigned char tmp_txt[3];
 	/* END:  TEXT crap */
-
-	//int ber_data[3];
-	//int ber_errs;
 
 	int max_nfds = 0;
 
@@ -800,14 +792,23 @@ void CG2_ircddb::runit()
 			socklen_t fromlen = sizeof(struct sockaddr_in);
 			int g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
+			// save incoming port for mobile systems
+			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr))
+				traceit("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+			else {
+				if (fromDst4.sin_port != portmap[fromDst4.sin_addr.s_addr])
+					traceit("New g2 port from %s is now %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+			}
+			portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
+
+
 			if ( ((g2buflen == 56) || (g2buflen == 27)) &&
 			      (0==memcmp(g2buf.title, "DSVT", 4)) &&
 			      ((g2buf.config == 0x10) || (g2buf.config == 0x20)) &&  /* header or voiceframe */
 			        (g2buf.id == 0x20)) {    /* voice type */
 				if (g2buflen == 56) {
 
-					// Find out the local repeater module IP/port
-					// to send the data to
+					// Find out the local repeater module IP/port to send the data to
 					int i = g2buf.hdr.rpt1[7] - 'A';
 
 					/* valid repeater module? */
@@ -822,13 +823,13 @@ void CG2_ircddb::runit()
 						         (g2buf.hdr.flag[0] == 0x28) ||
 						         (g2buf.hdr.flag[0] == 0x40))) {
 							if (bool_qso_details)
-								traceit("START from g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
+								traceit("START from g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s and port %u\n",
 								        g2buf.streamid,
 								        g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2],
 								        g2buf.hdr.mycall,
 								        g2buf.hdr.sfx, g2buf.hdr.urcall,
 								        g2buf.hdr.rpt1, g2buf.hdr.rpt2,
-								        g2buflen, inet_ntoa(fromDst4.sin_addr));
+								        g2buflen, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
 
 							memcpy(rptrbuf.pkt_id, "DSTR", 4);
 							rptrbuf.counter = toRptr[i].G2_COUNTER;
@@ -860,8 +861,7 @@ void CG2_ircddb::runit()
 				} else {
 					if (g2buf.counter & 0x40) {
 						if (bool_qso_details)
-							traceit("END from g2: streamID=%04x, %d bytes from IP=%s\n",
-								g2buf.streamid, g2buflen,inet_ntoa(fromDst4.sin_addr));
+							traceit("END from g2: streamID=%04x, %d bytes from IP=%s\n", g2buf.streamid, g2buflen,inet_ntoa(fromDst4.sin_addr));
 					}
 
 					/* find out which repeater module to send the data to */
@@ -1116,12 +1116,15 @@ void CG2_ircddb::runit()
 
 										bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
 										if (result) { /* it is a repeater */
+											uint32_t address;
 											/* set the destination */
 											to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
 											memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 											to_remote_g2[i].toDst4.sin_family = AF_INET;
-											to_remote_g2[i].toDst4.sin_port = htons(g2_external.port);
-											to_remote_g2[i].toDst4.sin_addr.s_addr = inet_addr(ip);
+											to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
+											// if the address is in the portmap, we'll use its port instead of the default port
+											auto theAddress = portmap.find(address);
+											to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end()) ? g2_external.port : theAddress->second);
 
 											memcpy(g2buf.title, "DSVT", 4);
 											g2buf.config = 0x10;
@@ -1145,19 +1148,17 @@ void CG2_ircddb::runit()
 											/* set PFCS */
 											calcPFCS(g2buf.title, 56);
 
-											/*
-											   The remote repeater has been set, lets fill in the dest_rptr
-											   so that later we can send that to the LIVE web site
-											*/
+											// The remote repeater has been set, lets fill in the dest_rptr
+											// so that later we can send that to the LIVE web site
 											memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
 											band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
-											/* send to remote gateway */
+											// send to remote gateway
 											for (int j=0; j<5; j++)
 												sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-											traceit("Routing to IP=%s, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
-											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr),
+											traceit("Routing to IP=%s port=%u, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
+											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
 											        g2buf.streamid, g2buf.hdr.mycall,
 											        g2buf.hdr.sfx, g2buf.hdr.urcall,
 											        g2buf.hdr.rpt1, &g2buf.hdr.rpt2,
@@ -1195,12 +1196,15 @@ void CG2_ircddb::runit()
 									if (i>=0 && i<3) {
 										/* one radio user on a repeater module at a time */
 										if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
+											uint32_t address;
 											/* set the destination */
 											to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
 											memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 											to_remote_g2[i].toDst4.sin_family = AF_INET;
-											to_remote_g2[i].toDst4.sin_port = htons(g2_external.port);
-											to_remote_g2[i].toDst4.sin_addr.s_addr = inet_addr(ip);
+											to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
+											// if the address is in the portmap, we'll use its port instead of the default
+											auto theAddress = portmap.find(address);
+											to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
 
 											memcpy(g2buf.title, "DSVT", 4);
 											g2buf.config = 0x10;
@@ -1230,8 +1234,8 @@ void CG2_ircddb::runit()
 											for (int j=0; j<5; j++)
 												sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-											traceit("Routing to IP=%s, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
-											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr),
+											traceit("Routing to IP=%s, port=%u, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
+											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
 											        g2buf.streamid, g2buf.hdr.mycall,
 											        g2buf.hdr.sfx, g2buf.hdr.urcall,
 											        g2buf.hdr.rpt1, g2buf.hdr.rpt2,
@@ -1913,7 +1917,7 @@ void CG2_ircddb::runit()
 
 					/* aprs processing */
 					if (bool_send_aprs)
-						//                             streamID               seq                     audio+text             size
+						//                             streamID               seq                audio+text             size
 						aprs->ProcessText(rptrbuf.vpkt.streamid, rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice, (recvlen == 29)?12:15);
 
 					for (int i=0; i<3; i++) {
@@ -1921,13 +1925,17 @@ void CG2_ircddb::runit()
 						if (to_remote_g2[i].streamid == rptrbuf.vpkt.streamid) {
 							memcpy(g2buf.title, "DSVT", 4);
 							g2buf.config = 0x20;
-							g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
+							g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0;
 							memcpy(&g2buf.id, &rptrbuf.vpkt.icm_id, 7);
 							if (recvlen == 29)
 								memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
 							else
 								memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
 
+							uint32_t address = to_remote_g2[i].toDst4.sin_addr.s_addr;
+							auto theAddress = portmap.find(address);
+							if (theAddress != portmap.end())
+								to_remote_g2[i].toDst4.sin_port = htons(theAddress->second);
 							sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 							time(&(to_remote_g2[i].last_time));
@@ -2836,6 +2844,6 @@ int main(int argc, char **argv)
 	CG2_ircddb g2;
 	if (g2.init(argv[1]))
 		return 1;
-	g2.runit();
+	g2.process();
 	traceit("Leaving processing loop...\n");
 }
