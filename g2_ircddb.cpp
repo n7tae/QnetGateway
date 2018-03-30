@@ -793,13 +793,15 @@ void CG2_ircddb::process()
 			int g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
 			// save incoming port for mobile systems
-			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr))
+			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
 				traceit("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
-			else {
-				if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr])
+				portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
+			} else {
+				if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr]) {
 					traceit("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
+					portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
+				}
 			}
-			portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
 
 
 			if ( ((g2buflen == 56) || (g2buflen == 27)) &&
@@ -1122,7 +1124,7 @@ void CG2_ircddb::process()
 											memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 											to_remote_g2[i].toDst4.sin_family = AF_INET;
 											to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
-											// if the address is in the portmap, we'll use its port instead of the default port
+											// if the address is in the portmap, we'll use that saved port instead of the default port
 											auto theAddress = portmap.find(address);
 											to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end()) ? g2_external.port : theAddress->second);
 
@@ -1202,7 +1204,7 @@ void CG2_ircddb::process()
 											memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 											to_remote_g2[i].toDst4.sin_family = AF_INET;
 											to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
-											// if the address is in the portmap, we'll use its port instead of the default
+											// if the address is in the portmap, we'll use that port instead of the default
 											auto theAddress = portmap.find(address);
 											to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
 
@@ -1933,9 +1935,9 @@ void CG2_ircddb::process()
 								memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
 
 							uint32_t address = to_remote_g2[i].toDst4.sin_addr.s_addr;
+							// if the address is in the portmap, we'll use that port instead of the default
 							auto theAddress = portmap.find(address);
-							if (theAddress != portmap.end())
-								to_remote_g2[i].toDst4.sin_port = htons(theAddress->second);
+							to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
 							sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 							time(&(to_remote_g2[i].last_time));
