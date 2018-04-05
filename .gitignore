@@ -1,7 +1,9 @@
 *.o
+*.d
 dvap_rptr
 dvrptr
 g2_link
 g2_ircddb
 g2link_test
 g2link_test_audio
+mmdvm_modem

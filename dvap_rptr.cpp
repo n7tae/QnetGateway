@@ -320,7 +320,7 @@ static int read_config(const char *cfgFile)
 		return 1;
 	}
 
-	get_value(cfg, "gateway.internal.port", G2_PORT, 10000, 65535, 19000);
+	get_value(cfg, "gateway.internal.port", G2_PORT, 10000, 65535, 20010);
 
 	if (get_value(cfg, std::string(dvap_path+".serial_number").c_str(), value, 8, 10, "APXXXXXX"))
 		strcpy(DVP_SERIAL, value.c_str());

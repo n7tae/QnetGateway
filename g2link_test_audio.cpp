@@ -133,10 +133,10 @@ int main(int argc, char **argv)
 
 	if (argc != 10) {
 		printf("Usage: g2link_test_audio <IPaddress> <port> <dvtoolFile> <repeaterCallsign> <module> <delay_between> <delay_before> <MYCALL> <YRCALL>\n");
-		printf("Example: g2link_test_audio 127.0.0.1 19000 somefile.dvtool KJ4NHF B 19 2 KI4LKF CQCQCQ\n");
+		printf("Example: g2link_test_audio 127.0.0.1 20010 somefile.dvtool KJ4NHF B 19 2 KI4LKF CQCQCQ\n");
 		printf("Where...\n");
 		printf("        127.0.0.1 is the IP address of the local G2\n");
-		printf("        19000 is the port of the INTERNAL G2\n");
+		printf("        20010 is the port of the INTERNAL G2\n");
 		printf("        somefile.dvtool is a dvtool file\n");
 		printf("        KJ4NHF is your G2 callsign, dont use KJ4NHF\n");
 		printf("        B is one of your modules\n");

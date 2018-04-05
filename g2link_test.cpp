@@ -148,10 +148,10 @@ int main(int argc, char **argv)
 
 	if (argc != 10) {
 		printf("Usage: g2link_test <IPaddress> <port> <textMessage> <repeaterCallsign> <module> <delay_between> <delay_before> <MYCALL> <YRCALL>\n");
-		printf("Example: g2link_test 127.0.0.1 19000 \"HELLO\" KJ4NHF B 20 2 KI4LKF XRF005AL\n");
+		printf("Example: g2link_test 127.0.0.1 20010 \"HELLO\" KJ4NHF B 20 2 KI4LKF XRF005AL\n");
 		printf("Where...\n\n");
 		printf("        127.0.0.1 is the G2 INTERNAL IP of the G2 gateway\n");
-		printf("        19000 is the the G2 INTERNAL port of the G2 gateway\n");
+		printf("        20010 is the the G2 INTERNAL port of the G2 gateway\n");
 		printf("        HELLO is the text message that we will send, no more than 20 characters\n");
 		printf("              Note: the text message will be converted to UPPERCASE\n");
 		printf("        KJ4NHF is your dstar repeater callsign\n");

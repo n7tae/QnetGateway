@@ -314,7 +314,7 @@ bool CG2_ircddb::read_config(char *cfgFile)
 	if (! get_value(cfg, "gateway.internal.ip", g2_internal.ip, 7, IP_SIZE, "0.0.0.0"))
 		return true;
 
-	get_value(cfg, "gateway.internal.port", g2_internal.port, 16000, 65535, 19000);
+	get_value(cfg, "gateway.internal.port", g2_internal.port, 16000, 65535, 20010);
 
 	if (! get_value(cfg, "g2_link.outgoing_ip", g2_link.ip, 7, IP_SIZE, "127.0.0.1"))
 		return true;
