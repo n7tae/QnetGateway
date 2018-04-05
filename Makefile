@@ -42,8 +42,8 @@ g2_ircddb : $(IRCOBJS) g2_ircddb.o aprs.o
 g2_link : g2_link.o
 	g++ $(CPPFLAGS) -o g2_link g2_link.o $(LDFLAGS) -pthread
 
-mmdvm_modem : mmdvm_modem.o
-	g++ $(CPPFLAGS) -o mmdvm_modem mmdvm_modem.o $(LDFLAGS) -pthread
+mmdvm_modem : mmdvm_modem.o UDPSocket.o
+	g++ $(CPPFLAGS) -o mmdvm_modem mmdvm_modem.o UDPSocket.o $(LDFLAGS)
 
 dvap_rptr : dvap_rptr.o DVAPDongle.o $(DSTROBJS)
 	g++ $(CPPFLAGS) -o dvap_rptr dvap_rptr.o DVAPDongle.o $(DSTROBJS) $(LDFLAGS) -pthread

@@ -25,6 +25,7 @@
 
 #include "versions.h"
 #include "mmdvm_modem.h"
+#include "UDPSocket.h"
 
 std::atomic<bool> CMMDVMModem::keep_running(true);
 
@@ -57,25 +58,48 @@ bool CMMDVMModem::Initialize(const char *cfgfile)
 		return true;
 	}
 
-//	dstar_dv_init();
-
-	try {
-		mmdvm_future = std::async(std::launch::async, &CMMDVMModem::ProcessMMDVM, this);
-	} catch (const std::exception &e) {
-		printf("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
-		keep_running = false;
-	}
-	printf("Started ProcessMMDVM() thread\n");
-
 	return false;
+}
+
+void CMMDVMModem::Run(const char *cfgfile)
+{
+	if (Initialize(cfgfile))
+		return;
+
+	CUDPSocket GatewaySock(G2_INTERNAL_IP, G2_PORT);
+	if (GatewaySock.open())
+		return;
+
+	CUDPSocket MMDVMSock(MMDVM_IP, MMDVM_PORT);
+	if (MMDVMSock.open()) {
+		GatewaySock.close();
+		return;
+	}
+
+	keep_running = true;
+
+
+	while (keep_running) {
+		ProcessMMDVM();
+		ProcessGateway();
+	}
+
+	MMDVMSock.close();
+	GatewaySock.close();
 }
 
 void CMMDVMModem::ProcessGateway()
 {
+	// read from gateway
+
+	// if there is data, translate it and send it to the MMDVM Modem
 }
 
 void CMMDVMModem::ProcessMMDVM()
 {
+	// read from the MMDVM modem
+
+	// if there is data, translate it and send it to the Gateway
 }
 
 bool CMMDVMModem::GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value)
@@ -195,15 +219,15 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 	}
 
 	if (GetValue(cfg, std::string(mmdvm_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
-		strcpy(RPTR_VIRTUAL_IP, value.c_str());
+		MMDVM_IP = value;
 	else
 		return true;
 
 	GetValue(cfg, std::string(mmdvm_path+".port").c_str(), i, 10000, 65535, 20010);
-	RPTR_PORT = (unsigned short)i;
+	MMDVM_PORT = (unsigned short)i;
 
 	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
-		strcpy(G2_INTERNAL_IP, value.c_str());
+		G2_INTERNAL_IP = value;
 	else
 		return true;
 
@@ -246,17 +270,9 @@ int main(int argc, const char **argv)
 
 	CMMDVMModem mmdvm;
 
-	if (mmdvm.Initialize(argv[1])) {
-		printf("ERROR: Failed to process %s\n", argv[0]);
-		return 1;
-	}
+	mmdvm.Run(argv[1]);
 
-	while (mmdvm.keep_running) {
-		mmdvm.ProcessGateway();
-	}
-
-	mmdvm.mmdvm_future.get();
-	printf("%s is closed.\n", argv[0]);
+	printf("%s is closing.\n", argv[0]);
 
 	return 0;
 }

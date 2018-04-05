@@ -20,8 +20,6 @@
 
 #include <atomic>
 #include <string>
-#include <future>
-
 #include <libconfig.h++>
 
 using namespace libconfig;
@@ -35,17 +33,17 @@ public:
 	// functions
 	CMMDVMModem();
 	~CMMDVMModem();
-	bool Initialize(const char *cfgfile);
-	void ProcessGateway();
+	void Run(const char *cfgfile);
 
 	// data
 	static std::atomic<bool> keep_running;
-	std::future<void> mmdvm_future;
 
 private:
 	// functions
-	void ProcessMMDVM();
+	bool Initialize(const char *cfgfile);
 	static void SignalCatch(int signum);
+	void ProcessGateway();
+	void ProcessMMDVM();
 
 	// read configuration file
 	bool ReadConfig(const char *);
@@ -58,11 +56,11 @@ private:
 	char RPTR_MOD;
 	char RPTR[CALL_SIZE + 1];
 	char OWNER[CALL_SIZE + 1];
-	char RPTR_VIRTUAL_IP[IP_SIZE + 1];
-	char G2_INTERNAL_IP[IP_SIZE + 1];
-	unsigned short RPTR_PORT, G2_PORT;
+	std::string MMDVM_IP, G2_INTERNAL_IP;
+	unsigned short MMDVM_PORT, G2_PORT;
 	int WAIT_FOR_PACKETS, DELAY_BEFORE, DELAY_BETWEEN;
 	bool RPTR_ACK;
 
 	// parameters
+	int gateway_sock, mmdvm_sock;
 };
