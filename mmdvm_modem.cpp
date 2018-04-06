@@ -22,6 +22,7 @@
 #include <cstring>
 #include <csignal>
 #include <ctime>
+#include <cstdlib>
 
 #include "versions.h"
 #include "mmdvm_modem.h"
@@ -30,7 +31,9 @@
 
 std::atomic<bool> CMMDVMModem::keep_running(true);
 
-CMMDVMModem::CMMDVMModem()
+CMMDVMModem::CMMDVMModem() :
+seed(time(NULL)),
+COUNTER(0)
 {
 }
 
@@ -149,6 +152,7 @@ void CMMDVMModem::ProcessGateway(CUDPSocket &gsock, CUDPSocket &msock)
 void CMMDVMModem::ProcessMMDVM(CUDPSocket &gsock, CUDPSocket &msock)
 {
 	SMMDVMPKT mpkt;
+	static SPKT gpkt;	// retain some header values for voice data
 	unsigned int mmdvm_port = MMDVM_PORT;
 	in_addr addr;
 	addr.s_addr = mmdvm_addr.s_addr;
@@ -166,23 +170,33 @@ void CMMDVMModem::ProcessMMDVM(CUDPSocket &gsock, CUDPSocket &msock)
 	}
 
 	// if there is data, translate it and send it to the Gateway
-	if (21==len || 49==len) {
-		unsigned int g2_internal_port = G2_INTERNAL_PORT;
-
-		SPKT gpkt;
+	if (49 == len) {
+		// sets most of the params with the header
 		memcpy(gpkt.pkt_id, "DSTR", 4);
-		gpkt.counter = 0;
+		gpkt.counter = COUNTER++;
 		gpkt.flag[0] = 0x72;
 		gpkt.flag[1] = 0x12;
 		gpkt.flag[2] = 0x0;
-		gpkt.remaining = (21 == len) ? 0x16 : 0x30;
+		gpkt.remaining = 0x30;
 		gpkt.vpkt.icm_id = 0x20;
 		gpkt.vpkt.dst_rptr_id = 0x0;
 		gpkt.vpkt.snd_rptr_id = 0x1;
 		gpkt.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
-
-		if (false == gsock.write(gpkt.pkt_id, (21==len) ? 29 : 58, g2_internal_addr, g2_internal_port)) {
-			printf("ERROR: ProcessMMDVM: Could not write gateway packet\n");
+		gpkt.vpkt.streamid = (rand_r(&seed) % 65535U) + 1U;
+		gpkt.vpkt.ctrl = mpkt.header.seq;
+		memcpy(gpkt.vpkt.hdr.flag, mpkt.header.flag, 41);
+		if (false == gsock.write(gpkt.pkt_id, 58, g2_internal_addr, (unsigned int)G2_INTERNAL_PORT)) {
+			printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
+			keep_running = false;
+		}
+	} else if (21 == len) {
+		// just a few need updating in a voice data frame
+		gpkt.counter = COUNTER++;
+		gpkt.remaining = 0x16;
+		gpkt.vpkt.ctrl = mpkt.voice.seq;
+		memcpy(gpkt.vpkt.vasd.text, mpkt.voice.ambe, 12);
+		if (false == gsock.write(gpkt.pkt_id, 29, g2_internal_addr, (unsigned int)G2_INTERNAL_PORT)) {
+			printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 			keep_running = false;
 		}
 	} else

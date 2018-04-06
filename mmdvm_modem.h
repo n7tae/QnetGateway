@@ -68,4 +68,6 @@ private:
 
 	// parameters
 	int gateway_sock, mmdvm_sock;
+	unsigned int seed;
+	unsigned short COUNTER;
 };

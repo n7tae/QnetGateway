@@ -930,13 +930,12 @@ static void ReadDVAPThread()
 
 		/* send the S packet if needed */
 		if ((tnow - S_ctrl_msg_time) > 60) {
-			spack.counter = C_COUNTER;
+			spack.counter = C_COUNTER++;
 			memcpy(spack.spkt.mycall, OWNER, 7);
 			spack.spkt.mycall[7] = 'S';
 			memcpy(spack.spkt.rpt, OWNER, 7);
 			spack.spkt.rpt[7] = 'S';
 			sendto(insock, spack.pkt_id, 26, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-			C_COUNTER++;
 			S_ctrl_msg_time = tnow;
 		}
 
@@ -1086,12 +1085,11 @@ static void ReadDVAPThread()
 				net_buf.vpkt.hdr.flag[1] = net_buf.vpkt.hdr.flag[2] = 0x00;
 
 				/* for icom g2 */
-				spack.counter = C_COUNTER;
+				spack.counter = C_COUNTER++;
 				memcpy(spack.spkt.mycall, net_buf.vpkt.hdr.mycall, 8);
 				memcpy(spack.spkt.rpt, OWNER, 7);
 				spack.spkt.rpt[7] = RPTR_MOD;
 				sendto(insock, spack.pkt_id, 26, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-				C_COUNTER++;
 
 				// Before we send the data to the local gateway,
 				// set RPT1, RPT2 to be the local gateway
@@ -1100,7 +1098,7 @@ static void ReadDVAPThread()
 					memcpy(net_buf.vpkt.hdr.rpt1, OWNER, 7);
 
 				memcpy(net_buf.pkt_id, "DSTR", 4);
-				net_buf.counter = C_COUNTER;
+				net_buf.counter = C_COUNTER++;
 				net_buf.flag[0] = 0x73;
 				net_buf.flag[1] = 0x12;
 				net_buf.flag[2] = 0x00;
@@ -1115,7 +1113,6 @@ static void ReadDVAPThread()
 				sequence = 0;
 				calcPFCS((unsigned char *)&(net_buf.vpkt.hdr), net_buf.vpkt.hdr.pfcs);
 				sendto(insock, &net_buf, 58, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-				C_COUNTER ++;
 
 				// local RF user keying up, start timer
 				dvap_busy = true;
@@ -1130,7 +1127,7 @@ static void ReadDVAPThread()
 			if (dvap_busy) {
 				the_end = ((dr.frame.framepos & 0x40) == 0x40);
 
-				net_buf.counter = C_COUNTER;
+				net_buf.counter = C_COUNTER++;
 				net_buf.remaining = 0x13;
 				net_buf.vpkt.ctrl = sequence++;
 				if (the_end)
@@ -1145,7 +1142,6 @@ static void ReadDVAPThread()
 					num_dv_frames++;
 				}
 
-				C_COUNTER++;
 				if (sequence > 0x14)
 					sequence = 0;
 
