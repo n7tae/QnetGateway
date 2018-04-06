@@ -28,8 +28,6 @@
 
 #include "DVAPDongle.h"
 
-extern void traceit(const char *fmt,...);
-
 CDVAPDongle::CDVAPDongle() : MAX_REPL_CNT(20u)
 {
 }
@@ -58,10 +56,10 @@ bool CDVAPDongle::Initialize(char *serialno, int frequency, int offset, int powe
 				close(serfd);
 				serfd = -1;
 				ok = false;
-				traceit("Device %s is already locked/used\n", device);
+				printf("Device %s is already locked/used\n", device);
 				continue;
 			}
-			traceit("Device %s now locked for exclusive use\n", device);
+			printf("Device %s now locked for exclusive use\n", device);
 
 			ok = get_ser(device, serialno);
 			if (!ok) {
@@ -149,7 +147,7 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 		case 0xc012u:
 			break;	// these are all expected headers
 		default:
-			traceit("unknown header=0x%d\n", (unsigned)dr.header);
+			printf("unknown header=0x%d\n", (unsigned)dr.header);
 			if (syncit())
 				return RT_ERR;
 			return RT_TIMEOUT;
@@ -228,7 +226,7 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 		case 0xc012u:
 			return RT_DAT;
 	}
-	traceit("Unrecognized data from dvap: header=%#x control=%#x\n", (unsigned)dr.header, (unsigned)dr.param.control);
+	printf("Unrecognized data from dvap: header=%#x control=%#x\n", (unsigned)dr.header, (unsigned)dr.param.control);
 	if (syncit())
 		return RT_ERR;
 	return RT_TIMEOUT;
@@ -241,7 +239,7 @@ bool CDVAPDongle::syncit()
 	fd_set fds;
 	short cnt = 0;
 
-	traceit("Starting syncing dvap\n");
+	printf("Starting syncing dvap\n");
 	memset(data,  0x00, 7);
 	dvapreg.header = 0x2007u;
 	dvapreg.param.control = 0x90u;
@@ -255,7 +253,7 @@ bool CDVAPDongle::syncit()
 		if (n <= 0) {
 			cnt ++;
 			if (cnt > 100) {
-				traceit("syncit() uncessful...stopping\n");
+				printf("syncit() uncessful...stopping\n");
 				return true;
 			}
 		} else {
@@ -274,7 +272,7 @@ bool CDVAPDongle::syncit()
 			}
 		}
 	}
-	traceit("Stopping syncing dvap\n");
+	printf("Stopping syncing dvap\n");
 	return false;
 }
 
@@ -287,7 +285,7 @@ bool CDVAPDongle::get_ser(char *dvp, char *dvap_serial_number)
 
 	int rc = write_to_dvp(&dvapreg, 4);
 	if (rc != 4) {
-		traceit("Failed to send request to get dvap serial#\n");
+		printf("Failed to send request to get dvap serial#\n");
 		return false;
 	}
 
@@ -297,16 +295,16 @@ bool CDVAPDongle::get_ser(char *dvp, char *dvap_serial_number)
 		reply = GetReply(dvapreg);
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to receive dvap serial#\n");
+			printf("Reached max number of requests to receive dvap serial#\n");
 			return false;
 		}
 	} while (reply != RT_SER);
 
 	if (0 == strcmp(dvapreg.param.sstr, dvap_serial_number)) {
-		traceit("Using %s:  %s, because serial number matches your dvap_rptr.cfg\n", dvp, dvap_serial_number);
+		printf("Using %s:  %s, because serial number matches your dvap_rptr.cfg\n", dvp, dvap_serial_number);
 		return true;
 	}
-	traceit("Device %s has serial %s, but does not match your config value %s\n", dvp, dvapreg.param.sstr, dvap_serial_number);
+	printf("Device %s has serial %s, but does not match your config value %s\n", dvp, dvapreg.param.sstr, dvap_serial_number);
 	return false;
 }
 
@@ -319,7 +317,7 @@ bool CDVAPDongle::get_name()
 
 	int rc = write_to_dvp(&dvapreg, 4);
 	if (rc != 4) {
-		traceit("Failed to send request to get dvap name\n");
+		printf("Failed to send request to get dvap name\n");
 		return false;
 	}
 
@@ -329,17 +327,17 @@ bool CDVAPDongle::get_name()
 		reply = GetReply(dvapreg);
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to receive dvap name\n");
+			printf("Reached max number of requests to receive dvap name\n");
 			return false;
 		}
 	} while (reply != RT_NAME);
 
 	if (0x10u!=dvapreg.header || 0x1u!=dvapreg.param.control || strncmp(dvapreg.param.sstr, "DVAP Dongle", 11)) {
-		traceit("Failed to receive dvap name, got %s\n", dvapreg.param.sstr);
+		printf("Failed to receive dvap name, got %s\n", dvapreg.param.sstr);
 		return false;
 	}
 
-	traceit("Device name: %.*s\n", 11, dvapreg.param.sstr);
+	printf("Device name: %.*s\n", 11, dvapreg.param.sstr);
 	return true;
 }
 
@@ -353,7 +351,7 @@ bool CDVAPDongle::get_fw()
 
 	int rc = write_to_dvp(&dvapreg, 5);
 	if (rc != 5) {
-		traceit("Failed to send request to get dvap fw\n");
+		printf("Failed to send request to get dvap fw\n");
 		return false;
 	}
 
@@ -363,13 +361,13 @@ bool CDVAPDongle::get_fw()
 		reply = GetReply(dvapreg);
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to receive dvap fw\n");
+			printf("Reached max number of requests to receive dvap fw\n");
 			return false;
 		}
 	} while (reply != RT_FW);
 
 	unsigned int ver = dvapreg.param.ustr[1] + 256 * dvapreg.param.ustr[2];
-	traceit("dvap fw ver: %u.%u\n", ver / 100, ver % 100);
+	printf("dvap fw ver: %u.%u\n", ver / 100, ver % 100);
 
 	return true;
 }
@@ -384,7 +382,7 @@ bool CDVAPDongle::set_modu()
 
 	int rc = write_to_dvp(&dvapreg, 5);
 	if (rc != 5) {
-		traceit("Failed to send request to set dvap modulation\n");
+		printf("Failed to send request to set dvap modulation\n");
 		return false;
 	}
 
@@ -395,7 +393,7 @@ bool CDVAPDongle::set_modu()
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap modulation\n");
+			printf("Reached max number of requests to set dvap modulation\n");
 			return false;
 		}
 	} while (reply != RT_MODU);
@@ -413,7 +411,7 @@ bool CDVAPDongle::set_mode()
 
 	int rc = write_to_dvp(&dvapreg, 5);
 	if (rc != 5) {
-		traceit("Failed to send request to set dvap mode\n");
+		printf("Failed to send request to set dvap mode\n");
 		return false;
 	}
 
@@ -424,7 +422,7 @@ bool CDVAPDongle::set_mode()
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap mode\n");
+			printf("Reached max number of requests to set dvap mode\n");
 			return false;
 		}
 	} while (reply != RT_MODE);
@@ -440,17 +438,17 @@ bool CDVAPDongle::set_sql(int squelch)
 	dvapreg.header = 0x5u;
 	dvapreg.param.control = 0x80u;
 	if (squelch < -128) {
-		traceit("Squelch setting of %d too small, resetting...\n", squelch);
+		printf("Squelch setting of %d too small, resetting...\n", squelch);
 		squelch = -128;
 	} else if (squelch > -45) {
-		traceit("Squelch setting of %d too large, resetting...\n", squelch);
+		printf("Squelch setting of %d too large, resetting...\n", squelch);
 		squelch = -45;
 	}
 	dvapreg.param.byte = (int8_t)squelch;
 
 	int rc = write_to_dvp(&dvapreg, 5);
 	if (rc != 5) {
-		traceit("Failed to send request to set dvap sql\n");
+		printf("Failed to send request to set dvap sql\n");
 		return false;
 	}
 
@@ -461,11 +459,11 @@ bool CDVAPDongle::set_sql(int squelch)
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap sql\n");
+			printf("Reached max number of requests to set dvap sql\n");
 			return false;
 		}
 	} while (reply != RT_SQL);
-	traceit("DVAP squelch is %d dB\n", (int)dvapreg.param.byte);
+	printf("DVAP squelch is %d dB\n", (int)dvapreg.param.byte);
 	return true;
 }
 
@@ -477,17 +475,17 @@ bool CDVAPDongle::set_pwr(int power)
 	dvapreg.header = 0x6u;
 	dvapreg.param.control = 0x138u;
 	if (power < -12) {
-		traceit("Power setting of %d is too low, resetting...\n", power);
+		printf("Power setting of %d is too low, resetting...\n", power);
 		power = -12;
 	} else if (power > 10) {
-		traceit("Power setting of %d is too high, resetting...\n", power);
+		printf("Power setting of %d is too high, resetting...\n", power);
 		power = 10;
 	}
 	dvapreg.param.word = (int16_t)power;
 
 	int rc = write_to_dvp(&dvapreg, 6);
 	if (rc != 6) {
-		traceit("Failed to send request to set dvap pwr\n");
+		printf("Failed to send request to set dvap pwr\n");
 		return false;
 	}
 
@@ -498,11 +496,11 @@ bool CDVAPDongle::set_pwr(int power)
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap pwr\n");
+			printf("Reached max number of requests to set dvap pwr\n");
 			return false;
 		}
 	} while (reply != RT_PWR);
-	traceit("DVAP power is %d dB\n", (int)dvapreg.param.word);
+	printf("DVAP power is %d dB\n", (int)dvapreg.param.word);
 	return true;
 }
 
@@ -514,17 +512,17 @@ bool CDVAPDongle::set_off(int offset)
 	dvapreg.header = 0x6u;
 	dvapreg.param.control = 0x400u;
 	if (offset < -2000) {
-		traceit("Offset of %d is too low, resetting...\n", offset);
+		printf("Offset of %d is too low, resetting...\n", offset);
 		offset = -2000;
 	} else if (offset > 2000) {
-		traceit("Offset of %d is too high, resetting...\n", offset);
+		printf("Offset of %d is too high, resetting...\n", offset);
 		offset = 2000;
 	}
 	dvapreg.param.word = (int16_t)offset;
 
 	int rc = write_to_dvp(&dvapreg, 6);
 	if (rc != 6) {
-		traceit("Failed to send request to set dvap offset\n");
+		printf("Failed to send request to set dvap offset\n");
 		return false;
 	}
 
@@ -535,11 +533,11 @@ bool CDVAPDongle::set_off(int offset)
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap offset\n");
+			printf("Reached max number of requests to set dvap offset\n");
 			return false;
 		}
 	} while (reply != RT_OFF);
-	traceit("DVAP offset is %d Hz\n", (int)dvapreg.param.word);
+	printf("DVAP offset is %d Hz\n", (int)dvapreg.param.word);
 	return true;
 }
 
@@ -554,7 +552,7 @@ bool CDVAPDongle::set_freq(int frequency)
 
 	int rc = write_to_dvp(&dvapreg, 4);
 	if (rc != 4) {
-		traceit("Failed to send request for frequency limits\n");
+		printf("Failed to send request for frequency limits\n");
 		return false;
 	}
 
@@ -565,18 +563,18 @@ bool CDVAPDongle::set_freq(int frequency)
 
 		cnt++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests for dvap frequency limits\n");
+			printf("Reached max number of requests for dvap frequency limits\n");
 			return false;
 		}
 	} while (reply != RT_FREQ_LIMIT);
-	traceit("DVAP Frequency limits are from %d to %d Hz\n", dvapreg.param.twod[0], dvapreg.param.twod[1]);
+	printf("DVAP Frequency limits are from %d to %d Hz\n", dvapreg.param.twod[0], dvapreg.param.twod[1]);
 
 	// okay, now we know the frequency limits, get on with the show...
 	if (frequency < dvapreg.param.twod[0]) {
-		traceit("Frequency of %d is too small, resetting...\n", frequency);
+		printf("Frequency of %d is too small, resetting...\n", frequency);
 		frequency = dvapreg.param.twod[0];
 	} else if (frequency > dvapreg.param.twod[1]) {
-		traceit("Frequency of %d is too large, resetting...\n", frequency);
+		printf("Frequency of %d is too large, resetting...\n", frequency);
 		frequency = dvapreg.param.twod[1];
 	}
 
@@ -587,7 +585,7 @@ bool CDVAPDongle::set_freq(int frequency)
 
 	rc = write_to_dvp(&dvapreg, 8);
 	if (rc != 8) {
-		traceit("Failed to send request to set dvap frequency\n");
+		printf("Failed to send request to set dvap frequency\n");
 		return false;
 	}
 
@@ -598,11 +596,11 @@ bool CDVAPDongle::set_freq(int frequency)
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to set dvap frequency\n");
+			printf("Reached max number of requests to set dvap frequency\n");
 			return false;
 		}
 	} while (reply != RT_FREQ);
-	traceit("DVAP frequency is %d Hz\n", dvapreg.param.dword);
+	printf("DVAP frequency is %d Hz\n", dvapreg.param.dword);
 	return true;
 }
 
@@ -617,7 +615,7 @@ bool CDVAPDongle::start_dvap()
 
 	int rc = write_to_dvp(&dvapreg, 5);
 	if (rc != 5) {
-		traceit("Failed to send request to start the dvap dongle\n");
+		printf("Failed to send request to start the dvap dongle\n");
 		return false;
 	}
 
@@ -628,7 +626,7 @@ bool CDVAPDongle::start_dvap()
 
 		cnt ++;
 		if (cnt >= MAX_REPL_CNT) {
-			traceit("Reached max number of requests to start the dvap dongle\n");
+			printf("Reached max number of requests to start the dvap dongle\n");
 			return false;
 		}
 	} while (reply != RT_START);
@@ -654,7 +652,7 @@ int CDVAPDongle::write_to_dvp(const void *buffer, const unsigned int len)
 	while (ptr < len) {
 		ssize_t n = write(serfd, buf + ptr, len - ptr);
 		if (n < 0) {
-			traceit("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
+			printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
 			return -1;
 		}
 
@@ -691,7 +689,7 @@ int CDVAPDongle::read_from_dvp(void *buffer, unsigned int len)
 			n = select(serfd + 1, &fds, NULL, NULL, NULL);
 
 		if (n < 0) {
-			traceit("select error=%d on dvap\n", errno);
+			printf("select error=%d on dvap\n", errno);
 			return -1;
 		}
 
@@ -711,19 +709,19 @@ bool CDVAPDongle::OpenSerial(char *device)
 
 	serfd = open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0);
 	if (serfd < 0) {
-		traceit("Failed to open device [%s], error=%d, message=%s\n", device, errno, strerror(errno));
+		printf("Failed to open device [%s], error=%d, message=%s\n", device, errno, strerror(errno));
 		return false;
 	}
 
 	if (isatty(serfd) == 0) {
-		traceit("Device %s is not a tty device\n", device);
+		printf("Device %s is not a tty device\n", device);
 		close(serfd);
 		serfd = -1;
 		return false;
 	}
 
 	if (tcgetattr(serfd, &t) < 0) {
-		traceit("tcgetattr failed for %s, error=%d, message-%s\n", device, errno, strerror(errno));
+		printf("tcgetattr failed for %s, error=%d, message-%s\n", device, errno, strerror(errno));
 		close(serfd);
 		serfd = -1;
 		return false;
@@ -741,7 +739,7 @@ bool CDVAPDongle::OpenSerial(char *device)
 	cfsetispeed(&t, B230400);
 
 	if (tcsetattr(serfd, TCSANOW, &t) < 0) {
-		traceit("tcsetattr failed for %s, error=%dm message=%s\n", device, errno, strerror(errno));
+		printf("tcsetattr failed for %s, error=%dm message=%s\n", device, errno, strerror(errno));
 		close(serfd);
 		serfd = -1;
 		return false;

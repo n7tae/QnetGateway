@@ -33,8 +33,6 @@ void safeStringCopy(char * dest, const char * src, unsigned int buf_size);
 
 char *getCurrentTime(void);
 
-void traceit(const char *fmt,...);
-
 void ToUpper(std::string &str);
 
 void ToLower(std::string &str);

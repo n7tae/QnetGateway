@@ -33,7 +33,7 @@
 void CAPRS::SelectBand(short int rptr_idx, unsigned short streamID)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in aprs_select_band, invalid mod %d\n", rptr_idx);
+		printf("ERROR in aprs_select_band, invalid mod %d\n", rptr_idx);
 		return;
 	}
 
@@ -70,7 +70,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 	}
 
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		// traceit("ERROR in aprs_process_text: rptr_idx %d is invalid\n", rptr_idx);
+		// printf("ERROR in aprs_process_text: rptr_idx %d is invalid\n", rptr_idx);
 		return;
 	}
 
@@ -113,7 +113,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 	*p = '\0';
 
 	sprintf(aprs_buf, "%s,qAR,%s:%s\r\n", hdr, m_rptr->mod[rptr_idx].call.c_str(), aud);
-	// traceit("GPS-A=%s", aprs_buf);
+	// printf("GPS-A=%s", aprs_buf);
 	int rc = WriteSock(aprs_buf, strlen(aprs_buf));
 	if (rc == -1) {
 		if ((errno == EPIPE) ||
@@ -127,11 +127,11 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 		        (errno == ENETUNREACH) ||
 		        (errno == EHOSTDOWN) ||
 		        (errno == ENOTCONN)) {
-			traceit("CAPRS::ProcessText(): APRS_HOST closed connection,error=%d\n",errno);
+			printf("CAPRS::ProcessText(): APRS_HOST closed connection,error=%d\n",errno);
 			close(aprs_sock);
 			aprs_sock = -1;
 		} else /* if it is WOULDBLOCK, we will not go into a loop here */
-			traceit("CAPRS::ProcessText(): send error=%d\n", errno);
+			printf("CAPRS::ProcessText(): send error=%d\n", errno);
 	}
 
 	time(&aprs_streamID[rptr_idx].last_time);
@@ -177,7 +177,7 @@ bool CAPRS::WriteData(short int rptr_idx, unsigned char *data)
 {
 
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("CAPRS::WriteData: rptr_idx %d is invalid\n", rptr_idx);
+		printf("CAPRS::WriteData: rptr_idx %d is invalid\n", rptr_idx);
 		return false;
 	}
 
@@ -210,7 +210,7 @@ bool CAPRS::WriteData(short int rptr_idx, unsigned char *data)
 void CAPRS::SyncIt(short int rptr_idx)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("CAPRS::SyncIt(): rptr_idx %d is invalid\n", rptr_idx);
+		printf("CAPRS::SyncIt(): rptr_idx %d is invalid\n", rptr_idx);
 		return;
 	}
 
@@ -221,7 +221,7 @@ void CAPRS::SyncIt(short int rptr_idx)
 void CAPRS::Reset(short int rptr_idx)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("CAPRS::Reset(): rptr_idx %d is invalid\n", rptr_idx);
+		printf("CAPRS::Reset(): rptr_idx %d is invalid\n", rptr_idx);
 		return;
 	}
 
@@ -236,7 +236,7 @@ void CAPRS::Reset(short int rptr_idx)
 unsigned int CAPRS::GetData(short int rptr_idx, unsigned char *data, unsigned int len)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("CAPRS::GetData: rptr_idx %d is invalid\n", rptr_idx);
+		printf("CAPRS::GetData: rptr_idx %d is invalid\n", rptr_idx);
 		return 0;
 	}
 
@@ -266,7 +266,7 @@ void CAPRS::Open(const std::string OWNER)
 
 	bool ok = ResolveRmt(m_rptr->aprs.ip.c_str(), SOCK_STREAM, &aprs_addr);
 	if (!ok) {
-		traceit("Can't resolve APRS_HOST %s\n", m_rptr->aprs.ip.c_str());
+		printf("Can't resolve APRS_HOST %s\n", m_rptr->aprs.ip.c_str());
 		return;
 	}
 
@@ -278,24 +278,24 @@ void CAPRS::Open(const std::string OWNER)
 
 	aprs_sock = socket(PF_INET, SOCK_STREAM, 0);
 	if (aprs_sock == -1) {
-		traceit("Failed to create aprs socket,error=%d\n",errno);
+		printf("Failed to create aprs socket,error=%d\n",errno);
 		return;
 	}
 	fcntl(aprs_sock,F_SETFL,O_NONBLOCK);
 
 	val = 1;
 	if (setsockopt(aprs_sock,IPPROTO_TCP,TCP_NODELAY,(char *)&val, sizeof(val)) == -1) {
-		traceit("setsockopt TCP_NODELAY TCP for aprs socket failed,error=%d\n",errno);
+		printf("setsockopt TCP_NODELAY TCP for aprs socket failed,error=%d\n",errno);
 		close(aprs_sock);
 		aprs_sock = -1;
 		return;
 	}
 
-	traceit("Trying to connect to APRS...\n");
+	printf("Trying to connect to APRS...\n");
 	int rc = connect(aprs_sock, (struct sockaddr *)&aprs_addr, aprs_addr_len);
 	if (rc != 0) {
 		if (errno == EINPROGRESS) {
-			traceit("Waiting for up to %d seconds for APRS_HOST\n", MAX_WAIT);
+			printf("Waiting for up to %d seconds for APRS_HOST\n", MAX_WAIT);
 			while (MAX_WAIT > 0) {
 				tv.tv_sec = 0;
 				tv.tv_usec = 0;
@@ -304,7 +304,7 @@ void CAPRS::Open(const std::string OWNER)
 				rc = select(aprs_sock + 1, NULL,  &fdset, NULL, &tv);
 
 				if (rc < 0) {
-					traceit("Failed to connect to APRS...select,error=%d\n", errno);
+					printf("Failed to connect to APRS...select,error=%d\n", errno);
 					close(aprs_sock);
 					aprs_sock = -1;
 					return;
@@ -315,7 +315,7 @@ void CAPRS::Open(const std::string OWNER)
 					val = 1; /* Assume it fails */
 					val_len = sizeof(val);
 					if (getsockopt(aprs_sock, SOL_SOCKET, SO_ERROR, (char *) &val, &val_len) < 0) {
-						traceit("Failed to connect to APRS...getsockopt, error=%d\n", errno);
+						printf("Failed to connect to APRS...getsockopt, error=%d\n", errno);
 						close(aprs_sock);
 						aprs_sock = -1;
 						return;
@@ -327,19 +327,19 @@ void CAPRS::Open(const std::string OWNER)
 				}
 			}
 			if (MAX_WAIT == 0) {
-				traceit("Failed to connect to APRS...timeout\n");
+				printf("Failed to connect to APRS...timeout\n");
 				close(aprs_sock);
 				aprs_sock = -1;
 				return;
 			}
 		} else {
-			traceit("Failed to connect to APRS, error=%d\n", errno);
+			printf("Failed to connect to APRS, error=%d\n", errno);
 			close(aprs_sock);
 			aprs_sock = -1;
 			return;
 		}
 	}
-	traceit("Connected to APRS %s:%d\n", m_rptr->aprs.ip.c_str(), m_rptr->aprs.port);
+	printf("Connected to APRS %s:%d\n", m_rptr->aprs.ip.c_str(), m_rptr->aprs.port);
 
 	/* login to aprs */
 	sprintf(snd_buf, "user %s pass %d vers g2_ircddb 2.99 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
@@ -349,7 +349,7 @@ void CAPRS::Open(const std::string OWNER)
 		strcat(snd_buf, "filter ");
 		strcat(snd_buf, m_rptr->aprs_filter.c_str());
 	}
-	// traceit("APRS login command:[%s]\n", snd_buf);
+	// printf("APRS login command:[%s]\n", snd_buf);
 	strcat(snd_buf, "\r\n");
 
 	while (true) {
@@ -359,11 +359,11 @@ void CAPRS::Open(const std::string OWNER)
 				recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			} else {
-				traceit("APRS login command failed, error=%d\n", errno);
+				printf("APRS login command failed, error=%d\n", errno);
 				break;
 			}
 		} else {
-			// traceit("APRS login command sent\n");
+			// printf("APRS login command sent\n");
 			break;
 		}
 	}
@@ -375,7 +375,7 @@ void CAPRS::Open(const std::string OWNER)
 bool CAPRS::AddData(short int rptr_idx, unsigned char *data)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("CAPRS::AddData(): rptr_idx %d is invalid\n", rptr_idx);
+		printf("CAPRS::AddData(): rptr_idx %d is invalid\n", rptr_idx);
 		return false;
 	}
 
@@ -427,7 +427,7 @@ bool CAPRS::AddData(short int rptr_idx, unsigned char *data)
 			aprs_pack[rptr_idx].len++;
 
 			if (aprs_pack[rptr_idx].len >= 300) {
-				traceit("ERROR in aprs_add_data: Expected END of APRS data\n");
+				printf("ERROR in aprs_add_data: Expected END of APRS data\n");
 				aprs_pack[rptr_idx].len = 0;
 				aprs_pack[rptr_idx].al  = al_none;
 			}
@@ -441,7 +441,7 @@ bool CAPRS::AddData(short int rptr_idx, unsigned char *data)
 				aprs_pack[rptr_idx].al = al_end;
 				return true;
 			} else {
-				traceit("BAD checksum in APRS data\n");
+				printf("BAD checksum in APRS data\n");
 				aprs_pack[rptr_idx].al  = al_none;
 				aprs_pack[rptr_idx].len = 0;
 			}
@@ -459,7 +459,7 @@ bool CAPRS::CheckData(short int rptr_idx)
 	char buf[5];
 
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("CAPRS::CheckData(): rptr_idx %d is invalid\n", rptr_idx);
+		printf("CAPRS::CheckData(): rptr_idx %d is invalid\n", rptr_idx);
 		return false;
 	}
 	my_sum = CalcCRC(aprs_pack[rptr_idx].data + 10, aprs_pack[rptr_idx].len - 10);
@@ -528,7 +528,7 @@ bool CAPRS::ResolveRmt(const char *name, int type, struct sockaddr_in *addr)
 
 	int rc = getaddrinfo(name, NULL, &hints, &res);
 	if (rc != 0) {
-		traceit("getaddrinfo return error code %d for [%s]\n", rc, name);
+		printf("getaddrinfo return error code %d for [%s]\n", rc, name);
 		return false;
 	}
 

@@ -178,7 +178,7 @@ bool CG2_ircddb::get_value(const Config &cfg, const char *path, int &value, int 
 			value = default_value;
 	} else
 		value = default_value;
-	traceit("%s = [%d]\n", path, value);
+	printf("%s = [%d]\n", path, value);
 	return true;
 }
 
@@ -189,7 +189,7 @@ bool CG2_ircddb::get_value(const Config &cfg, const char *path, double &value, d
 			value = default_value;
 	} else
 		value = default_value;
-	traceit("%s = [%lg]\n", path, value);
+	printf("%s = [%lg]\n", path, value);
 	return true;
 }
 
@@ -197,7 +197,7 @@ bool CG2_ircddb::get_value(const Config &cfg, const char *path, bool &value, boo
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
-	traceit("%s = [%s]\n", path, value ? "true" : "false");
+	printf("%s = [%s]\n", path, value ? "true" : "false");
 	return true;
 }
 
@@ -206,12 +206,12 @@ bool CG2_ircddb::get_value(const Config &cfg, const char *path, std::string &val
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
 		if (l<min || l>max) {
-			traceit("%s is invalid\n", path, value.c_str());
+			printf("%s is invalid\n", path);
 			return false;
 		}
 	} else
 		value = default_value;
-	traceit("%s = [%s]\n", path, value.c_str());
+	printf("%s = [%s]\n", path, value.c_str());
 	return true;
 }
 
@@ -220,15 +220,15 @@ bool CG2_ircddb::read_config(char *cfgFile)
 {
 	Config cfg;
 
-	traceit("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile);
 	// Read the file. If there is an error, report it and exit.
 	try {
 		cfg.readFile(cfgFile);
 	} catch(const FileIOException &fioex) {
-		traceit("Can't read %s\n", cfgFile);
+		printf("Can't read %s\n", cfgFile);
 		return true;
 	} catch(const ParseException &pex) {
-		traceit("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
+		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
 		return true;
 	}
 
@@ -237,7 +237,7 @@ bool CG2_ircddb::read_config(char *cfgFile)
 	OWNER = owner;
 	ToLower(owner);
 	ToUpper(OWNER);
-	traceit("OWNER=[%s]\n", OWNER.c_str());
+	printf("OWNER=[%s]\n", OWNER.c_str());
 	OWNER.resize(CALL_SIZE, ' ');
 
 	for (short int m=0; m<3; m++) {
@@ -246,7 +246,7 @@ bool CG2_ircddb::read_config(char *cfgFile)
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
 			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm")) {
-				traceit("%s.type '%s' is invalid\n", type.c_str());
+				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
 			rptr.mod[m].defined = true;
@@ -284,7 +284,7 @@ bool CG2_ircddb::read_config(char *cfgFile)
 			rptr.mod[m].defined = false;
 	}
 	if (false==rptr.mod[0].defined && false==rptr.mod[1].defined && false==rptr.mod[2].defined) {
-		traceit("No repeaters defined!\n");
+		printf("No repeaters defined!\n");
 		return true;
 	}
 
@@ -367,7 +367,7 @@ int CG2_ircddb::open_port(const SPORTIP &pip)
 
 	int sock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (0 > sock) {
-		traceit("Failed to create socket on %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
+		printf("Failed to create socket on %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
 		return -1;
 	}
 	fcntl(sock, F_SETFL, O_NONBLOCK);
@@ -378,7 +378,7 @@ int CG2_ircddb::open_port(const SPORTIP &pip)
 	sin.sin_addr.s_addr = inet_addr(pip.ip.c_str());
 
 	if (bind(sock, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) != 0) {
-		traceit("Failed to bind %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
+		printf("Failed to bind %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
 		close(sock);
 		return -1;
 	}
@@ -399,17 +399,17 @@ void CG2_ircddb::GetIRCDataThread()
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("GetIRCDataThread: sigaction-TERM failed, error=%d\n", errno);
+		printf("GetIRCDataThread: sigaction-TERM failed, error=%d\n", errno);
 		keep_running = false;
 		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("GetIRCDataThread: sigaction-INT failed, error=%d\n", errno);
+		printf("GetIRCDataThread: sigaction-INT failed, error=%d\n", errno);
 		keep_running = false;
 		return;
 	}
 	if (sigaction(SIGPIPE, &act, 0) != 0) {
-		traceit("GetIRCDataThread: sigaction-PIPE failed, error=%d\n", errno);
+		printf("GetIRCDataThread: sigaction-PIPE failed, error=%d\n", errno);
 		keep_running = false;
 		return;
 	}
@@ -421,17 +421,17 @@ void CG2_ircddb::GetIRCDataThread()
 			int rc = ii->getConnectionState();
 			if ((rc == 0) || (rc == 10)) {
 				if (last_status != 0) {
-					traceit("irc status=%d, probable disconnect...\n", rc);
+					printf("irc status=%d, probable disconnect...\n", rc);
 					last_status = 0;
 				}
 			} else if (rc == 7) {
 				if (last_status != 2) {
-					traceit("irc status=%d, probable connect...\n", rc);
+					printf("irc status=%d, probable connect...\n", rc);
 					last_status = 2;
 				}
 			} else {
 				if (last_status != 1) {
-					traceit("irc status=%d, probable connect...\n", rc);
+					printf("irc status=%d, probable connect...\n", rc);
 					last_status = 1;
 				}
 			}
@@ -444,7 +444,7 @@ void CG2_ircddb::GetIRCDataThread()
 				if (!user.empty()) {
 					if (!rptr.empty() && !gateway.empty() && !ipaddr.empty()) {
 						if (bool_irc_debug)
-							traceit("C-u:%s,%s,%s,%s\n", user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
+							printf("C-u:%s,%s,%s,%s\n", user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 
 						pthread_mutex_lock(&irc_data_mutex);
 
@@ -454,7 +454,7 @@ void CG2_ircddb::GetIRCDataThread()
 
 						pthread_mutex_unlock(&irc_data_mutex);
 
-						// traceit("%d users, %d repeaters, %d gateways\n",  user2rptr_map.size(), rptr2gwy_map.size(), gwy2ip_map.size());
+						// printf("%d users, %d repeaters, %d gateways\n",  user2rptr_map.size(), rptr2gwy_map.size(), gwy2ip_map.size());
 
 					}
 				}
@@ -463,7 +463,7 @@ void CG2_ircddb::GetIRCDataThread()
 				if (!rptr.empty()) {
 					if (!gateway.empty() && !ipaddr.empty()) {
 						if (bool_irc_debug)
-							traceit("C-r:%s,%s,%s\n", rptr.c_str(), gateway.c_str(), ipaddr.c_str());
+							printf("C-r:%s,%s,%s\n", rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 
 						pthread_mutex_lock(&irc_data_mutex);
 
@@ -472,7 +472,7 @@ void CG2_ircddb::GetIRCDataThread()
 
 						pthread_mutex_unlock(&irc_data_mutex);
 
-						// traceit("%d repeaters, %d gateways\n", rptr2gwy_map.size(), gwy2ip_map.size());
+						// printf("%d repeaters, %d gateways\n", rptr2gwy_map.size(), gwy2ip_map.size());
 
 					}
 				}
@@ -480,7 +480,7 @@ void CG2_ircddb::GetIRCDataThread()
 				ii->receiveGateway(gateway, ipaddr, proto);
 				if (!gateway.empty() && !ipaddr.empty()) {
 					if (bool_irc_debug)
-						traceit("C-g:%s,%s\n", gateway.c_str(),ipaddr.c_str());
+						printf("C-g:%s,%s\n", gateway.c_str(),ipaddr.c_str());
 
 					pthread_mutex_lock(&irc_data_mutex);
 
@@ -488,14 +488,14 @@ void CG2_ircddb::GetIRCDataThread()
 
 					pthread_mutex_unlock(&irc_data_mutex);
 
-					// traceit("%d gateways\n", gwy2ip_map.size());
+					// printf("%d gateways\n", gwy2ip_map.size());
 
 				}
 			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
-	traceit("GetIRCDataThread exiting...\n");
+	printf("GetIRCDataThread exiting...\n");
 	return;
 }
 
@@ -522,12 +522,12 @@ int CG2_ircddb::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zo
 		memcpy(arearp_cs, call, 7);
 		*mod = call[7];
 	} else {
-		traceit("Invalid specification %c for RoU\n", RoU);
+		printf("Invalid specification %c for RoU\n", RoU);
 		return 2;
 	}
 
 	if ((*mod != 'A') && (*mod != 'B') && (*mod != 'C')) {
-		traceit("Invalid module %c\n", *mod);
+		printf("Invalid module %c\n", *mod);
 		return 2;
 	}
 
@@ -546,11 +546,11 @@ int CG2_ircddb::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zo
 			ip[IP_SIZE] = '\0';
 			return 0;
 		} else {
-			/* traceit("Could not find IP for Gateway %s\n", zonerp_cs); */
+			/* printf("Could not find IP for Gateway %s\n", zonerp_cs); */
 			return 1;
 		}
 	} else {
-		/* traceit("Could not find Gateway for repeater %s\n", temp); */
+		/* printf("Could not find Gateway for repeater %s\n", temp); */
 		return 1;
 	}
 
@@ -570,27 +570,27 @@ bool CG2_ircddb::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, c
 	/* at this point, the data is not in cache */
 	/* report the irc status */
 	int status = ii->getConnectionState();
-	// traceit("irc status=%d\n", status);
+	// printf("irc status=%d\n", status);
 	if (status != 7) {
-		traceit("Remote irc database not ready, irc status is not 7, try again\n");
+		printf("Remote irc database not ready, irc status is not 7, try again\n");
 		return false;
 	}
 
 	/* request data from irc server */
 	if (RoU == 'U') {
-		traceit("User [%s] not in local cache, try again\n", call);
+		printf("User [%s] not in local cache, try again\n", call);
 		/*** YRCALL=KJ4NHFBL ***/
 		if (((call[6] == 'A') || (call[6] == 'B') || (call[6] == 'C')) && (call[7] == 'L'))
-			traceit("If this was a gateway link request, that is ok\n");
+			printf("If this was a gateway link request, that is ok\n");
 
 		if (!ii->findUser(call)) {
-			traceit("findUser(%s): Network error\n", call);
+			printf("findUser(%s): Network error\n", call);
 			return false;
 		}
 	} else if (RoU == 'R') {
-		traceit("Repeater [%s] not in local cache, try again\n", call);
+		printf("Repeater [%s] not in local cache, try again\n", call);
 		if (!ii->findRepeater(call)) {
-			traceit("findRepeater(%s): Network error\n", call);
+			printf("findRepeater(%s): Network error\n", call);
 			return false;
 		}
 	}
@@ -635,27 +635,27 @@ void CG2_ircddb::process()
 		max_nfds = g2_sock;
 	if (srv_sock > max_nfds)
 		max_nfds = srv_sock;
-	traceit("g2=%d, srv=%d, MAX+1=%d\n", g2_sock, srv_sock, max_nfds + 1);
+	printf("g2=%d, srv=%d, MAX+1=%d\n", g2_sock, srv_sock, max_nfds + 1);
 
 	/* start the beacon thread */
 	if (bool_send_aprs) {
 		try {
 			aprs_future = std::async(std::launch::async, &CG2_ircddb::APRSBeaconThread, this);
 		} catch (const std::exception &e) {
-			traceit("Failed to start the APRSBeaconThread. Exception: %s\n", e.what());
+			printf("Failed to start the APRSBeaconThread. Exception: %s\n", e.what());
 		}
 		if (aprs_future.valid())
-			traceit("APRS beacon thread started\n");
+			printf("APRS beacon thread started\n");
 	}
 
 	try {
 		irc_data_future = std::async(std::launch::async, &CG2_ircddb::GetIRCDataThread, this);
 	} catch (const std::exception &e) {
-		traceit("Failed to start GetIRCDataThread. Exception: %s\n", e.what());
+		printf("Failed to start GetIRCDataThread. Exception: %s\n", e.what());
 		keep_running = false;
 	}
 	if (keep_running)
-		traceit("get_irc_data thread started\n");
+		printf("get_irc_data thread started\n");
 
 	ii->kickWatchdog(IRCDDB_VERSION);
 
@@ -665,20 +665,20 @@ void CG2_ircddb::process()
 			if (recd[i].last_time != 0) {
 				time(&t_now);
 				if ((t_now - recd[i].last_time) > echotest_rec_timeout) {
-					traceit("Inactivity on echotest recording mod %d, removing stream id=%04x\n",
+					printf("Inactivity on echotest recording mod %d, removing stream id=%04x\n",
 						i, recd[i].streamid);
 
 					recd[i].streamid = 0;
 					recd[i].last_time = 0;
 					close(recd[i].fd);
 					recd[i].fd = -1;
-					// traceit("Closed echotest audio file:[%s]\n", recd[i].file);
+					// printf("Closed echotest audio file:[%s]\n", recd[i].file);
 
 					/* START: echotest thread setup */
 					try {
 						std::async(std::launch::async, &CG2_ircddb::PlayFileThread, this, recd[i].file);
 					} catch (const std::exception &e) {
-						traceit("Failed to start echotest thread. Exception: %s\n", e.what());
+						printf("Failed to start echotest thread. Exception: %s\n", e.what());
 						// when the echotest thread runs, it deletes the file,
 						// Because the echotest thread did NOT start, we delete the file here
 						unlink(recd[i].file);
@@ -691,14 +691,14 @@ void CG2_ircddb::process()
 			if (vm[i].last_time != 0) {
 				time(&t_now);
 				if ((t_now - vm[i].last_time) > voicemail_rec_timeout) {
-					traceit("Inactivity on voicemail recording mod %d, removing stream id=%04x\n",
+					printf("Inactivity on voicemail recording mod %d, removing stream id=%04x\n",
 					        i, vm[i].streamid);
 
 					vm[i].streamid = 0;
 					vm[i].last_time = 0;
 					close(vm[i].fd);
 					vm[i].fd = -1;
-					// traceit("Closed voicemail audio file:[%s]\n", vm[i].file);
+					// printf("Closed voicemail audio file:[%s]\n", vm[i].file);
 				}
 			}
 
@@ -709,7 +709,7 @@ void CG2_ircddb::process()
 				//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
 				//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
 				if ((t_now - toRptr[i].last_time) > from_remote_g2_timeout) {
-					traceit("Inactivity to local rptr mod index %d, removing stream id %04x\n", i, toRptr[i].streamid);
+					printf("Inactivity to local rptr mod index %d, removing stream id %04x\n", i, toRptr[i].streamid);
 
 					// Send end_of_audio to local repeater.
 					// Let the repeater re-initialize
@@ -740,7 +740,7 @@ void CG2_ircddb::process()
 				if ((t_now - band_txt[i].last_time) > from_local_rptr_timeout) {
 					/* This local stream never went to a remote system, so trace the timeout */
 					if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0)
-						traceit("Inactivity from local rptr band %d, removing stream id %04x\n", i, band_txt[i].streamID);
+						printf("Inactivity from local rptr band %d, removing stream id %04x\n", i, band_txt[i].streamID);
 
 					band_txt[i].streamID = 0;
 					band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
@@ -767,7 +767,7 @@ void CG2_ircddb::process()
 			if (to_remote_g2[i].toDst4.sin_addr.s_addr != 0) {
 				time(&t_now);
 				if ((t_now - to_remote_g2[i].last_time) > from_local_rptr_timeout) {
-					traceit("Inactivity from local rptr mod %d, removing stream id %04x\n",
+					printf("Inactivity from local rptr mod %d, removing stream id %04x\n",
 					        i, to_remote_g2[i].streamid);
 
 					memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -793,11 +793,11 @@ void CG2_ircddb::process()
 
 			// save incoming port for mobile systems
 			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
-				traceit("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+				printf("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
 				portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
 			} else {
 				if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr]) {
-					traceit("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
+					printf("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
 					portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
 				}
 			}
@@ -824,7 +824,7 @@ void CG2_ircddb::process()
 						         (g2buf.hdr.flag[0] == 0x28) ||
 						         (g2buf.hdr.flag[0] == 0x40))) {
 							if (bool_qso_details)
-								traceit("START from g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s and port %u\n",
+								printf("START from g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s and port %u\n",
 								        g2buf.streamid,
 								        g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2],
 								        g2buf.hdr.mycall,
@@ -862,7 +862,7 @@ void CG2_ircddb::process()
 				} else {
 					if (g2buf.counter & 0x40) {
 						if (bool_qso_details)
-							traceit("END from g2: streamID=%04x, %d bytes from IP=%s\n", g2buf.streamid, g2buflen,inet_ntoa(fromDst4.sin_addr));
+							printf("END from g2: streamID=%04x, %d bytes from IP=%s\n", g2buf.streamid, g2buflen,inet_ntoa(fromDst4.sin_addr));
 					}
 
 					/* find out which repeater module to send the data to */
@@ -917,7 +917,7 @@ void CG2_ircddb::process()
 								if (0==memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) && toRptr[i].saved_adr==fromDst4.sin_addr.s_addr) {
 									/* repeater module is inactive ?  */
 									if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-										traceit("Re-generating header for streamID=%04x\n", g2buf.streamid);
+										printf("Re-generating header for streamID=%04x\n", g2buf.streamid);
 
 										toRptr[i].saved_hdr[5] = (unsigned char)(toRptr[i].G2_COUNTER & 0xff);
 										toRptr[i].saved_hdr[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
@@ -984,7 +984,7 @@ void CG2_ircddb::process()
 				if (recvlen == 58) {
 
 					if (bool_qso_details)
-						traceit("START from rptr: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
+						printf("START from rptr: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
 						        rptrbuf.counter,
 						        rptrbuf.vpkt.streamid,
 						        rptrbuf.vpkt.hdr.flag[0], rptrbuf.vpkt.hdr.flag[1], rptrbuf.vpkt.hdr.flag[2],
@@ -1065,12 +1065,12 @@ void CG2_ircddb::process()
 					int mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
 
 					if (mycall_valid == REG_NOERROR)
-						; // traceit("MYCALL [%s] passed IRC expression validation\n", temp_radio_user);
+						; // printf("MYCALL [%s] passed IRC expression validation\n", temp_radio_user);
 					else {
 						if (mycall_valid == REG_NOMATCH)
-							traceit("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
+							printf("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
 						else
-							traceit("Failed to validate MYCALL [%s], regexec error=%d\n", temp_radio_user, mycall_valid);
+							printf("Failed to validate MYCALL [%s], regexec error=%d\n", temp_radio_user, mycall_valid);
 					}
 
 					/* send data g2_link */
@@ -1157,11 +1157,11 @@ void CG2_ircddb::process()
 											for (int j=0; j<5; j++)
 												sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-											traceit("Routing to IP=%s port=%u, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
+											printf("Routing to IP=%s port=%u, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
 											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
 											        g2buf.streamid, g2buf.hdr.mycall,
 											        g2buf.hdr.sfx, g2buf.hdr.urcall,
-											        g2buf.hdr.rpt1, &g2buf.hdr.rpt2,
+											        g2buf.hdr.rpt1, g2buf.hdr.rpt2,
 											        56);
 
 											time(&(to_remote_g2[i].last_time));
@@ -1234,7 +1234,7 @@ void CG2_ircddb::process()
 											for (int j=0; j<5; j++)
 												sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-											traceit("Routing to IP=%s, port=%u, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
+											printf("Routing to IP=%s, port=%u, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
 											        inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
 											        g2buf.streamid, g2buf.hdr.mycall,
 											        g2buf.hdr.sfx, g2buf.hdr.urcall,
@@ -1268,7 +1268,7 @@ void CG2_ircddb::process()
 												   band_txt[i] :  local RF is talking.
 												*/
 												if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-													traceit("CALLmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.rpt2[7], temp_mod);
+													printf("CALLmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.rpt2[7], temp_mod);
 
 													rptrbuf.vpkt.hdr.rpt1[7] = temp_mod;
 													rptrbuf.vpkt.hdr.rpt2[7] = 'G';
@@ -1290,7 +1290,7 @@ void CG2_ircddb::process()
 												}
 											}
 										} else
-											traceit("icom rule: no routing from %.8s to %s%c\n", rptrbuf.vpkt.hdr.rpt2, arearp_cs, temp_mod);
+											printf("icom rule: no routing from %.8s to %s%c\n", rptrbuf.vpkt.hdr.rpt2, arearp_cs, temp_mod);
 									}
 								}
 							}
@@ -1304,10 +1304,10 @@ void CG2_ircddb::process()
 							/* voicemail file is closed */
 							if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
 								unlink(vm[i].file);
-								traceit("removed voicemail file: %s\n", vm[i].file);
+								printf("removed voicemail file: %s\n", vm[i].file);
 								vm[i].file[0] = '\0';
 							} else
-								traceit("No voicemail to clear or still recording\n");
+								printf("No voicemail to clear or still recording\n");
 						}
 					} else if ((rptrbuf.vpkt.hdr.urcall[7] == '0') &&
 					           (rptrbuf.vpkt.hdr.urcall[6] == 'R') &&
@@ -1331,10 +1331,10 @@ void CG2_ircddb::process()
 								try {
 									std::async(std::launch::async, &CG2_ircddb::PlayFileThread, this, vm[i].file);
 								} catch (const std::exception &e) {
-									traceit("Filed to start voicemail playback. Exception: %s\n", e.what());
+									printf("Filed to start voicemail playback. Exception: %s\n", e.what());
 								}
 							} else
-								traceit("No voicemail to recall or still recording\n");
+								printf("No voicemail to recall or still recording\n");
 						}
 					} else if ((rptrbuf.vpkt.hdr.urcall[7] == '0') &&
 					           (rptrbuf.vpkt.hdr.urcall[6] == 'S') &&
@@ -1343,7 +1343,7 @@ void CG2_ircddb::process()
 
 						if (i>=0 && i<3) {
 							if (vm[i].fd >= 0)
-								traceit("Already recording for voicemail on mod %d\n", i);
+								printf("Already recording for voicemail on mod %d\n", i);
 							else {
 								memset(tempfile, '\0', sizeof(tempfile));
 								snprintf(tempfile, FILENAME_MAX, "%s/%c_%s",
@@ -1355,10 +1355,10 @@ void CG2_ircddb::process()
 								                O_CREAT | O_WRONLY | O_TRUNC | O_APPEND,
 								                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (vm[i].fd < 0)
-									traceit("Failed to create file %s for voicemail\n", tempfile);
+									printf("Failed to create file %s for voicemail\n", tempfile);
 								else {
 									strcpy(vm[i].file, tempfile);
-									traceit("Recording mod %c for voicemail into file:[%s]\n",
+									printf("Recording mod %c for voicemail into file:[%s]\n",
 									        rptrbuf.vpkt.hdr.rpt2[7],
 									        vm[i].file);
 
@@ -1396,7 +1396,7 @@ void CG2_ircddb::process()
 
 						if (i>=0 && i<3) {
 							if (recd[i].fd >= 0)
-								traceit("Already recording for echotest on mod %d\n", i);
+								printf("Already recording for echotest on mod %d\n", i);
 							else {
 								memset(tempfile, '\0', sizeof(tempfile));
 								snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(),
@@ -1406,10 +1406,10 @@ void CG2_ircddb::process()
 								                  O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND,
 								                  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 								if (recd[i].fd < 0)
-									traceit("Failed to create file %s for echotest\n", tempfile);
+									printf("Failed to create file %s for echotest\n", tempfile);
 								else {
 									strcpy(recd[i].file, tempfile);
-									traceit("Recording mod %c for echotest into file:[%s]\n",
+									printf("Recording mod %c for echotest into file:[%s]\n",
 														rptrbuf.vpkt.hdr.rpt2[7], recd[i].file);
 
 									time(&recd[i].last_time);
@@ -1468,7 +1468,7 @@ void CG2_ircddb::process()
 							// toRptr[i] :    receiving from a remote system or cross-band
 							// band_txt[i] :  local RF is talking.
 							if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-								traceit("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.rpt2[7], rptrbuf.vpkt.hdr.rpt1[7]);
+								printf("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.rpt2[7], rptrbuf.vpkt.hdr.rpt1[7]);
 
 								rptrbuf.vpkt.hdr.rpt2[7] = 'G';
 								calcPFCS(rptrbuf.pkt_id, 58);
@@ -1501,13 +1501,13 @@ void CG2_ircddb::process()
 									dtmf_file.push_back('A'+i);
 									dtmf_file += "_mod_DTMF_NOTIFY";
 									if (bool_dtmf_debug)
-										traceit("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
+										printf("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
 									FILE *dtmf_fp = fopen(dtmf_file.c_str(), "w");
 									if (dtmf_fp) {
 										fprintf(dtmf_fp, "%s\n%s", dtmf_buf[i], band_txt[i].lh_mycall);
 										fclose(dtmf_fp);
 									} else
-										traceit("Failed to create dtmf file %s\n", dtmf_file.c_str());
+										printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
 
 
 									memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
@@ -1585,13 +1585,13 @@ void CG2_ircddb::process()
 					else
 						memcpy(tmp_txt, rptrbuf.vpkt.vasd1.text, 3);
 
-					// traceit("%x%x%x\n", tmp_txt[0], tmp_txt[1], tmp_txt[2]);
-					// traceit("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
+					// printf("%x%x%x\n", tmp_txt[0], tmp_txt[1], tmp_txt[2]);
+					// printf("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
 
 					/* extract 20-byte RADIO ID */
 					if ((tmp_txt[0] != 0x55) || (tmp_txt[1] != 0x2d) || (tmp_txt[2] != 0x16)) {
-						// traceit("%x%x%x\n", tmp_txt[0], tmp_txt[1], tmp_txt[2]);
-						// traceit("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
+						// printf("%x%x%x\n", tmp_txt[0], tmp_txt[1], tmp_txt[2]);
+						// printf("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
 
 						for (int i=0; i<3; i++) {
 							if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
@@ -1616,7 +1616,7 @@ void CG2_ircddb::process()
 										if ((to_print[i] > 1) && (to_print[i] <= 5)) {
 											/* something went wrong? all bets are off */
 											if (band_txt[i].temp_line_cnt > 200) {
-												traceit("Reached the limit in the OLD gps mode\n");
+												printf("Reached the limit in the OLD gps mode\n");
 												band_txt[i].temp_line[0] = '\0';
 												band_txt[i].temp_line_cnt = 0;
 											}
@@ -1657,7 +1657,7 @@ void CG2_ircddb::process()
 										} else {
 											/* something went wrong? all bets are off */
 											if (band_txt[i].temp_line_cnt > 200) {
-												traceit("Reached the limit in the OLD gps mode\n");
+												printf("Reached the limit in the OLD gps mode\n");
 												band_txt[i].temp_line[0] = '\0';
 												band_txt[i].temp_line_cnt = 0;
 											}
@@ -1729,7 +1729,7 @@ void CG2_ircddb::process()
 											                       band_txt[i].dest_rptr,
 											                       band_txt[i].txt);
 											***/
-											// traceit("TEXT1=[%s]\n", band_txt[i].txt);
+											// printf("TEXT1=[%s]\n", band_txt[i].txt);
 											band_txt[i].txt_cnt = 0;
 										}
 									} else {
@@ -1786,7 +1786,7 @@ void CG2_ircddb::process()
 													                       band_txt[i].flags[2],
 													                       band_txt[i].dest_rptr,
 													                       band_txt[i].txt);
-													// traceit("TEXT2=[%s], destination repeater=[%s]\n", band_txt[i].txt, band_txt[i].dest_rptr);
+													// printf("TEXT2=[%s], destination repeater=[%s]\n", band_txt[i].txt, band_txt[i].dest_rptr);
 													band_txt[i].txt_stats_sent = true;
 												}
 												band_txt[i].txt_cnt = 0;
@@ -1796,7 +1796,7 @@ void CG2_ircddb::process()
 										} else {
 											/* something went wrong? all bets are off */
 											if (band_txt[i].temp_line_cnt > 200) {
-												traceit("Reached the limit in the OLD gps mode\n");
+												printf("Reached the limit in the OLD gps mode\n");
 												band_txt[i].temp_line[0] = '\0';
 												band_txt[i].temp_line_cnt = 0;
 											}
@@ -1841,7 +1841,7 @@ void CG2_ircddb::process()
 									} else if (to_print[i] == 2) {
 										/* something went wrong? all bets are off */
 										if (band_txt[i].temp_line_cnt > 200) {
-											traceit("Reached the limit in the OLD gps mode\n");
+											printf("Reached the limit in the OLD gps mode\n");
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
 										}
@@ -1875,7 +1875,7 @@ void CG2_ircddb::process()
 									} else if (to_print[i] == 1) {
 										/* something went wrong? all bets are off */
 										if (band_txt[i].temp_line_cnt > 200) {
-											traceit("Reached the limit in the OLD gps mode\n");
+											printf("Reached the limit in the OLD gps mode\n");
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
 										}
@@ -1974,13 +1974,13 @@ void CG2_ircddb::process()
 									recd[i].last_time = 0;
 									close(recd[i].fd);
 									recd[i].fd = -1;
-									// traceit("Closed echotest audio file:[%s]\n", recd[i].file);
+									// printf("Closed echotest audio file:[%s]\n", recd[i].file);
 
 									/* we are in echotest mode, so play it back */
 									try {
 										std::async(std::launch::async, &CG2_ircddb::PlayFileThread, this, recd[i].file);
 									} catch (const std::exception &e) {
-										traceit("failed to start PlayFileThread. Exception: %s\n", e.what());
+										printf("failed to start PlayFileThread. Exception: %s\n", e.what());
 										//   When the echotest thread runs, it deletes the file,
 										//   Because the echotest thread did NOT start, we delete the file here
 										unlink(recd[i].file);
@@ -2014,7 +2014,7 @@ void CG2_ircddb::process()
 										vm[i].last_time = 0;
 										close(vm[i].fd);
 										vm[i].fd = -1;
-										// traceit("Closed voicemail audio file:[%s]\n", vm[i].file);
+										// printf("Closed voicemail audio file:[%s]\n", vm[i].file);
 									}
 									break;
 								} else
@@ -2042,7 +2042,7 @@ void CG2_ircddb::process()
 
 					if (rptrbuf.vpkt.ctrl & 0x40) {
 						if (bool_qso_details)
-							traceit("END from rptr: cntr=%04x, streamID=%04x, %d bytes\n", rptrbuf.counter, rptrbuf.vpkt.streamid, recvlen);
+							printf("END from rptr: cntr=%04x, streamID=%04x, %d bytes\n", rptrbuf.counter, rptrbuf.vpkt.streamid, recvlen);
 					}
 				}
 			}
@@ -2067,7 +2067,7 @@ void CG2_ircddb::compute_aprs_hash()
 	strcpy(rptr_sign, OWNER.c_str());
 	char *p = strchr(rptr_sign, ' ');
 	if (!p) {
-		traceit("Failed to build repeater callsign for aprs hash\n");
+		printf("Failed to build repeater callsign for aprs hash\n");
 		return;
 	}
 	*p = '\0';
@@ -2078,7 +2078,7 @@ void CG2_ircddb::compute_aprs_hash()
 		hash ^= (*p++) << 8;
 		hash ^= (*p++);
 	}
-	traceit("aprs hash code=[%d] for %s\n", hash, OWNER.c_str());
+	printf("aprs hash code=[%d] for %s\n", hash, OWNER.c_str());
 	rptr.aprs_hash = hash;
 
 	return;
@@ -2107,15 +2107,15 @@ void CG2_ircddb::APRSBeaconThread()
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("APRSBeaconThread: sigaction-TERM failed, error=%d\n", errno);
+		printf("APRSBeaconThread: sigaction-TERM failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("APRSBeaconThread: sigaction-INT failed, error=%d\n", errno);
+		printf("APRSBeaconThread: sigaction-INT failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGPIPE, &act, 0) != 0) {
-		traceit("APRSBeaconThread: sigaction-PIPE failed, error=%d\n", errno);
+		printf("APRSBeaconThread: sigaction-PIPE failed, error=%d\n", errno);
 		return;
 	}
 
@@ -2172,7 +2172,7 @@ void CG2_ircddb::APRSBeaconThread()
 					        lon_s,  (rptr.mod[i].longitude < 0.0) ? 'W' : 'E',
 					        (unsigned int)rptr.mod[i].range, rptr.mod[i].band.c_str(), rptr.mod[i].desc.c_str());
 
-					// traceit("APRS Beacon =[%s]\n", snd_buf);
+					// printf("APRS Beacon =[%s]\n", snd_buf);
 					strcat(snd_buf, "\r\n");
 
 					while (keep_running) {
@@ -2196,18 +2196,18 @@ void CG2_ircddb::APRSBeaconThread()
 								        (errno == ENETUNREACH) ||
 								        (errno == EHOSTDOWN) ||
 								        (errno == ENOTCONN)) {
-									traceit("send_aprs_beacon: APRS_HOST closed connection,error=%d\n",errno);
+									printf("send_aprs_beacon: APRS_HOST closed connection,error=%d\n",errno);
 									close(aprs->GetSock());
 									aprs->SetSock( -1 );
 								} else if (errno == EWOULDBLOCK) {
 									std::this_thread::sleep_for(std::chrono::milliseconds(100));
 								} else {
 									/* Cant do nothing about it */
-									traceit("send_aprs_beacon failed, error=%d\n", errno);
+									printf("send_aprs_beacon failed, error=%d\n", errno);
 									break;
 								}
 							} else {
-								// traceit("APRS beacon sent\n");
+								// printf("APRS beacon sent\n");
 								break;
 							}
 						}
@@ -2238,12 +2238,12 @@ void CG2_ircddb::APRSBeaconThread()
 			        (errno == ENETUNREACH) ||
 			        (errno == EHOSTDOWN) ||
 			        (errno == ENOTCONN)) {
-				traceit("send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n",errno);
+				printf("send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n",errno);
 				close(aprs->GetSock());
 				aprs->SetSock( -1 );
 			}
 		} else if (rc == 0) {
-			traceit("send_aprs_beacon: recv: APRS shutdown\n");
+			printf("send_aprs_beacon: recv: APRS shutdown\n");
 			close(aprs->GetSock());
 			aprs->SetSock( -1 );
 		} else
@@ -2260,7 +2260,7 @@ void CG2_ircddb::APRSBeaconThread()
 					THRESHOLD_COUNTDOWN--;
 
 				if (THRESHOLD_COUNTDOWN == 0) {
-					traceit("APRS host keepalive timeout\n");
+					printf("APRS host keepalive timeout\n");
 					close(aprs->GetSock());
 					aprs->SetSock( -1 );
 				}
@@ -2269,7 +2269,7 @@ void CG2_ircddb::APRSBeaconThread()
 			time(&last_keepalive_time);
 		}
 	}
-	traceit("APRS beacon thread exiting...\n");
+	printf("APRS beacon thread exiting...\n");
 	return;
 }
 
@@ -2285,35 +2285,35 @@ void CG2_ircddb::PlayFileThread(char *file)
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("sigaction-TERM failed, error=%d\n", errno);
+		printf("sigaction-TERM failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("sigaction-INT failed, error=%d\n", errno);
+		printf("sigaction-INT failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGPIPE, &act, 0) != 0) {
-		traceit("sigaction-PIPE failed, error=%d\n", errno);
+		printf("sigaction-PIPE failed, error=%d\n", errno);
 		return;
 	}
 
-	traceit("File to playback:[%s]\n", file);
+	printf("File to playback:[%s]\n", file);
 
 	FILE *fp = fopen(file, "rb");
 	if (!fp) {
-		traceit("Failed to open file %s\n", file);
+		printf("Failed to open file %s\n", file);
 		return;
 	}
 
 	size_t nread = fread(dstar_buf, 10, 1, fp);
 	if (nread != 1) {
-		traceit("Cant read first 10 bytes in %s\n", file);
+		printf("Cant read first 10 bytes in %s\n", file);
 		fclose(fp);
 		return;
 	}
 
 	if (memcmp(dstar_buf, "DVTOOL", 6) != 0) {
-		traceit("DVTOOL keyword not found in %s\n", file);
+		printf("DVTOOL keyword not found in %s\n", file);
 		fclose(fp);
 		return;
 	}
@@ -2325,23 +2325,23 @@ void CG2_ircddb::PlayFileThread(char *file)
 			break;
 
 		if ((rlen != 56) && (rlen != 27)) {
-			traceit("Expected 56 bytes or 27 bytes, found %d\n", rlen);
+			printf("Expected 56 bytes or 27 bytes, found %d\n", rlen);
 			break;
 		}
 		nread = fread(dstar_buf, rlen, 1, fp);
 		if (nread == 1) {
 			if (memcmp(dstar_buf, "DSVT", 4) != 0) {
-				traceit("DVST keyword not found in %s\n", file);
+				printf("DVST keyword not found in %s\n", file);
 				break;
 			}
 
 			if (dstar_buf[8] != 0x20) {
-				traceit("Not Voice type in %s\n", file);
+				printf("Not Voice type in %s\n", file);
 				break;
 			}
 
 			if ((dstar_buf[4] != 0x10) && (dstar_buf[4] != 0x20)) {
-				traceit("Not a valid record type in %s\n",file);
+				printf("Not a valid record type in %s\n",file);
 				break;
 			}
 
@@ -2383,7 +2383,7 @@ void CG2_ircddb::PlayFileThread(char *file)
 	fclose(fp);
 	if (!strstr(file, "voicemail.dat"))
 		unlink(file);
-	traceit("Finished playing\n");
+	printf("Finished playing\n");
 	return;
 }
 
@@ -2413,7 +2413,7 @@ int CG2_ircddb::init(char *cfgfile)
 	/* Used to validate MYCALL input */
 	int rc = regcomp(&preg, "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", REG_EXTENDED | REG_NOSUB);
 	if (rc != REG_NOERROR) {
-		traceit("The IRC regular expression is NOT valid\n");
+		printf("The IRC regular expression is NOT valid\n");
 		return 1;
 	}
 
@@ -2421,15 +2421,15 @@ int CG2_ircddb::init(char *cfgfile)
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("sigaction-TERM failed, error=%d\n", errno);
+		printf("sigaction-TERM failed, error=%d\n", errno);
 		return 1;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("sigaction-INT failed, error=%d\n", errno);
+		printf("sigaction-INT failed, error=%d\n", errno);
 		return 1;
 	}
 	if (sigaction(SIGPIPE, &act, 0) != 0) {
-		traceit("sigaction-PIPE failed, error=%d\n", errno);
+		printf("sigaction-PIPE failed, error=%d\n", errno);
 		return 1;
 	}
 
@@ -2443,7 +2443,7 @@ int CG2_ircddb::init(char *cfgfile)
 
 	/* process configuration file */
 	if ( read_config(cfgfile) ) {
-		traceit("Failed to process config file %s\n", cfgfile);
+		printf("Failed to process config file %s\n", cfgfile);
 		return 1;
 	}
 
@@ -2459,14 +2459,14 @@ int CG2_ircddb::init(char *cfgfile)
 	rptr.mod[0].call += "-A";
 	rptr.mod[1].call += "-B";
 	rptr.mod[2].call += "-C";
-	traceit("Repeater callsigns: [%s] [%s] [%s]\n", rptr.mod[0].call.c_str(), rptr.mod[1].call.c_str(), rptr.mod[2].call.c_str());
+	printf("Repeater callsigns: [%s] [%s] [%s]\n", rptr.mod[0].call.c_str(), rptr.mod[1].call.c_str(), rptr.mod[2].call.c_str());
 
 	if (bool_send_aprs) {
 		aprs = new CAPRS(&rptr);
 		if (aprs)
 			aprs->Init();
 		else {
-			traceit("aprs class init failed!\nAPRS will be turned off");
+			printf("aprs class init failed!\nAPRS will be turned off");
 			bool_send_aprs = false;
 		}
 	}
@@ -2475,15 +2475,15 @@ int CG2_ircddb::init(char *cfgfile)
 	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, irc_pass, IRCDDB_VERSION, local_irc_ip);
 	bool ok = ii->open();
 	if (!ok) {
-		traceit("irc open failed\n");
+		printf("irc open failed\n");
 		return 1;
 	}
 
 	rc = ii->getConnectionState();
-	traceit("Waiting for irc connection status of 2\n");
+	printf("Waiting for irc connection status of 2\n");
 	i = 0;
 	while (rc < 2) {
-		traceit("irc status=%d\n", rc);
+		printf("irc status=%d\n", rc);
 		if (rc < 2) {
 			i++;
 			sleep(5);
@@ -2494,7 +2494,7 @@ int CG2_ircddb::init(char *cfgfile)
 			break;
 
 		if (i > 5) {
-			traceit("We can not wait any longer...\n");
+			printf("We can not wait any longer...\n");
 			break;
 		}
 		rc = ii->getConnectionState();
@@ -2503,14 +2503,14 @@ int CG2_ircddb::init(char *cfgfile)
 	/* udp port 40000 must open first */
 	g2_sock = open_port(g2_external);
 	if (0 > g2_sock) {
-		traceit("Can't open %s:%d\n", g2_external.ip.c_str(), g2_external.port);
+		printf("Can't open %s:%d\n", g2_external.ip.c_str(), g2_external.port);
 		return 1;
 	}
 
 	/* Open udp INTERNAL port (default: 19000) */
 	srv_sock = open_port(g2_internal);
 	if (0 > srv_sock) {
-		traceit("Can't open %s:%d\n", g2_internal.ip.c_str(), g2_internal.port);
+		printf("Can't open %s:%d\n", g2_internal.ip.c_str(), g2_internal.port);
 		return 1;
 	}
 
@@ -2532,7 +2532,7 @@ int CG2_ircddb::init(char *cfgfile)
 		if (access(vm[i].file, F_OK) != 0)
 			memset(vm[i].file, 0, sizeof(vm[i].file));
 		else
-			traceit("Loaded voicemail file: %s for mod %d\n", vm[i].file, i);
+			printf("Loaded voicemail file: %s for mod %d\n", vm[i].file, i);
 
 		// the repeater modules run on these ports
 		memset(&toRptr[i],0,sizeof(toRptr[i]));
@@ -2583,7 +2583,7 @@ int CG2_ircddb::init(char *cfgfile)
 	plug.sin_port = htons(g2_link.port);
 	plug.sin_addr.s_addr = inet_addr(g2_link.ip.c_str());
 
-	traceit("g2_ircddb...entering processing loop\n");
+	printf("g2_ircddb...entering processing loop\n");
 
 	if (bool_send_qrgs)
 		qrgs_and_maps();
@@ -2598,18 +2598,18 @@ CG2_ircddb::~CG2_ircddb()
 {
 	if (srv_sock != -1) {
 		close(srv_sock);
-		traceit("Closed G2_INTERNAL_PORT\n");
+		printf("Closed G2_INTERNAL_PORT\n");
 	}
 
 	if (g2_sock != -1) {
 		close(g2_sock);
-		traceit("Closed G2_EXTERNAL_PORT\n");
+		printf("Closed G2_EXTERNAL_PORT\n");
 	}
 
 	if (bool_send_aprs) {
 		if (aprs->GetSock() != -1) {
 			close(aprs->GetSock());
-			traceit("Closed APRS\n");
+			printf("Closed APRS\n");
 		}
 		delete aprs;
 	}
@@ -2626,7 +2626,7 @@ CG2_ircddb::~CG2_ircddb()
 	ii->close();
 	delete ii;
 
-	traceit("g2_ircddb exiting\n");
+	printf("g2_ircddb exiting\n");
 }
 
 bool CG2_ircddb::validate_csum(SBANDTXT &bt, bool is_gps)
@@ -2636,7 +2636,7 @@ bool CG2_ircddb::validate_csum(SBANDTXT &bt, bool is_gps)
 	char *p = strrchr(s, '*');
 	if (!p) {
 		// BAD news, something went wrong
-		traceit("Missing asterisk before checksum in %s\n", name);
+		printf("Missing asterisk before checksum in %s\n", name);
 		bt.gprmc[0] = bt.gpid[0] = '\0';
 		return true;
 	} else {
@@ -2644,7 +2644,7 @@ bool CG2_ircddb::validate_csum(SBANDTXT &bt, bool is_gps)
 		// verify csum in GPRMC
 		bool ok = verify_gps_csum(s + 1, p + 1);
 		if (!ok) {
-			traceit("csum in %s not good\n", name);
+			printf("csum in %s not good\n", name);
 			bt.gprmc[0] = bt.gpid[0] = '\0';
 			return true;
 		}
@@ -2658,22 +2658,22 @@ void CG2_ircddb::gps_send(short int rptr_idx)
 	static char old_mycall[CALL_SIZE + 1] = { "        " };
 
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		traceit("ERROR in gps_send: rptr_idx %d is invalid\n", rptr_idx);
+		printf("ERROR in gps_send: rptr_idx %d is invalid\n", rptr_idx);
 		return;
 	}
 
 	if (band_txt[rptr_idx].gprmc[0] == '\0') {
 		band_txt[rptr_idx].gpid[0] = '\0';
-		traceit("missing GPS ID\n");
+		printf("missing GPS ID\n");
 		return;
 	}
 	if (band_txt[rptr_idx].gpid[0] == '\0') {
 		band_txt[rptr_idx].gprmc[0] = '\0';
-		traceit("Missing GPSRMC\n");
+		printf("Missing GPSRMC\n");
 		return;
 	}
 	if (memcmp(band_txt[rptr_idx].gpid, band_txt[rptr_idx].lh_mycall, CALL_SIZE) != 0) {
-		traceit("MYCALL [%s] does not match first 8 characters of GPS ID [%.8s]\n",
+		printf("MYCALL [%s] does not match first 8 characters of GPS ID [%.8s]\n",
 		        band_txt[rptr_idx].lh_mycall, band_txt[rptr_idx].gpid);
 		band_txt[rptr_idx].gprmc[0] = '\0';
 		band_txt[rptr_idx].gpid[0] = '\0';
@@ -2691,8 +2691,8 @@ void CG2_ircddb::gps_send(short int rptr_idx)
 	if ((tnow - band_txt[rptr_idx].gps_last_time) < 31)
 		return;
 
-	traceit("GPRMC=[%s]\n", band_txt[rptr_idx].gprmc);
-	traceit("GPS id=[%s]\n",band_txt[rptr_idx].gpid);
+	printf("GPRMC=[%s]\n", band_txt[rptr_idx].gprmc);
+	printf("GPS id=[%s]\n",band_txt[rptr_idx].gpid);
 
 	if (validate_csum(band_txt[rptr_idx], false) || validate_csum(band_txt[rptr_idx], true))
 		return;
@@ -2746,22 +2746,22 @@ void CG2_ircddb::build_aprs_from_gps_and_send(short int rptr_idx)
 
 	if (lat_str && lat_NS) {
 		if ((*lat_NS != 'N') && (*lat_NS != 'S')) {
-			traceit("Invalid North or South indicator in latitude\n");
+			printf("Invalid North or South indicator in latitude\n");
 			return;
 		}
 		if (strlen(lat_str) != 9) {
-			traceit("Invalid latitude\n");
+			printf("Invalid latitude\n");
 			return;
 		}
 		if (lat_str[4] != '.') {
-			traceit("Invalid latitude\n");
+			printf("Invalid latitude\n");
 			return;
 		}
 		lat_str[7] = '\0';
 		strcat(buf, lat_str);
 		strcat(buf, lat_NS);
 	} else {
-		traceit("Invalid latitude\n");
+		printf("Invalid latitude\n");
 		return;
 	}
 	/* secondary table */
@@ -2769,22 +2769,22 @@ void CG2_ircddb::build_aprs_from_gps_and_send(short int rptr_idx)
 
 	if (lon_str && lon_EW) {
 		if ((*lon_EW != 'E') && (*lon_EW != 'W')) {
-			traceit("Invalid East or West indicator in longitude\n");
+			printf("Invalid East or West indicator in longitude\n");
 			return;
 		}
 		if (strlen(lon_str) != 10) {
-			traceit("Invalid longitude\n");
+			printf("Invalid longitude\n");
 			return;
 		}
 		if (lon_str[5] != '.') {
-			traceit("Invalid longitude\n");
+			printf("Invalid longitude\n");
 			return;
 		}
 		lon_str[8] = '\0';
 		strcat(buf, lon_str);
 		strcat(buf, lon_EW);
 	} else {
-		traceit("Invalid longitude\n");
+		printf("Invalid longitude\n");
 		return;
 	}
 
@@ -2792,18 +2792,18 @@ void CG2_ircddb::build_aprs_from_gps_and_send(short int rptr_idx)
 	strcat(buf, "k");
 	strncat(buf, band_txt[rptr_idx].gpid + 13, 32);
 
-	// traceit("Built APRS from old GPS mode=[%s]\n", buf);
+	// printf("Built APRS from old GPS mode=[%s]\n", buf);
 	strcat(buf, "\r\n");
 
 	if (-1 == aprs->WriteSock(buf, strlen(buf))) {
 		if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) ||
 		    (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) ||
 		    (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
-			traceit("build_aprs_from_gps_and_send: APRS_HOST closed connection, error=%d\n", errno);
+			printf("build_aprs_from_gps_and_send: APRS_HOST closed connection, error=%d\n", errno);
 			close(aprs->GetSock());
 			aprs->SetSock( -1 );
 		} else
-			traceit("build_aprs_from_gps_and_send: send error=%d\n", errno);
+			printf("build_aprs_from_gps_and_send: send error=%d\n", errno);
 	}
 	return;
 }
@@ -2822,7 +2822,7 @@ bool CG2_ircddb::verify_gps_csum(char *gps_text, char *csum_text)
 			computed_csum = computed_csum ^ ((char)c);
 	}
 	sprintf(computed_csum_text, "%02X", computed_csum);
-	// traceit("computed_csum_text=[%s]\n", computed_csum_text);
+	// printf("computed_csum_text=[%s]\n", computed_csum_text);
 
 	char *p = strchr(csum_text, ' ');
 	if (p)
@@ -2836,14 +2836,14 @@ bool CG2_ircddb::verify_gps_csum(char *gps_text, char *csum_text)
 
 int main(int argc, char **argv)
 {
-	traceit("VERSION %s\n", IRCDDB_VERSION);
+	printf("VERSION %s\n", IRCDDB_VERSION);
 	if (argc != 2) {
-		traceit("Example: g2_ircddb g2_ircddb.cfg\n");
+		printf("Example: g2_ircddb g2_ircddb.cfg\n");
 		return 1;
 	}
 	CG2_ircddb g2;
 	if (g2.init(argv[1]))
 		return 1;
 	g2.process();
-	traceit("Leaving processing loop...\n");
+	printf("Leaving processing loop...\n");
 }

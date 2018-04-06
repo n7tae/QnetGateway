@@ -6,8 +6,6 @@
 #include "IRCutils.h"
 #include "IRCProtocol.h"
 
-extern void traceit(const char *fmt,...);
-
 #define CIRCDDB_VERSION	  "2.0.0"
 
 IRCProtocol::IRCProtocol(IRCApplication *app, const std::string &callsign, const std::string &password, const std::string &channel, const std::string &versionInfo)
@@ -67,7 +65,7 @@ void IRCProtocol::setNetworkReady(bool b)
 {
 	if (b == true) {
 		if (state != 0)
-			traceit("IRCProtocol::setNetworkReady: unexpected state");
+			printf("IRCProtocol::setNetworkReady: unexpected state");
 
 		state = 1;
 		chooseNewNick();
@@ -93,7 +91,7 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 		}
 		// d.Replace(std::string("%"), std::string("%%"), true);
 		// d.Replace(std::string("\\"), std::string("\\\\"), true);
-		traceit("%s\n", d.c_str());
+		printf("%s\n", d.c_str());
 #endif
 
 		if (0 == m->command.compare("004")) {

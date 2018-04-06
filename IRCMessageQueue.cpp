@@ -94,7 +94,7 @@ void IRCMessageQueue::putMessage( IRCMessage * m )
 {
 	accessMutex.lock();
 
-	//traceit("IRCMessageQueue::putMessage\n");
+	//printf("IRCMessageQueue::putMessage\n");
 
 	IRCMessageQueueItem * k = new IRCMessageQueueItem(m);
 

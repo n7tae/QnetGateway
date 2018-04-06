@@ -97,7 +97,6 @@ static unsigned int space = 0;
 static unsigned int aseed = 0;
 
 /* helper routines */
-void traceit(const char *fmt,...);
 static int read_config(const char *cfgFile);
 static void sig_catch(int signum);
 static int open_sock();
@@ -156,30 +155,6 @@ static void sig_catch(int signum)
 	exit(0);
 }
 
-/* log the event */
-void traceit(const char *fmt,...)
-{
-	time_t ltime;
-	struct tm mytm;
-	const int TRACE_BFSZ = 256;
-	char trace_buf[TRACE_BFSZ];
-
-	time(&ltime);
-	localtime_r(&ltime,&mytm);
-
-	snprintf(trace_buf,TRACE_BFSZ - 1,"%02d/%02d/%02d %02d:%02d:%02d:",
-	         mytm.tm_mon+1,mytm.tm_mday,mytm.tm_year % 100,
-	         mytm.tm_hour,mytm.tm_min,mytm.tm_sec);
-
-	va_list args;
-	va_start(args,fmt);
-	vsnprintf(trace_buf + strlen(trace_buf), TRACE_BFSZ - strlen(trace_buf) - 1, fmt, args);
-	va_end(args);
-
-	fprintf(stdout, "%s", trace_buf);
-	return;
-}
-
 bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
 {
 	if (cfg.lookupValue(path, value)) {
@@ -187,7 +162,7 @@ bool get_value(const Config &cfg, const char *path, int &value, int min, int max
 			value = default_value;
 	} else
 		value = default_value;
-	traceit("%s = [%d]\n", path, value);
+	printf("%s = [%d]\n", path, value);
 	return true;
 }
 
@@ -198,7 +173,7 @@ bool get_value(const Config &cfg, const char *path, double &value, double min, d
 			value = default_value;
 	} else
 		value = default_value;
-	traceit("%s = [%lg]\n", path, value);
+	printf("%s = [%lg]\n", path, value);
 	return true;
 }
 
@@ -206,7 +181,7 @@ bool get_value(const Config &cfg, const char *path, bool &value, bool default_va
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
-	traceit("%s = [%s]\n", path, value ? "true" : "false");
+	printf("%s = [%s]\n", path, value ? "true" : "false");
 	return true;
 }
 
@@ -215,12 +190,12 @@ bool get_value(const Config &cfg, const char *path, std::string &value, int min,
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
 		if (l<min || l>max) {
-			traceit("%s is invalid\n", path, value.c_str());
+			printf("%s is invalid\n", path);
 			return false;
 		}
 	} else
 		value = default_value;
-	traceit("%s = [%s]\n", path, value.c_str());
+	printf("%s = [%s]\n", path, value.c_str());
 	return true;
 }
 
@@ -230,17 +205,17 @@ static int read_config(const char *cfgFile)
 	int i;
 	Config cfg;
 
-	traceit("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile);
 	// Read the file. If there is an error, report it and exit.
 	try {
 		cfg.readFile(cfgFile);
 	}
 	catch(const FileIOException &fioex) {
-		traceit("Can't read %s\n", cfgFile);
+		printf("Can't read %s\n", cfgFile);
 		return 1;
 	}
 	catch(const ParseException &pex) {
-		traceit("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
+		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
 		return 1;
 	}
 
@@ -254,7 +229,7 @@ static int read_config(const char *cfgFile)
 		}
 	}
 	if (i >= 3) {
-		traceit("dvap not defined in any module!\n");
+		printf("dvap not defined in any module!\n");
 		return 1;
 	}
 	RPTR_MOD = 'A' + i;
@@ -262,7 +237,7 @@ static int read_config(const char *cfgFile)
 	if (cfg.lookupValue(std::string(dvap_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
-			traceit("Call '%s' is invalid length!\n", value.c_str());
+			printf("Call '%s' is invalid length!\n", value.c_str());
 			return 1;
 		} else {
 			for (i=0; i<l; i++) {
@@ -272,16 +247,16 @@ static int read_config(const char *cfgFile)
 			value.resize(CALL_SIZE, ' ');
 		}
 		strcpy(RPTR, value.c_str());
-		traceit("%s.login = [%s]\n", dvap_path.c_str(), RPTR);
+		printf("%s.login = [%s]\n", dvap_path.c_str(), RPTR);
 	} else {
-		traceit("%s.login is not defined!\n", dvap_path.c_str());
+		printf("%s.login is not defined!\n", dvap_path.c_str());
 		return 1;
 	}
 
 	if (cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
-			traceit("Call '%s' is invalid length!\n", value.c_str());
+			printf("Call '%s' is invalid length!\n", value.c_str());
 			return 1;
 		} else {
 			for (i=0; i<l; i++) {
@@ -291,9 +266,9 @@ static int read_config(const char *cfgFile)
 			value.resize(CALL_SIZE, ' ');
 		}
 		strcpy(OWNER, value.c_str());
-		traceit("ircddb.login = [%s]\n", OWNER);
+		printf("ircddb.login = [%s]\n", OWNER);
 	} else {
-		traceit("ircddb.login is not defined!\n");
+		printf("ircddb.login is not defined!\n");
 		return 1;
 	}
 
@@ -316,7 +291,7 @@ static int read_config(const char *cfgFile)
 	if (get_value(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
 		strcpy(G2_INTERNAL_IP, value.c_str());
 	else {
-		traceit("gateway.ip '%s' is invalid!\\n", value.c_str());
+		printf("gateway.ip '%s' is invalid!\\n", value.c_str());
 		return 1;
 	}
 
@@ -325,7 +300,7 @@ static int read_config(const char *cfgFile)
 	if (get_value(cfg, std::string(dvap_path+".serial_number").c_str(), value, 8, 10, "APXXXXXX"))
 		strcpy(DVP_SERIAL, value.c_str());
 	else {
-		traceit("%s.serial_number '%s' is invalid!\n", dvap_path.c_str(), value.c_str());
+		printf("%s.serial_number '%s' is invalid!\n", dvap_path.c_str(), value.c_str());
 		return 1;
 	}
 
@@ -350,7 +325,7 @@ static int read_config(const char *cfgFile)
 	get_value(cfg, std::string(dvap_path+".acknowledge").c_str(), RPTR_ACK, false);
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000) / WAIT_FOR_PACKETS;
-	traceit("Max loops = %d\n", inactiveMax);
+	printf("Max loops = %d\n", inactiveMax);
 
 	/* convert to Microseconds */
 	WAIT_FOR_PACKETS *= 1000;
@@ -364,7 +339,7 @@ static int open_sock()
 
 	insock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (insock == -1) {
-		traceit("Failed to create insock, error=%d, message=%s\n",errno,strerror(errno));
+		printf("Failed to create insock, error=%d, message=%s\n",errno,strerror(errno));
 		return -1;
 	}
 
@@ -374,7 +349,7 @@ static int open_sock()
 	inaddr.sin_addr.s_addr = inet_addr(RPTR_VIRTUAL_IP);
 	int rc = bind(insock, (struct sockaddr *)&inaddr, sizeof(inaddr));
 	if (rc == -1) {
-		traceit("Failed to bind server socket, error=%d, message=%s\n", errno,strerror(errno));
+		printf("Failed to bind server socket, error=%d, message=%s\n", errno,strerror(errno));
 		close(insock);
 		insock = -1;
 		return -1;
@@ -466,7 +441,7 @@ static void readFrom20000()
 				ctrl_in = 0x80;
 				written_to_q = true;
 
-				traceit("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
+				printf("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
 				        net_buf.vpkt.streamid,
 				        net_buf.vpkt.hdr.flag[0], net_buf.vpkt.hdr.flag[1], net_buf.vpkt.hdr.flag[2],
 				        net_buf.vpkt.hdr.mycall, net_buf.vpkt.hdr.sfx, net_buf.vpkt.hdr.urcall,
@@ -519,7 +494,7 @@ static void readFrom20000()
 					if (net_buf.vpkt.streamid == streamid) {
 						if (net_buf.vpkt.ctrl == ctrl_in) {
 							/* do not update written_to_q, ctrl_in */
-							; // traceit("dup\n");
+							; // printf("dup\n");
 						} else {
 							ctrl_in = net_buf.vpkt.ctrl;
 							written_to_q = true;
@@ -562,7 +537,7 @@ static void readFrom20000()
 								seq_no = 0;
 
 							if ((net_buf.vpkt.ctrl & 0x40) != 0) {
-								traceit("End G2: streamid=%04x\n", net_buf.vpkt.streamid);
+								printf("End G2: streamid=%04x\n", net_buf.vpkt.streamid);
 
 								streamid = 0;
 
@@ -593,7 +568,7 @@ static void readFrom20000()
 		if (!written_to_q) {
 			if (busy20000) {
 				if (++inactive == inactiveMax) {
-					traceit("G2 Timeout...\n");
+					printf("G2 Timeout...\n");
 
 					streamid = 0;
 
@@ -647,25 +622,25 @@ int main(int argc, const char **argv)
 	short cnt = 0;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	traceit("dvap_rptr VERSION %s\n", VERSION);
+	printf("dvap_rptr VERSION %s\n", VERSION);
 
 	if (argc != 2) {
-		traceit("Usage:  dvap_rptr dvap_rptr.cfg\n");
+		printf("Usage:  dvap_rptr dvap_rptr.cfg\n");
 		return 1;
 	}
 
 	rc = read_config(argv[1]);
 	if (rc != 0) {
-		traceit("Failed to process config file %s\n", argv[1]);
+		printf("Failed to process config file %s\n", argv[1]);
 		return 1;
 	}
 
 	if (strlen(RPTR) != 8) {
-		traceit("Bad RPTR value, length must be exactly 8 bytes\n");
+		printf("Bad RPTR value, length must be exactly 8 bytes\n");
 		return 1;
 	}
 	if ((RPTR_MOD != 'A') && (RPTR_MOD != 'B') && (RPTR_MOD != 'C')) {
-		traceit("Bad RPTR_MOD value, must be one of A or B or C\n");
+		printf("Bad RPTR_MOD value, must be one of A or B or C\n");
 		return 1;
 	}
 
@@ -688,15 +663,15 @@ int main(int argc, const char **argv)
 	act.sa_handler = sig_catch;
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("sigaction-TERM failed, error=%d\n", errno);
+		printf("sigaction-TERM failed, error=%d\n", errno);
 		return 1;
 	}
 	if (sigaction(SIGHUP, &act, 0) != 0) {
-		traceit("sigaction-HUP failed, error=%d\n", errno);
+		printf("sigaction-HUP failed, error=%d\n", errno);
 		return 1;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("sigaction-INT failed, error=%d\n", errno);
+		printf("sigaction-INT failed, error=%d\n", errno);
 		return 1;
 	}
 
@@ -710,17 +685,17 @@ int main(int argc, const char **argv)
 		close(serfd);
 		return 1;
 	}
-	traceit("DVAP opened and initialized!\n");
+	printf("DVAP opened and initialized!\n");
 	dstar_dv_init();
 
 	std::future<void> readthread;
 	try {
 		readthread = std::async(std::launch::async, ReadDVAPThread);
 	} catch (const std::exception &e) {
-		traceit("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
+		printf("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
 		keep_running = false;
 	}
-	traceit("Started ReadDVAPThread()\n");
+	printf("Started ReadDVAPThread()\n");
 
 	while (keep_running) {
 		time(&tnow);
@@ -729,7 +704,7 @@ int main(int argc, const char **argv)
 			if (rc < 0) {
 				cnt ++;
 				if (cnt > 5) {
-					traceit("Could not send KEEPALIVE signal to dvap 5 times...exiting\n");
+					printf("Could not send KEEPALIVE signal to dvap 5 times...exiting\n");
 					keep_running = false;
 				}
 			} else
@@ -741,7 +716,7 @@ int main(int argc, const char **argv)
 
 	readthread.get();
 	close(insock);
-	traceit("dvap_rptr exiting\n");
+	printf("dvap_rptr exiting\n");
 	return 0;
 }
 
@@ -764,15 +739,15 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	act.sa_handler = sig_catch;
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("sigaction-TERM failed, error=%d\n", errno);
+		printf("sigaction-TERM failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGHUP, &act, 0) != 0) {
-		traceit("sigaction-HUP failed, error=%d\n", errno);
+		printf("sigaction-HUP failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("sigaction-INT failed, error=%d\n", errno);
+		printf("sigaction-INT failed, error=%d\n", errno);
 		return;
 	}
 
@@ -902,17 +877,17 @@ static void ReadDVAPThread()
 	act.sa_handler = sig_catch;
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("sigaction-TERM failed, error=%d\n", errno);
+		printf("sigaction-TERM failed, error=%d\n", errno);
 		keep_running = false;
 		return;
 	}
 	if (sigaction(SIGHUP, &act, 0) != 0) {
-		traceit("sigaction-HUP failed, error=%d\n", errno);
+		printf("sigaction-HUP failed, error=%d\n", errno);
 		keep_running = false;
 		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("sigaction-INT failed, error=%d\n", errno);
+		printf("sigaction-INT failed, error=%d\n", errno);
 		keep_running = false;
 		return;
 	}
@@ -949,16 +924,16 @@ static void ReadDVAPThread()
 		// read from the dvap and process
 		reply = dongle.GetReply(dr);
 		if (reply == RT_ERR) {
-			traceit("Detected ERROR event from DVAP dongle, stopping...n");
+			printf("Detected ERROR event from DVAP dongle, stopping...n");
 			break;
 		} else if (reply == RT_STOP) {
-			traceit("Detected STOP event from DVAP dongle, stopping...\n");
+			printf("Detected STOP event from DVAP dongle, stopping...\n");
 			break;
 		} else if (reply == RT_START) {
-			traceit("Detected START event from DVAP dongle\n");
+			printf("Detected START event from DVAP dongle\n");
 		// else if (reply == RT_PTT) {
 		// 	ptt = (dvp_buf[4] == 0x01);
-		// 	traceit("Detected PTT=%s\n", ptt?"on":"off");
+		// 	printf("Detected PTT=%s\n", ptt?"on":"off");
 		} else if (reply == RT_STS) {
 			space = (unsigned int)dr.param.sstr[2];
 			if (status_cntr < 3000)
@@ -967,7 +942,7 @@ static void ReadDVAPThread()
 			num_dv_frames = 0;
 			num_bit_errors = 0;
 
-			traceit("From DVAP: flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
+			printf("From DVAP: flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
 			        dr.frame.hdr.flag[0], dr.frame.hdr.flag[1], dr.frame.hdr.flag[2],
 			        dr.frame.hdr.mycall, dr.frame.hdr.sfx, dr.frame.hdr.urcall,
 			        dr.frame.hdr.rpt2, dr.frame.hdr.rpt1);
@@ -990,7 +965,7 @@ static void ReadDVAPThread()
 				temp_yrcall[CALL_SIZE] = '\0';
 				temp_ptr = strstr(temp_yrcall, INVALID_YRCALL_KEY);
 				if (temp_ptr == temp_yrcall) { // found it at first position
-					traceit("YRCALL value [%s] starts with the INVALID_YRCALL_KEY [%s], resetting to CQCQCQ\n",
+					printf("YRCALL value [%s] starts with the INVALID_YRCALL_KEY [%s], resetting to CQCQCQ\n",
 					        temp_yrcall, INVALID_YRCALL_KEY);
 					memcpy(dr.frame.hdr.urcall, "CQCQCQ  ", 8);
 				}
@@ -1028,11 +1003,11 @@ static void ReadDVAPThread()
 			*/
 			if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
 				if (memcmp(net_buf.vpkt.hdr.mycall, RPTR, RPTR_SIZE) != 0) {
-					traceit("mycall=[%.8s], not equal to %s\n", net_buf.vpkt.hdr.mycall, RPTR);
+					printf("mycall=[%.8s], not equal to %s\n", net_buf.vpkt.hdr.mycall, RPTR);
 					ok = false;
 				}
 			} else if (memcmp(net_buf.vpkt.hdr.mycall, "        ", 8) == 0) {
-				traceit("Invalid value for mycall=[%.8s]\n", net_buf.vpkt.hdr.mycall);
+				printf("Invalid value for mycall=[%.8s]\n", net_buf.vpkt.hdr.mycall);
 				ok = false;
 			}
 
@@ -1043,7 +1018,7 @@ static void ReadDVAPThread()
 					        (net_buf.vpkt.hdr.mycall[i] != ' ')) {
 						memset(net_buf.vpkt.hdr.mycall, ' ', 8);
 						ok = false;
-						traceit("Invalid value for MYCALL\n");
+						printf("Invalid value for MYCALL\n");
 						break;
 					}
 				}
@@ -1152,14 +1127,14 @@ static void ReadDVAPThread()
 					dvap_busy = false;
 					static SDVAP_ACK_ARG dvap_ack_arg;
 					dvap_ack_arg.ber = (num_dv_frames==0) ? 0.f : 100.f * (float)num_bit_errors / (float)(num_dv_frames * 24);
-					traceit("End of dvap audio,  ber=%.02f\n", dvap_ack_arg.ber);
+					printf("End of dvap audio,  ber=%.02f\n", dvap_ack_arg.ber);
 
 					if (RPTR_ACK && !busy20000) {
 						memcpy(dvap_ack_arg.mycall, mycall, 8);
 						try {
 							std::async(std::launch::async, RptrAckThread, &dvap_ack_arg);
 						} catch (const std::exception &e) {
-							traceit("Failed to start RptrAckThread(). Exception: %s\n", e.what());
+							printf("Failed to start RptrAckThread(). Exception: %s\n", e.what());
 						}
 					}
 				}
@@ -1175,7 +1150,7 @@ static void ReadDVAPThread()
 	dongle.Stop();
 	close(serfd);
 
-	traceit("ReadDVAPThread exiting\n");
+	printf("ReadDVAPThread exiting\n");
 
 	keep_running = false;
 	return;

@@ -105,7 +105,7 @@ int getAllIPV4Addresses(const char * name, unsigned short port, unsigned int * n
 		return 0;
 
 	} else {
-		traceit("getaddrinfo: %s\n", gai_strerror(r));
+		printf("getaddrinfo: %s\n", gai_strerror(r));
 
 		return 1;
 	}
@@ -138,29 +138,6 @@ char *getCurrentTime(void)
 	strftime(buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", tm);
 
 	return buffer;
-}
-
-void traceit(const char *fmt,...)
-{
-	time_t ltime;
-	struct tm tm;
-	const short BFSZ = 512;
-	char buf[BFSZ];
-
-	time(&ltime);
-	localtime_r(&ltime, &tm);
-
-	snprintf(buf,BFSZ - 1,"%02d/%02d/%02d %d:%02d:%02d:",
-	         tm.tm_mon+1,tm.tm_mday,tm.tm_year % 100,
-	         tm.tm_hour,tm.tm_min,tm.tm_sec);
-
-	va_list args;
-	va_start(args,fmt);
-	vsnprintf(buf + strlen(buf), BFSZ - strlen(buf) -1, fmt, args);
-	va_end(args);
-
-	fprintf(stdout, "%s", buf);
-	return;
 }
 
 void ToUpper(std::string &str)

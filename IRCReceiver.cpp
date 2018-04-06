@@ -24,11 +24,11 @@ static int doRead(int sock, char * buf, int buf_size)
 	res = select(sock+1, &rdset, NULL, &errset, &tv);
 
 	if ( res < 0 ) {
-		traceit("IRCReceiver::doread: select() error.\n");
+		printf("IRCReceiver::doread: select() error.\n");
 		return -1;
 	} else if ( res > 0 ) {
 		if (FD_ISSET(sock, &errset)) {
-			traceit("IRCReceiver::doRead: FD_ISSET error\n");
+			printf("IRCReceiver::doRead: FD_ISSET error\n");
 			return -1;
 		}
 
@@ -36,10 +36,10 @@ static int doRead(int sock, char * buf, int buf_size)
 			res = recv(sock, buf, buf_size, 0);
 
 			if (res < 0) {
-				traceit("IRCReceiver::doRead: recv error\n");
+				printf("IRCReceiver::doRead: recv error\n");
 				return -1;
 			} else if (res == 0) {
-				traceit("IRCReceiver::doRead: EOF read==0\n");
+				printf("IRCReceiver::doRead: EOF read==0\n");
 				return -1;
 			} else
 				return res;
