@@ -102,7 +102,7 @@ void CMMDVMModem::ProcessGateway(CUDPSocket &gsock, CUDPSocket &msock)
 		return;
 
 	if (0 > len) {
-		printf("ERROR: ProcessGateway: Can't read gateway data\n");
+		printf("ERROR: ProcessGateway: Can't read gateway packet\n");
 		keep_running = false;
 		return;
 	}
@@ -110,33 +110,83 @@ void CMMDVMModem::ProcessGateway(CUDPSocket &gsock, CUDPSocket &msock)
 	// if there is data, translate it and send it to the MMDVM Modem
 	if (29==len || 58==len) { //here is dstar data
 		SMMDVMPKT pkt;
+
 		memcpy(pkt.title, "DSRP", 4);
 		if (29 == len) {	// write an AMBE packet
 			pkt.tag = 0x21U;
 			pkt.voice.id = buf.vpkt.streamid;
+			pkt.voice.seq = buf.vpkt.ctrl;
+			if (pkt.voice.seq & 0x40)
+				printf("INFO: ProcessGateway: sending voice end-of-stream\n");
+			else if (pkt.voice.seq > 20)
+				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", pkt.voice.seq);
 
+			memcpy(pkt.voice.ambe, buf.vpkt.vasd.text, 12);
 			if (false == msock.write(pkt.title, 21, mmdvm_addr, MMDVM_PORT)) {
-				printf("ERROR: ProcessGateway: Could not write AMBE data packet to MMDVMHost\n");
+				printf("ERROR: ProcessGateway: Could not write AMBE mmdvm packet\n");
 				keep_running = false;
 				return;
 			}
 		} else {			// write a Header packet
 			pkt.tag = 0x20U;
 			pkt.header.id = buf.vpkt.streamid;
+			pkt.header.seq = buf.vpkt.ctrl;
+			if (pkt.header.seq) {
+				printf("DEBUG: ProcessGateway: unexpected .header.seq %d, resetting to 0\n", pkt.header.seq);
+				pkt.header.seq = 0;
+			}
 
+			memcpy(pkt.header.flag, buf.vpkt.hdr.flag, 41);
 			if (false == msock.write(pkt.title, 49, mmdvm_addr, MMDVM_PORT)) {
-				printf("ERROR: ProcessGateway: Could not write Header data packet to MMDVMHost\n");
+				printf("ERROR: ProcessGateway: Could not write Header mmdvm packet\n");
 				keep_running = false;
 			}
 		}
-	}
+	} else
+		printf("DEBUG: ProcessGateway: unusual packet size read len=%d\n", len);
 }
 
 void CMMDVMModem::ProcessMMDVM(CUDPSocket &gsock, CUDPSocket &msock)
 {
+	SMMDVMPKT mpkt;
+	unsigned int mmdvm_port = MMDVM_PORT;
+	in_addr addr;
+	addr.s_addr = mmdvm_addr.s_addr;
+
 	// read from the MMDVM modem
+	int len = msock.read(mpkt.title, 64, addr, mmdvm_port);
+
+	if (0 == len)	// no data available
+		return;
+
+	if (0 > len) {
+		printf("ERROR: ProcessMMDVM: Could not read mmdvm packet\n");
+		keep_running = false;
+		return;
+	}
 
 	// if there is data, translate it and send it to the Gateway
+	if (21==len || 49==len) {
+		unsigned int g2_internal_port = G2_INTERNAL_PORT;
+
+		SPKT gpkt;
+		memcpy(gpkt.pkt_id, "DSTR", 4);
+		gpkt.counter = 0;
+		gpkt.flag[0] = 0x72;
+		gpkt.flag[1] = 0x12;
+		gpkt.flag[2] = 0x0;
+		gpkt.remaining = (21 == len) ? 0x16 : 0x30;
+		gpkt.vpkt.icm_id = 0x20;
+		gpkt.vpkt.dst_rptr_id = 0x0;
+		gpkt.vpkt.snd_rptr_id = 0x1;
+		gpkt.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
+
+		if (false == gsock.write(gpkt.pkt_id, (21==len) ? 29 : 58, g2_internal_addr, g2_internal_port)) {
+			printf("ERROR: ProcessMMDVM: Could not write gateway packet\n");
+			keep_running = false;
+		}
+	} else
+		printf("DEBUG: ProcessMMDVM: unusual packet size read len=%d\n", len);
 }
 
 bool CMMDVMModem::GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value)

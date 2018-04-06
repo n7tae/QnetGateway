@@ -17,8 +17,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-// for communicating with the g2 gateway
-
+// for communicating with the g2 gateway on the internal port
 #pragma pack(push, 1)	// we need to be sure these structures don't have any dead space
 typedef struct pkt_tag {
 	unsigned char pkt_id[4];	//  0
@@ -36,7 +35,7 @@ typedef struct pkt_tag {
 			unsigned char snd_rptr_id;	// 12
 			unsigned char snd_term_id;	// 13
 			uint16_t streamid;			// 14
-			unsigned char ctrl;			// 16
+			unsigned char ctrl;			// 16	sequence number hdr=0, voice%21, end|=0x40
 			union {
 				struct {
 					unsigned char flag[3];	// 17
@@ -47,15 +46,6 @@ typedef struct pkt_tag {
 					unsigned char sfx[4];	// 52
 					unsigned char pfcs[2];	// 56
 				} hdr;						// total 58
-				struct {
-					unsigned char flag[3];	// 17
-					unsigned char rpt2[8];	// 20
-					unsigned char rpt1[8];	// 28
-					unsigned char urcall[8];// 36
-					unsigned char mycall[8];// 44
-					unsigned char sfx[4];	// 52
-					unsigned char pfcs[2];	// 56
-				} hdrr;						// total 58
 				union {
 					struct {
 						unsigned char voice[9];	// 17
@@ -73,6 +63,7 @@ typedef struct pkt_tag {
 } SPKT;
 #pragma pack(pop)
 
+// for the g2 external port
 #pragma pack(push, 1)
 typedef struct dsvt_tag {
 	unsigned char title[4];	//  0   "DSVT"
@@ -100,14 +91,15 @@ typedef struct dsvt_tag {
 } SDSVT;
 #pragma pack(pop)
 
+// for mmdvm
 #pragma pack(push, 1)
 typedef struct mmdvm_tag {	//									offset	  size
-	unsigned char title[4];		// "DSRP"							 0
+	unsigned char title[4];	// "DSRP"								 0
 	unsigned char tag;		// Poll   : 0xA							 4
 							// Header : busy ? 0x22 : 0x20
 							// Voice  : busy ? 0x23 : 0x21
 	union {
-		unsigned char msg[59];	// space for text (release version)	 5		64
+		unsigned char poll_msg[59];	// space for text				 5		variable, max is 64, including trailing null
 		struct {
 			unsigned short id;		// random id number				 5
 			unsigned char seq;		// 0x0							 7
@@ -119,7 +111,7 @@ typedef struct mmdvm_tag {	//									offset	  size
 			unsigned char yr[8];	// Your Call					27
 			unsigned char my[8];	// My Call						35
 			unsigned char nm[4];	// Name							43
-			unsigned short pcfs;	//								47		49
+			unsigned short pcfs;	// checksum						47		49
 		} header;
 		struct {
 			unsigned short id;		// random id number				 5

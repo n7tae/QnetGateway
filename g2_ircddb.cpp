@@ -709,8 +709,7 @@ void CG2_ircddb::process()
 				//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
 				//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
 				if ((t_now - toRptr[i].last_time) > from_remote_g2_timeout) {
-					traceit("Inactivity to local rptr mod index %d, removing stream id %04x\n",
-						i, toRptr[i].streamid);
+					traceit("Inactivity to local rptr mod index %d, removing stream id %04x\n", i, toRptr[i].streamid);
 
 					// Send end_of_audio to local repeater.
 					// Let the repeater re-initialize
@@ -915,8 +914,7 @@ void CG2_ircddb::process()
 							/* for which repeater this stream has timed out ?  */
 							for (i = 0; i < 3; i++) {
 								/* match saved stream ? */
-								if ((memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) == 0) &&
-								        (toRptr[i].saved_adr == fromDst4.sin_addr.s_addr)) {
+								if (0==memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) && toRptr[i].saved_adr==fromDst4.sin_addr.s_addr) {
 									/* repeater module is inactive ?  */
 									if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
 										traceit("Re-generating header for streamID=%04x\n", g2buf.streamid);
