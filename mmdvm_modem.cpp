@@ -26,6 +26,7 @@
 #include "versions.h"
 #include "mmdvm_modem.h"
 #include "UDPSocket.h"
+#include "g2_typedefs.h"
 
 std::atomic<bool> CMMDVMModem::keep_running(true);
 
@@ -66,7 +67,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 	if (Initialize(cfgfile))
 		return;
 
-	CUDPSocket GatewaySock(G2_INTERNAL_IP, G2_PORT);
+	CUDPSocket GatewaySock(G2_INTERNAL_IP, G2_INTERNAL_PORT);
 	if (GatewaySock.open())
 		return;
 
@@ -80,22 +81,58 @@ void CMMDVMModem::Run(const char *cfgfile)
 
 
 	while (keep_running) {
-		ProcessMMDVM();
-		ProcessGateway();
+		ProcessMMDVM(GatewaySock, MMDVMSock);
+		if (keep_running)
+			ProcessGateway(GatewaySock, MMDVMSock);
 	}
 
 	MMDVMSock.close();
 	GatewaySock.close();
 }
 
-void CMMDVMModem::ProcessGateway()
+void CMMDVMModem::ProcessGateway(CUDPSocket &gsock, CUDPSocket &msock)
 {
+	SPKT buf;
+	unsigned int port;
+
 	// read from gateway
+	int len = gsock.read(buf.pkt_id, 58, g2_internal_addr, port);
+
+	if (0 == len)
+		return;
+
+	if (0 > len) {
+		printf("ERROR: ProcessGateway: Can't read gateway data\n");
+		keep_running = false;
+		return;
+	}
 
 	// if there is data, translate it and send it to the MMDVM Modem
+	if (29==len || 58==len) { //here is dstar data
+		SMMDVMPKT pkt;
+		memcpy(pkt.title, "DSRP", 4);
+		if (29 == len) {	// write an AMBE packet
+			pkt.tag = 0x21U;
+			pkt.voice.id = buf.vpkt.streamid;
+
+			if (false == msock.write(pkt.title, 21, mmdvm_addr, MMDVM_PORT)) {
+				printf("ERROR: ProcessGateway: Could not write AMBE data packet to MMDVMHost\n");
+				keep_running = false;
+				return;
+			}
+		} else {			// write a Header packet
+			pkt.tag = 0x20U;
+			pkt.header.id = buf.vpkt.streamid;
+
+			if (false == msock.write(pkt.title, 49, mmdvm_addr, MMDVM_PORT)) {
+				printf("ERROR: ProcessGateway: Could not write Header data packet to MMDVMHost\n");
+				keep_running = false;
+			}
+		}
+	}
 }
 
-void CMMDVMModem::ProcessMMDVM()
+void CMMDVMModem::ProcessMMDVM(CUDPSocket &gsock, CUDPSocket &msock)
 {
 	// read from the MMDVM modem
 
@@ -218,21 +255,23 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 		return true;
 	}
 
-	if (GetValue(cfg, std::string(mmdvm_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
+	if (GetValue(cfg, std::string(mmdvm_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0")) {
 		MMDVM_IP = value;
-	else
+		inet_aton(MMDVM_IP.c_str(), &mmdvm_addr);
+	} else
 		return true;
 
 	GetValue(cfg, std::string(mmdvm_path+".port").c_str(), i, 10000, 65535, 20010);
 	MMDVM_PORT = (unsigned short)i;
 
-	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
+	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1")) {
 		G2_INTERNAL_IP = value;
-	else
+		inet_aton(G2_INTERNAL_IP.c_str(), &g2_internal_addr);
+	} else
 		return true;
 
 	GetValue(cfg, "gateway.internal.port", i, 10000, 65535, 20010);
-	G2_PORT = (unsigned short)i;
+	G2_INTERNAL_PORT = (unsigned short)i;
 
 	GetValue(cfg, "timing.play.delay", DELAY_BETWEEN, 9, 25, 19);
 

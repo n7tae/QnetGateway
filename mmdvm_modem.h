@@ -22,6 +22,10 @@
 #include <string>
 #include <libconfig.h++>
 
+#include <netinet/in.h>
+
+#include "UDPSocket.h"
+
 using namespace libconfig;
 
 #define CALL_SIZE 8
@@ -42,8 +46,8 @@ private:
 	// functions
 	bool Initialize(const char *cfgfile);
 	static void SignalCatch(int signum);
-	void ProcessGateway();
-	void ProcessMMDVM();
+	void ProcessGateway(CUDPSocket &gsock, CUDPSocket &msock);
+	void ProcessMMDVM(CUDPSocket &gsock, CUDPSocket &msock);
 
 	// read configuration file
 	bool ReadConfig(const char *);
@@ -57,7 +61,8 @@ private:
 	char RPTR[CALL_SIZE + 1];
 	char OWNER[CALL_SIZE + 1];
 	std::string MMDVM_IP, G2_INTERNAL_IP;
-	unsigned short MMDVM_PORT, G2_PORT;
+	in_addr mmdvm_addr, g2_internal_addr;
+	unsigned short MMDVM_PORT, G2_INTERNAL_PORT;
 	int WAIT_FOR_PACKETS, DELAY_BEFORE, DELAY_BETWEEN;
 	bool RPTR_ACK;
 

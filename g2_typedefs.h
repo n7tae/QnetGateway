@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright 2017 by Thomas Early, N7TAE
+ *   Copyright 2017,2018 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -47,6 +47,15 @@ typedef struct pkt_tag {
 					unsigned char sfx[4];	// 52
 					unsigned char pfcs[2];	// 56
 				} hdr;						// total 58
+				struct {
+					unsigned char flag[3];	// 17
+					unsigned char rpt2[8];	// 20
+					unsigned char rpt1[8];	// 28
+					unsigned char urcall[8];// 36
+					unsigned char mycall[8];// 44
+					unsigned char sfx[4];	// 52
+					unsigned char pfcs[2];	// 56
+				} hdrr;						// total 58
 				union {
 					struct {
 						unsigned char voice[9];	// 17
@@ -69,7 +78,7 @@ typedef struct dsvt_tag {
 	unsigned char title[4];	//  0   "DSVT"
 	unsigned char config;	//  4   0x10 is hdr 0x20 is vasd
 	unsigned char flaga[3];	//  5   zeros
-	unsigned char id;		//  8   0x20 
+	unsigned char id;		//  8   0x20
 	unsigned char flagb[3];	//  9   0x0 0x1 0x1
 	unsigned short streamid;// 12
 	unsigned char counter;	// 14   hdr: 0x80 vsad: framecounter (mod 21)
@@ -89,4 +98,36 @@ typedef struct dsvt_tag {
 		} vasd;						// total 27
 	};
 } SDSVT;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct mmdvm_tag {	//									offset	  size
+	unsigned char title[4];		// "DSRP"							 0
+	unsigned char tag;		// Poll   : 0xA							 4
+							// Header : busy ? 0x22 : 0x20
+							// Voice  : busy ? 0x23 : 0x21
+	union {
+		unsigned char msg[59];	// space for text (release version)	 5		64
+		struct {
+			unsigned short id;		// random id number				 5
+			unsigned char seq;		// 0x0							 7
+			unsigned char flag[3];	// 0x80 Dstar Data				 8
+									// 0x40 Dstar Repeater
+									// 0x01 Dstar Relay Unavailable
+			unsigned char r2[8];	// Repeater 2					11
+			unsigned char r1[8];	// Repeater 1					19
+			unsigned char yr[8];	// Your Call					27
+			unsigned char my[8];	// My Call						35
+			unsigned char nm[4];	// Name							43
+			unsigned short pcfs;	//								47		49
+		} header;
+		struct {
+			unsigned short id;		// random id number				 5
+			unsigned char seq;		// sequence from 0 to 0x14		 7
+									// if end then sequence |= 0x40
+			unsigned char err;		// # of errors?					 8
+			unsigned char ambe[12];	// voice + slow data			 9		21
+		} voice;
+	};
+} SMMDVMPKT;
 #pragma pack(pop)
