@@ -837,8 +837,8 @@ void CG2_ircddb::process()
 							rptrbuf.counter = toRptr[i].G2_COUNTER;
 							rptrbuf.flag[0] = 0x73;
 							rptrbuf.flag[1] = 0x12;
-							rptrbuf.nothing2[0] = 0x00;
-							rptrbuf.nothing2[1] = 0x30;
+							rptrbuf.flag[2] = 0x00;
+							rptrbuf.remaining = 0x30;
 							rptrbuf.vpkt.icm_id = 0x20;
 							memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 47);
 							sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
@@ -876,8 +876,8 @@ void CG2_ircddb::process()
 							rptrbuf.counter = toRptr[i].G2_COUNTER;
 							rptrbuf.flag[0] = 0x73;
 							rptrbuf.flag[1] = 0x12;
-							rptrbuf.nothing2[0] = 0x00;
-							rptrbuf.nothing2[1]= 0x13;
+							rptrbuf.flag[2] = 0x00;
+							rptrbuf.remaining= 0x13;
 							rptrbuf.vpkt.icm_id = 0x20;
 							memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
 
@@ -935,8 +935,8 @@ void CG2_ircddb::process()
 										rptrbuf.counter = toRptr[i].G2_COUNTER;
 										rptrbuf.flag[0] = 0x73;
 										rptrbuf.flag[1] = 0x12;
-										rptrbuf.nothing2[0] = 0x00;
-										rptrbuf.nothing2[1] = 0x13;
+										rptrbuf.flag[2] = 0x00;
+										rptrbuf.remaining = 0x13;
 										rptrbuf.vpkt.icm_id = 0x20;
 										memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
 
@@ -974,10 +974,10 @@ void CG2_ircddb::process()
 			if ( ((recvlen == 58) || (recvlen == 29) || (recvlen == 32)) &&
 			        (rptrbuf.flag[0] == 0x73) && (rptrbuf.flag[1] == 0x12) &&
 			        (0 == memcmp(rptrbuf.pkt_id,"DSTR", 4)) &&
-			        (rptrbuf.vpkt.icm_id == 0x20) && (rptrbuf.nothing2[0] == 0x00) &&
-			        ((rptrbuf.nothing2[1] == 0x30) ||    /* 48 bytes follow */
-			         (rptrbuf.nothing2[1] == 0x13) ||    /* 19 bytes follow */
-			         (rptrbuf.nothing2[1] == 0x16)) ) {  /* 22 bytes follow */
+			        (rptrbuf.vpkt.icm_id == 0x20) && (rptrbuf.flag[2] == 0x00) &&
+			        ((rptrbuf.remaining == 0x30) ||    /* 48 bytes follow */
+			         (rptrbuf.remaining == 0x13) ||    /* 19 bytes follow */
+			         (rptrbuf.remaining == 0x16)) ) {  /* 22 bytes follow */
 
 				int dtmf_buf_count[3] = {0, 0, 0};
 				char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
@@ -2562,8 +2562,8 @@ int CG2_ircddb::init(char *cfgfile)
 	memcpy(end_of_audio.pkt_id, "DSTR", 4);
 	end_of_audio.flag[0] = 0x73;
 	end_of_audio.flag[1] = 0x12;
-	end_of_audio.nothing2[0] = 0x00;
-	end_of_audio.nothing2[1] = 0x13;
+	end_of_audio.flag[2] = 0x00;
+	end_of_audio.remaining = 0x13;
 	end_of_audio.vpkt.icm_id = 0x20;
 	end_of_audio.vpkt.dst_rptr_id = 0x00;
 	end_of_audio.vpkt.snd_rptr_id = 0x01;

@@ -922,8 +922,8 @@ static void ReadDVAPThread()
 	spack.counter = 0;
 	spack.flag[0] = 0x73;
 	spack.flag[1] = 0x21;
-	spack.nothing2[0] = 0x00;
-	spack.nothing2[1] = 0x10;
+	spack.flag[2] = 0x00;
+	spack.remaining = 0x10;
 
 	while (keep_running) {
 		time(&tnow);
@@ -1103,8 +1103,8 @@ static void ReadDVAPThread()
 				net_buf.counter = C_COUNTER;
 				net_buf.flag[0] = 0x73;
 				net_buf.flag[1] = 0x12;
-				net_buf.nothing2[0] = 0x00;
-				net_buf.nothing2[1] = 0x30;
+				net_buf.flag[2] = 0x00;
+				net_buf.remaining = 0x30;
 				net_buf.vpkt.icm_id = 0x20;
 				net_buf.vpkt.dst_rptr_id = 0x00;
 				net_buf.vpkt.snd_rptr_id = 0x01;
@@ -1131,7 +1131,7 @@ static void ReadDVAPThread()
 				the_end = ((dr.frame.framepos & 0x40) == 0x40);
 
 				net_buf.counter = C_COUNTER;
-				net_buf.nothing2[1] = 0x13;
+				net_buf.remaining = 0x13;
 				net_buf.vpkt.ctrl = sequence++;
 				if (the_end)
 					net_buf.vpkt.ctrl = sequence | 0x40;
