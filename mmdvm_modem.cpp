@@ -208,7 +208,12 @@ int CMMDVMModem::SendTo(const int fd, const unsigned char *buf, const int size, 
 	addr.sin_addr.s_addr = ::inet_addr(address.c_str());
 	addr.sin_port = htons(port);
 
-	return ::sendto(fd, buf, size, 0, (sockaddr *)&addr, sizeof(sockaddr_in));
+	int len = ::sendto(fd, buf, size, 0, (sockaddr *)&addr, sizeof(sockaddr_in));
+	if (len < 0)
+		printf("ERROR: SendTo: failed sendto err: %d, %s\n", errno, strerror(errno));
+	else if (len != size)
+		printf("ERROR: SendTo: tried to send %d bytes, actually sent %d.\n", size, len);
+	return len;
 }
 
 bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
