@@ -24,8 +24,6 @@
 
 #include <netinet/in.h>
 
-#include "UDPSocket.h"
-
 using namespace libconfig;
 
 #define CALL_SIZE 8
@@ -49,7 +47,7 @@ private:
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessMMDVM(const int len, const unsigned char *raw);
 	int OpenSocket(const std::string &address, unsigned short port);
-	int SendTo(cont int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port);
+	int SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port);
 
 	// read configuration file
 	bool ReadConfig(const char *);

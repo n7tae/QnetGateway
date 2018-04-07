@@ -23,10 +23,17 @@
 #include <csignal>
 #include <ctime>
 #include <cstdlib>
+#include <netdb.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <errno.h>
 
 #include "versions.h"
 #include "mmdvm_modem.h"
-#include "UDPSocket.h"
 #include "g2_typedefs.h"
 
 std::atomic<bool> CMMDVMModem::keep_running(true);
@@ -94,14 +101,14 @@ int CMMDVMModem::OpenSocket(const std::string &address, unsigned short port)
 	}
 
 	int reuse = 1;
-	if (::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-		printf("Cannot set the UDP socket %s:%u option, err: %d, %s\n", m_port, errno, strerror(errno));
+	if (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
+		printf("Cannot set the UDP socket %s:%u option, err: %d, %s\n", address.c_str(), port, errno, strerror(errno));
 		close(fd);
 		return -1;
 	}
 
-	if (::bind(m_fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == -1) {
-		printf("Cannot bind the UDP (port %u) address, err: %d, %s\n", m_port, errno, strerror(errno));
+	if (::bind(fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == -1) {
+		printf("Cannot bind the UDP socket %s:%u address, err: %d, %s\n", address.c_str(), port, errno, strerror(errno));
 		close(fd);
 		return -1;
 	}
@@ -120,7 +127,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 
 	int gsock = OpenSocket(G2_INTERNAL_IP, G2_INTERNAL_PORT);
 	if (gsock < 0) {
-		::close(fd_m);
+		::close(msock);
 		return;
 	}
 
@@ -149,20 +156,21 @@ void CMMDVMModem::Run(const char *cfgfile)
 		unsigned char buf[100];
 		sockaddr_in addr;
 		memset(&addr, 0, sizeof(sockaddr_in));
+		socklen_t size = sizeof(sockaddr);
 		ssize_t len;
 		if (FD_ISSET(msock, &readfds)) {
-			len = ::recvfrom(msock, buf, 100, 0, (sockaddr *)&addr, sizeof(sockaddr_in);
+			len = ::recvfrom(msock, buf, 100, 0, (sockaddr *)&addr, &size);
 
 			if (len < 0) {
 				printf("ERROR: RUN: recvfrom(mmdvm) return error %d, %s\n", errno, strerror(errno));
 				break;
 			}
 
-			if (addr.sin_port == G2_PORT)
+			if (addr.sin_port == G2_INTERNAL_PORT)
 				printf("DEBUG: Run: reading from fd_m but port was %d.\n", addr.sin_port);
 
 		} else if (FD_ISSET(gsock, &readfds)) {
-			len = ::recvfrom(fd_g, buf, 100, 0, (sockaddr *)&addr, sizeof(sockaddr_in);
+			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
 
 			if (len < 0) {
 				printf("ERROR: RUN: recvfrom(g2) return error %d, %s\n", errno, strerror(errno));
@@ -179,23 +187,23 @@ void CMMDVMModem::Run(const char *cfgfile)
 		if (len == 0)
 			continue;
 
-		if (addr.sin_port == MMDVM_PORT) {
-			if (ProcessMMDVM(buf))
+		if (ntohs(addr.sin_port) == MMDVM_PORT) {
+			if (ProcessMMDVM(len, buf))
 				break;
-		} else if (addr.sin_port == G2_PORT) {
-			if (ProcessGateway(buf))
+		} else if (ntohs(addr.sin_port) == G2_INTERNAL_PORT) {
+			if (ProcessGateway(len, buf))
 				break;
 		}
 	}
 
-	::close(fd_m);
-	::close(fd_g);
+	::close(msock);
+	::close(gsock);
 }
 
 int CMMDVMModem::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
 {
 	sockaddr_in addr;
-	::memset(&addr, 0, sizeof(sockaddr_in);
+	::memset(&addr, 0, sizeof(sockaddr_in));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = ::inet_addr(address.c_str());
 	addr.sin_port = htons(port);
@@ -206,13 +214,13 @@ int CMMDVMModem::SendTo(const int fd, const unsigned char *buf, const int size, 
 bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 {
 	SPKT buf;
-	::memcpy(buf.pkt_id, buf, len);
+	::memcpy(buf.pkt_id, raw, len);
 
 	// if there is data, translate it and send it to the MMDVM Modem
 	if (29==len || 58==len) { //here is dstar data
 		SMMDVMPKT pkt;
 
-		memcpy(pkt.title, "DSRP", 4);
+		::memcpy(pkt.title, "DSRP", 4);
 		if (29 == len) {	// write an AMBE packet
 			pkt.tag = 0x21U;
 			pkt.voice.id = buf.vpkt.streamid;
@@ -223,7 +231,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", pkt.voice.seq);
 
 			memcpy(pkt.voice.ambe, buf.vpkt.vasd.text, 12);
-			int ret = SendTo(msock, pkt.title, 21, mmdvm_addr, MMDVM_PORT))
+			int ret = SendTo(msock, pkt.title, 21, MMDVM_IP, MMDVM_PORT);
 			if (ret != 21) {
 				printf("ERROR: ProcessGateway: Could not write AMBE mmdvm packet\n");
 				return true;
@@ -238,7 +246,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 			}
 
 			memcpy(pkt.header.flag, buf.vpkt.hdr.flag, 41);
-			int ret = SendTo(msock, pkt.title, 49, mmdvm_addr, MMDVM_PORT);
+			int ret = SendTo(msock, pkt.title, 49, MMDVM_IP, MMDVM_PORT);
 			if (ret != 49) {
 				printf("ERROR: ProcessGateway: Could not write Header mmdvm packet\n");
 				return true;
@@ -252,12 +260,14 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 {
 	SMMDVMPKT mpkt;
-	::memcopy(mpkt.title, raw, len);
+	SPKT gpkt;
+
+	::memcpy(mpkt.title, raw, len);
 
 	// if there is data, translate it and send it to the Gateway
 	if (49 == len) {
 		// sets most of the params with the header
-		memcpy(gpkt.pkt_id, "DSTR", 4);
+		::memcpy(gpkt.pkt_id, "DSTR", 4);
 		gpkt.counter = COUNTER++;
 		gpkt.flag[0] = 0x72;
 		gpkt.flag[1] = 0x12;
@@ -270,7 +280,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		gpkt.vpkt.streamid = (rand_r(&seed) % 65535U) + 1U;
 		gpkt.vpkt.ctrl = mpkt.header.seq;
 		memcpy(gpkt.vpkt.hdr.flag, mpkt.header.flag, 41);
-		int ret = SendTo(gsock, gpkt.pkt_id, 58, g2_internal_addr, (unsigned int)G2_INTERNAL_PORT);
+		int ret = SendTo(gsock, gpkt.pkt_id, 58, G2_INTERNAL_IP, G2_INTERNAL_PORT);
 		if (ret != 58) {
 			printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 			return true;
@@ -281,7 +291,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		gpkt.remaining = 0x16;
 		gpkt.vpkt.ctrl = mpkt.voice.seq;
 		memcpy(gpkt.vpkt.vasd.text, mpkt.voice.ambe, 12);
-		int ret = SendTo(gsock, gpkt.pkt_id, 29, g2_internal_addr, (unsigned int)G2_INTERNAL_PORT);
+		int ret = SendTo(gsock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_INTERNAL_PORT);
 		if (ret != 29) {
 			printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 			return true;
@@ -409,7 +419,6 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 
 	if (GetValue(cfg, std::string(mmdvm_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0")) {
 		MMDVM_IP = value;
-		inet_aton(MMDVM_IP.c_str(), &mmdvm_addr);
 	} else
 		return true;
 
@@ -418,7 +427,6 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 
 	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1")) {
 		G2_INTERNAL_IP = value;
-		inet_aton(G2_INTERNAL_IP.c_str(), &g2_internal_addr);
 	} else
 		return true;
 
