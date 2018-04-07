@@ -46,8 +46,10 @@ private:
 	// functions
 	bool Initialize(const char *cfgfile);
 	static void SignalCatch(int signum);
-	void ProcessGateway(CUDPSocket &gsock, CUDPSocket &msock);
-	void ProcessMMDVM(CUDPSocket &gsock, CUDPSocket &msock);
+	bool ProcessGateway(const int len, const unsigned char *raw);
+	bool ProcessMMDVM(const int len, const unsigned char *raw);
+	int OpenSocket(const std::string &address, unsigned short port);
+	int SendTo(cont int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port);
 
 	// read configuration file
 	bool ReadConfig(const char *);
@@ -61,13 +63,12 @@ private:
 	char RPTR[CALL_SIZE + 1];
 	char OWNER[CALL_SIZE + 1];
 	std::string MMDVM_IP, G2_INTERNAL_IP;
-	in_addr mmdvm_addr, g2_internal_addr;
 	unsigned short MMDVM_PORT, G2_INTERNAL_PORT;
 	int WAIT_FOR_PACKETS, DELAY_BEFORE, DELAY_BETWEEN;
 	bool RPTR_ACK;
 
 	// parameters
-	int gateway_sock, mmdvm_sock;
+	int gsock, msock;
 	unsigned int seed;
 	unsigned short COUNTER;
 };
