@@ -339,7 +339,7 @@ static int open_sock()
 
 	insock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (insock == -1) {
-		printf("Failed to create insock, error=%d, message=%s\n",errno,strerror(errno));
+		printf("Failed to create insock, error=%d, message=%s\n",errno, strerror(errno));
 		return -1;
 	}
 
@@ -349,7 +349,7 @@ static int open_sock()
 	inaddr.sin_addr.s_addr = inet_addr(RPTR_VIRTUAL_IP);
 	int rc = bind(insock, (struct sockaddr *)&inaddr, sizeof(inaddr));
 	if (rc == -1) {
-		printf("Failed to bind server socket, error=%d, message=%s\n", errno,strerror(errno));
+		printf("Failed to bind server socket, error=%d, message=%s\n", errno, strerror(errno));
 		close(insock);
 		insock = -1;
 		return -1;

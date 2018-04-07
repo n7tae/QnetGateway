@@ -69,7 +69,7 @@ bool CUDPSocket::open()	// returns true on error
 {
 	m_fd = ::socket(PF_INET, SOCK_DGRAM, 0);
 	if (m_fd < 0) {
-		printf("Cannot create the UDP socket, err: %d", errno);
+		printf("Cannot create the UDP socket, err: %d, %s\n", errno, strerror(errno));
 		return true;
 	}
 
@@ -83,19 +83,19 @@ bool CUDPSocket::open()	// returns true on error
 		if (!m_address.empty()) {
 			addr.sin_addr.s_addr = ::inet_addr(m_address.c_str());
 			if (addr.sin_addr.s_addr == INADDR_NONE) {
-				printf("The local address is invalid - %s", m_address.c_str());
+				printf("The local address is invalid - %s\n", m_address.c_str());
 				return true;
 			}
 		}
 
 		int reuse = 1;
 		if (::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-			printf("Cannot set the UDP socket option, err: %d", errno);
+			printf("Cannot set the UDP socket option, err: %d, %s\n", errno, strerror(errno));
 			return true;
 		}
 
 		if (::bind(m_fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == -1) {
-			printf("Cannot bind the UDP address, err: %d", errno);
+			printf("Cannot bind the UDP address, err: %d, %s\n", errno, strerror(errno));
 			return true;
 		}
 	}
@@ -120,7 +120,7 @@ int CUDPSocket::read(unsigned char* buffer, unsigned int length, in_addr& addres
 
 	int ret = ::select(m_fd + 1, &readFds, NULL, NULL, &tv);
 	if (ret < 0) {
-		printf("Error returned from UDP select, err: %d", errno);
+		printf("Error returned from UDP select, err: %d, %s\n", errno, strerror(errno));
 		return -1;
 	}
 
@@ -132,7 +132,7 @@ int CUDPSocket::read(unsigned char* buffer, unsigned int length, in_addr& addres
 
 	ssize_t len = ::recvfrom(m_fd, (char*)buffer, length, 0, (sockaddr *)&addr, &size);
 	if (len <= 0) {
-		printf("Error returned from recvfrom, err: %d", errno);
+		printf("Error returned from recvfrom, err: %d, %s\n", errno, strerror(errno));
 		return -1;
 	}
 
@@ -156,7 +156,7 @@ bool CUDPSocket::write(const unsigned char* buffer, unsigned int length, const i
 
 	ssize_t ret = ::sendto(m_fd, (char *)buffer, length, 0, (sockaddr *)&addr, sizeof(sockaddr_in));
 	if (ret < 0) {
-		printf("Error returned from sendto, err: %d", errno);
+		printf("Error returned from sendto, err: %d, %s\n", errno, strerror(errno));
 		return false;
 	}
 
