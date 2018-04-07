@@ -366,7 +366,7 @@ int CG2_ircddb::open_port(const SPORTIP &pip)
 
 	int sock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (0 > sock) {
-		printf("Failed to create socket on %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
+		printf("Failed to create socket on %s:%d, errno=%d, %s\n", pip.ip.c_str(), pip.port, errno, strerror(errno));
 		return -1;
 	}
 	fcntl(sock, F_SETFL, O_NONBLOCK);
@@ -376,8 +376,14 @@ int CG2_ircddb::open_port(const SPORTIP &pip)
 	sin.sin_port = htons(pip.port);
 	sin.sin_addr.s_addr = inet_addr(pip.ip.c_str());
 
+	int reuse = 1;
+	if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
+		printf("Cannot set the UDP socket (port %u) option, err: %d, %s\n", pip.port, errno, strerror(errno));
+		return -1;
+	}
+
 	if (bind(sock, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) != 0) {
-		printf("Failed to bind %s:%d, errno=%d\n", pip.ip.c_str(), pip.port, errno);
+		printf("Failed to bind %s:%d, errno=%d, %s\n", pip.ip.c_str(), pip.port, errno, strerror(errno));
 		close(sock);
 		return -1;
 	}
