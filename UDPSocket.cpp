@@ -65,12 +65,12 @@ in_addr CUDPSocket::lookup(const std::string& hostname)
 	return addr;
 }
 
-bool CUDPSocket::open()	// returns false on error
+bool CUDPSocket::open()	// returns true on error
 {
 	m_fd = ::socket(PF_INET, SOCK_DGRAM, 0);
 	if (m_fd < 0) {
 		printf("Cannot create the UDP socket, err: %d", errno);
-		return false;
+		return true;
 	}
 
 	if (m_port > 0U) {
@@ -84,23 +84,23 @@ bool CUDPSocket::open()	// returns false on error
 			addr.sin_addr.s_addr = ::inet_addr(m_address.c_str());
 			if (addr.sin_addr.s_addr == INADDR_NONE) {
 				printf("The local address is invalid - %s", m_address.c_str());
-				return false;
+				return true;
 			}
 		}
 
 		int reuse = 1;
 		if (::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
 			printf("Cannot set the UDP socket option, err: %d", errno);
-			return false;
+			return true;
 		}
 
 		if (::bind(m_fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == -1) {
 			printf("Cannot bind the UDP address, err: %d", errno);
-			return false;
+			return true;
 		}
 	}
 
-	return true;
+	return false;
 }
 
 int CUDPSocket::read(unsigned char* buffer, unsigned int length, in_addr& address, unsigned int& port)

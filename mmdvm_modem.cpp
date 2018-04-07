@@ -325,7 +325,7 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 	} else
 		return true;
 
-	GetValue(cfg, std::string(mmdvm_path+".port").c_str(), i, 10000, 65535, 20010);
+	GetValue(cfg, std::string(mmdvm_path+".port").c_str(), i, 10000, 65535, 20011);
 	MMDVM_PORT = (unsigned short)i;
 
 	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1")) {
