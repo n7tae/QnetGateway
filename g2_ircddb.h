@@ -18,6 +18,8 @@
 
 #include <libconfig.h++>
 
+#include "aprs.h"
+
 using namespace libconfig;
 
 #define IP_SIZE 15

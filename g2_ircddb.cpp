@@ -57,7 +57,6 @@
 #include "IRCutils.h"
 #include "versions.h"
 #include "g2_typedefs.h"
-#include "aprs.h"
 #include "g2_ircddb.h"
 
 

@@ -70,13 +70,13 @@ void CMMDVMModem::Run(const char *cfgfile)
 	if (Initialize(cfgfile))
 		return;
 
-	CUDPSocket GatewaySock(G2_INTERNAL_IP, G2_INTERNAL_PORT);
-	if (GatewaySock.open())
+	CUDPSocket MMDVMSock(MMDVM_IP, MMDVM_PORT);
+	if (MMDVMSock.open())
 		return;
 
-	CUDPSocket MMDVMSock(MMDVM_IP, MMDVM_PORT);
-	if (MMDVMSock.open()) {
-		GatewaySock.close();
+	CUDPSocket GatewaySock(G2_INTERNAL_IP, G2_INTERNAL_PORT);
+	if (GatewaySock.open()) {
+		MMDVMSock.close();
 		return;
 	}
 

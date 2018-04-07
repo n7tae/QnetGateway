@@ -90,12 +90,12 @@ bool CUDPSocket::open()	// returns true on error
 
 		int reuse = 1;
 		if (::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-			printf("Cannot set the UDP socket option, err: %d, %s\n", errno, strerror(errno));
+			printf("Cannot set the UDP socket (port %u) option, err: %d, %s\n", m_port, errno, strerror(errno));
 			return true;
 		}
 
 		if (::bind(m_fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == -1) {
-			printf("Cannot bind the UDP address, err: %d, %s\n", errno, strerror(errno));
+			printf("Cannot bind the UDP (port %u) address, err: %d, %s\n", m_port, errno, strerror(errno));
 			return true;
 		}
 	}
