@@ -113,7 +113,7 @@ int CUDPSocket::read(unsigned char* buffer, unsigned int length, in_addr& addres
 	FD_ZERO(&readFds);
 	FD_SET(m_fd, &readFds);
 
-	// Return immediately
+	// Return immediately if there is nothing for this socket
 	timeval tv;
 	tv.tv_sec  = 0L;
 	tv.tv_usec = 0L;
@@ -126,6 +126,9 @@ int CUDPSocket::read(unsigned char* buffer, unsigned int length, in_addr& addres
 
 	if (ret == 0)
 		return 0;
+
+	if (! FD_ISSET(m_fd, &readFds))
+		return 0;	// nothing for this socket;
 
 	sockaddr_in addr;
 	socklen_t size = sizeof(sockaddr_in);
