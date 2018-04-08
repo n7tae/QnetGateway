@@ -240,7 +240,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", pkt.voice.seq);
 
 			memcpy(pkt.voice.ambe, buf.vpkt.vasd.text, 12);
-			int ret = SendTo(msock, pkt.title, 21, MMDVM_IP, MMDVM_PORT);
+			int ret = SendTo(gsock, pkt.title, 21, MMDVM_IP, MMDVM_PORT);
 			if (ret != 21) {
 				printf("ERROR: ProcessGateway: Could not write AMBE mmdvm packet\n");
 				return true;
@@ -255,7 +255,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 			}
 
 			memcpy(pkt.header.flag, buf.vpkt.hdr.flag, 41);
-			int ret = SendTo(msock, pkt.title, 49, MMDVM_IP, MMDVM_PORT);
+			int ret = SendTo(gsock, pkt.title, 49, MMDVM_IP, MMDVM_PORT);
 			if (ret != 49) {
 				printf("ERROR: ProcessGateway: Could not write Header mmdvm packet\n");
 				return true;
@@ -289,7 +289,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		gpkt.vpkt.streamid = (rand_r(&seed) % 65535U) + 1U;
 		gpkt.vpkt.ctrl = mpkt.header.seq;
 		memcpy(gpkt.vpkt.hdr.flag, mpkt.header.flag, 41);
-		int ret = SendTo(gsock, gpkt.pkt_id, 58, G2_INTERNAL_IP, G2_INTERNAL_PORT);
+		int ret = SendTo(msock, gpkt.pkt_id, 58, G2_INTERNAL_IP, G2_INTERNAL_PORT);
 		if (ret != 58) {
 			printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 			return true;
@@ -300,7 +300,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		gpkt.remaining = 0x16;
 		gpkt.vpkt.ctrl = mpkt.voice.seq;
 		memcpy(gpkt.vpkt.vasd.text, mpkt.voice.ambe, 12);
-		int ret = SendTo(gsock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_INTERNAL_PORT);
+		int ret = SendTo(msock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_INTERNAL_PORT);
 		if (ret != 29) {
 			printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 			return true;
