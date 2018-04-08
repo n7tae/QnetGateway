@@ -1976,7 +1976,7 @@ static int read_config(const char *cfgFile)
 		return 1;
 	}
 
-	get_value(cfg, "gateway.internal.port", GATEWAY_PORT, 10000, 65535, 20010);
+	get_value(cfg, "gateway.internal.port", GATEWAY_PORT, 10000, 65535, 19000);
 
 	get_value(cfg, std::string(path+".rf_tx_level").c_str(), RF_AUDIO_Level, 1, 100, 80);
 

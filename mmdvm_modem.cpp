@@ -125,24 +125,33 @@ void CMMDVMModem::Run(const char *cfgfile)
 	if (msock < 0)
 		return;
 
+	gsock = OpenSocket(G2_INTERNAL_IP, G2_INTERNAL_PORT);
+	if (gsock < 0) {
+		::close(msock);
+		return;
+	}
+
 	printf("msock=%d\n", msock);
 
 	keep_running = true;
 
 	while (keep_running) {
 		struct timeval tv;
-		fd_set readfds;
-
 		tv.tv_sec = 0;
 		tv.tv_usec = 1000;	// wait 1ms for some input
 
+		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(msock, &readfds);
+		FD_SET(gsock, &readfds);
+		int maxfs = (msock > gsock) ? msock : gsock;
 
 		// don't care about writefds and exceptfds:
-		int ret = ::select(msock+1, &readfds, NULL, NULL, &tv);
-		if (ret < 0)
+		int ret = ::select(maxfs+1, &readfds, NULL, NULL, &tv);
+		if (ret < 0) {
+			printf("ERROR: Run: select returned err=%d, %s\n", errno, strerror(errno));
 			break;
+		}
 		if (ret == 0)
 			continue;
 
@@ -156,12 +165,23 @@ void CMMDVMModem::Run(const char *cfgfile)
 			len = ::recvfrom(msock, buf, 100, 0, (sockaddr *)&addr, &size);
 
 			if (len < 0) {
-				printf("ERROR: RUN: recvfrom(mmdvm) return error %d, %s\n", errno, strerror(errno));
+				printf("ERROR: Run: recvfrom(mmdvm) return error %d, %s\n", errno, strerror(errno));
 				break;
 			}
 
-			if (ntohs(addr.sin_port) == G2_INTERNAL_PORT)
-				printf("DEBUG: Run: reading from msock but port was %u.\n", ntohs(addr.sin_port));
+			if (ntohs(addr.sin_port) != 20010U)
+				printf("DEBUG: Run: reading from msock but port was %u, expected 20010.\n", ntohs(addr.sin_port));
+
+		} else if (FD_ISSET(gsock, &readfds)) {
+			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
+
+			if (len < 0) {
+				printf("ERROR: Run: recvfrom(gsock) returned error %d, %s\n", errno, strerror(errno));
+				break;
+			}
+
+			if (ntohs(addr.sin_port)>20000u || ntohs(addr.sin_port)<19998)
+				printf("DEBUG: Run: reading from gsock but the port was %u, expected 19998-20000\n", ntohs(addr.sin_port));
 
 		} else {
 			printf("ERROR: Run: Input from unknown fd!\n");
@@ -170,12 +190,13 @@ void CMMDVMModem::Run(const char *cfgfile)
 		if (len == 0)
 			continue;
 
-		if (ntohs(addr.sin_port) == MMDVM_PORT) {
-			printf("read %d bytes from MMDVMHost\n", (int)len);
+//		if (ntohs(addr.sin_port) == MMDVM_PORT) {
 			if (0 == memcmp(buf, "DSRP", 4)) {
+				printf("read %d bytes from MMDVMHost\n", (int)len);
 				if (ProcessMMDVM(len, buf))
 					break;
 			} else if (0 == ::memcmp(buf, "DSTR", 4)) {
+				printf("read %d bytes from MMDVMHost\n", (int)len);
 				if (ProcessGateway(len, buf))
 					break;
 			} else {
@@ -185,8 +206,8 @@ void CMMDVMModem::Run(const char *cfgfile)
 				title[4] = '\0';
 				printf("DEBUG: Run: received unknow packet '%s' len=%d\n", title, (int)len);
 			}
-		} else
-			printf("read %d bytes from unknown port %u!\n", (int)len, ntohs(addr.sin_port));
+//		} else
+//			printf("read %d bytes from unknown port %u!\n", (int)len, ntohs(addr.sin_port));
 	}
 
 	::close(msock);
@@ -428,7 +449,7 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 	} else
 		return true;
 
-	GetValue(cfg, "gateway.internal.port", i, 10000, 65535, 20010);
+	GetValue(cfg, "gateway.internal.port", i, 10000, 65535, 19000);
 	G2_INTERNAL_PORT = (unsigned short)i;
 
 	GetValue(cfg, "timing.play.delay", DELAY_BETWEEN, 9, 25, 19);
