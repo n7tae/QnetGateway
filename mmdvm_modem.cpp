@@ -167,7 +167,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 				break;
 			}
 
-			if (addr.sin_port == G2_INTERNAL_PORT)
+			if (ntohs(addr.sin_port) == G2_INTERNAL_PORT)
 				printf("DEBUG: Run: reading from fd_m but port was %d.\n", addr.sin_port);
 
 		} else if (FD_ISSET(gsock, &readfds)) {
@@ -178,7 +178,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 				break;
 			}
 
-			if (addr.sin_port == MMDVM_PORT)
+			if (ntohs(addr.sin_port) == MMDVM_PORT)
 				printf("DEBUG: Run: reading from fd_g but port was %d.\n", addr.sin_port);
 
 		} else {
@@ -189,12 +189,15 @@ void CMMDVMModem::Run(const char *cfgfile)
 			continue;
 
 		if (ntohs(addr.sin_port) == MMDVM_PORT) {
+			printf("read %ld bytes from MMDVMHost\n", len);
 			if (ProcessMMDVM(len, buf))
 				break;
 		} else if (ntohs(addr.sin_port) == G2_INTERNAL_PORT) {
+			printf("read %ld bytes from Gateway\n", len);
 			if (ProcessGateway(len, buf))
 				break;
-		}
+		} else
+			printf("read %ld bytes from unknown port %u!\n", len, ntohs(addr.sin_port));
 	}
 
 	::close(msock);
