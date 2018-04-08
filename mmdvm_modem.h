@@ -66,7 +66,7 @@ private:
 	bool RPTR_ACK;
 
 	// parameters
-	int gsock, msock;
+	int msock;
 	unsigned int seed;
 	unsigned short COUNTER;
 };
