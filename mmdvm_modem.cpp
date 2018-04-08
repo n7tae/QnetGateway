@@ -121,11 +121,11 @@ void CMMDVMModem::Run(const char *cfgfile)
 	if (Initialize(cfgfile))
 		return;
 
-	int msock = OpenSocket(MMDVM_IP, MMDVM_PORT);
+	msock = OpenSocket(MMDVM_IP, MMDVM_PORT);
 	if (msock < 0)
 		return;
 
-	int gsock = OpenSocket(G2_INTERNAL_IP, G2_INTERNAL_PORT);
+	gsock = OpenSocket(G2_INTERNAL_IP, G2_INTERNAL_PORT);
 	if (gsock < 0) {
 		::close(msock);
 		return;
@@ -189,15 +189,15 @@ void CMMDVMModem::Run(const char *cfgfile)
 			continue;
 
 		if (ntohs(addr.sin_port) == MMDVM_PORT) {
-			printf("read %ld bytes from MMDVMHost\n", len);
+			printf("read %d bytes from MMDVMHost\n", (int)len);
 			if (ProcessMMDVM(len, buf))
 				break;
 		} else if (ntohs(addr.sin_port) == G2_INTERNAL_PORT) {
-			printf("read %ld bytes from Gateway\n", len);
+			printf("read %d bytes from Gateway\n", (int)len);
 			if (ProcessGateway(len, buf))
 				break;
 		} else
-			printf("read %ld bytes from unknown port %u!\n", len, ntohs(addr.sin_port));
+			printf("read %d bytes from unknown port %u!\n", (int)len, ntohs(addr.sin_port));
 	}
 
 	::close(msock);
