@@ -168,7 +168,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 			}
 
 			if (ntohs(addr.sin_port) == G2_INTERNAL_PORT)
-				printf("DEBUG: Run: reading from fd_m but port was %d.\n", addr.sin_port);
+				printf("DEBUG: Run: reading from msock but port was %u.\n", ntohs(addr.sin_port));
 
 		} else if (FD_ISSET(gsock, &readfds)) {
 			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
@@ -179,7 +179,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 			}
 
 			if (ntohs(addr.sin_port) == MMDVM_PORT)
-				printf("DEBUG: Run: reading from fd_g but port was %d.\n", addr.sin_port);
+				printf("DEBUG: Run: reading from gsock but port was %u.\n", ntohs(addr.sin_port));
 
 		} else {
 			printf("ERROR: Run: Input from unknown fd!\n");
