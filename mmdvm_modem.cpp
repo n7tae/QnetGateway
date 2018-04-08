@@ -130,6 +130,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 		::close(msock);
 		return;
 	}
+	printf("msock=%d, gsock=%d\n", msock, gsock);
 
 	keep_running = true;
 
@@ -210,9 +211,9 @@ int CMMDVMModem::SendTo(const int fd, const unsigned char *buf, const int size, 
 
 	int len = ::sendto(fd, buf, size, 0, (sockaddr *)&addr, sizeof(sockaddr_in));
 	if (len < 0)
-		printf("ERROR: SendTo: failed sendto err: %d, %s\n", errno, strerror(errno));
+		printf("ERROR: SendTo: fd=%d failed sendto err: %d, %s\n", fd, errno, strerror(errno));
 	else if (len != size)
-		printf("ERROR: SendTo: tried to send %d bytes, actually sent %d.\n", size, len);
+		printf("ERROR: SendTo: fd=%d tried to send %d bytes, actually sent %d.\n", fd, size, len);
 	return len;
 }
 
@@ -298,7 +299,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		memcpy(gpkt.vpkt.vasd.text, mpkt.voice.ambe, 12);
 		int ret = SendTo(gsock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_INTERNAL_PORT);
 		if (ret != 29) {
-			printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
+			printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 			return true;
 		}
 	} else
