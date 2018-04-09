@@ -1494,12 +1494,12 @@ void CG2_ircddb::process()
 							}
 						}
 					}
-				} else {
+				} else {	// recvlen != 58
 					for (int i=0; i<3; i++) {
 						if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
 							time(&band_txt[i].last_time);
 
-							if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
+							if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {	// end of voice data
 								if (dtmf_buf_count[i] > 0) {
 									dtmf_file = dtmf_dir;
 									dtmf_file.push_back('/');

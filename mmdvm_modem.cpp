@@ -309,7 +309,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 			printf("INFO: ProcessMMDVM: sent header to port %u pkt = '%s\n", G2_IN_PORT, std::string((char *)gpkt.vpkt.hdr.rpt1, 36).c_str());
 		} else if (21 == len) {	// ambe
 			gpkt.remaining = 0x16;
-			memcpy(gpkt.vpkt.vasd.text, mpkt.voice.ambe, 12);
+			memcpy(gpkt.vpkt.vasd.voice, mpkt.voice.ambe, 12);
 			int ret = SendTo(msock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 29) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
