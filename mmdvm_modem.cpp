@@ -449,16 +449,16 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 	} else
 		return true;
 
-	GetValue(cfg, std::string(mmdvm_path+".g2_in_port").c_str(), i, 10000, 65535, 19000);
+	GetValue(cfg, "gateway.internal.port", i, 10000, 65535, 19000);
 	G2_IN_PORT = (unsigned short)i;
 
-	GetValue(cfg, std::string(mmdvm_path+".g2_out_port").c_str(), i, 10000, 65535, 19998+repeater_module);
+	GetValue(cfg, std::string(mmdvm_path+".port").c_str(), i, 10000, 65535, 19998+repeater_module);
 	G2_OUT_PORT = (unsigned short)i;
 
-	GetValue(cfg, std::string(mmdvm_path+".mmdvm_in_port").c_str(), i, 10000, 65535, 20011);
+	GetValue(cfg, "mmdvm.local_port", i, 10000, 65535, 20011);
 	MMDVM_IN_PORT = (unsigned short)i;
 
-	GetValue(cfg, std::string(mmdvm_path+".mmdvm_out_port").c_str(), i, 10000, 65535, 20010);
+	GetValue(cfg, "mmdvm.gateway_port", i, 10000, 65535, 20010);
 	MMDVM_OUT_PORT = (unsigned short)i;
 
 	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1")) {
@@ -477,7 +477,7 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 	return false;
 }
 
-void CMMDVMModem::SignalCatch(int signum)
+void CMMDVMModem::SignalCatch(const int signum)
 {
 	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
 		keep_running = false;

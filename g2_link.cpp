@@ -3322,8 +3322,7 @@ static void runit()
 						        (readBuffer[17] == 0x08) ||
 						        (readBuffer[17] == 0x20) ||
 						        (readBuffer[17] == 0x28))) {
-							if (only_link_unlink &&
-							        (link_unlink_user.find(call) == link_unlink_user.end())) {
+							if (only_link_unlink && (link_unlink_user.find(call) == link_unlink_user.end())) {
 								traceit("link request denied, unauthorized rf user [%s]\n", call);
 							} else {
 								memset(temp_repeater, ' ', CALL_SIZE);
@@ -3340,10 +3339,7 @@ static void runit()
 									space_p = strchr(linked_remote_system, ' ');
 									if (space_p)
 										*space_p = '\0';
-									sprintf(notify_msg, "%c_already_linked.dat_LINKED_%s_%c",
-									        to_remote_g2[i].from_mod,
-									        linked_remote_system,
-									        to_remote_g2[i].to_mod);
+									sprintf(notify_msg, "%c_already_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 									audio_notify(notify_msg);
 								}
 							}
