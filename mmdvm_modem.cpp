@@ -247,7 +247,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 			else if (pkt.voice.seq > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", pkt.voice.seq);
 			pkt.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
-			memcpy(pkt.voice.ambe, buf.vpkt.vasd.text, 12);
+			memcpy(pkt.voice.ambe, buf.vpkt.vasd.voice, 12);
 			int ret = SendTo(msock, pkt.title, 21, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 21) {
 				printf("ERROR: ProcessGateway: Could not write AMBE mmdvm packet\n");
@@ -318,7 +318,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 			}
 		}
 	} else if (len < 65 && mpkt.tag == 0xAU) {
-		printf("MMDVM Poll: '%s'\n", (char *)mpkt.poll_msg);
+//		printf("MMDVM Poll: '%s'\n", (char *)mpkt.poll_msg);
 	} else
 		printf("DEBUG: ProcessMMDVM: unusual packet len=%d\n", len);
 	return false;
