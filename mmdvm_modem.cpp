@@ -306,7 +306,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
-			printf("INFO: ProcessMMDVM: sent header pkt = '%s\n", std::string((char *)gpkt.vpkt.hdr.rpt2, 36).c_str());
+			printf("INFO: ProcessMMDVM: sent header to port %u pkt = '%s\n", G2_IN_PORT, std::string((char *)gpkt.vpkt.hdr.rpt1, 36).c_str());
 		} else if (21 == len) {	// ambe
 			gpkt.remaining = 0x16;
 			memcpy(gpkt.vpkt.vasd.text, mpkt.voice.ambe, 12);
