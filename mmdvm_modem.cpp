@@ -131,7 +131,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 		return;
 	}
 
-	printf("msock=%d\n", msock);
+	printf("msock=%d, gsock=%d\n", msock, gsock);
 
 	keep_running = true;
 
@@ -170,7 +170,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 			}
 
 			if (ntohs(addr.sin_port) != MMDVM_OUT_PORT)
-				printf("DEBUG: Run: reading from msock but port was %u, expected %u.\n", ntohs(addr.sin_port), MMDVM_OUT_PORT);
+				printf("DEBUG: Run: read from msock but port was %u, expected %u.\n", ntohs(addr.sin_port), MMDVM_OUT_PORT);
 
 		} else if (FD_ISSET(gsock, &readfds)) {
 			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
@@ -181,14 +181,16 @@ void CMMDVMModem::Run(const char *cfgfile)
 			}
 
 			if (ntohs(addr.sin_port) != G2_OUT_PORT)
-				printf("DEBUG: Run: reading from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_OUT_PORT);
+				printf("DEBUG: Run: read from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_OUT_PORT);
 
 		} else {
 			printf("ERROR: Run: Input from unknown fd!\n");
 			break;
 		}
-		if (len == 0)
+		if (len == 0) {
+			printf("DEBUG: Run: read zero bytes from %u\n", ntohs(addr.sin_port));
 			continue;
+		}
 
 		if (0 == memcmp(buf, "DSRP", 4)) {
 			printf("read %d bytes from MMDVMHost\n", (int)len);
@@ -304,6 +306,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
+			printf("INFO: ProcessMMDVM: sent header pkt = '%s\n", std::string((char *)gpkt.vpkt.hdr.rpt2, 36).c_str());
 		} else if (21 == len) {	// ambe
 			gpkt.remaining = 0x16;
 			memcpy(gpkt.vpkt.vasd.text, mpkt.voice.ambe, 12);
