@@ -180,8 +180,8 @@ void CMMDVMModem::Run(const char *cfgfile)
 				break;
 			}
 
-			if (ntohs(addr.sin_port) != G2_OUT_PORT)
-				printf("DEBUG: Run: read from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_OUT_PORT);
+			if (ntohs(addr.sin_port) != G2_IN_PORT)
+				printf("DEBUG: Run: read from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_IN_PORT);
 
 		} else {
 			printf("ERROR: Run: Input from unknown fd!\n");
@@ -276,10 +276,11 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 {
 	static short stream_id = 0U;
-	if (49==len || 21==len) {
-		SMMDVMPKT mpkt;
+	SMMDVMPKT mpkt;
+	if (len < 65)
 		::memcpy(mpkt.title, raw, len);	// transfer raw data to SMMDVMPKT struct
 
+	if (49==len || 21==len) {
 		// grab the stream id if this is a header
 		if (49 == len)
 			stream_id = mpkt.header.id;
@@ -316,8 +317,10 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 				return true;
 			}
 		}
+	} else if (len < 65 && mpkt.tag == 0xAU) {
+		printf("MMDVM Poll: '%s'\n", (char *)mpkt.poll_msg);
 	} else
-		printf("DEBUG: ProcessMMDVM: unusual packet size read len=%d\n", len);
+		printf("DEBUG: ProcessMMDVM: unusual packet len=%d\n", len);
 	return false;
 }
 

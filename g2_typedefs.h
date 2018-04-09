@@ -22,7 +22,7 @@
 typedef struct pkt_tag {
 	unsigned char pkt_id[4];	//  0
 	unsigned short counter;		//  4
-	unsigned char flag[3];		//  6	{ 0x72, 0x12, 0x00 }
+	unsigned char flag[3];		//  6	{ 0x73, 0x12, 0x00 }
 	unsigned char remaining;	//  9	the number of bytes left in the packet
 	union {
 		struct {
