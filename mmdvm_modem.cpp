@@ -299,10 +299,10 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		gpkt.vpkt.snd_rptr_id = 0x1;
 		gpkt.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
 		gpkt.vpkt.streamid = stream_id;
-		gpkt.vpkt.ctrl = mpkt.header.seq;
 
 		if (49 == len) {	// header
 			gpkt.remaining = 0x30;
+			gpkt.vpkt.ctrl = 0x80;
 			memcpy(gpkt.vpkt.hdr.flag, mpkt.header.flag, 41);
 			int ret = SendTo(msock, gpkt.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 58) {
@@ -312,6 +312,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 			printf("INFO: ProcessMMDVM: sent header to port %u pkt = '%s'\n", G2_IN_PORT, std::string((char *)gpkt.vpkt.hdr.rpt1, 36).c_str());
 		} else if (21 == len) {	// ambe
 			gpkt.remaining = 0x16;
+			gpkt.vpkt.ctrl = mpkt.header.seq;
 			memcpy(gpkt.vpkt.vasd.voice, mpkt.voice.ambe, 12);
 			int ret = SendTo(msock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 29) {
