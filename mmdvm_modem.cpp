@@ -261,13 +261,13 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 //				printf("DEBUG: ProcessGateway: unexpected pkt.header.seq %d, resetting to 0\n", pkt.header.seq);
 				pkt.header.seq = 0;
 			}
-			printf("INFO: ProcessGateway: sent header to port %u pkt = '%s\n'", MMDVM_IN_PORT, std::string((char *)pkt.header.r2, 36).c_str());
 			memcpy(pkt.header.flag, buf.vpkt.hdr.flag, 41);
 			int ret = SendTo(msock, pkt.title, 49, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 49) {
 				printf("ERROR: ProcessGateway: Could not write Header mmdvm packet\n");
 				return true;
 			}
+			printf("INFO: ProcessGateway: sent header to port %u pkt = '%s'\n", MMDVM_IN_PORT, std::string((char *)pkt.header.r2, 36).c_str());
 		}
 
 	} else
