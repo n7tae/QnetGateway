@@ -169,8 +169,8 @@ void CMMDVMModem::Run(const char *cfgfile)
 				break;
 			}
 
-			if (ntohs(addr.sin_port) != MMDVM_OUT_PORT)
-				printf("DEBUG: Run: read from msock but port was %u, expected %u.\n", ntohs(addr.sin_port), MMDVM_OUT_PORT);
+			if (ntohs(addr.sin_port) != MMDVM_IN_PORT)
+				printf("DEBUG: Run: read from msock but port was %u, expected %u.\n", ntohs(addr.sin_port), MMDVM_IN_PORT);
 
 		} else if (FD_ISSET(gsock, &readfds)) {
 			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
@@ -193,11 +193,11 @@ void CMMDVMModem::Run(const char *cfgfile)
 		}
 
 		if (0 == memcmp(buf, "DSRP", 4)) {
-			printf("read %d bytes from MMDVMHost\n", (int)len);
+			//printf("read %d bytes from MMDVMHost\n", (int)len);
 			if (ProcessMMDVM(len, buf))
 				break;
 		} else if (0 == ::memcmp(buf, "DSTR", 4)) {
-			printf("read %d bytes from MMDVMHost\n", (int)len);
+			//printf("read %d bytes from MMDVMHost\n", (int)len);
 			if (ProcessGateway(len, buf))
 				break;
 		} else {
@@ -288,7 +288,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		// sets most of the params
 		::memcpy(gpkt.pkt_id, "DSTR", 4);
 		gpkt.counter = COUNTER++;
-		gpkt.flag[0] = 0x72;
+		gpkt.flag[0] = 0x73;
 		gpkt.flag[1] = 0x12;
 		gpkt.flag[2] = 0x0;
 		gpkt.vpkt.icm_id = 0x20;
