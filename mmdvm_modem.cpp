@@ -121,11 +121,11 @@ void CMMDVMModem::Run(const char *cfgfile)
 	if (Initialize(cfgfile))
 		return;
 
-	msock = OpenSocket(MMDVM_IP, MMDVM_PORT);
+	msock = OpenSocket(MMDVM_IP, MMDVM_OUT_PORT);
 	if (msock < 0)
 		return;
 
-	gsock = OpenSocket(G2_INTERNAL_IP, G2_INTERNAL_PORT);
+	gsock = OpenSocket(G2_INTERNAL_IP, G2_OUT_PORT);
 	if (gsock < 0) {
 		::close(msock);
 		return;
@@ -169,8 +169,8 @@ void CMMDVMModem::Run(const char *cfgfile)
 				break;
 			}
 
-			if (ntohs(addr.sin_port) != 20010U)
-				printf("DEBUG: Run: reading from msock but port was %u, expected 20010.\n", ntohs(addr.sin_port));
+			if (ntohs(addr.sin_port) != MMDVM_OUT_PORT)
+				printf("DEBUG: Run: reading from msock but port was %u, expected %u.\n", ntohs(addr.sin_port), MMDVM_OUT_PORT);
 
 		} else if (FD_ISSET(gsock, &readfds)) {
 			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
@@ -180,8 +180,8 @@ void CMMDVMModem::Run(const char *cfgfile)
 				break;
 			}
 
-			if (ntohs(addr.sin_port)>20000u || ntohs(addr.sin_port)<19998)
-				printf("DEBUG: Run: reading from gsock but the port was %u, expected 19998-20000\n", ntohs(addr.sin_port));
+			if (ntohs(addr.sin_port) != G2_OUT_PORT)
+				printf("DEBUG: Run: reading from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_OUT_PORT);
 
 		} else {
 			printf("ERROR: Run: Input from unknown fd!\n");
@@ -190,27 +190,25 @@ void CMMDVMModem::Run(const char *cfgfile)
 		if (len == 0)
 			continue;
 
-//		if (ntohs(addr.sin_port) == MMDVM_PORT) {
-			if (0 == memcmp(buf, "DSRP", 4)) {
-				printf("read %d bytes from MMDVMHost\n", (int)len);
-				if (ProcessMMDVM(len, buf))
-					break;
-			} else if (0 == ::memcmp(buf, "DSTR", 4)) {
-				printf("read %d bytes from MMDVMHost\n", (int)len);
-				if (ProcessGateway(len, buf))
-					break;
-			} else {
-				char title[5];
-				for (int i=0; i<4; i++)
-					title[i] = (buf[i]>=0x20u && buf[i]<0x7fu) ? buf[i] : '.';
-				title[4] = '\0';
-				printf("DEBUG: Run: received unknow packet '%s' len=%d\n", title, (int)len);
-			}
-//		} else
-//			printf("read %d bytes from unknown port %u!\n", (int)len, ntohs(addr.sin_port));
+		if (0 == memcmp(buf, "DSRP", 4)) {
+			printf("read %d bytes from MMDVMHost\n", (int)len);
+			if (ProcessMMDVM(len, buf))
+				break;
+		} else if (0 == ::memcmp(buf, "DSTR", 4)) {
+			printf("read %d bytes from MMDVMHost\n", (int)len);
+			if (ProcessGateway(len, buf))
+				break;
+		} else {
+			char title[5];
+			for (int i=0; i<4; i++)
+				title[i] = (buf[i]>=0x20u && buf[i]<0x7fu) ? buf[i] : '.';
+			title[4] = '\0';
+			printf("DEBUG: Run: received unknow packet '%s' len=%d\n", title, (int)len);
+		}
 	}
 
 	::close(msock);
+	::close(gsock);
 }
 
 int CMMDVMModem::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
@@ -223,9 +221,9 @@ int CMMDVMModem::SendTo(const int fd, const unsigned char *buf, const int size, 
 
 	int len = ::sendto(fd, buf, size, 0, (sockaddr *)&addr, sizeof(sockaddr_in));
 	if (len < 0)
-		printf("ERROR: SendTo: fd=%d failed sendto err: %d, %s\n", fd, errno, strerror(errno));
+		printf("ERROR: SendTo: fd=%d failed sendto %s:%u err: %d, %s\n", fd, address.c_str(), port, errno, strerror(errno));
 	else if (len != size)
-		printf("ERROR: SendTo: fd=%d tried to send %d bytes, actually sent %d.\n", fd, size, len);
+		printf("ERROR: SendTo: fd=%d tried to sendto %s:%u %d bytes, actually sent %d.\n", fd, address.c_str(), port, size, len);
 	return len;
 }
 
@@ -248,7 +246,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", pkt.voice.seq);
 			pkt.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
 			memcpy(pkt.voice.ambe, buf.vpkt.vasd.text, 12);
-			int ret = SendTo(msock, pkt.title, 21, MMDVM_IP, MMDVM_PORT);
+			int ret = SendTo(msock, pkt.title, 21, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 21) {
 				printf("ERROR: ProcessGateway: Could not write AMBE mmdvm packet\n");
 				return true;
@@ -262,7 +260,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 			}
 
 			memcpy(pkt.header.flag, buf.vpkt.hdr.flag, 41);
-			int ret = SendTo(msock, pkt.title, 49, MMDVM_IP, MMDVM_PORT);
+			int ret = SendTo(msock, pkt.title, 49, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 49) {
 				printf("ERROR: ProcessGateway: Could not write Header mmdvm packet\n");
 				return true;
@@ -301,7 +299,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		if (49 == len) {	// header
 			gpkt.remaining = 0x30;
 			memcpy(gpkt.vpkt.hdr.flag, mpkt.header.flag, 41);
-			int ret = SendTo(msock, gpkt.pkt_id, 58, G2_INTERNAL_IP, G2_INTERNAL_PORT);
+			int ret = SendTo(msock, gpkt.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 58) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
@@ -309,7 +307,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 		} else if (21 == len) {	// ambe
 			gpkt.remaining = 0x16;
 			memcpy(gpkt.vpkt.vasd.text, mpkt.voice.ambe, 12);
-			int ret = SendTo(msock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_INTERNAL_PORT);
+			int ret = SendTo(msock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 29) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 				return true;
@@ -398,6 +396,7 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 		return true;
 	}
 	RPTR_MOD = 'A' + i;
+	int repeater_module = i;
 
 	if (cfg.lookupValue(std::string(mmdvm_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
@@ -441,16 +440,22 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 	} else
 		return true;
 
-	GetValue(cfg, std::string(mmdvm_path+".port").c_str(), i, 10000, 65535, 20011);
-	MMDVM_PORT = (unsigned short)i;
+	GetValue(cfg, std::string(mmdvm_path+".g2_in_port").c_str(), i, 10000, 65535, 19000);
+	G2_IN_PORT = (unsigned short)i;
+
+	GetValue(cfg, std::string(mmdvm_path+".g2_out_port").c_str(), i, 10000, 65535, 19998+repeater_module);
+	G2_OUT_PORT = (unsigned short)i;
+
+	GetValue(cfg, std::string(mmdvm_path+".mmdvm_in_port").c_str(), i, 10000, 65535, 20011);
+	MMDVM_IN_PORT = (unsigned short)i;
+
+	GetValue(cfg, std::string(mmdvm_path+".mmdvm_out_port").c_str(), i, 10000, 65535, 20010);
+	MMDVM_OUT_PORT = (unsigned short)i;
 
 	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1")) {
 		G2_INTERNAL_IP = value;
 	} else
 		return true;
-
-	GetValue(cfg, "gateway.internal.port", i, 10000, 65535, 19000);
-	G2_INTERNAL_PORT = (unsigned short)i;
 
 	GetValue(cfg, "timing.play.delay", DELAY_BETWEEN, 9, 25, 19);
 
