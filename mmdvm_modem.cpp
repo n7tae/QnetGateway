@@ -243,7 +243,8 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 		if (29 == len) {	// write an AMBE packet
 			pkt.tag = 0x21U;
 			if (pkt.voice.seq & 0x40)
-				printf("INFO: ProcessGateway: sending voice end-of-stream\n");
+//				printf("INFO: ProcessGateway: sending voice end-of-stream\n");
+				;
 			else if (pkt.voice.seq > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", pkt.voice.seq);
 			pkt.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
@@ -257,10 +258,10 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 			pkt.tag = 0x20U;
 			pkt.header.id =  buf.vpkt.streamid;
 			if (pkt.header.seq) {
-				printf("DEBUG: ProcessGateway: unexpected pkt.header.seq %d, resetting to 0\n", pkt.header.seq);
+//				printf("DEBUG: ProcessGateway: unexpected pkt.header.seq %d, resetting to 0\n", pkt.header.seq);
 				pkt.header.seq = 0;
 			}
-
+			printf("INFO: ProcessGateway: sent header to port %u pkt = '%s\n'", MMDVM_IN_PORT, std::string((char *)pkt.header.r2, 36).c_str());
 			memcpy(pkt.header.flag, buf.vpkt.hdr.flag, 41);
 			int ret = SendTo(msock, pkt.title, 49, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 49) {
@@ -268,6 +269,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 				return true;
 			}
 		}
+
 	} else
 		printf("DEBUG: ProcessGateway: unusual packet size read len=%d\n", len);
 	return false;
@@ -307,7 +309,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
-//			printf("INFO: ProcessMMDVM: sent header to port %u pkt = '%s\n'", G2_IN_PORT, std::string((char *)gpkt.vpkt.hdr.rpt1, 36).c_str());
+			printf("INFO: ProcessMMDVM: sent header to port %u pkt = '%s\n'", G2_IN_PORT, std::string((char *)gpkt.vpkt.hdr.rpt1, 36).c_str());
 		} else if (21 == len) {	// ambe
 			gpkt.remaining = 0x16;
 			memcpy(gpkt.vpkt.vasd.voice, mpkt.voice.ambe, 12);
