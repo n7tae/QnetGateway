@@ -19,7 +19,7 @@
 
 /* by KI4LKF, N7TAE */
 /*
-   g2_ircddb is a dstar G2 gateway, using irc routing
+   QnetGateway is a dstar G2 gateway, using irc routing
        adapted from the OpenG2 G2 gateway
    Version 2.61 or higher will use ONLY the irc mechanism of routing
      and it will NOT use any local Postgres databases or any TRUST(s)
@@ -268,7 +268,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 				rptr.mod[m].desc1 = "";
 			if (! cfg.lookupValue(path+".desc2", rptr.mod[m].desc2))
 				rptr.mod[m].desc2 = "";
-			if (! get_value(cfg, std::string(path+".url").c_str(), rptr.mod[m].url, 0, 80, "github.com/n7tae/g2_ircddb"))
+			if (! get_value(cfg, std::string(path+".url").c_str(), rptr.mod[m].url, 0, 80, "github.com/n7tae/QnetGateway"))
 				return true;
 			// truncate strings
 			if (rptr.mod[m].desc1.length() > 20)
@@ -603,7 +603,7 @@ bool CQnetGateway::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs,
 	return false;
 }
 
-/* run the main loop for g2_ircddb */
+/* run the main loop for QnetGateway */
 void CQnetGateway::process()
 {
 	SDSVT g2buf;
@@ -2588,7 +2588,7 @@ int CQnetGateway::init(char *cfgfile)
 	plug.sin_port = htons(g2_link.port);
 	plug.sin_addr.s_addr = inet_addr(g2_link.ip.c_str());
 
-	printf("g2_ircddb...entering processing loop\n");
+	printf("QnetGateway...entering processing loop\n");
 
 	if (bool_send_qrgs)
 		qrgs_and_maps();
@@ -2631,7 +2631,7 @@ CQnetGateway::~CQnetGateway()
 	ii->close();
 	delete ii;
 
-	printf("g2_ircddb exiting\n");
+	printf("QnetGateway exiting\n");
 }
 
 bool CQnetGateway::validate_csum(SBANDTXT &bt, bool is_gps)
@@ -2843,7 +2843,7 @@ int main(int argc, char **argv)
 {
 	printf("VERSION %s\n", IRCDDB_VERSION);
 	if (argc != 2) {
-		printf("Example: g2_ircddb g2_ircddb.cfg\n");
+		printf("usage: %s qn.cfg\n", argv[0]);
 		return 1;
 	}
 	CQnetGateway QnetGateway;

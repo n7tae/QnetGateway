@@ -855,7 +855,7 @@ static bool read_config(char *cfgFile)
 		return false;
 	get_value(cfg, "g2_link.port", my_g2_link_port, 10000, 65535, 18997);
 
-	if (! get_value(cfg, "g2_link.g2_ircddb_ip", to_g2_external_ip, 7, IP_SIZE, "0.0.0.0"))
+	if (! get_value(cfg, "gateway.internal.ip", to_g2_external_ip, 7, IP_SIZE, "0.0.0.0"))
 		return false;
 	get_value(cfg, "gateway.external.port", to_g2_external_port, 1024, 65535, 40000);
 

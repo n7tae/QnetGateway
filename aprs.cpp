@@ -342,7 +342,7 @@ void CAPRS::Open(const std::string OWNER)
 	printf("Connected to APRS %s:%d\n", m_rptr->aprs.ip.c_str(), m_rptr->aprs.port);
 
 	/* login to aprs */
-	sprintf(snd_buf, "user %s pass %d vers g2_ircddb 2.99 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
+	sprintf(snd_buf, "user %s pass %d vers qngateway 2.99 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
 
 	/* add the user's filter */
 	if (m_rptr->aprs_filter.length()) {
