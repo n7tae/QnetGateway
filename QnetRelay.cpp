@@ -33,28 +33,28 @@
 #include <errno.h>
 
 #include "versions.h"
-#include "QnetModem.h"
+#include "QnetRelay.h"
 #include "QnetTypeDefs.h"
 
-std::atomic<bool> CQnetModem::keep_running(true);
+std::atomic<bool> CQnetRelay::keep_running(true);
 
-CQnetModem::CQnetModem() :
+CQnetRelay::CQnetRelay() :
 seed(time(NULL)),
 COUNTER(0)
 {
 }
 
-CQnetModem::~CQnetModem()
+CQnetRelay::~CQnetRelay()
 {
 }
 
-bool CQnetModem::Initialize(const char *cfgfile)
+bool CQnetRelay::Initialize(const char *cfgfile)
 {
 	if (ReadConfig(cfgfile))
 		return true;
 
 	struct sigaction act;
-	act.sa_handler = &CQnetModem::SignalCatch;
+	act.sa_handler = &CQnetRelay::SignalCatch;
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		printf("sigaction-TERM failed, error=%d\n", errno);
@@ -72,7 +72,7 @@ bool CQnetModem::Initialize(const char *cfgfile)
 	return false;
 }
 
-int CQnetModem::OpenSocket(const std::string &address, unsigned short port)
+int CQnetRelay::OpenSocket(const std::string &address, unsigned short port)
 {
 	if (! port) {
 		printf("ERROR: OpenSocket: non-zero port must be specified.\n");
@@ -116,7 +116,7 @@ int CQnetModem::OpenSocket(const std::string &address, unsigned short port)
 	return fd;
 }
 
-void CQnetModem::Run(const char *cfgfile)
+void CQnetRelay::Run(const char *cfgfile)
 {
 	if (Initialize(cfgfile))
 		return;
@@ -213,7 +213,7 @@ void CQnetModem::Run(const char *cfgfile)
 	::close(gsock);
 }
 
-int CQnetModem::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
+int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
 {
 	sockaddr_in addr;
 	::memset(&addr, 0, sizeof(sockaddr_in));
@@ -229,7 +229,7 @@ int CQnetModem::SendTo(const int fd, const unsigned char *buf, const int size, c
 	return len;
 }
 
-bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
+bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 {
 	if (29==len || 58==len) { //here is dstar data
 		SPKT buf;
@@ -275,7 +275,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 	return false;
 }
 
-bool CQnetModem::ProcessMMDVM(const int len, const unsigned char *raw)
+bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 {
 	static short stream_id = 0U;
 	SMMDVMPKT mpkt;
@@ -327,7 +327,7 @@ bool CQnetModem::ProcessMMDVM(const int len, const unsigned char *raw)
 	return false;
 }
 
-bool CQnetModem::GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value)
+bool CQnetRelay::GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
@@ -338,7 +338,7 @@ bool CQnetModem::GetValue(const Config &cfg, const char *path, int &value, const
 	return true;
 }
 
-bool CQnetModem::GetValue(const Config &cfg, const char *path, double &value, const double min, const double max, const double default_value)
+bool CQnetRelay::GetValue(const Config &cfg, const char *path, double &value, const double min, const double max, const double default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
@@ -349,7 +349,7 @@ bool CQnetModem::GetValue(const Config &cfg, const char *path, double &value, co
 	return true;
 }
 
-bool CQnetModem::GetValue(const Config &cfg, const char *path, bool &value, const bool default_value)
+bool CQnetRelay::GetValue(const Config &cfg, const char *path, bool &value, const bool default_value)
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
@@ -357,7 +357,7 @@ bool CQnetModem::GetValue(const Config &cfg, const char *path, bool &value, cons
 	return true;
 }
 
-bool CQnetModem::GetValue(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
+bool CQnetRelay::GetValue(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
@@ -372,7 +372,7 @@ bool CQnetModem::GetValue(const Config &cfg, const char *path, std::string &valu
 }
 
 // process configuration file and return true if there was a problem
-bool CQnetModem::ReadConfig(const char *cfgFile)
+bool CQnetRelay::ReadConfig(const char *cfgFile)
 {
 	Config cfg;
 
@@ -477,7 +477,7 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	return false;
 }
 
-void CQnetModem::SignalCatch(const int signum)
+void CQnetRelay::SignalCatch(const int signum)
 {
 	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
 		keep_running = false;
@@ -500,7 +500,7 @@ int main(int argc, const char **argv)
 		return 0;
 	}
 
-	CQnetModem qnmmdvm;
+	CQnetRelay qnmmdvm;
 
 	qnmmdvm.Run(argv[1]);
 

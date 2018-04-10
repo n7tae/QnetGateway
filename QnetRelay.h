@@ -29,12 +29,12 @@ using namespace libconfig;
 #define CALL_SIZE 8
 #define IP_SIZE 15
 
-class CQnetModem
+class CQnetRelay
 {
 public:
 	// functions
-	CQnetModem();
-	~CQnetModem();
+	CQnetRelay();
+	~CQnetRelay();
 	void Run(const char *cfgfile);
 
 	// data

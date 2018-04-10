@@ -32,7 +32,7 @@ IRCOBJS = IRCDDB.o IRCClient.o IRCReceiver.o IRCMessageQueue.o IRCProtocol.o IRC
 SRCS = $(wildcard *.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
-PROGRAMS=qngateway qnlink qnmodem qndvap qndvrptr qnlinktest qnlinktestaudio
+PROGRAMS=qngateway qnlink qnrelay qndvap qndvrptr qnlinktest qnlinktestaudio
 
 all : $(PROGRAMS)
 
@@ -42,8 +42,8 @@ qngateway : $(IRCOBJS) QnetGateway.o aprs.o
 qnlink : QnetLink.o
 	g++ $(CPPFLAGS) -o qnlink QnetLink.o $(LDFLAGS) -pthread
 
-qnmodem : QnetModem.o
-	g++ $(CPPFLAGS) -o qnmodem QnetModem.o $(LDFLAGS)
+qnrelay : QnetRelay.o
+	g++ $(CPPFLAGS) -o qnrelay QnetRelay.o $(LDFLAGS)
 
 qndvap : QnetDVAP.o DVAPDongle.o $(DSTROBJS)
 	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o $(DSTROBJS) $(LDFLAGS) -pthread
@@ -67,7 +67,7 @@ clean:
 
 -include $(DEPS)
 
-install : qngateway qnlink qnmodem
+install : qngateway qnlink qnrelay
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
@@ -85,11 +85,11 @@ install : qngateway qnlink qnmodem
 	systemctl daemon-reload
 	systemctl start qnlink.service
 	######### QnetModem #########
-	/bin/cp -f qnmodem $(BINDIR)
-	/bin/cp -f service.qnmodem /lib/systemd/system/qnmodem.service
-	systemctl enable qnmodem.service
+	/bin/cp -f qnrelay $(BINDIR)
+	/bin/cp -f service.qnrelay /lib/systemd/system/qnrelay.service
+	systemctl enable qnrelay.service
 	systemctl daemon-reload
-	systemctl start qnmodem.service
+	systemctl start qnrelay.service
 
 installdvap : qngateway qnlink qndvap
 	######### QnetGateway #########
@@ -178,11 +178,11 @@ uninstall :
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh
-	######### QnetModem #########
-	systemctl stop qnmodem.service
-	systemctl disable qnmodem.service
-	/bin/rm -f /lib/systemd/system/qnmodem.service
-	/bin/rm -f $(BINDIR)/qnmodem
+	######### QnetRelay #########
+	systemctl stop qnrelay.service
+	systemctl disable qnrelay.service
+	/bin/rm -f /lib/systemd/system/qnrelay.service
+	/bin/rm -f $(BINDIR)/qnrelay
 
 uninstalldvap :
 	######### QnetGateway #########
