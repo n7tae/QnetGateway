@@ -4,7 +4,7 @@ Scott Lawson KI4LKF software is easy.
 
 Start with a Raspberry Pi with the latest Raspbian image (see http://raspberrypi.org)
 or a BeagleBone Black with the latest Debian image (see
-http://beagleboard.org/latest-images). For this latest version of g2_ircddb requires
+http://beagleboard.org/latest-images). For this latest version of QnetGateway requires
 the c++ compiler of at least version 4.9. This means you will need Debian 8 (Jessie).
 
 For the BBB, the jessie Debian version is small enough to fit onto the on-board 2gb
@@ -16,10 +16,10 @@ above.
 
 On the RPi, do "sudo raspi-config" and expand the partition, change the password
 for the 'pi' user and do any other configuration setup. You don't need to overclock
-the RPi for g2_ircddb, the default clock rate is just fine. On the BBB, if you're
+the RPi for QnetGateway, the default clock rate is just fine. On the BBB, if you're
 using the armhf.com image, follow the instructions on the armhf.com website to
 expand the linux partion. Also don't forget to change the password for the 'debian'
-user. 
+user.
 
 After your Linux is set up, login and plug in your DVAP or DVRPTR_V1 device to see
 if the OS is recognizing it. The kernel should auto load drivers and you will see
@@ -32,9 +32,9 @@ sudo modprobe <YOURDEVICEMODULE>
 
 where YOURDEVICEMODULE is "ftdi_sio" for the DVAP or is "cdc_acm" for the DVRPTR.
 After a reboot you should see the device in the "lsusb" list. If you don't see
-the device listed, g2_ircddb software will never be able to open it either.
+the device listed, QnetGateway software will never be able to open it either.
 
-You will need several packages to build the g2_ircddb gateway. You may already
+You will need several packages to build the QnetGateway gateway. You may already
 have all or most of these but it still doesn't hurt to be sure:
 
 sudo apt-get update
@@ -53,21 +53,21 @@ After you configure you RPi or BBB, update, upgrade and install all the required
 packages, the gateway installation can begin. Go to your login home directory and
 (without root privileges type:
 
-git clone git://github.com/n7tae/g2_ircddb.git
+git clone git://github.com/n7tae/QnetGateway.git
 
-This will create a g2_ircddb directory with everything you need to build a dvap or
+This will create a QnetGateway directory with everything you need to build a dvap or
 dvrptr ircddb gateway.
 
-The first thing to do is change to the build directory with "cd g2_ircddb" and then
-type "make" to build all the g2_ircddb executables. If you need DTMFS then also
+The first thing to do is change to the build directory with "cd QnetGateway" and then
+type "make" to build all the QnetGateway executables. If you need DTMFS then also
 execute "make g2link_test".
 
-Next, create your g2.cfg configuration file. There are two example for you to look
+Next, create your qn.cfg configuration file. There are two example for you to look
 at:
-. g2.everything.cfg contains all parameter with lengthly comments about what
+. qn.everything.cfg contains all parameter with lengthly comments about what
   each parameter does. The definitions that are commented out are defined with
   their default value.
-. g2.dvap.cfg is the simplest possible configuration for a 2m DVAP. If you have
+. qn.dvap.cfg is the simplest possible configuration for a 2m DVAP. If you have
   a 70cm DVAP rename the module to "b" and change the frequency.
 
 Remeber the everything file contain detailed comments about all of the values you
@@ -88,7 +88,9 @@ smart-phone for internet access. Most phone companies will not let you configure
 port-forwarding rules on you phone internet account. If you operate behing a
 router/firewall without port forwarding in place, you will not be able to
 do most callsign routing techniques discussed in CONFIGURING.txt, but you should
-still be able to connect to reflectors.
+still be able to connect to reflectors. You will be able to route to the new
+smart-group-server if you are mobile. They have solved the "mobile routing
+problem"!
 
 There are MANY OTHER gateways to which you can connect. Executing get_gwys_list.sh
 will download a HUGE list of reflectors and gateways from www.va3uv.com with port
@@ -101,7 +103,7 @@ need any port-forwarding on your home router.
 There is another script, reflist.sh, that will download REF, XRF and DCS reflectors
 from the W6KD file server. This has the advantage over VA3UV in that the reflector
 IP address are in dotted-name format, rather than dotted-number format. These
-dotted-name IP address will be resolved to dotted-number by g2_link when it starts
+dotted-name IP address will be resolved to dotted-number by QnetLink when it starts
 up. The hope is that dotted-name IP addresses will change less frequently than
 dotted-number addresses, so this method should last longer than the other two
 methods.
@@ -109,14 +111,14 @@ methods.
 Based on the above discussion, execute either "./reflist.sh", "./get_reflectors.sh" or
 "./get_gwy_list.sh". If you want to be able to update your hotspot dynamically,
 you can modify either one of these scripts by adding a "reboot" or "service
-g2_link restart" command at the end and moving it to /usr/local/etc/exec_?X.sh
+QnetLink restart" command at the end and moving it to /usr/local/etc/exec_?X.sh
 where "?" is a number or letter. You can then execute this script with ?X in YRCALL.
 See the discussion of executables in the CONFIGURING text file.
 
-If you plan on using DTMFS, you can also edit proc_g2_ircddb_dtmfs.sh to add new
+If you plan on using DTMFS, you can also edit proc_QnetGateway_dtmfs.sh to add new
 dtmfs commands.
 
-Then install your system. you have two choices, either dvap_rptr or dvrptr by
+Then install your system. you have two choices, either QnetDVAP or dvrptr by
 typing "sudo make installdvap" or "sudo make installdvrptr", respectively.
 Finally, if you want/need DTMFS, type "sudo make installdtmfs".
 
@@ -129,7 +131,7 @@ configuration files you you will have to reinstall the application.
 
 At this point, you can either reboot to start the three or four services, or start
 them manually with the "service" command. For example to start ircddb, type "sudo
-service g2_ircddb start". (See the man page for service.)
+service QnetGateway start". (See the man page for service.)
 
 If you are having trouble connecting, look in the *.log files in /var/log. These
 log files are recreated every time you restart a service. The beginning of each
@@ -139,10 +141,10 @@ you will see the verbose reports of what each service is doing. These logs are
 invaluable for traking down problems with your g2.cfg file. In a putty or ssh
 shell, you can see in real time what is being added to the logs during operation
 by typing "tail -f /var/log/<service>.log", where <service> is one of the
-service programs, 'g2_ircddb', 'g2_link', 'dvap_rptr', etc.
+service programs, 'QnetGateway', 'QnetLink', 'QnetDVAP', etc.
 
 These services talk to each other through ports and the default values
-are set up for a 2M gateway (module C). If you are using a 70cm setup, just
+are set up for a 2 meter gateway (module C). If you are using a 70cm setup, just
 change the module from "c" to "b".
 
 You can clean up the build directory of intermediate *.o files with "make clean"

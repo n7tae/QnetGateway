@@ -20,7 +20,7 @@
 // for communicating with the g2 gateway on the internal port
 #pragma pack(push, 1)	// we need to be sure these structures don't have any dead space
 typedef struct pkt_tag {
-	unsigned char pkt_id[4];	//  0
+	unsigned char pkt_id[4];	//  0	"DSTR"
 	unsigned short counter;		//  4
 	unsigned char flag[3];		//  6	{ 0x73, 0x12, 0x00 }
 	unsigned char remaining;	//  9	the number of bytes left in the packet
@@ -86,7 +86,7 @@ typedef struct dsvt_tag {
 		struct {
 			unsigned char voice[9]; // 15
 			unsigned char text[3];  // 24
-		} vasd;						// total 27
+		} vasd;	// voice and slow data total 27
 	};
 } SDSVT;
 #pragma pack(pop)
