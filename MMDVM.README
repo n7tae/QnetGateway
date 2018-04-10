@@ -1,0 +1,104 @@
+
+               Building a QnetGateway + MMDVMHost System
+
+              Copyright (C) 2018 by Thomas A. Early N7TAE
+
+I'll assume you'll be doing this on a Raspberry Pi, but any modern Debian-based
+system should work. It just needs a g++ compiler with version greater than 4.9.
+
+1)  Install the only external library you need: sudo apt-get install libconfig++-dev
+    Yeah! No wxWidgets!
+
+    Now in your home directory...
+
+2)  Clone the MMDVMHost repository: git clone git://github.com/g4klx/MMDVMHost.git
+
+3)  cd into the MMDVMHost directory and compile: make
+    If you're on a multicore system use: make -jx
+    where x is the number of cores on you system (RPi x=4, Odroid XU4 x=8)
+
+4)  Copy the ini file: cp MMDVM.ini MMDVM.qn
+
+5)  Edit the MMDVM.qn file. Set your Callsign and Id. Turn off duplex. Enable an
+    external display, if you have one. Set the Frequency(s). Set the Latitude and
+    other location info if you want. Change the log levels. I use DisplayLevel=2
+    and FileLevel=0. Set the Port on your modem. Disable all services except for
+    D-Star (at least for now). Very important: Set the [D-Star] Module. For UHF
+    use B and for VHF use C.
+
+6)  Start it: ./MMDVMHost MMDVM.qn
+
+7)  Key your radio and see if the MMDVMHost responds with an acknowledgement. Then
+    you'll know that everything on the MMDVM side is fine.
+
+8)  Stop the MMDVMHost with a Control-C and edit the MMDVM.qn file again. Change
+    the [D-Star] AckReply=0
+    You won't/don't want this reply from MMDVMhost. You want the acknowledgement
+    from QnetGateway, it's more informative.
+
+    We'll come back to MMDVMHost later, but for now let's work on the QnetGateway.
+
+9)  cd back to the home directory and clone the QnetGateway:
+    git clone git://github.com/n7tae/g2_ircddb.git
+    If this doesn't work, I've already moved the repository. Try:
+    git clone git://github.com/n7tae/QnetGateway.git
+
+10) cd into the build directory and switch the branch: git checkout mmdvm
+
+11) then compile: make
+    don't forget the -j option!
+
+12) You need a configuration file for QnetGateway. The simplest config file is:
+
+    ircddb = {
+	    logon = "YOUR CALLSIGN"
+    }
+
+    module = {
+        x = {
+            type = "mmdvm"
+        }
+    }
+
+    where x is the lowercase module you specified in the MMDVM.qn file. Use B and b
+    or C and c. Don't mix them up! You can add more stuff to the gn.cfg file. Please
+    see the qn.everything.cfg example.
+
+13) You need a gwys.txt file for all the reflectors: ./reflist.sh
+
+14) Install and start the three QnetGateway services: sudo make install
+
+    Now it's time to go back to the MMDVMHost...
+
+15) You need to setup MMDVMHost as a systemd service. You have at least two options.
+    a) use the info in MMDVMHost/linux/systemd and add a timer service.
+
+    This script base approach is overkill in my opinion. You don't need it, but it
+    should work fine.
+
+    b) Build your own mmdvm.service file based on the service.* files in the
+       QNetGateway build directory. You just need to copy the executable
+       and initialization files:
+       sudo cp MMDVMHost /usr/local/bin
+       sudo cp MMDVM.qn /usr/local/etc
+       Then create a mmdvm.service file based on my service.* files and
+       copy it: cp mmdvm.service /lib/systemd/system
+       And start the service:
+       sudo systemctl enable mmdvm.service
+       sudo systemctl daemon reload
+       sudo systemctl start mmdvm.service
+
+16) You should be up and running! You can see the log of any of the 4 services that
+    make up the QnetGateway + MMDVMHost system:
+    sudo journalctl -u qngateway -f
+    sudo journalctl -u qnlink -f
+    sudo journalctl -u qnrelay -f
+    sudo journalctl -u mmdvm -f
+
+    You can do all four of these in one terminal window (that you can detach from!)
+    by using "screen": sudo apt-get install screen
+    If you don't know how to use screen: http://aperiodic.net/screen/quick_reference
+    Being able to detach from a screen session is very useful, especially if you are
+    operating "headless"!
+
+17) Start other MMDVMHost services...
