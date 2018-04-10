@@ -49,7 +49,7 @@
 using namespace libconfig;
 
 #include "DVAPDongle.h"
-#include "g2_typedefs.h"
+#include "QnetTypeDefs.h"
 
 #define VERSION DVAP_VERSION
 #define CALL_SIZE 8

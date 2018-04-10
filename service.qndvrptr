@@ -1,0 +1,10 @@
+[Unit]
+Description=QnetDVRPTR
+After=systemd-user-session.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/qndvrptr.sh
+
+[Install]
+WantedBy=multi-user.target

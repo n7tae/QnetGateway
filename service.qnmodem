@@ -1,0 +1,10 @@
+[Unit]
+Description=QnetModem
+After=systemd-user-session.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/qnmodem /usr/local/etc/qn.cfg
+
+[Install]
+WantedBy=multi-user.target

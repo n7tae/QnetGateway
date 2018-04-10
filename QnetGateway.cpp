@@ -56,8 +56,8 @@
 #include "IRCDDB.h"
 #include "IRCutils.h"
 #include "versions.h"
-#include "g2_typedefs.h"
-#include "g2_ircddb.h"
+#include "QnetTypeDefs.h"
+#include "QnetGateway.h"
 
 
 extern void dstar_dv_init();
@@ -75,7 +75,7 @@ static void sigCatch(int signum)
 	return;
 }
 
-void CG2_ircddb::set_dest_rptr(int mod_ndx, char *dest_rptr)
+void CQnetGateway::set_dest_rptr(int mod_ndx, char *dest_rptr)
 {
 	FILE *statusfp = fopen(status_file.c_str(), "r");
 	if (statusfp) {
@@ -114,7 +114,7 @@ void CG2_ircddb::set_dest_rptr(int mod_ndx, char *dest_rptr)
 }
 
 /* compute checksum */
-void CG2_ircddb::calcPFCS(unsigned char *packet, int len)
+void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 {
 	const unsigned short crc_tabccitt[256] = {
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
@@ -170,7 +170,7 @@ void CG2_ircddb::calcPFCS(unsigned char *packet, int len)
 	return;
 }
 
-bool CG2_ircddb::get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
+bool CQnetGateway::get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
@@ -181,7 +181,7 @@ bool CG2_ircddb::get_value(const Config &cfg, const char *path, int &value, int 
 	return true;
 }
 
-bool CG2_ircddb::get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
+bool CQnetGateway::get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
@@ -192,7 +192,7 @@ bool CG2_ircddb::get_value(const Config &cfg, const char *path, double &value, d
 	return true;
 }
 
-bool CG2_ircddb::get_value(const Config &cfg, const char *path, bool &value, bool default_value)
+bool CQnetGateway::get_value(const Config &cfg, const char *path, bool &value, bool default_value)
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
@@ -200,7 +200,7 @@ bool CG2_ircddb::get_value(const Config &cfg, const char *path, bool &value, boo
 	return true;
 }
 
-bool CG2_ircddb::get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
+bool CQnetGateway::get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
@@ -215,7 +215,7 @@ bool CG2_ircddb::get_value(const Config &cfg, const char *path, std::string &val
 }
 
 /* process configuration file */
-bool CG2_ircddb::read_config(char *cfgFile)
+bool CQnetGateway::read_config(char *cfgFile)
 {
 	Config cfg;
 
@@ -360,7 +360,7 @@ bool CG2_ircddb::read_config(char *cfgFile)
 }
 
 // Create ports
-int CG2_ircddb::open_port(const SPORTIP &pip)
+int CQnetGateway::open_port(const SPORTIP &pip)
 {
 	struct sockaddr_in sin;
 
@@ -392,7 +392,7 @@ int CG2_ircddb::open_port(const SPORTIP &pip)
 }
 
 /* receive data from the irc server and save it */
-void CG2_ircddb::GetIRCDataThread()
+void CQnetGateway::GetIRCDataThread()
 {
 	std::string user, rptr, gateway, ipaddr;
 	DSTAR_PROTOCOL proto;
@@ -505,7 +505,7 @@ void CG2_ircddb::GetIRCDataThread()
 }
 
 /* return codes: 0=OK(found it), 1=TRY AGAIN, 2=FAILED(bad data) */
-int CG2_ircddb::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
+int CQnetGateway::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
 {
 	char temp[CALL_SIZE + 1];
 
@@ -562,7 +562,7 @@ int CG2_ircddb::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zo
 	return 2;
 }
 
-bool CG2_ircddb::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
+bool CQnetGateway::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
 {
 	pthread_mutex_lock(&irc_data_mutex);
 	int rc = get_yrcall_rptr_from_cache(call, arearp_cs, zonerp_cs, mod, ip, RoU);
@@ -604,7 +604,7 @@ bool CG2_ircddb::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, c
 }
 
 /* run the main loop for g2_ircddb */
-void CG2_ircddb::process()
+void CQnetGateway::process()
 {
 	SDSVT g2buf;
 	fd_set fdset;
@@ -645,7 +645,7 @@ void CG2_ircddb::process()
 	/* start the beacon thread */
 	if (bool_send_aprs) {
 		try {
-			aprs_future = std::async(std::launch::async, &CG2_ircddb::APRSBeaconThread, this);
+			aprs_future = std::async(std::launch::async, &CQnetGateway::APRSBeaconThread, this);
 		} catch (const std::exception &e) {
 			printf("Failed to start the APRSBeaconThread. Exception: %s\n", e.what());
 		}
@@ -654,7 +654,7 @@ void CG2_ircddb::process()
 	}
 
 	try {
-		irc_data_future = std::async(std::launch::async, &CG2_ircddb::GetIRCDataThread, this);
+		irc_data_future = std::async(std::launch::async, &CQnetGateway::GetIRCDataThread, this);
 	} catch (const std::exception &e) {
 		printf("Failed to start GetIRCDataThread. Exception: %s\n", e.what());
 		keep_running = false;
@@ -681,7 +681,7 @@ void CG2_ircddb::process()
 
 					/* START: echotest thread setup */
 					try {
-						std::async(std::launch::async, &CG2_ircddb::PlayFileThread, this, recd[i].file);
+						std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, recd[i].file);
 					} catch (const std::exception &e) {
 						printf("Failed to start echotest thread. Exception: %s\n", e.what());
 						// when the echotest thread runs, it deletes the file,
@@ -1334,7 +1334,7 @@ void CG2_ircddb::process()
 							/* voicemail file is closed */
 							if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
 								try {
-									std::async(std::launch::async, &CG2_ircddb::PlayFileThread, this, vm[i].file);
+									std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, vm[i].file);
 								} catch (const std::exception &e) {
 									printf("Filed to start voicemail playback. Exception: %s\n", e.what());
 								}
@@ -1983,7 +1983,7 @@ void CG2_ircddb::process()
 
 									/* we are in echotest mode, so play it back */
 									try {
-										std::async(std::launch::async, &CG2_ircddb::PlayFileThread, this, recd[i].file);
+										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, recd[i].file);
 									} catch (const std::exception &e) {
 										printf("failed to start PlayFileThread. Exception: %s\n", e.what());
 										//   When the echotest thread runs, it deletes the file,
@@ -2064,7 +2064,7 @@ void CG2_ircddb::process()
 	return;
 }
 
-void CG2_ircddb::compute_aprs_hash()
+void CQnetGateway::compute_aprs_hash()
 {
 	short hash = 0x73e2;
 	char rptr_sign[CALL_SIZE + 1];
@@ -2089,7 +2089,7 @@ void CG2_ircddb::compute_aprs_hash()
 	return;
 }
 
-void CG2_ircddb::APRSBeaconThread()
+void CQnetGateway::APRSBeaconThread()
 {
 	char snd_buf[512];
 	char rcv_buf[512];
@@ -2278,7 +2278,7 @@ void CG2_ircddb::APRSBeaconThread()
 	return;
 }
 
-void CG2_ircddb::PlayFileThread(char *file)
+void CQnetGateway::PlayFileThread(char *file)
 {
 	unsigned short rlen = 0;
 	unsigned char dstar_buf[56];
@@ -2392,7 +2392,7 @@ void CG2_ircddb::PlayFileThread(char *file)
 	return;
 }
 
-void CG2_ircddb::qrgs_and_maps()
+void CQnetGateway::qrgs_and_maps()
 {
 	for(int i=0; i<3; i++) {
 		std::string rptrcall = OWNER;
@@ -2407,7 +2407,7 @@ void CG2_ircddb::qrgs_and_maps()
 	return;
 }
 
-int CG2_ircddb::init(char *cfgfile)
+int CQnetGateway::init(char *cfgfile)
 {
 	short int i;
 	struct sigaction act;
@@ -2595,11 +2595,11 @@ int CG2_ircddb::init(char *cfgfile)
 	return 0;
 }
 
-CG2_ircddb::CG2_ircddb()
+CQnetGateway::CQnetGateway()
 {
 }
 
-CG2_ircddb::~CG2_ircddb()
+CQnetGateway::~CQnetGateway()
 {
 	if (srv_sock != -1) {
 		close(srv_sock);
@@ -2634,7 +2634,7 @@ CG2_ircddb::~CG2_ircddb()
 	printf("g2_ircddb exiting\n");
 }
 
-bool CG2_ircddb::validate_csum(SBANDTXT &bt, bool is_gps)
+bool CQnetGateway::validate_csum(SBANDTXT &bt, bool is_gps)
 {
 	const char *name = is_gps ? "GPS" : "GPRMC";
 	char *s = is_gps ? bt.gpid : bt.gprmc;
@@ -2657,7 +2657,7 @@ bool CG2_ircddb::validate_csum(SBANDTXT &bt, bool is_gps)
 	return false;
 }
 
-void CG2_ircddb::gps_send(short int rptr_idx)
+void CQnetGateway::gps_send(short int rptr_idx)
 {
 	time_t tnow = 0;
 	static char old_mycall[CALL_SIZE + 1] = { "        " };
@@ -2710,7 +2710,7 @@ void CG2_ircddb::gps_send(short int rptr_idx)
 	return;
 }
 
-void CG2_ircddb::build_aprs_from_gps_and_send(short int rptr_idx)
+void CQnetGateway::build_aprs_from_gps_and_send(short int rptr_idx)
 {
 	char buf[512];
 	const char *delim = ",";
@@ -2813,7 +2813,7 @@ void CG2_ircddb::build_aprs_from_gps_and_send(short int rptr_idx)
 	return;
 }
 
-bool CG2_ircddb::verify_gps_csum(char *gps_text, char *csum_text)
+bool CQnetGateway::verify_gps_csum(char *gps_text, char *csum_text)
 {
 	short computed_csum = 0;
 	char computed_csum_text[16];
@@ -2846,9 +2846,9 @@ int main(int argc, char **argv)
 		printf("Example: g2_ircddb g2_ircddb.cfg\n");
 		return 1;
 	}
-	CG2_ircddb g2;
-	if (g2.init(argv[1]))
+	CQnetGateway QnetGateway;
+	if (QnetGateway.init(argv[1]))
 		return 1;
-	g2.process();
+	QnetGateway.process();
 	printf("Leaving processing loop...\n");
 }

@@ -20,7 +20,7 @@
 
 while [ 1 ];
 do
-        /usr/local/bin/dvap_rptr /usr/local/etc/g2.cfg > /var/log/dvap_rptr.log 2>&1
+        /usr/local/bin/qndvap /usr/local/etc/qn.cfg
         sleep 10
 done
 

@@ -32,30 +32,30 @@ IRCOBJS = IRCDDB.o IRCClient.o IRCReceiver.o IRCMessageQueue.o IRCProtocol.o IRC
 SRCS = $(wildcard *.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
-PROGRAMS=g2_ircddb g2_link dvap_rptr dvrptr g2link_test g2link_test_audio mmdvm_modem
+PROGRAMS=qngateway qnlink qnmodem qndvap qndvrptr qnlinktest qnlinktestaudio
 
 all : $(PROGRAMS)
 
-g2_ircddb : $(IRCOBJS) g2_ircddb.o aprs.o
-	g++ $(CPPFLAGS) -o g2_ircddb g2_ircddb.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
+qngateway : $(IRCOBJS) QnetGateway.o aprs.o
+	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
 
-g2_link : g2_link.o
-	g++ $(CPPFLAGS) -o g2_link g2_link.o $(LDFLAGS) -pthread
+qnlink : QnetLink.o
+	g++ $(CPPFLAGS) -o qnlink QnetLink.o $(LDFLAGS) -pthread
 
-mmdvm_modem : mmdvm_modem.o
-	g++ $(CPPFLAGS) -o mmdvm_modem mmdvm_modem.o $(LDFLAGS)
+qnmodem : QnetModem.o
+	g++ $(CPPFLAGS) -o qnmodem QnetModem.o $(LDFLAGS)
 
-dvap_rptr : dvap_rptr.o DVAPDongle.o $(DSTROBJS)
-	g++ $(CPPFLAGS) -o dvap_rptr dvap_rptr.o DVAPDongle.o $(DSTROBJS) $(LDFLAGS) -pthread
+qndvap : QnetDVAP.o DVAPDongle.o $(DSTROBJS)
+	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o $(DSTROBJS) $(LDFLAGS) -pthread
 
-dvrptr : dvrptr.o $(DSTROBJS)
-	g++ $(CPPFLAGS) -o dvrptr dvrptr.o $(DSTROBJS) $(LDFLAGS)
+qndvrptr : QnetDVRPTR.o $(DSTROBJS)
+	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o $(DSTROBJS) $(LDFLAGS)
 
-g2link_test : g2link_test.o
-	g++ $(CPPFLAGS) -o g2link_test g2link_test.o  -lrt
+qnlinktest : QnetLinkTest.o
+	g++ $(CPPFLAGS) -o qnlinktest QnetLinkTest.o  -lrt
 
-g2link_test_audio : g2link_test_audio.o
-	g++ $(CPPFLAGS) -o g2link_test_audio g2link_test_audio.o  -lrt
+qnlinktestaudio : QnetLinkTestAudio.o
+	g++ $(CPPFLAGS) -o qnlinktestaudio QnetLinkTestAudio.o  -lrt
 
 %.o : %.cpp
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
@@ -67,76 +67,135 @@ clean:
 
 -include $(DEPS)
 
-installdvap : dvap_rptr g2_link g2_ircddb
-	######### g2_ircddb #########
-	/bin/cp -f g2_ircddb $(BINDIR)
-	/bin/cp -f g2.cfg $(CFGDIR)
-	/bin/cp -f service.g2_ircddb /etc/init.d/g2_ircddb
-#	/usr/sbin/update-rc.d g2_ircddb defaults
-#	/usr/sbin/update-rc.d g2_ircddb enable
-	######### g2_link #########
-	/bin/cp -f g2_link $(BINDIR)
+install : qngateway qnlink qnmodem
+	######### QnetGateway #########
+	/bin/cp -f qngateway $(BINDIR)
+	/bin/cp -f qn.cfg $(CFGDIR)
+	/bin/cp -f service.qngateway /lib/systemd/system/qngateway.service
+	systemctl enable qngateway.service
+	systemctl daemon-reload
+	systemctl start qngateway.service
+	######### QnetLink #########
+	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f service.g2_link /etc/init.d/g2_link
-#	/usr/sbin/update-rc.d g2_link defaults
-#	/usr/sbin/update-rc.d g2_link enable
-	######### dvap_rptr #########
-	/bin/cp -f dvap_rptr $(BINDIR)
-	/bin/cp -f dvap_rptr.sh $(BINDIR)
-	/bin/cp -f service.dvap_rptr /etc/init.d/dvap_rptr
-#	/usr/sbin/update-rc.d dvap_rptr defaults
-#	/usr/sbin/update-rc.d dvap_rptr enable
+	/bin/cp -f service.qnlink /lib/systemd/system/qnlink.service
+	systemctl enable qnlink.service
+	systemctl daemon-reload
+	systemctl start qnlink.service
+	######### QnetModem #########
+	/bin/cp -f qnmodem $(BINDIR)
+	/bin/cp -f service.qnmodem /lib/systemd/system/qnmodem.service
+	systemctl enable qnmodem.service
+	systemctl daemon-reload
+	systemctl start qnmodem.service
 
-installdvrptr : dvrptr g2_link g2_ircddb
-	######### g2_ircddb #########
-	/bin/cp -f g2_ircddb $(BINDIR)
-	/bin/cp -f g2.cfg $(CFGDIR)
-	/bin/cp -f service.g2_ircddb /etc/init.d/g2_ircddb
-#	/usr/sbin/update-rc.d g2_ircddb defaults
-#	/usr/sbin/update-rc.d g2_ircddb enable
-	######### g2_link #########
-	/bin/cp -f g2_link $(BINDIR)
+installdvap : qngateway qnlink qndvap
+	######### QnetGateway #########
+	/bin/cp -f qngateway $(BINDIR)
+	/bin/cp -f qn.cfg $(CFGDIR)
+	/bin/cp -f service.qngateway /lib/systemd/system/qngateway.service
+	systemctl enable qngateway.service
+	systemctl daemon-reload
+	systemctl start qngateway.service
+	######### QnetLink #########
+	/bin/cp -f qnlib $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f service.g2_link /etc/init.d/g2_link
-#	/usr/sbin/update-rc.d g2_link defaults
-#	/usr/sbin/update-rc.d g2_link enable
-	######### dvrptr ##########
-	/bin/cp -f dvrptr $(BINDIR)
-	/bin/cp -f dvrptr.sh $(BINDIR)
-	/bin/cp -f service.dvrptr /etc/init.d/dvrptr
-#	/usr/sbin/update-rc.d dvrptr defaults
-#	/usr/sbin/update-rc.d dvrptr enable
+	/bin/cp -f service.qnlink /lib/systemd/system/qnlink.service
+	systemctl enable qnlink.service
+	systemctl daemon-reload
+	systemctl start qnlink.service
+	######### QnetDVAP #########
+	/bin/cp -f qndvap $(BINDIR)
+	/bin/cp -f qndvap.sh $(BINDIR)
+	/bin/cp -f service.qndvap /lib/systemd/system/qndvap.service
+	systemctl enable qnlink.service
+	systemctl daemon-reload
+	systemctl start qnlink.service
 
-installdtmfs : g2link_test
-	/bin/cp -f g2link_test $(BINDIR)
-	/bin/cp -f proc_g2_ircddb_dtmfs.sh $(BINDIR)
-	/bin/cp -f service.proc_g2_ircddb_dtmfs /etc/init.d/proc_g2_ircddb_dtmfs
-#	/usr/sbin/update-rc.d proc_g2_ircddb_dtmfs defaults
-#	/usr/sbin/update-rc.d proc_g2_ircddb_dtmfs enable
+installdvrptr : qngateway qnlink qndvrptr
+	######### QnetGateway #########
+	/bin/cp -f qngateway $(BINDIR)
+	/bin/cp -f qn.cfg $(CFGDIR)
+	/bin/cp -f service.qngateway /lib/systemd/system/qngateway.service
+	systemctl enable qngateway.service
+	systemctl daemon-reload
+	systemctl start qngateway.service
+	######### QnetLink #########
+	/bin/cp -f qnlib $(BINDIR)
+	/bin/cp -f announce/*.dat $(CFGDIR)
+	/bin/cp -f gwys.txt $(CFGDIR)
+	/bin/cp -f exec_?.sh $(CFGDIR)
+	/bin/cp -f service.qnlink /lib/systemd/system/qnlink.service
+	systemctl enable qnlink.service
+	systemctl daemon-reload
+	systemctl start qnlink.service
+	######### QnetDVRPTR #########
+	/bin/cp -f qndvrptr $(BINDIR)
+	/bin/cp -f qndvrptr.sh $(BINDIR)
+	/bin/cp -f service.qndvrptr /lib/systemd/system/qndvrptr.service
+	systemctl enable qndvrptr.service
+	systemctl daemon-reload
+	systemctl start qndvrptr.service
+
+installdtmfs : qnlinktest
+	/bin/cp -f qnlinktest $(BINDIR)
+	/bin/cp -f proc_qnlinktest $(BINDIR)
+	/bin/cp -f service.qnlinktest /lib/systemd/system/qnlinktest.service
+	systemctl enable qnlinktest.service
+	systemctl daemon-reload
+	systemctl start qnlinktest.service
 
 uninstalldtmfs:
-#	/usr/sbin/service proc_g2_ircddb_dtmfs stop
-#	/bin/rm -f /etc/init.d/proc_g2_ircddb_dtmfs
-#	/usr/sbin/update-rc.d proc_g2_ircddb_dtmfs remove
-	/bin/rm -f $(BINDIR)/proc_g2_ircddb_dtmfs.sh
-	/bin/rm -f $(BINDIR)/g2link_test
+	systemctl stop qnlinktest.service
+	systemctl disable qnlinktest.service
+	/bin/rm -f /lib/systemd/system/qnlinktest.service
+	systemctl daemon-reload
+	/bin/rm -f $(BINDIR)/qnlinktest
+	/bin/rm -f $(BINDIR)/proc_qnlinktest
+
+uninstall :
+	######### QnetGateway #########
+	systemctl stop qngateway.service
+	systemctl disable qngateway.service
+	/bin/rm -f /lib/systemd/system/qngateway.service
+	/bin/rm -f $(BINDIR)/qngateway
+	/bin/rm -f $(CFGDIR)/qn.cfg
+	######### QnetLink #########
+	systemctl stop qnlink.service
+	systemctl disable qnlink.service
+	/bin/rm -f /lib/systemd/system/qnlink.service
+	/bin/rm -f $(BINDIR)/qnlink
+	/bin/rm -f $(CFGDIR)/already_linked.dat
+	/bin/rm -f $(CFGDIR)/already_unlinked.dat
+	/bin/rm -f $(CFGDIR)/failed_linked.dat
+	/bin/rm -f $(CFGDIR)/id.dat
+	/bin/rm -f $(CFGDIR)/linked.dat
+	/bin/rm -f $(CFGDIR)/unlinked.dat
+	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
+	/bin/rm -f $(CFGDIR)/gwys.txt
+	/bin/rm -f $(CFGDIR)/exec_?.sh
+	######### QnetModem #########
+	systemctl stop qnmodem.service
+	systemctl disable qnmodem.service
+	/bin/rm -f /lib/systemd/system/qnmodem.service
+	/bin/rm -f $(BINDIR)/qnmodem
 
 uninstalldvap :
-	######### g2_ircddb #########
-#	/usr/sbin/service g2_ircddb stop
-#	/bin/rm -f /etc/init.d/g2_ircddb
-#	/usr/sbin/update-rc.d g2_ircddb remove
-	/bin/rm -f $(BINDIR)/g2_ircddb
-	/bin/rm -f $(CFGDIR)/g2.cfg
-	######### g2_link #########
-#	/usr/sbin/service g2_link stop
-#	/bin/rm -f /etc/init.d/g2_link
-#	/usr/sbin/update-rc.d g2_link remove
-	/bin/rm -f $(BINDIR)/g2_link
+	######### QnetGateway #########
+	systemctl stop qngateway.service
+	systemctl disable qngateway.service
+	/bin/rm -f /lib/systemd/system/qngateway.service
+	/bin/rm -f $(BINDIR)/qngateway
+	/bin/rm -f $(CFGDIR)/qn.cfg
+	######### QnetLink #########
+	systemctl stop qnlink.service
+	systemctl disable qnlink.service
+	/bin/rm -f /lib/systemd/system/qnlink.service
+	/bin/rm -f $(BINDIR)/qnlink
 	/bin/rm -f $(CFGDIR)/already_linked.dat
 	/bin/rm -f $(CFGDIR)/already_unlinked.dat
 	/bin/rm -f $(CFGDIR)/failed_linked.dat
@@ -146,26 +205,25 @@ uninstalldvap :
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh
-	/bin/rm -f /var/log/g2_link.log
-	######### dvap_rptr #########
-#	/usr/sbin/service dvap_rptr stop
-#	/bin/rm -f /etc/init.d/dvap_rptr
-#	/usr/sbin/update-rc.d dvap_rptr remove
-#	/bin/rm -f $(BINDIR)/dvap_rptr
-#	/bin/rm -f $(BINDIR)/dvap_rptr.sh
+	######### QnetDVAP #########
+	systemctl stop qndvap.service
+	systemctl disable qndvap.service
+	/bin/rm -f /lib/systemd/system/qndvap.service
+	/bin/rm -f $(BINDIR)/qndvap
+	/bin/rm -f $(BINDIR)/qndvap.sh
 
-uninstalldvrptr:
-	######### g2_ircddb #########
-#	/usr/sbin/service g2_ircddb stop
-#	/bin/rm -f /etc/init.d/g2_ircddb
-#	/usr/sbin/update-rc.d g2_ircddb remove
-#	/bin/rm -f $(BINDIR)/g2_ircddb
-#	/bin/rm -f $(CFGDIR)/g2.cfg
-	######### g2_link #########
-#	/usr/sbin/service g2_link stop
-#	/bin/rm -f /etc/init.d/g2_link
-#	/usr/sbin/update-rc.d g2_link remove
-	/bin/rm -f $(BINDIR)/g2_link
+uninstalldvrptr :
+	######### QnetGateway #########
+	systemctl stop qngateway.service
+	systemctl disable qngateway.service
+	/bin/rm -f /lib/systemd/system/qngateway.service
+	/bin/rm -f $(BINDIR)/qngateway
+	/bin/rm -f $(CFGDIR)/qn.cfg
+	######### QnetLink #########
+	systemctl stop qnlink.service
+	systemctl disable qnlink.service
+	/bin/rm -f /lib/systemd/system/qnlink.service
+	/bin/rm -f $(BINDIR)/qnlink
 	/bin/rm -f $(CFGDIR)/already_linked.dat
 	/bin/rm -f $(CFGDIR)/already_unlinked.dat
 	/bin/rm -f $(CFGDIR)/failed_linked.dat
@@ -175,10 +233,9 @@ uninstalldvrptr:
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh
-	/bin/rm -f /var/log/g2_link.log
-	######### dvrptr ##########
-#	/usr/sbin/service dvrptr stop
-#	/bin/rm -f /etc/init.d/dvrptr
-#	/usr/sbin/update-rc.d dvrtpr remove
-	/bin/rm -f $(BINDIR)/dvrptr
-	/bin/rm -f $(BINDIR)/dvrptr.sh
+	######### QnetDVRPTR #########
+	systemctl stop qndvrptr.service
+	systemctl disable qndvrptr.service
+	/bin/rm -f /lib/systemd/system/qndvrptr.service
+	/bin/rm -f $(BINDIR)/qndvrptr
+	/bin/rm -f $(BINDIR)/qndvrptr.sh

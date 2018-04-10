@@ -1,0 +1,10 @@
+[Unit]
+Description=QnetLink
+After=systemd-user-session.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/qnlink /usr/local/etc/qn.cfg
+
+[Install]
+WantedBy=multi-user.target

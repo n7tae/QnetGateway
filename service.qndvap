@@ -1,0 +1,10 @@
+[Unit]
+Description=QnetDVAP
+After=systemd-user-session.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/qndvap.sh
+
+[Install]
+WantedBy=multi-user.target

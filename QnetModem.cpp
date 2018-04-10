@@ -33,28 +33,28 @@
 #include <errno.h>
 
 #include "versions.h"
-#include "mmdvm_modem.h"
-#include "g2_typedefs.h"
+#include "QnetModem.h"
+#include "QnetTypeDefs.h"
 
-std::atomic<bool> CMMDVMModem::keep_running(true);
+std::atomic<bool> CQnetModem::keep_running(true);
 
-CMMDVMModem::CMMDVMModem() :
+CQnetModem::CQnetModem() :
 seed(time(NULL)),
 COUNTER(0)
 {
 }
 
-CMMDVMModem::~CMMDVMModem()
+CQnetModem::~CQnetModem()
 {
 }
 
-bool CMMDVMModem::Initialize(const char *cfgfile)
+bool CQnetModem::Initialize(const char *cfgfile)
 {
 	if (ReadConfig(cfgfile))
 		return true;
 
 	struct sigaction act;
-	act.sa_handler = &CMMDVMModem::SignalCatch;
+	act.sa_handler = &CQnetModem::SignalCatch;
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		printf("sigaction-TERM failed, error=%d\n", errno);
@@ -72,7 +72,7 @@ bool CMMDVMModem::Initialize(const char *cfgfile)
 	return false;
 }
 
-int CMMDVMModem::OpenSocket(const std::string &address, unsigned short port)
+int CQnetModem::OpenSocket(const std::string &address, unsigned short port)
 {
 	if (! port) {
 		printf("ERROR: OpenSocket: non-zero port must be specified.\n");
@@ -116,7 +116,7 @@ int CMMDVMModem::OpenSocket(const std::string &address, unsigned short port)
 	return fd;
 }
 
-void CMMDVMModem::Run(const char *cfgfile)
+void CQnetModem::Run(const char *cfgfile)
 {
 	if (Initialize(cfgfile))
 		return;
@@ -213,7 +213,7 @@ void CMMDVMModem::Run(const char *cfgfile)
 	::close(gsock);
 }
 
-int CMMDVMModem::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
+int CQnetModem::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
 {
 	sockaddr_in addr;
 	::memset(&addr, 0, sizeof(sockaddr_in));
@@ -229,7 +229,7 @@ int CMMDVMModem::SendTo(const int fd, const unsigned char *buf, const int size, 
 	return len;
 }
 
-bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
+bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 {
 	if (29==len || 58==len) { //here is dstar data
 		SPKT buf;
@@ -275,7 +275,7 @@ bool CMMDVMModem::ProcessGateway(const int len, const unsigned char *raw)
 	return false;
 }
 
-bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
+bool CQnetModem::ProcessMMDVM(const int len, const unsigned char *raw)
 {
 	static short stream_id = 0U;
 	SMMDVMPKT mpkt;
@@ -327,7 +327,7 @@ bool CMMDVMModem::ProcessMMDVM(const int len, const unsigned char *raw)
 	return false;
 }
 
-bool CMMDVMModem::GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value)
+bool CQnetModem::GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
@@ -338,7 +338,7 @@ bool CMMDVMModem::GetValue(const Config &cfg, const char *path, int &value, cons
 	return true;
 }
 
-bool CMMDVMModem::GetValue(const Config &cfg, const char *path, double &value, const double min, const double max, const double default_value)
+bool CQnetModem::GetValue(const Config &cfg, const char *path, double &value, const double min, const double max, const double default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
@@ -349,7 +349,7 @@ bool CMMDVMModem::GetValue(const Config &cfg, const char *path, double &value, c
 	return true;
 }
 
-bool CMMDVMModem::GetValue(const Config &cfg, const char *path, bool &value, const bool default_value)
+bool CQnetModem::GetValue(const Config &cfg, const char *path, bool &value, const bool default_value)
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
@@ -357,7 +357,7 @@ bool CMMDVMModem::GetValue(const Config &cfg, const char *path, bool &value, con
 	return true;
 }
 
-bool CMMDVMModem::GetValue(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
+bool CQnetModem::GetValue(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
@@ -372,7 +372,7 @@ bool CMMDVMModem::GetValue(const Config &cfg, const char *path, std::string &val
 }
 
 // process configuration file and return true if there was a problem
-bool CMMDVMModem::ReadConfig(const char *cfgFile)
+bool CQnetModem::ReadConfig(const char *cfgFile)
 {
 	Config cfg;
 
@@ -477,7 +477,7 @@ bool CMMDVMModem::ReadConfig(const char *cfgFile)
 	return false;
 }
 
-void CMMDVMModem::SignalCatch(const int signum)
+void CQnetModem::SignalCatch(const int signum)
 {
 	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
 		keep_running = false;
@@ -500,9 +500,9 @@ int main(int argc, const char **argv)
 		return 0;
 	}
 
-	CMMDVMModem mmdvm;
+	CQnetModem qnmmdvm;
 
-	mmdvm.Run(argv[1]);
+	qnmmdvm.Run(argv[1]);
 
 	printf("%s is closing.\n", argv[0]);
 

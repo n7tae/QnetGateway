@@ -81,10 +81,10 @@ typedef struct band_txt_tag {
 	int num_bit_errors;
 } SBANDTXT;
 
-class CG2_ircddb {
+class CQnetGateway {
 public:
-	CG2_ircddb();
-	~CG2_ircddb();
+	CQnetGateway();
+	~CQnetGateway();
 private:
 	SPORTIP g2_internal, g2_external, g2_link, ircddb;
 

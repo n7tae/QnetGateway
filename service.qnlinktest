@@ -1,0 +1,10 @@
+[Unit]
+Description=QnetDTMFS
+After=systemd-user-session.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/proc_qnlinktest
+
+[Install]
+WantedBy=multi-user.target
