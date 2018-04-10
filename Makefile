@@ -84,7 +84,7 @@ install : qngateway qnlink qnrelay
 	systemctl enable qnlink.service
 	systemctl daemon-reload
 	systemctl start qnlink.service
-	######### QnetModem #########
+	######### QnetRelay #########
 	/bin/cp -f qnrelay $(BINDIR)
 	/bin/cp -f service.qnrelay /lib/systemd/system/qnrelay.service
 	systemctl enable qnrelay.service
