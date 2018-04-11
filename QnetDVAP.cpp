@@ -550,11 +550,11 @@ static void readFrom20000()
 							}
 						}
 					}
-				} else {
+				} else { // net_buf.vpkt.sreamid != streamid
 					FD_CLR (insock, &readfd);
 					break;
 				}
-			} else {
+			} else {	// len is not 58 or 29
 				if (!busy20000) {
 					FD_CLR (insock, &readfd);
 					break;

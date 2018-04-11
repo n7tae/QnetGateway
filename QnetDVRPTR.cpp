@@ -53,15 +53,12 @@ bool busy20000 = false;
 static unsigned char S_packet[26];
 static time_t S_ctrl_msg_time = 0;
 static int rqst_count = 6;
-static const int TRACE_BFSZ = 200;
-static char trace_buf[TRACE_BFSZ];
 static unsigned streamid[2] = {0x00, 0x00};
 static unsigned char start_Header[8]= {0xD0,0x03,0x00,0x16,0x01,0x00,0x00,0x00};
 static unsigned char ptt_off[8]= {0xD0,0x03,0x00,0x1A,0x01,0xff,0x00,0x00};
 static int insock = -1;
 
 static int read_config(const char *cfgFile);
-static void logdata(const char *fmt,...);
 static void readFrom20000();
 static bool check_serial();
 
@@ -1813,7 +1810,7 @@ bool get_value(const Config &cfg, const char *path, int &value, int min, int max
 			value = default_value;
 	} else
 		value = default_value;
-	logdata("%s = [%d]\n", path, value);
+	printf("%s = [%d]\n", path, value);
 	return true;
 }
 
@@ -1824,7 +1821,7 @@ bool get_value(const Config &cfg, const char *path, double &value, double min, d
 			value = default_value;
 	} else
 		value = default_value;
-	logdata("%s = [%lg]\n", path, value);
+	printf("%s = [%lg]\n", path, value);
 	return true;
 }
 
@@ -1832,7 +1829,7 @@ bool get_value(const Config &cfg, const char *path, bool &value, bool default_va
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
-	logdata("%s = [%s]\n", path, value ? "true" : "false");
+	printf("%s = [%s]\n", path, value ? "true" : "false");
 	return true;
 }
 
@@ -1841,12 +1838,12 @@ bool get_value(const Config &cfg, const char *path, std::string &value, int min,
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
 		if (l<min || l>max) {
-			logdata("%s is invalid\n", path, value.c_str());
+			printf("%s='%s' is wrong size, must be between %d and %d\n", path, value.c_str(), min, max);
 			return false;
 		}
 	} else
 		value = default_value;
-	logdata("%s = [%s]\n", path, value.c_str());
+	printf("%s = [%s]\n", path, value.c_str());
 	return true;
 }
 
@@ -1856,17 +1853,17 @@ static int read_config(const char *cfgFile)
 	int i;
 	Config cfg;
 
-	logdata("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile);
 	// Read the file. If there is an error, report it and exit.
 	try {
 		cfg.readFile(cfgFile);
 	}
 	catch(const FileIOException &fioex) {
-		logdata("Can't read %s\n", cfgFile);
+		printf("Can't read %s\n", cfgFile);
 		return 1;
 	}
 	catch(const ParseException &pex) {
-		logdata("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
+		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
 		return 1;
 	}
 
@@ -1880,7 +1877,7 @@ static int read_config(const char *cfgFile)
 		}
 	}
 	if (i >= 3) {
-		logdata("dvrptr not defined in any module!\n");
+		printf("dvrptr not defined in any module!\n");
 		return 1;
 	}
 	DVRPTR_MOD = 'A' + i;
@@ -1888,7 +1885,7 @@ static int read_config(const char *cfgFile)
 	if (cfg.lookupValue(std::string(path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
-			logdata("Call '%s' is invalid length!\n", value.c_str());
+			printf("Call '%s' is invalid length!\n", value.c_str());
 			return 1;
 		} else {
 			for (i=0; i<l; i++) {
@@ -1898,16 +1895,16 @@ static int read_config(const char *cfgFile)
 			value.resize(CALL_SIZE, ' ');
 		}
 		strcpy(RPTR, value.c_str());
-		logdata("%s.callsign = [%s]\n", path.c_str(), RPTR);
+		printf("%s.callsign = [%s]\n", path.c_str(), RPTR);
 	} else {
-		logdata("%s.callsign is not defined!\n", path.c_str());
+		printf("%s.callsign is not defined!\n", path.c_str());
 		return 1;
 	}
 
 	if (cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
-			logdata("Call '%s' is invalid length!\n", value.c_str());
+			printf("Call '%s' is invalid length!\n", value.c_str());
 			return 1;
 		} else {
 			for (i=0; i<l; i++) {
@@ -1917,21 +1914,21 @@ static int read_config(const char *cfgFile)
 			value.resize(CALL_SIZE, ' ');
 		}
 		strcpy(DVCALL, value.c_str());
-		logdata("ircddb.login = [%s]\n", DVCALL);
+		printf("ircddb.login = [%s]\n", DVCALL);
 	} else {
-		logdata("ircddb.login is not defined!\n");
+		printf("ircddb.login is not defined!\n");
 		return 1;
 	}
 
 	if (get_value(cfg, std::string(path+".rf_control.on").c_str(), value, 0, CALL_SIZE, "        "))
 		strcpy(ENABLE_RF, value.c_str());
 	else
-		logdata("%s.rf_control.on '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
+		printf("%s.rf_control.on '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
 
 	if (get_value(cfg, std::string(path+".rf_control.off").c_str(), value, 0, CALL_SIZE, "        "))
 		strcpy(DISABLE_RF, value.c_str());
 	else
-		logdata("%s.rf_control.off '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
+		printf("%s.rf_control.off '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
 
 	if (cfg.lookupValue("timing.timeout.remote_g2", REMOTE_TIMEOUT)) {
 		REMOTE_TIMEOUT++;
@@ -1939,7 +1936,7 @@ static int read_config(const char *cfgFile)
 			REMOTE_TIMEOUT = 2;
 	} else
 		REMOTE_TIMEOUT = 3;
-	logdata("timing.timeout.remote_g2 = [%d]\n", REMOTE_TIMEOUT);
+	printf("timing.timeout.remote_g2 = [%d]\n", REMOTE_TIMEOUT);
 
 	if (get_value(cfg, std::string(path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
 		value.resize(CALL_SIZE, ' ');
@@ -1949,21 +1946,21 @@ static int read_config(const char *cfgFile)
 		}
 		strcpy(INVALID_YRCALL_KEY, value.c_str());
 	} else {
-		logdata("%s.invalid_prefix '%s' is invalid!\n", path.c_str(), value.c_str());
+		printf("%s.invalid_prefix '%s' is invalid!\n", path.c_str(), value.c_str());
 		return 1;
 	}
 
 	if (get_value(cfg, std::string(path+".serial_number").c_str(), value, 11, 11, "00.00.00.00"))
 		strcpy(DVRPTR_SERIAL, value.c_str());
 	else {
-		logdata("%s.serial_number '%s' is invalid!\n", path.c_str(), value.c_str());
+		printf("%s.serial_number '%s' is invalid!\n", path.c_str(), value.c_str());
 		return 1;
 	}
 
 	if (get_value(cfg, std::string(path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
 		strcpy(DVRPTR_INTERNAL_IP, value.c_str());
 	else {
-		logdata("%s.internal_ip '%s' is invalid!\n", path.c_str(), value.c_str());
+		printf("%s.internal_ip '%s' is invalid!\n", path.c_str(), value.c_str());
 		return 1;
 	}
 
@@ -1972,7 +1969,7 @@ static int read_config(const char *cfgFile)
 	if (get_value(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
 		strcpy(GATEWAY_IP, value.c_str());
 	else {
-		logdata("gateway.ip '%s' is invalid!\n", value.c_str());
+		printf("gateway.ip '%s' is invalid!\n", value.c_str());
 		return 1;
 	}
 
@@ -2000,31 +1997,9 @@ static int read_config(const char *cfgFile)
 	get_value(cfg, std::string(path+".inverse.tx").c_str(), TX_Inverse, true);
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000000) / 400;
-	logdata("... computed max number of loops %d, each loop is 400 microseconds\n", inactiveMax);
+	printf("... computed max number of loops %d, each loop is 400 microseconds\n", inactiveMax);
 
 	return 0;
-}
-
-static void logdata(const char *fmt,...)
-{
-	time_t ltime;
-	struct tm mytm;
-
-	time(&ltime);
-	localtime_r(&ltime,&mytm);
-
-	snprintf(trace_buf,TRACE_BFSZ - 1,"%02d/%02d/%02d %02d:%02d:%02d:",
-	         mytm.tm_mon+1,mytm.tm_mday,mytm.tm_year % 100,
-	         mytm.tm_hour,mytm.tm_min,mytm.tm_sec);
-	trace_buf[TRACE_BFSZ - 1] = '\0';
-
-	va_list args;
-	va_start(args,fmt);
-	vsnprintf(trace_buf + strlen(trace_buf), TRACE_BFSZ - strlen(trace_buf) - 1, fmt, args);
-	va_end(args);
-
-	fprintf(stdout, "%s", trace_buf);
-	return;
 }
 
 char *cleanstr (char *Text)
@@ -2058,11 +2033,11 @@ int open_port(char *dvrptr_device)
 
 	fd_ser = open(dvrptr_device, O_RDWR | O_NOCTTY | O_NONBLOCK |  O_NDELAY);
 	if (fd_ser < 0) {
-		logdata("Can not open the serial port %s, error=%d(%s)\n",
+		printf("Can not open the serial port %s, error=%d(%s)\n",
 		        dvrptr_device, errno, strerror(errno));
 		return -1;
 	}
-	logdata("Success in opening device %s\n", dvrptr_device);
+	printf("Success in opening device %s\n", dvrptr_device);
 
 	fcntl(fd_ser, F_SETFL,FNDELAY);
 	terminal.c_cflag = BAUD | CS8 | CLOCAL | CREAD;
@@ -2376,7 +2351,7 @@ static void readFrom20000()
 				// printf("\nNetwork Header ID: %2.2x\n",seq_no2);
 				block = 0;
 
-				logdata("From G2: streamid=%d,%d, flags=%02x:%02x:%02x, myCall=%.8s/%.4s, yrCall=%.8s, rpt1=%.8s, rpt2=%.8s\n",
+				printf("From G2: streamid=%d,%d, flags=%02x:%02x:%02x, myCall=%.8s/%.4s, yrCall=%.8s, rpt1=%.8s, rpt2=%.8s\n",
 				        recv_buf.myicm.streamid[0], recv_buf.myicm.streamid[1],
 				        recv_buf.rf_hdr.flags[0], recv_buf.rf_hdr.flags[1], recv_buf.rf_hdr.flags[2],
 				        recv_buf.rf_hdr.mycall, recv_buf.rf_hdr.sfx, recv_buf.rf_hdr.urcall,
@@ -2407,7 +2382,7 @@ static void readFrom20000()
 					        (recv_buf.myicm.streamid[1] == streamid[1])) {
 						if ((recv_buf.myicm.ctrl <= ctrl_in) && (ctrl_in != 0x80)) {
 							/* do not update written_to_q, ctrl_in */
-							; // logdata("dup\n");
+							; // printf("dup\n");
 						} else {
 							ctrl_in = recv_buf.myicm.ctrl;
 							if (ctrl_in == 0x14)
@@ -2435,7 +2410,7 @@ static void readFrom20000()
 							inactive = 1;
 
 							if ((recv_buf.myicm.ctrl & 0x40) != 0) {
-								logdata("End G2: streamid=%d,%d\n",recv_buf.myicm.streamid[0], recv_buf.myicm.streamid[1]);
+								printf("End G2: streamid=%d,%d\n",recv_buf.myicm.streamid[0], recv_buf.myicm.streamid[1]);
 
 								ptt_off[4] = Send_Modem_Header[4];
 								write(fd_ser, ptt_off, 8);
@@ -2470,7 +2445,7 @@ static void readFrom20000()
 		if (!written_to_q) { /* nothing was written to the adapter */
 			if (busy20000) {
 				if (++inactive == inactiveMax) {
-					logdata("G2 Timeout...\n");
+					printf("G2 Timeout...\n");
 					ptt_off[4] = Send_Modem_Header[4];
 					write(fd_ser, ptt_off, 8);
 					busy20000 = false;
@@ -2504,7 +2479,7 @@ bool check_serial()
 		if (access(dvrptr_device, R_OK | W_OK) != 0)
 			continue;
 
-		logdata("Trying to access device %s\n", dvrptr_device);
+		printf("Trying to access device %s\n", dvrptr_device);
 		fd_ser = open_port(dvrptr_device);
 		if (fd_ser < 0)
 			continue;
@@ -2521,10 +2496,10 @@ bool check_serial()
 		if (flock(fd_ser, LOCK_EX | LOCK_NB) != 0) {
 			close(fd_ser);
 			fd_ser = -1;
-			logdata("Device %s is already locked/used by other dvrptr repeater\n", dvrptr_device);
+			printf("Device %s is already locked/used by other dvrptr repeater\n", dvrptr_device);
 			continue;
 		}
-		logdata("Device %s now locked for exclusive use\n", dvrptr_device);
+		printf("Device %s now locked for exclusive use\n", dvrptr_device);
 
 		loop_count = 0;
 		while (true) {
@@ -2567,9 +2542,9 @@ bool check_serial()
 			        (puffer[3] == 0x92)) {
 				puffer[1] = 0x00;
 				sprintf(temp_dvrptr_serial, "%02X.%02X.%02X.%02X", puffer[4], puffer[5], puffer[6], puffer[7]);
-				logdata("Device %s has serial=[%s]\n", dvrptr_device, temp_dvrptr_serial);
+				printf("Device %s has serial=[%s]\n", dvrptr_device, temp_dvrptr_serial);
 				if (strcmp(temp_dvrptr_serial, DVRPTR_SERIAL) == 0) {
-					logdata("Device %s serial number matches DVRPTR_SERIAL in dvrptr.cfg\n", dvrptr_device);
+					printf("Device %s serial number matches DVRPTR_SERIAL in dvrptr.cfg\n", dvrptr_device);
 					match = true;
 				}
 				break;
@@ -2577,20 +2552,20 @@ bool check_serial()
 
 			loop_count ++;
 			if (loop_count > 50) {
-				logdata("Waited 5 seconds to receive serial number from device %s, ...aborting\n", dvrptr_device);
+				printf("Waited 5 seconds to receive serial number from device %s, ...aborting\n", dvrptr_device);
 				break;
 			}
 		}
 
 		if (match) {
-			logdata("Found a match after %d loops\n", loop_count);
+			printf("Found a match after %d loops\n", loop_count);
 			break;
 		}
 
 		flock(fd_ser, LOCK_UN | LOCK_NB);
 		close(fd_ser);
 		fd_ser = -1;
-		logdata("Closing device %s\n", dvrptr_device);
+		printf("Closing device %s\n", dvrptr_device);
 
 	}
 	return match;
@@ -2616,30 +2591,30 @@ int main(int argc, const char **argv)
 	char *temp_ptr = NULL;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	logdata("dvrptr VERSION %s\n", VERSION);
+	printf("dvrptr VERSION %s\n", VERSION);
 
 	if (argc != 2) {
-		logdata("Usage: ./dvrptr dvrptr.cfg\n");
+		printf("Usage: ./dvrptr dvrptr.cfg\n");
 		return 1;
 	}
 
 	rc = read_config(argv[1]);
 	if (rc != 0) {
-		logdata("Failed to process config file %s\n", argv[1]);
+		printf("Failed to process config file %s\n", argv[1]);
 		return 1;
 	}
 
 	if (!check_serial()) {
-		logdata("Cant find any FREE ACMx device that matches\n");
+		printf("Cant find any FREE ACMx device that matches\n");
 		return 1;
 	}
 
 	if (strlen(DVCALL) != 8) {
-		logdata("Bad DVCALL value, length must be exactly 8 bytes\n");
+		printf("Bad DVCALL value, length must be exactly 8 bytes\n");
 		return 1;
 	}
 	if ((DVRPTR_MOD != 'A') && (DVRPTR_MOD != 'B') && (DVRPTR_MOD != 'C')) {
-		logdata("Bad DVCALL_MOD value, must be one of A or B or C\n");
+		printf("Bad DVCALL_MOD value, must be one of A or B or C\n");
 		return 1;
 	}
 
@@ -2658,7 +2633,7 @@ int main(int argc, const char **argv)
 
 	insock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (insock == -1) {
-		logdata("Failed to create insock, error=%d, message=%s\n",errno,strerror(errno));
+		printf("Failed to create insock, error=%d, message=%s\n",errno,strerror(errno));
 		return 1;
 	}
 
@@ -2668,7 +2643,7 @@ int main(int argc, const char **argv)
 	inaddr.sin_addr.s_addr = inet_addr(DVRPTR_INTERNAL_IP);
 	rc = bind(insock, (struct sockaddr *)&inaddr, sizeof(inaddr));
 	if (rc == -1) {
-		logdata("bind to socket failed, error=%d, message=%s\n", errno,strerror(errno));
+		printf("bind to socket failed, error=%d, message=%s\n", errno,strerror(errno));
 		close(insock);
 		insock = -1;
 		return 1;
@@ -2716,7 +2691,7 @@ int main(int argc, const char **argv)
 
 			rqst_count --;
 			if (rqst_count < 0) {
-				logdata("Modem is not responding... shuttting down\n");
+				printf("Modem is not responding... shuttting down\n");
 				close(fd_ser);
 				break;
 			}
@@ -2796,20 +2771,20 @@ int main(int argc, const char **argv)
 				        (puffer[8] != 0x48) &&
 				        (puffer[8] != 0x60) &&
 				        (puffer[8] != 0x68)) {
-					// logdata("flags look BAD\n");
+					// printf("flags look BAD\n");
 					ok = false;
 				}
 
 				if ((puffer[9] != 0x00) || (puffer[10] != 0x00)) {
-					// logdata("flags look BAD\n");
+					// printf("flags look BAD\n");
 					ok = false;
 				}
 
 				if (ok) {
 					if ((puffer[5] & 0x80) == 0x80) {
-						logdata("From RF: flags=%02x:%02x:%02x, myCall=%s/%s, yrCall=%s, rpt1=%s, rpt2=%s\n",
+						printf("From RF: flags=%02x:%02x:%02x, myCall=%s/%s, yrCall=%s, rpt1=%s, rpt2=%s\n",
 						        puffer[8], puffer[9], puffer[10], myCall, myCall2, myUR, myRPT1, myRPT2);
-						logdata("CRC checksum is BAD, will NOT process this QSO\n");
+						printf("CRC checksum is BAD, will NOT process this QSO\n");
 						ok = false;
 					}
 				}
@@ -2817,13 +2792,13 @@ int main(int argc, const char **argv)
 				if (ok) {
 					time(&last_RF_time);
 
-					logdata("From RF: flags=%02x:%02x:%02x, myCall=%s/%s, yrCall=%s, rpt1=%s, rpt2=%s\n",
+					printf("From RF: flags=%02x:%02x:%02x, myCall=%s/%s, yrCall=%s, rpt1=%s, rpt2=%s\n",
 					        puffer[8], puffer[9], puffer[10], myCall, myCall2, myUR, myRPT1, myRPT2);
 
 					/* do not allow connections to stupid/bad STN programs */
 					temp_ptr = strstr(myUR, INVALID_YRCALL_KEY);
 					if (temp_ptr == myUR) {
-						logdata("YRCALL value [%s] starts with the INVALID_YRCALL_KEY [%s], resetting to CQCQCQ\n", myUR, INVALID_YRCALL_KEY);
+						printf("YRCALL value [%s] starts with the INVALID_YRCALL_KEY [%s], resetting to CQCQCQ\n", myUR, INVALID_YRCALL_KEY);
 						memcpy(myUR, "CQCQCQ  ", 8);
 					}
 
@@ -2871,11 +2846,11 @@ int main(int argc, const char **argv)
 					*/
 					if (memcmp(RPTR, DVCALL, RPTR_SIZE) != 0) {
 						if (memcmp(myCall, RPTR, RPTR_SIZE) != 0) {
-							logdata("mycall=[%.8s], not equal to %s\n", myCall, RPTR);
+							printf("mycall=[%.8s], not equal to %s\n", myCall, RPTR);
 							ok = false;
 						}
 					} else if (memcmp(myCall, "        ", 8) == 0) {
-						logdata("Invalid value for mycall=[%.8s]\n", myCall);
+						printf("Invalid value for mycall=[%.8s]\n", myCall);
 						ok = false;
 					}
 				}
@@ -2887,7 +2862,7 @@ int main(int argc, const char **argv)
 						        (myCall[i] != ' ')) {
 							memset(myCall, ' ', 8);
 							ok = false;
-							logdata("Invalid value for MYCALL\n");
+							printf("Invalid value for MYCALL\n");
 							break;
 						}
 					}
@@ -3113,7 +3088,7 @@ int main(int argc, const char **argv)
 		        (puffer[3] == 0x91)) {
 			rqst_count = RQST_COUNT;
 
-			logdata("DVRPTR Hardware ver: %.20s\n",puffer+6 );
+			printf("DVRPTR Hardware ver: %.20s\n",puffer+6 );
 
 			fw_version = puffer[4] + (puffer[5] << 8);
 			fw_string[0] = ((fw_version >> 12) & 0x0f) + '0';
@@ -3125,7 +3100,7 @@ int main(int argc, const char **argv)
 			if ((fw_version & 0x0f) > 0)
 				fw_string[4] = (fw_version & 0x0f) + 'a' - 1;
 
-			logdata("DVRPTR Firmware ver: %.5s\n",fw_string );
+			printf("DVRPTR Firmware ver: %.5s\n",fw_string );
 			puffer[1] = 0x00;
 		}
 
@@ -3135,15 +3110,15 @@ int main(int argc, const char **argv)
 		        (puffer[3] == 0x90)) {
 			rqst_count = RQST_COUNT;
 
-			logdata("\n------- STATUS READ FROM MODEM ---------\n");
-			logdata("Bit1 : Transmitter enabled          = %d\n", (puffer[4] & 2) >> 1);
-			logdata("Bit2 : PC Watchdog enabled          = %d\n", (puffer[4] & 4) >> 2);
-			logdata("Bit3 : Checksum-Calculation enabled = %d\n", (puffer[4] & 8) >> 3);
-			logdata("Bit4 : I/O 21 Status                = %d\n", (puffer[4] & 16) >> 4);
-			logdata("Bit5 : I/O 23 Status                = %d\n", (puffer[4] & 32) >> 5);
-			logdata("Bit6 : Duplex-Capability            = %d\n", (puffer[4] & 64) >> 6);
-			logdata("Bit7 : (1) physical layer           = %d\n", (puffer[4] & 128) >> 7);
-			logdata("----------------------------------------\n");
+			printf("\n------- STATUS READ FROM MODEM ---------\n");
+			printf("Bit1 : Transmitter enabled          = %d\n", (puffer[4] & 2) >> 1);
+			printf("Bit2 : PC Watchdog enabled          = %d\n", (puffer[4] & 4) >> 2);
+			printf("Bit3 : Checksum-Calculation enabled = %d\n", (puffer[4] & 8) >> 3);
+			printf("Bit4 : I/O 21 Status                = %d\n", (puffer[4] & 16) >> 4);
+			printf("Bit5 : I/O 23 Status                = %d\n", (puffer[4] & 32) >> 5);
+			printf("Bit6 : Duplex-Capability            = %d\n", (puffer[4] & 64) >> 6);
+			printf("Bit7 : (1) physical layer           = %d\n", (puffer[4] & 128) >> 7);
+			printf("----------------------------------------\n");
 			puffer[1] = 0x00;
 		}
 
@@ -3163,7 +3138,7 @@ int main(int argc, const char **argv)
 
 		/* If an RF user TXed and disappeared after that */
 		if ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) {
-			logdata("End RF(Timeout), ber=%.02f\n",
+			printf("End RF(Timeout), ber=%.02f\n",
 			        (num_dv_frames == 0)?0.00:100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
 			ptt_off[4] = Send_Modem_Header[4];
 			write(fd_ser, ptt_off, 8);
@@ -3202,7 +3177,7 @@ int main(int argc, const char **argv)
 				ptt_off[4] = Send_Modem_Header[4];
 				write(fd_ser, ptt_off, 8);
 
-				logdata("End RF, ber=%.02f\n",
+				printf("End RF, ber=%.02f\n",
 				        (num_dv_frames == 0)?0.00:100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
 				last_RF_time = 0;
 
@@ -3215,7 +3190,7 @@ int main(int argc, const char **argv)
 	}
 
 	close(insock);
-	logdata("dvrptr exiting...\n");
+	printf("dvrptr exiting...\n");
 
 	return 0;
 }

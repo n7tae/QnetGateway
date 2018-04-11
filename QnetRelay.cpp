@@ -303,7 +303,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 		if (49 == len) {	// header
 			gpkt.remaining = 0x30;
 			gpkt.vpkt.ctrl = 0x80;
-			memcpy(gpkt.vpkt.hdr.flag, mpkt.header.flag, 41);
+			::memcpy(gpkt.vpkt.hdr.flag, mpkt.header.flag, 41);
 			int ret = SendTo(msock, gpkt.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 58) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
@@ -313,7 +313,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 		} else if (21 == len) {	// ambe
 			gpkt.remaining = 0x16;
 			gpkt.vpkt.ctrl = mpkt.header.seq;
-			memcpy(gpkt.vpkt.vasd.voice, mpkt.voice.ambe, 12);
+			::memcpy(gpkt.vpkt.vasd.voice, mpkt.voice.ambe, 12);
 			int ret = SendTo(msock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 29) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
