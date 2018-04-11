@@ -207,7 +207,6 @@ static struct {
 
 static bool load_gwys(const std::string &filename);
 static void calcPFCS(unsigned char *packet, int len);
-static void traceit(const char *fmt,...);
 static bool read_config(char *);
 static bool srv_open();
 static void srv_close();
@@ -235,7 +234,7 @@ static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr)
 
 	int rc = getaddrinfo(name, NULL, &hints, &res);
 	if (rc != 0) {
-		traceit("getaddrinfo return error code %d for [%s]\n", rc, name);
+		printf("getaddrinfo return error code %d for [%s]\n", rc, name);
 		return false;
 	}
 
@@ -267,10 +266,7 @@ static void send_heartbeat()
 
 		if (inbound_ptr->countdown < 0) {
 			removed = true;
-			traceit("call=%s timeout, removing %s, users=%d\n",
-			        inbound_ptr->call,
-			        pos->first.c_str(),
-			        inbound_list.size() - 1);
+			printf("call=%s timeout, removing %s, users=%d\n", inbound_ptr->call, pos->first.c_str(), (int)inbound_list.size() - 1);
 
 			free(pos->second);
 			pos->second = NULL;
@@ -309,7 +305,7 @@ static void rptr_ack(short i)
 	try {
 		std::async(std::launch::async, RptrAckThread, mod_and_RADIO_ID[i]);
 	} catch (const std::exception &e) {
-		traceit("Failed to start RptrAckThread(). Exception: %s\n", e.what());
+		printf("Failed to start RptrAckThread(). Exception: %s\n", e.what());
 	}
 	return;
 }
@@ -329,11 +325,11 @@ static void RptrAckThread(char *arg)
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("sigaction-TERM failed, error=%d\n", errno);
+		printf("sigaction-TERM failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("sigaction-INT failed, error=%d\n", errno);
+		printf("sigaction-INT failed, error=%d\n", errno);
 		return;
 	}
 
@@ -344,7 +340,7 @@ static void RptrAckThread(char *arg)
 
 	sleep(delay_before);
 
-	traceit("sending ACK+text, mod:[%c], RADIO_ID=[%s]\n", from_mod, RADIO_ID);
+	printf("sending ACK+text, mod:[%c], RADIO_ID=[%s]\n", from_mod, RADIO_ID);
 
 	memcpy(buf,"DSVT", 4);
 	buf[4]  = 0x10;
@@ -449,45 +445,28 @@ static void RptrAckThread(char *arg)
 
 static void print_status_file()
 {
-	struct tm tm1;
-	time_t tnow;
-	short i;
-	inbound *inbound_ptr;
-	inbound_type::iterator pos;
-
 	FILE *statusfp = fopen(status_file.c_str(), "w");
 	if (!statusfp)
-		traceit("Failed to create status file %s\n", status_file.c_str());
+		printf("Failed to create status file %s\n", status_file.c_str());
 	else {
 		setvbuf(statusfp, (char *)NULL, _IOLBF, 0);
-
+		struct tm tm1;
+		time_t tnow;
+		const char *fstr = "%c,%s,%c,%s,%02d%02d%02d,%02d:%02d:%02d\n";
 		time(&tnow);
 		localtime_r(&tnow, &tm1);
 
 		/* print connected donglers */
-		for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
-			inbound_ptr = (inbound *)pos->second;
-			fprintf(statusfp,
-			        "%c,%s,%c,%s,%02d%02d%02d,%02d:%02d:%02d\n",
-			        'p',
-			        inbound_ptr->call,
-			        'p',
-			        pos->first.c_str(),
-			        tm1.tm_mon+1,tm1.tm_mday,tm1.tm_year % 100,
-			        tm1.tm_hour,tm1.tm_min,tm1.tm_sec);
+		for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+			inbound *inbound_ptr = (inbound *)pos->second;
+			fprintf(statusfp, fstr, 'p', inbound_ptr->call, 'p', pos->first.c_str(), tm1.tm_mon+1,tm1.tm_mday,tm1.tm_year % 100, tm1.tm_hour,tm1.tm_min,tm1.tm_sec);
 		}
 
 		/* print linked repeaters-reflectors */
-		for (i = 0; i < 3; i++) {
+		for (int i=0; i<3;i++) {
 			if (to_remote_g2[i].is_connected) {
-				fprintf(statusfp,
-				        "%c,%s,%c,%s,%02d%02d%02d,%02d:%02d:%02d\n",
-				        to_remote_g2[i].from_mod,
-				        to_remote_g2[i].to_call,
-				        to_remote_g2[i].to_mod,
-				        inet_ntoa(to_remote_g2[i].toDst4.sin_addr),
-				        tm1.tm_mon+1,tm1.tm_mday,tm1.tm_year % 100,
-				        tm1.tm_hour,tm1.tm_min,tm1.tm_sec);
+				fprintf(statusfp, fstr, to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, inet_ntoa(to_remote_g2[i].toDst4.sin_addr),
+					tm1.tm_mon+1, tm1.tm_mday ,tm1.tm_year % 100, tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
 			}
 		}
 		fclose(statusfp);
@@ -511,13 +490,13 @@ static bool load_gwys(const std::string &filename)
 	gwy_list_type::iterator gwy_pos;
 	std::pair<gwy_list_type::iterator,bool> gwy_insert_pair;
 
-	traceit("Trying to open file %s\n", filename.c_str());
+	printf("Trying to open file %s\n", filename.c_str());
 	FILE *fp = fopen(filename.c_str(), "r");
 	if (fp == NULL) {
-		traceit("Failed to open file %s\n", filename.c_str());
+		printf("Failed to open file %s\n", filename.c_str());
 		return false;
 	}
-	traceit("Opened file %s OK\n", filename.c_str());
+	printf("Opened file %s OK\n", filename.c_str());
 
 	while (fgets(inbuf, 1020, fp) != NULL) {
 		char *p = strchr(inbuf, '\r');
@@ -530,7 +509,7 @@ static bool load_gwys(const std::string &filename)
 
 		p = strchr(inbuf, '#');
 		if (p) {
-			traceit("Comment line:[%s]\n", inbuf);
+			printf("Comment line:[%s]\n", inbuf);
 			continue;
 		}
 
@@ -539,7 +518,7 @@ static bool load_gwys(const std::string &filename)
 		if (!tok)
 			continue;
 		if ((strlen(tok) > CALL_SIZE) || (strlen(tok) < 3)) {
-			traceit("Invalid call [%s]\n", tok);
+			printf("Invalid call [%s]\n", tok);
 			continue;
 		}
 		memset(call, ' ', CALL_SIZE);
@@ -548,31 +527,31 @@ static bool load_gwys(const std::string &filename)
 		for (j = 0; j < strlen(call); j++)
 			call[j] = toupper(call[j]);
 		if (strcmp(call, owner.c_str()) == 0) {
-			traceit("Call [%s] will not be loaded\n", call);
+			printf("Call [%s] will not be loaded\n", call);
 			continue;
 		}
 
 		/* get the host */
 		tok = strtok(NULL, delim);
 		if (!tok) {
-			traceit("Call [%s] has no host\n", call);
+			printf("Call [%s] has no host\n", call);
 			continue;
 		}
 		strncpy(host,tok,MAXHOSTNAMELEN);
 		host[MAXHOSTNAMELEN] = '\0';
 		if (strcmp(host, "0.0.0.0") == 0) {
-			traceit("call %s has invalid host %s\n", call, host);
+			printf("call %s has invalid host %s\n", call, host);
 			continue;
 		}
 
 		/* get the port */
 		tok = strtok(NULL, delim);
 		if (!tok) {
-			traceit("Call [%s] has no port\n", call);
+			printf("Call [%s] has no port\n", call);
 			continue;
 		}
 		if (strlen(tok) > 5) {
-			traceit("call %s has invalid port [%s]\n", call, tok);
+			printf("call %s has invalid port [%s]\n", call, tok);
 			continue;
 		}
 		strcpy(port, tok);
@@ -585,15 +564,15 @@ static bool load_gwys(const std::string &filename)
 		if (gwy_pos == gwy_list.end()) {
 			gwy_insert_pair = gwy_list.insert(std::pair<std::string,std::string>(call,payload));
 			if (gwy_insert_pair.second)
-				traceit("Added Call=[%s], payload=[%s]\n",call, payload);
+				printf("Added Call=[%s], payload=[%s]\n",call, payload);
 			else
-				traceit("Failed to add: Call=[%s], payload=[%s]\n",call, payload);
+				printf("Failed to add: Call=[%s], payload=[%s]\n",call, payload);
 		} else
-			traceit("Call [%s] is duplicate\n", call);
+			printf("Call [%s] is duplicate\n", call);
 	}
 	fclose(fp);
 
-	traceit("Added %d gateways\n", gwy_list.size());
+	printf("Added %d gateways\n", (int)gwy_list.size());
 	return true;
 }
 
@@ -650,31 +629,6 @@ static void calcPFCS(unsigned char *packet, int len)
 	return;
 }
 
-/* log the event */
-static void traceit(const char *fmt,...)
-{
-	time_t ltime;
-	struct tm mytm;
-	const short BFSZ = 1094;
-	char buf[BFSZ];
-
-	time(&ltime);
-	localtime_r(&ltime,&mytm);
-
-	snprintf(buf,BFSZ - 1,"%02d%02d%02d at %02d:%02d:%02d:",
-	         mytm.tm_mon+1,mytm.tm_mday,mytm.tm_year % 100,
-	         mytm.tm_hour,mytm.tm_min,mytm.tm_sec);
-
-	va_list args;
-	va_start(args,fmt);
-	vsnprintf(buf + strlen(buf), BFSZ - strlen(buf) - 1, fmt, args);
-	va_end(args);
-
-	fprintf(stdout, "%s", buf);
-
-	return;
-}
-
 bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
 {
 	if (cfg.lookupValue(path, value)) {
@@ -682,7 +636,7 @@ bool get_value(const Config &cfg, const char *path, int &value, int min, int max
 			value = default_value;
 	} else
 		value = default_value;
-	traceit("%s = [%u]\n", path, value);
+	printf("%s = [%u]\n", path, value);
 	return true;
 }
 
@@ -693,7 +647,7 @@ bool get_value(const Config &cfg, const char *path, double &value, double min, d
 			value = default_value;
 	} else
 		value = default_value;
-	traceit("%s = [%lg]\n", path, value);
+	printf("%s = [%lg]\n", path, value);
 	return true;
 }
 
@@ -701,7 +655,7 @@ bool get_value(const Config &cfg, const char *path, bool &value, bool default_va
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
-	traceit("%s = [%s]\n", path, value ? "true" : "false");
+	printf("%s = [%s]\n", path, value ? "true" : "false");
 	return true;
 }
 
@@ -710,12 +664,12 @@ bool get_value(const Config &cfg, const char *path, std::string &value, int min,
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
 		if (l<min || l>max) {
-			traceit("%s is invalid\n", path, value.c_str());
+			printf("%s='%s' is has to be between %d and %d characters\n", path, value.c_str(), min, max);
 			return false;
 		}
 	} else
 		value = default_value;
-	traceit("%s = [%s]\n", path, value.c_str());
+	printf("%s = [%s]\n", path, value.c_str());
 	return true;
 }
 
@@ -727,17 +681,17 @@ static bool read_config(char *cfgFile)
 	unsigned short i;
 	Config cfg;
 
-	traceit("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile);
 	// Read the file. If there is an error, report it and exit.
 	try {
 		cfg.readFile(cfgFile);
 	}
 	catch(const FileIOException &fioex) {
-		traceit("Can't read %s\n", cfgFile);
+		printf("Can't read %s\n", cfgFile);
 		return false;
 	}
 	catch(const ParseException &pex) {
-		traceit("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
+		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
 		return false;
 	}
 
@@ -746,7 +700,7 @@ static bool read_config(char *cfgFile)
 	if (cfg.lookupValue(key, login_call) || cfg.lookupValue("ircddb.login", login_call)) {
 		int l = login_call.length();
 		if (l<3 || l>CALL_SIZE-2) {
-			traceit("Call '%s' is invalid length!\n", login_call.c_str());
+			printf("Call '%s' is invalid length!\n", login_call.c_str());
 			return false;
 		} else {
 			for (i=0; i<l; i++) {
@@ -754,10 +708,10 @@ static bool read_config(char *cfgFile)
 					login_call[i] = toupper(login_call[i]);
 			}
 			login_call.resize(CALL_SIZE, ' ');
-			traceit("%s = [\"%s\"]\n", key.c_str(), login_call.c_str());
+			printf("%s = [\"%s\"]\n", key.c_str(), login_call.c_str());
 		}
 	} else {
-		traceit("%s is not defined.\n", key.c_str());
+		printf("%s is not defined.\n", key.c_str());
 		return false;
 	}
 
@@ -779,15 +733,15 @@ static bool read_config(char *cfgFile)
 						if (admin.insert(value).second)
 							only_admin_login = true;
 					} else
-						traceit("could not add '%s' as user.\n", value.c_str());
+						printf("could not add '%s' as user.\n", value.c_str());
 				} else
-					traceit("'%s' is the wrong length!\n", value.c_str());
+					printf("'%s' is the wrong length!\n", value.c_str());
 			}
 		} else {
-			traceit("%s is not an array!\n", key.c_str());
+			printf("%s is not an array!\n", key.c_str());
 			return false;
 		}
-		traceit("%s = [ ", key.c_str());
+		printf("%s = [ ", key.c_str());
 		for (pos=admin.begin(); pos!=admin.end(); pos++) {
 			if (pos != admin.begin())
 				fprintf(stdout, ", ");
@@ -814,15 +768,15 @@ static bool read_config(char *cfgFile)
 						if (link_unlink_user.insert(value).second)
 							only_link_unlink = true;
 					} else
-						traceit("could not add '%s' to link-unlink.\n", value.c_str());
+						printf("could not add '%s' to link-unlink.\n", value.c_str());
 				} else
-					traceit("'%s' is the wrong length!\n", value.c_str());
+					printf("'%s' is the wrong length!\n", value.c_str());
 			}
 		} else {
-			traceit("%s is not an array!\n", key.c_str());
+			printf("%s is not an array!\n", key.c_str());
 			return false;
 		}
-		traceit("%s = [ ", key.c_str());
+		printf("%s = [ ", key.c_str());
 		for (link_unlink_user_pos=link_unlink_user.begin(); link_unlink_user_pos!=link_unlink_user.end(); link_unlink_user_pos++) {
 			if (link_unlink_user_pos != link_unlink_user.begin())
 				fprintf(stdout, ", ");
@@ -840,9 +794,9 @@ static bool read_config(char *cfgFile)
 					owner[i] = toupper(owner[i]);
 			}
 			owner.resize(CALL_SIZE, ' ');
-			traceit("%s = [%s]\n", key.c_str(), owner.c_str());
+			printf("%s = [%s]\n", key.c_str(), owner.c_str());
 		} else {
-			traceit("%s '%s' is wrong size.\n", key.c_str(), owner.c_str());
+			printf("%s '%s' is wrong size.\n", key.c_str(), owner.c_str());
 			return false;
 		}
 	}
@@ -910,7 +864,7 @@ static bool srv_open()
 	/* create our XRF gateway socket */
 	xrf_g2_sock = socket(PF_INET,SOCK_DGRAM,0);
 	if (xrf_g2_sock == -1) {
-		traceit("Failed to create gateway socket for XRF,errno=%d\n",errno);
+		printf("Failed to create gateway socket for XRF,errno=%d\n",errno);
 		return false;
 	}
 	fcntl(xrf_g2_sock,F_SETFL,O_NONBLOCK);
@@ -920,7 +874,7 @@ static bool srv_open()
 	sin.sin_addr.s_addr = inet_addr(my_g2_link_ip.c_str());
 	sin.sin_port = htons(rmt_xrf_port);
 	if (bind(xrf_g2_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		traceit("Failed to bind gateway socket on port %d for XRF, errno=%d\n",
+		printf("Failed to bind gateway socket on port %d for XRF, errno=%d\n",
 		        rmt_xrf_port ,errno);
 		close(xrf_g2_sock);
 		xrf_g2_sock = -1;
@@ -930,7 +884,7 @@ static bool srv_open()
 	/* create the dcs socket */
 	dcs_g2_sock = socket(PF_INET,SOCK_DGRAM,0);
 	if (dcs_g2_sock == -1) {
-		traceit("Failed to create gateway socket for DCS,errno=%d\n",errno);
+		printf("Failed to create gateway socket for DCS,errno=%d\n",errno);
 		close(xrf_g2_sock);
 		xrf_g2_sock = -1;
 		return false;
@@ -940,7 +894,7 @@ static bool srv_open()
 	/* socket for REF */
 	ref_g2_sock = socket(PF_INET,SOCK_DGRAM,0);
 	if (ref_g2_sock == -1) {
-		traceit("Failed to create gateway socket for REF, errno=%d\n",errno);
+		printf("Failed to create gateway socket for REF, errno=%d\n",errno);
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
 		close(xrf_g2_sock);
@@ -953,7 +907,7 @@ static bool srv_open()
 	sin.sin_addr.s_addr = inet_addr(my_g2_link_ip.c_str());
 	sin.sin_port = htons(rmt_ref_port);
 	if (bind(ref_g2_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		traceit("Failed to bind gateway socket on port %d for REF, errno=%d\n",
+		printf("Failed to bind gateway socket on port %d for REF, errno=%d\n",
 		        rmt_ref_port ,errno);
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
@@ -967,7 +921,7 @@ static bool srv_open()
 	/* create our repeater socket */
 	rptr_sock = socket(PF_INET,SOCK_DGRAM,0);
 	if (rptr_sock == -1) {
-		traceit("Failed to create repeater socket,errno=%d\n",errno);
+		printf("Failed to create repeater socket,errno=%d\n",errno);
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
 		close(xrf_g2_sock);
@@ -983,7 +937,7 @@ static bool srv_open()
 	sin.sin_addr.s_addr = inet_addr(my_g2_link_ip.c_str());
 	sin.sin_port = htons(my_g2_link_port);
 	if (bind(rptr_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		traceit("Failed to bind repeater socket on port %d, errno=%d\n",
+		printf("Failed to bind repeater socket on port %d, errno=%d\n",
 		        my_g2_link_port,errno);
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
@@ -1023,22 +977,22 @@ static void srv_close()
 {
 	if (xrf_g2_sock != -1) {
 		close(xrf_g2_sock);
-		traceit("Closed rmt_xrf_port\n");
+		printf("Closed rmt_xrf_port\n");
 	}
 
 	if (dcs_g2_sock != -1) {
 		close(dcs_g2_sock);
-		traceit("Closed rmt_dcs_port\n");
+		printf("Closed rmt_dcs_port\n");
 	}
 
 	if (rptr_sock != -1) {
 		close(rptr_sock);
-		traceit("Closed my_g2_link_port\n");
+		printf("Closed my_g2_link_port\n");
 	}
 
 	if (ref_g2_sock != -1) {
 		close(ref_g2_sock);
-		traceit("Closed rmt_ref_port\n");
+		printf("Closed rmt_ref_port\n");
 	}
 
 	return;
@@ -1079,7 +1033,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 	else if (from_mod == 'C')
 		i = 2;
 	else {
-		traceit("from_mod %c invalid\n", from_mod);
+		printf("from_mod %c invalid\n", from_mod);
 		return;
 	}
 
@@ -1099,14 +1053,14 @@ static void g2link(char from_mod, char *call, char to_mod)
 		to_remote_g2[i].to_mod = ' ';
 
 		if (counter < 3) {
-			traceit("Another mod(%c) is already linked to %s %c\n", to_remote_g2[counter].from_mod, to_remote_g2[counter].to_call, to_remote_g2[counter].to_mod);
+			printf("Another mod(%c) is already linked to %s %c\n", to_remote_g2[counter].from_mod, to_remote_g2[counter].to_call, to_remote_g2[counter].to_mod);
 			return;
 		}
 	}
 
 	gwy_pos = gwy_list.find(call);
 	if (gwy_pos == gwy_list.end()) {
-		traceit("%s not found in gwy list\n", call);
+		printf("%s not found in gwy list\n", call);
 		return;
 	}
 
@@ -1115,7 +1069,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 	/* extract host and port */
 	p = strchr(payload, ' ');
 	if (!p) {
-		traceit("Invalid payload [%s] for call [%s]\n", payload, call);
+		printf("Invalid payload [%s] for call [%s]\n", payload, call);
 		return;
 	}
 	*p = '\0';
@@ -1127,7 +1081,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 	if (host[0] != '\0') {
 		ok = resolve_rmt(host, SOCK_DGRAM, &(to_remote_g2[i].toDst4));
 		if (!ok) {
-			traceit("Call %s is host %s but could not resolve to IP\n", call, host);
+			printf("Call %s is host %s but could not resolve to IP\n", call, host);
 			memset(&to_remote_g2[i], 0, sizeof(to_remote_g2[i]));
 			return;
 		}
@@ -1149,7 +1103,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 			link_request[9] = to_mod;
 			link_request[10] = '\0';
 
-			traceit("sending link request from mod %c to link with: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
+			printf("sending link request from mod %c to link with: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
 
 			for (j=0; j<5; j++)
 				sendto(xrf_g2_sock, link_request, CALL_SIZE + 3, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
@@ -1161,7 +1115,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 			memcpy(link_request + 11, to_remote_g2[i].to_call, 8);
 			strcpy(link_request + 19, G2_html);
 
-			traceit("sending link request from mod %c to link with: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
+			printf("sending link request from mod %c to link with: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
 			sendto(dcs_g2_sock, link_request, 519, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 		} else if (port_i == rmt_ref_port) {
 			for (counter = 0; counter < 3; counter++) {
@@ -1172,7 +1126,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 				}
 			}
 			if (counter > 2) {
-				traceit("sending link command from mod %c to: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
+				printf("sending link command from mod %c to: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, payload);
 
 				queryCommand[0] = 5;
 				queryCommand[1] = 0;
@@ -1184,7 +1138,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 			} else {
 				if (to_remote_g2[counter].is_connected) {
 					to_remote_g2[i].is_connected = true;
-					traceit("Local module %c is also connected to %s %c\n", from_mod, call, to_mod);
+					printf("Local module %c is also connected to %s %c\n", from_mod, call, to_mod);
 
 					print_status_file();
 					tracing[i].last_time = time(NULL);
@@ -1197,7 +1151,7 @@ static void g2link(char from_mod, char *call, char to_mod)
 					sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 					audio_notify(notify_msg);
 				} else
-					traceit("status from %s %c pending\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
+					printf("status from %s %c pending\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 			}
 		}
 	}
@@ -1297,7 +1251,7 @@ static void runit()
 	if (dcs_g2_sock > max_nfds)
 		max_nfds = dcs_g2_sock;
 
-	traceit("xrf=%d, dcs=%d, ref=%d, rptr=%d, MAX+1=%d\n",
+	printf("xrf=%d, dcs=%d, ref=%d, rptr=%d, MAX+1=%d\n",
 	        xrf_g2_sock, dcs_g2_sock, ref_g2_sock, rptr_sock, max_nfds + 1);
 
 	if (strlen(link_at_startup) >= 8) {
@@ -1305,7 +1259,7 @@ static void runit()
 			memset(temp_repeater, ' ', CALL_SIZE);
 			memcpy(temp_repeater, link_at_startup + 1, 6);
 			temp_repeater[CALL_SIZE] = '\0';
-			traceit("sleep for 15 before link at startup\n");
+			printf("sleep for 15 before link at startup\n");
 			sleep(15);
 			g2link(link_at_startup[0], temp_repeater, link_at_startup[7]);
 		}
@@ -1376,7 +1330,7 @@ static void runit()
 
 					if (to_remote_g2[i].countdown < 0) {
 						/* maybe remote system has changed IP */
-						traceit("Unlinked from [%s] mod %c, TIMEOUT...\n",
+						printf("Unlinked from [%s] mod %c, TIMEOUT...\n",
 						        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
 						sprintf(notify_msg, "%c_unlinked.dat_UNLINKED_TIMEOUT", to_remote_g2[i].from_mod);
@@ -1401,7 +1355,7 @@ static void runit()
 					if (((tnow - tracing[i].last_time) > rf_inactivity_timer[i]) && (rf_inactivity_timer[i] > 0)) {
 						tracing[i].last_time = 0;
 
-						traceit("Unlinked from [%s] mod %c, local RF inactivity...\n",
+						printf("Unlinked from [%s] mod %c, local RF inactivity...\n",
 						        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
 						if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
@@ -1497,7 +1451,7 @@ static void runit()
 							tracing[i].last_time = time(NULL);
 
 							to_remote_g2[i].is_connected = true;
-							traceit("Connected from: %.*s\n", recvlen2 - 1, readBuffer2);
+							printf("Connected from: %.*s\n", recvlen2 - 1, readBuffer2);
 							print_status_file();
 
 							strcpy(linked_remote_system, to_remote_g2[i].to_call);
@@ -1527,7 +1481,7 @@ static void runit()
 									tracing[i].last_time = time(NULL);
 
 									to_remote_g2[i].is_connected = true;
-									traceit("Connected from: [%s] %c\n",
+									printf("Connected from: [%s] %c\n",
 									        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 									print_status_file();
 
@@ -1543,7 +1497,7 @@ static void runit()
 								}
 							} else if ((memcmp((char *)readBuffer2 + 10, "NAK", 3) == 0) &&
 							           (to_remote_g2[i].from_mod == readBuffer2[8])) {
-								traceit("Link module %c to [%s] %c is rejected\n",
+								printf("Link module %c to [%s] %c is rejected\n",
 								        to_remote_g2[i].from_mod, to_remote_g2[i].to_call,
 								        to_remote_g2[i].to_mod);
 
@@ -1577,8 +1531,8 @@ static void runit()
 						if (to_remote_g2[i].to_mod == readBuffer2[8]) {
 							/* unlink request from remote repeater that we know */
 							if (readBuffer2[9] == ' ') {
-								traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
-								traceit("Module %c to [%s] %c is unlinked\n",
+								printf("Received: %.*s\n", recvlen2 - 1, readBuffer2);
+								printf("Module %c to [%s] %c is unlinked\n",
 										to_remote_g2[i].from_mod,
 										to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
@@ -1609,7 +1563,7 @@ static void runit()
 									   more than one of our local modules
 									*/
 
-									traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
+									printf("Received: %.*s\n", recvlen2 - 1, readBuffer2);
 
 									strncpy(to_remote_g2[i].to_call, (char *)readBuffer2,CALL_SIZE);
 									to_remote_g2[i].to_call[CALL_SIZE] = '\0';
@@ -1621,7 +1575,7 @@ static void runit()
 									to_remote_g2[i].in_streamid[0] = 0x00;
 									to_remote_g2[i].in_streamid[1] = 0x00;
 
-									traceit("Module %c to [%s] %c linked\n",
+									printf("Module %c to [%s] %c linked\n",
 											readBuffer2[9],
 											to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
@@ -1665,12 +1619,12 @@ static void runit()
 				gwy_pos = gwy_list.find(call);
 				if (gwy_pos == gwy_list.end()) {
 					/* We did NOT find this repeater in gwys.txt, reject the incoming link request */
-					traceit("Incoming link from %s,%s but not found in gwys.txt\n",call,ip);
+					printf("Incoming link from %s,%s but not found in gwys.txt\n",call,ip);
 					i = -1;
 				} else {
 					rc = regexec(&preg, call, 0, NULL, 0);
 					if (rc != 0) {
-						traceit("Invalid repeater %s,%s requesting to link\n", call, ip);
+						printf("Invalid repeater %s,%s requesting to link\n", call, ip);
 						i = -1;
 					}
 				}
@@ -1702,8 +1656,8 @@ static void runit()
 
 							tracing[i].last_time = time(NULL);
 
-							traceit("Received: %.*s\n", recvlen2 - 1, readBuffer2);
-							traceit("Module %c to [%s] %c linked\n",
+							printf("Received: %.*s\n", recvlen2 - 1, readBuffer2);
+							printf("Module %c to [%s] %c linked\n",
 									to_remote_g2[i].from_mod,
 									to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
@@ -1810,7 +1764,7 @@ static void runit()
 						/* Last Heard */
 						if (memcmp(old_sid[i].sid, readBuffer2 + 12, 2) != 0) {
 							if (qso_details)
-								traceit("START from remote g2: streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
+								printf("START from remote g2: streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
 										readBuffer2[12],readBuffer2[13],
 										readBuffer2[15], readBuffer2[16], readBuffer2[17],
 										&readBuffer2[42],
@@ -1992,7 +1946,7 @@ static void runit()
 						for (i = 0; i < 3; i++) {
 							if (memcmp(old_sid[i].sid, readBuffer2 + 12, 2) == 0) {
 								if (qso_details)
-									traceit("END from remote g2: streamID=%d,%d, %d bytes from IP=%s\n",
+									printf("END from remote g2: streamID=%d,%d, %d bytes from IP=%s\n",
 											readBuffer2[12],readBuffer2[13],recvlen2,inet_ntoa(fromDst4.sin_addr));
 
 								memset(old_sid[i].sid, 0x00, 2);
@@ -2126,7 +2080,7 @@ static void runit()
 				pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
-					// traceit("Remote station %s %s requested LH list\n", inbound_ptr->call, ip);
+					// printf("Remote station %s %s requested LH list\n", inbound_ptr->call, ip);
 
 					/* header is 10 bytes */
 
@@ -2212,7 +2166,7 @@ static void runit()
 				pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
-					// traceit("Remote station %s %s requested linked repeaters list\n", inbound_ptr->call, ip);
+					// printf("Remote station %s %s requested linked repeaters list\n", inbound_ptr->call, ip);
 
 					/* header is 8 bytes */
 
@@ -2303,7 +2257,7 @@ static void runit()
 				pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
-					// traceit("Remote station %s %s requested connected user list\n", inbound_ptr->call, ip);
+					// printf("Remote station %s %s requested connected user list\n", inbound_ptr->call, ip);
 
 					/* header is 8 bytes */
 
@@ -2386,7 +2340,7 @@ static void runit()
 				pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
-					// traceit("Remote station %s %s requested date\n", inbound_ptr->call, ip);
+					// printf("Remote station %s %s requested date\n", inbound_ptr->call, ip);
 
 					time(&ltime);
 					localtime_r(&ltime,&tm);
@@ -2416,7 +2370,7 @@ static void runit()
 				pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
-					// traceit("Remote station %s %s requested version\n", inbound_ptr->call, ip);
+					// printf("Remote station %s %s requested version\n", inbound_ptr->call, ip);
 
 					readBuffer2[0] = 9;
 					readBuffer2[1] = 192;
@@ -2439,7 +2393,7 @@ static void runit()
 				for (i = 0; i < 3; i++) {
 					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
 							(to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))) {
-						traceit("Call %s disconnected\n", to_remote_g2[i].to_call);
+						printf("Call %s disconnected\n", to_remote_g2[i].to_call);
 
 						to_remote_g2[i].to_call[0] = '\0';
 						memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -2456,7 +2410,7 @@ static void runit()
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
 					if (memcmp(inbound_ptr->call, "1NFO", 4) != 0)
-						traceit("Call %s disconnected\n", inbound_ptr->call);
+						printf("Call %s disconnected\n", inbound_ptr->call);
 					free(pos->second);
 					pos->second = NULL;
 					inbound_list.erase(pos);
@@ -2474,7 +2428,7 @@ static void runit()
 					        (readBuffer2[2] == 24) &&
 					        (readBuffer2[3] == 0) &&
 					        (readBuffer2[4] == 1)) {
-						traceit("Connected to call %s\n", to_remote_g2[i].to_call);
+						printf("Connected to call %s\n", to_remote_g2[i].to_call);
 						queryCommand[0] = 28;
 						queryCommand[1] = 192;
 						queryCommand[2] = 4;
@@ -2514,7 +2468,7 @@ static void runit()
 							if (!to_remote_g2[i].is_connected) {
 								to_remote_g2[i].is_connected = true;
 								to_remote_g2[i].countdown = TIMEOUT;
-								traceit("Login OK to call %s mod %c\n",
+								printf("Login OK to call %s mod %c\n",
 								        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 								print_status_file();
 
@@ -2534,7 +2488,7 @@ static void runit()
 						           (readBuffer2[5] == 65) &&
 						           (readBuffer2[6] == 73) &&
 						           (readBuffer2[7] == 76)) {
-							traceit("Login failed to call %s mod %c\n",
+							printf("Login failed to call %s mod %c\n",
 							        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
 							sprintf(notify_msg, "%c_failed_linked.dat_FAILED_TO_LINK",
@@ -2553,7 +2507,7 @@ static void runit()
 						           (readBuffer2[5] == 85) &&
 						           (readBuffer2[6] == 83) &&
 						           (readBuffer2[7] == 89)) {
-							traceit("Busy or unknown status from call %s mod %c\n",
+							printf("Busy or unknown status from call %s mod %c\n",
 							        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
 							sprintf(notify_msg, "%c_failed_linked.dat_FAILED_TO_LINK",
@@ -2621,7 +2575,7 @@ static void runit()
 				        (readBuffer2[3] == 0) &&
 				        (readBuffer2[4] == 1)) {
 					if ((inbound_list.size() + 1) > max_dongles)
-						traceit("Inbound DONGLE-p connection from %s but over the max_dongles limit of %d\n", ip, inbound_list.size());
+						printf("Inbound DONGLE-p connection from %s but over the max_dongles limit of %d\n", ip, (int)inbound_list.size());
 					else
 						sendto(ref_g2_sock, readBuffer2, 5, 0, (struct sockaddr *)&fromDst4, sizeof(fromDst4));
 				} else if ((recvlen2 == 28) &&
@@ -2640,16 +2594,15 @@ static void runit()
 					}
 
 					if (memcmp(call, "1NFO", 4) != 0)
-						traceit("Inbound DONGLE-p CALL=%s, ip=%s, DV=%.8s\n",
+						printf("Inbound DONGLE-p CALL=%s, ip=%s, DV=%.8s\n",
 						        call, ip, readBuffer2 + 20);
 
 					if ((inbound_list.size() + 1) > max_dongles)
-						traceit("Inbound DONGLE-p connection from %s but over the max_dongles limit of %d\n",
-						        ip, inbound_list.size());
+						printf("Inbound DONGLE-p connection from %s but over the max_dongles limit of %d\n", ip, (int)inbound_list.size());
 					else if (only_admin_login && (admin.find(call) == admin.end()))
-						traceit("Incoming call [%s] from %s not an ADMIN\n", call, ip);
+						printf("Incoming call [%s] from %s not an ADMIN\n", call, ip);
 					else if (regexec(&preg, call, 0, NULL, 0) != 0) {
-						traceit("Invalid dongle callsign: CALL=%s,ip=%s\n", call, ip);
+						printf("Invalid dongle callsign: CALL=%s,ip=%s\n", call, ip);
 
 						readBuffer2[0] = 8;
 						readBuffer2[4] = 70;
@@ -2678,8 +2631,7 @@ static void runit()
 							insert_pair = inbound_list.insert(std::pair<std::string, inbound *>(ip, inbound_ptr));
 							if (insert_pair.second) {
 								if (memcmp(inbound_ptr->call, "1NFO", 4) != 0)
-									traceit("new CALL=%s, DONGLE-p, ip=%s, users=%d\n",
-									        inbound_ptr->call,ip,inbound_list.size());
+									printf("new CALL=%s, DONGLE-p, ip=%s, users=%d\n", inbound_ptr->call,ip, (int)inbound_list.size());
 
 								readBuffer2[0] = 8;
 								readBuffer2[4] = 79;
@@ -2692,7 +2644,7 @@ static void runit()
 								print_status_file();
 
 							} else {
-								traceit("failed to add CALL=%s,ip=%s\n",inbound_ptr->call,ip);
+								printf("failed to add CALL=%s,ip=%s\n",inbound_ptr->call,ip);
 								free(inbound_ptr);
 								inbound_ptr = NULL;
 
@@ -2705,7 +2657,7 @@ static void runit()
 								sendto(ref_g2_sock, readBuffer2, 8, 0, (struct sockaddr *)&fromDst4, sizeof(fromDst4));
 							}
 						} else {
-							traceit("malloc() failed for call=%s,ip=%s\n",call,ip);
+							printf("malloc() failed for call=%s,ip=%s\n",call,ip);
 
 							readBuffer2[0] = 8;
 							readBuffer2[4] = 70;
@@ -2812,7 +2764,7 @@ static void runit()
 						/* Last Heard */
 						if (memcmp(old_sid[i].sid, readBuffer2 + 14, 2) != 0) {
 							if (qso_details)
-								traceit("START from remote g2: streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
+								printf("START from remote g2: streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
 								        readBuffer2[14],readBuffer2[15],
 								        readBuffer2[17], readBuffer2[18], readBuffer2[19],
 								        &readBuffer2[44],
@@ -2897,7 +2849,7 @@ static void runit()
 						for (i = 0; i < 3; i++) {
 							if (memcmp(old_sid[i].sid, readBuffer2 + 14, 2) == 0) {
 								if (qso_details)
-									traceit("END from remote g2: streamID=%d,%d, %d bytes from IP=%s\n",
+									printf("END from remote g2: streamID=%d,%d, %d bytes from IP=%s\n",
 									        readBuffer2[14],readBuffer2[15],recvlen2,inet_ntoa(fromDst4.sin_addr));
 
 								memset(old_sid[i].sid, 0x00, 2);
@@ -3002,7 +2954,7 @@ static void runit()
 						/* Last Heard */
 						if (memcmp(old_sid[i].sid, dcs_buf + 43, 2) != 0) {
 							if (qso_details)
-								traceit("START from dcs: streamID=%d,%d, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
+								printf("START from dcs: streamID=%d,%d, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
 								        dcs_buf[43],dcs_buf[44],
 								        &dcs_buf[31],
 								        &dcs_buf[39], &dcs_buf[23],
@@ -3126,7 +3078,7 @@ static void runit()
 								memset(old_sid[i].sid, 0x00, 2);
 
 								if (qso_details)
-									traceit("END from dcs: streamID=%d,%d, %d bytes from IP=%s\n",
+									printf("END from dcs: streamID=%d,%d, %d bytes from IP=%s\n",
 									        dcs_buf[43],dcs_buf[44], recvlen2,inet_ntoa(fromDst4.sin_addr));
 
 								to_remote_g2[i].in_streamid[0] = 0x00;
@@ -3163,7 +3115,7 @@ static void runit()
 							tracing[i].last_time = time(NULL);
 
 							to_remote_g2[i].is_connected = true;
-							traceit("Connected from: %.*s\n", 8, dcs_buf);
+							printf("Connected from: %.*s\n", 8, dcs_buf);
 							print_status_file();
 
 							strcpy(linked_remote_system, to_remote_g2[i].to_call);
@@ -3201,7 +3153,7 @@ static void runit()
 								tracing[i].last_time = time(NULL);
 
 								to_remote_g2[i].is_connected = true;
-								traceit("Connected from: %.*s\n", 8, to_remote_g2[i].to_call);
+								printf("Connected from: %.*s\n", 8, to_remote_g2[i].to_call);
 								print_status_file();
 
 								strcpy(linked_remote_system, to_remote_g2[i].to_call);
@@ -3215,7 +3167,7 @@ static void runit()
 								audio_notify(notify_msg);
 							}
 						} else if (memcmp(dcs_buf + 10, "NAK", 3) == 0) {
-							traceit("Link module %c to [%s] %c is unlinked\n",
+							printf("Link module %c to [%s] %c is unlinked\n",
 									to_remote_g2[i].from_mod, to_remote_g2[i].to_call,
 									to_remote_g2[i].to_mod);
 
@@ -3254,7 +3206,7 @@ static void runit()
 
 				if (recvlen == 58) {
 					if (qso_details)
-						traceit("START from local g2: cntr=%02x %02x, streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
+						printf("START from local g2: cntr=%02x %02x, streamID=%d,%d, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
 						        readBuffer[4], readBuffer[5],
 						        readBuffer[14], readBuffer[15],
 						        readBuffer[17], readBuffer[18], readBuffer[19],
@@ -3323,7 +3275,7 @@ static void runit()
 						        (readBuffer[17] == 0x20) ||
 						        (readBuffer[17] == 0x28))) {
 							if (only_link_unlink && (link_unlink_user.find(call) == link_unlink_user.end())) {
-								traceit("link request denied, unauthorized rf user [%s]\n", call);
+								printf("link request denied, unauthorized rf user [%s]\n", call);
 							} else {
 								memset(temp_repeater, ' ', CALL_SIZE);
 								memcpy(temp_repeater, readBuffer + 36, CALL_SIZE - 2);
@@ -3345,7 +3297,7 @@ static void runit()
 							}
 						} else if ((readBuffer[43] == 'U') && (readBuffer[36] == ' ')) {
 							if (only_link_unlink && (link_unlink_user.find(call) == link_unlink_user.end())) {
-								traceit("unlink request denied, unauthorized rf user [%s]\n", call);
+								printf("unlink request denied, unauthorized rf user [%s]\n", call);
 							} else {
 								if (to_remote_g2[i].to_call[0] != '\0') {
 									if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
@@ -3354,7 +3306,7 @@ static void runit()
 											if (j != i) {
 												if ((to_remote_g2[j].toDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
 												        (to_remote_g2[j].toDst4.sin_port == htons(rmt_ref_port))) {
-													traceit("Info: Local %c is also linked to %s (different module) %c\n",
+													printf("Info: Local %c is also linked to %s (different module) %c\n",
 													        to_remote_g2[j].from_mod,
 													        to_remote_g2[j].to_call, to_remote_g2[j].to_mod);
 													break;
@@ -3390,7 +3342,7 @@ static void runit()
 											sendto(dcs_g2_sock, cmd_2_dcs, 19, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 									}
 
-									traceit("Unlinked from [%s] mod %c\n",
+									printf("Unlinked from [%s] mod %c\n",
 									        to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 									sprintf(notify_msg, "%c_unlinked.dat_UNLINKED", to_remote_g2[i].from_mod);
 									audio_notify(notify_msg);
@@ -3432,17 +3384,17 @@ static void runit()
 								snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &",
 								         announce_dir.c_str(),
 								         readBuffer[42], call, readBuffer[35]);
-								traceit("Executing %s\n", system_cmd);
+								printf("Executing %s\n", system_cmd);
 								system(system_cmd);
 							}
 						} else if ((readBuffer[42] == 'D') && (readBuffer[36] == ' ') && (admin.find(call) != admin.end())) { // only ADMIN can block dongle users
 							if (readBuffer[43] == '1') {
 								max_dongles = saved_max_dongles;
-								traceit("Dongle connections are now allowed\n");
+								printf("Dongle connections are now allowed\n");
 							} else if (readBuffer[43] == '0') {
 								inbound_list.clear();
 								max_dongles = 0;
-								traceit("Dongle connections are now disallowed\n");
+								printf("Dongle connections are now disallowed\n");
 							}
 						} else if ((readBuffer[43] == 'F') && (readBuffer[36] == ' ') && (admin.find(call) != admin.end())) { // only ADMIN can reload gwys.txt
 							gwy_list.clear();
@@ -3729,7 +3681,7 @@ static void runit()
 
 							if ((readBuffer[16] & 0x40) != 0) {
 								if (qso_details)
-									traceit("END from local g2: cntr=%02x %02x, streamID=%d,%d, %d bytes\n",
+									printf("END from local g2: cntr=%02x %02x, streamID=%d,%d, %d bytes\n",
 									        readBuffer[4], readBuffer[5],
 									        readBuffer[14],readBuffer[15],recvlen);
 
@@ -3820,7 +3772,7 @@ void audio_notify(char *msg)
 	try {
 		std::async(std::launch::async, AudioNotifyThread, notify_msg[i]);
 	} catch (const std::exception &e) {
-		traceit ("Failed to start AudioNotifyThread(). Exception: %s\n", e.what());
+		printf ("Failed to start AudioNotifyThread(). Exception: %s\n", e.what());
 	}
 	return;
 }
@@ -3854,11 +3806,11 @@ static void AudioNotifyThread(char *arg)
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("sigaction-TERM failed, error=%d\n", errno);
+		printf("sigaction-TERM failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("sigaction-INT failed, error=%d\n", errno);
+		printf("sigaction-INT failed, error=%d\n", errno);
 		return;
 	}
 
@@ -3868,13 +3820,13 @@ static void AudioNotifyThread(char *arg)
 	mod = notify_msg[0];
 
 	if ((mod != 'A') && (mod != 'B') && (mod != 'C')) {
-		traceit("Invalid module %c in %s\n", mod, notify_msg);
+		printf("Invalid module %c in %s\n", mod, notify_msg);
 		return;
 	}
 
 	p = strstr(notify_msg, ".dat");
 	if (!p) {
-		traceit("Incorrect filename in %s\n", notify_msg);
+		printf("Incorrect filename in %s\n", notify_msg);
 		return;
 	}
 
@@ -3895,23 +3847,23 @@ static void AudioNotifyThread(char *arg)
 
 	memset(temp_file, '\0', sizeof(temp_file));
 	snprintf(temp_file, FILENAME_MAX, "%s/%s", announce_dir.c_str(), notify_msg + 2);
-	traceit("sending File:[%s], mod:[%c], RADIO_ID=[%s]\n", temp_file, mod, RADIO_ID);
+	printf("sending File:[%s], mod:[%c], RADIO_ID=[%s]\n", temp_file, mod, RADIO_ID);
 
 	fp = fopen(temp_file, "rb");
 	if (!fp) {
-		traceit("Failed to open file %s for reading\n", temp_file);
+		printf("Failed to open file %s for reading\n", temp_file);
 		return;
 	}
 
 	/* stupid DVTOOL + 4 byte num_of_records */
 	nread = fread(dstar_buf, 10, 1, fp);
 	if (nread != 1) {
-		traceit("Cant read first 10 bytes from %s\n", temp_file);
+		printf("Cant read first 10 bytes from %s\n", temp_file);
 		fclose(fp);
 		return;
 	}
 	if (memcmp(dstar_buf, "DVTOOL", 6) != 0) {
-		traceit("DVTOOL keyword not found in %s\n", temp_file);
+		printf("DVTOOL keyword not found in %s\n", temp_file);
 		fclose(fp);
 		return;
 	}
@@ -3930,19 +3882,19 @@ static void AudioNotifyThread(char *arg)
 		else if (rlen == 27)
 			;
 		else {
-			traceit("Not 56-byte and not 27-byte in %s\n", temp_file);
+			printf("Not 56-byte and not 27-byte in %s\n", temp_file);
 			break;
 		}
 
 		nread = fread(dstar_buf, rlen, 1, fp);
 		if (nread == 1) {
 			if (memcmp(dstar_buf, "DSVT", 4) != 0) {
-				traceit("DVST not found in %s\n", temp_file);
+				printf("DVST not found in %s\n", temp_file);
 				break;
 			}
 
 			if (dstar_buf[8] != 0x20) {
-				traceit("Not Voice type in %s\n", temp_file);
+				printf("Not Voice type in %s\n", temp_file);
 				break;
 			}
 
@@ -3951,7 +3903,7 @@ static void AudioNotifyThread(char *arg)
 			else if (dstar_buf[4] == 0x20)
 				;
 			else {
-				traceit("Not a valid record type in %s\n", temp_file);
+				printf("Not a valid record type in %s\n", temp_file);
 				break;
 			}
 
@@ -4042,13 +3994,13 @@ int main(int argc, char **argv)
 	setvbuf(stdout, (char *)NULL, _IOLBF, 0);
 
 	if (argc != 2) {
-		traceit("Usage: ./g2_link g2_link.cfg\n");
+		printf("Usage: ./g2_link g2_link.cfg\n");
 		return 1;
 	}
 
 	int rc = regcomp(&preg, "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", REG_EXTENDED | REG_NOSUB);
 	if (rc != 0) {
-		traceit("The IRC regular expression is NOT valid\n");
+		printf("The IRC regular expression is NOT valid\n");
 		return 1;
 	}
 
@@ -4056,11 +4008,11 @@ int main(int argc, char **argv)
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		traceit("sigaction-TERM failed, error=%d\n", errno);
+		printf("sigaction-TERM failed, error=%d\n", errno);
 		return 1;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		traceit("sigaction-INT failed, error=%d\n", errno);
+		printf("sigaction-INT failed, error=%d\n", errno);
 		return 1;
 	}
 
@@ -4090,7 +4042,7 @@ int main(int argc, char **argv)
 	do {
 		/* process configuration file */
 		if (!read_config(argv[1])) {
-			traceit("Failed to process config file %s\n", argv[1]);
+			printf("Failed to process config file %s\n", argv[1]);
 			break;
 		}
 		print_status_file();
@@ -4101,13 +4053,13 @@ int main(int argc, char **argv)
 
 		/* create our server */
 		if (!srv_open()) {
-			traceit("srv_open() failed\n");
+			printf("srv_open() failed\n");
 			break;
 		}
 
-		traceit("g2_link %s initialized...entering processing loop\n", VERSION);
+		printf("g2_link %s initialized...entering processing loop\n", VERSION);
 		runit();
-		traceit("Leaving processing loop...\n");
+		printf("Leaving processing loop...\n");
 
 	} while (false);
 
@@ -4161,7 +4113,7 @@ int main(int argc, char **argv)
 
 	print_status_file();
 	srv_close();
-	traceit("g2_link exiting\n");
+	printf("g2_link exiting\n");
 
 	return 0;
 }
