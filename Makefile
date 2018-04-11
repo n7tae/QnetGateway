@@ -110,7 +110,6 @@ installdvap : qngateway qnlink qndvap
 	systemctl start qnlink.service
 	######### QnetDVAP #########
 	/bin/cp -f qndvap $(BINDIR)
-	/bin/cp -f qndvap.sh $(BINDIR)
 	/bin/cp -f service.qndvap /lib/systemd/system/qndvap.service
 	systemctl enable qnlink.service
 	systemctl daemon-reload
@@ -135,7 +134,6 @@ installdvrptr : qngateway qnlink qndvrptr
 	systemctl start qnlink.service
 	######### QnetDVRPTR #########
 	/bin/cp -f qndvrptr $(BINDIR)
-	/bin/cp -f qndvrptr.sh $(BINDIR)
 	/bin/cp -f service.qndvrptr /lib/systemd/system/qndvrptr.service
 	systemctl enable qndvrptr.service
 	systemctl daemon-reload
@@ -156,6 +154,7 @@ uninstalldtmfs:
 	systemctl daemon-reload
 	/bin/rm -f $(BINDIR)/qnlinktest
 	/bin/rm -f $(BINDIR)/proc_qnlinktest
+	systemctl daemon-reload
 
 uninstall :
 	######### QnetGateway #########
@@ -183,6 +182,7 @@ uninstall :
 	systemctl disable qnrelay.service
 	/bin/rm -f /lib/systemd/system/qnrelay.service
 	/bin/rm -f $(BINDIR)/qnrelay
+	systemctl daemon-reload
 
 uninstalldvap :
 	######### QnetGateway #########
@@ -210,7 +210,7 @@ uninstalldvap :
 	systemctl disable qndvap.service
 	/bin/rm -f /lib/systemd/system/qndvap.service
 	/bin/rm -f $(BINDIR)/qndvap
-	/bin/rm -f $(BINDIR)/qndvap.sh
+	systemctl daemon-reload
 
 uninstalldvrptr :
 	######### QnetGateway #########
@@ -238,4 +238,4 @@ uninstalldvrptr :
 	systemctl disable qndvrptr.service
 	/bin/rm -f /lib/systemd/system/qndvrptr.service
 	/bin/rm -f $(BINDIR)/qndvrptr
-	/bin/rm -f $(BINDIR)/qndvrptr.sh
+	systemctl daemon-reload

@@ -161,6 +161,7 @@ void CQnetRelay::Run(const char *cfgfile)
 		memset(&addr, 0, sizeof(sockaddr_in));
 		socklen_t size = sizeof(sockaddr);
 		ssize_t len;
+
 		if (FD_ISSET(msock, &readfds)) {
 			len = ::recvfrom(msock, buf, 100, 0, (sockaddr *)&addr, &size);
 
@@ -172,7 +173,9 @@ void CQnetRelay::Run(const char *cfgfile)
 			if (ntohs(addr.sin_port) != MMDVM_IN_PORT)
 				printf("DEBUG: Run: read from msock but port was %u, expected %u.\n", ntohs(addr.sin_port), MMDVM_IN_PORT);
 
-		} else if (FD_ISSET(gsock, &readfds)) {
+		}
+
+		if (FD_ISSET(gsock, &readfds)) {
 			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
 
 			if (len < 0) {

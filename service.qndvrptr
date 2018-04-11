@@ -4,7 +4,8 @@ After=systemd-user-session.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/qndvrptr.sh
+ExecStart=/usr/local/bin/qndvrptr
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

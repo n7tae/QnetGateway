@@ -4,7 +4,8 @@ After=systemd-user-session.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/qndvap.sh
+ExecStart=/usr/local/bin/qndvap
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

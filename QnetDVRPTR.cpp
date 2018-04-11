@@ -2378,8 +2378,7 @@ static void readFrom20000()
 				seq_no = block * 21 + seq_no;
 
 				if (busy20000) {
-					if ((recv_buf.myicm.streamid[0] == streamid[0]) &&
-					        (recv_buf.myicm.streamid[1] == streamid[1])) {
+					if ((recv_buf.myicm.streamid[0] == streamid[0]) && (recv_buf.myicm.streamid[1] == streamid[1])) {
 						if ((recv_buf.myicm.ctrl <= ctrl_in) && (ctrl_in != 0x80)) {
 							/* do not update written_to_q, ctrl_in */
 							; // printf("dup\n");

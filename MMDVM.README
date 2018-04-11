@@ -45,7 +45,7 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
 
 10) cd into the build directory and switch the branch: git checkout mmdvm
 
-11) then compile: make
+11) Then compile: make
     don't forget the -j option!
 
 12) You need a configuration file for QnetGateway. The simplest config file is:
