@@ -696,7 +696,7 @@ static bool read_config(char *cfgFile)
 	}
 
 	std::string value;
-	std::string key = "g2_link.ref_login";
+	std::string key = "link.ref_login";
 	if (cfg.lookupValue(key, login_call) || cfg.lookupValue("ircddb.login", login_call)) {
 		int l = login_call.length();
 		if (l<3 || l>CALL_SIZE-2) {
@@ -715,7 +715,7 @@ static bool read_config(char *cfgFile)
 		return false;
 	}
 
-	key = "g2_link.admin";
+	key = "link.admin";
 	only_admin_login = false;
 	if (cfg.exists(key)) {
 		Setting &userlist = cfg.lookup(key);
@@ -750,7 +750,7 @@ static bool read_config(char *cfgFile)
 		fprintf(stdout, " ]\n");
 	}
 
-	key = "g2_link.link_unlink";
+	key = "link.link_unlink";
 	only_link_unlink = false;
 	if (cfg.exists(key)) {
 		Setting &unlinklist = cfg.lookup(key);
@@ -801,13 +801,13 @@ static bool read_config(char *cfgFile)
 		}
 	}
 
-	get_value(cfg, "g2_link.ref_port", rmt_ref_port, 10000, 65535, 20001);
-	get_value(cfg, "g2_link.xrf_port", rmt_xrf_port, 10000, 65535, 30001);
-	get_value(cfg, "g2_link.dcs_port", rmt_dcs_port, 10000, 65535, 30051);
+	get_value(cfg, "link.ref_port", rmt_ref_port, 10000, 65535, 20001);
+	get_value(cfg, "link.xrf_port", rmt_xrf_port, 10000, 65535, 30001);
+	get_value(cfg, "link.dcs_port", rmt_dcs_port, 10000, 65535, 30051);
 
-	if (! get_value(cfg, "g2_link.incoming_ip", my_g2_link_ip, 7, IP_SIZE, "0.0.0.0"))
+	if (! get_value(cfg, "link.incoming_ip", my_g2_link_ip, 7, IP_SIZE, "0.0.0.0"))
 		return false;
-	get_value(cfg, "g2_link.port", my_g2_link_port, 10000, 65535, 18997);
+	get_value(cfg, "link.port", my_g2_link_port, 10000, 65535, 18997);
 
 	if (! get_value(cfg, "gateway.internal.ip", to_g2_external_ip, 7, IP_SIZE, "0.0.0.0"))
 		return false;
@@ -823,9 +823,9 @@ static bool read_config(char *cfgFile)
 
 	get_value(cfg, "timing.play.delay", delay_between, 9, 25, 19);
 
-	get_value(cfg, "g2_link.acknowledge", bool_rptr_ack, true);
+	get_value(cfg, "link.acknowledge", bool_rptr_ack, true);
 
-	get_value(cfg, "g2_link.announce", announce, true);
+	get_value(cfg, "link.announce", announce, true);
 
 	if (! get_value(cfg, "file.announce_dir", announce_dir, 2, FILENAME_MAX, "/usr/local/etc"))
 		return false;
@@ -833,14 +833,14 @@ static bool read_config(char *cfgFile)
 	get_value(cfg, "timing.play.wait", delay_before, 1, 10, 2);
 
 	memset(link_at_startup, 0, CALL_SIZE+1);
-	if (get_value(cfg, "g2_link.link_at_start", value, 5, CALL_SIZE, "NONE")) {
+	if (get_value(cfg, "link.link_at_start", value, 5, CALL_SIZE, "NONE")) {
 		if (strcasecmp(value.c_str(), "none"))
 			strcpy(link_at_startup, value.c_str());
 	} else
 		return false;
 
 	int maxdongle;
-	get_value(cfg, "g2_link.max_dongles", maxdongle, 0, 10, 5);
+	get_value(cfg, "link.max_dongles", maxdongle, 0, 10, 5);
 	saved_max_dongles = max_dongles = (unsigned int)maxdongle;
 
 	for (i=0; i<3; i++) {

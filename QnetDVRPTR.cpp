@@ -3177,13 +3177,11 @@ int main(int argc, const char **argv)
 				ptt_off[4] = Send_Modem_Header[4];
 				write(fd_ser, ptt_off, 8);
 
-				printf("End RF, ber=%.02f\n",
-				        (num_dv_frames == 0)?0.00:100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
+				printf("End RF, ber=%.02f\n", (num_dv_frames == 0) ? 0.00 : 100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
 				last_RF_time = 0;
 
 				if (IS_ENABLED && RPTR_ACK)
-					send_ack(ok?myCall:RPTR,
-					         (num_dv_frames == 0)?0.00:100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
+					send_ack(ok ? myCall : RPTR, (num_dv_frames == 0) ? 0.00 : 100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
 				ok = false;
 			}
 		}

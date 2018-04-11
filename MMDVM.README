@@ -60,9 +60,17 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
         }
     }
 
+    link = {
+        admin = [ "AA0AAA" , "BB1BBB" , "CC3CCC" ]
+    }
+
     where x is the lowercase module you specified in the MMDVM.qn file. Use B and b
     or C and c. Don't mix them up! You can add more stuff to the gn.cfg file. Please
     see the qn.everything.cfg example.
+
+    Only callsigns in the admin list can execute scripts. Two scripts are include:
+    YR = _ _ _ _ _ R X   will reboot you system, and
+    YR = _ _ _ _ _ H X   will halt your system (never unplug a running computer!)
 
 13) You need a gwys.txt file for all the reflectors: ./reflist.sh
 

@@ -315,10 +315,10 @@ bool CQnetGateway::read_config(char *cfgFile)
 
 	get_value(cfg, "gateway.internal.port", g2_internal.port, 16000, 65535, 19000);
 
-	if (! get_value(cfg, "g2_link.outgoing_ip", g2_link.ip, 7, IP_SIZE, "127.0.0.1"))
+	if (! get_value(cfg, "link.outgoing_ip", g2_link.ip, 7, IP_SIZE, "127.0.0.1"))
 		return true;
 
-	get_value(cfg, "g2_link.port", g2_link.port, 16000, 65535, 18997);
+	get_value(cfg, "link.port", g2_link.port, 16000, 65535, 18997);
 
 	get_value(cfg, "log.qso", bool_qso_details, false);
 
@@ -1078,7 +1078,7 @@ void CQnetGateway::process()
 							printf("Failed to validate MYCALL [%s], regexec error=%d\n", temp_radio_user, mycall_valid);
 					}
 
-					/* send data g2_link */
+					/* send data qnlink */
 					if (mycall_valid == REG_NOERROR)
 						sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
@@ -1917,7 +1917,7 @@ void CQnetGateway::process()
 						}
 					}
 
-					/* send data to g2_link */
+					/* send data to qnlink */
 					sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
 					/* aprs processing */
@@ -2582,7 +2582,7 @@ int CQnetGateway::init(char *cfgfile)
 		to_remote_g2[i].last_time = 0;
 	}
 
-	/* where to send packets to g2_link */
+	/* where to send packets to qnlink */
 	memset(&plug, 0, sizeof(struct sockaddr_in));
 	plug.sin_family = AF_INET;
 	plug.sin_port = htons(g2_link.port);
