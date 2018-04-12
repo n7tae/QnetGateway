@@ -4,7 +4,7 @@ After=systemd-user-session.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/qndvap
+ExecStart=/usr/local/bin/qndvap /usr/local/etc/qn.cfg
 Restart=always
 
 [Install]

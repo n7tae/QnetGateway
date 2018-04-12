@@ -4,7 +4,7 @@ After=systemd-user-session.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/qndvrptr
+ExecStart=/usr/local/bin/qndvrptr /usr/local/etc/qn.cfg
 Restart=always
 
 [Install]
