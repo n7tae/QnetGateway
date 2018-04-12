@@ -111,9 +111,9 @@ installdvap : qngateway qnlink qndvap
 	######### QnetDVAP #########
 	/bin/cp -f qndvap $(BINDIR)
 	/bin/cp -f service.qndvap /lib/systemd/system/qndvap.service
-	systemctl enable qnlink.service
+	systemctl enable qndvap.service
 	systemctl daemon-reload
-	systemctl start qnlink.service
+	systemctl start qndvap.service
 
 installdvrptr : qngateway qnlink qndvrptr
 	######### QnetGateway #########
@@ -124,7 +124,7 @@ installdvrptr : qngateway qnlink qndvrptr
 	systemctl daemon-reload
 	systemctl start qngateway.service
 	######### QnetLink #########
-	/bin/cp -f qnlib $(BINDIR)
+	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
