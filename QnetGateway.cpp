@@ -982,6 +982,8 @@ void CQnetGateway::process()
 			         (rptrbuf.remaining == 0x13) ||    /* 19 bytes follow */
 			         (rptrbuf.remaining == 0x16)) ) {  /* 22 bytes follow */
 
+				printf("Got viable packet of len=%d on port %u\n", recvlen, ntohs(fromRptr.sin_port));
+
 				int dtmf_buf_count[3] = {0, 0, 0};
 				char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
 				int dtmf_last_frame[3] = { 0, 0, 0 };
