@@ -136,10 +136,6 @@ void CQnetRelay::Run(const char *cfgfile)
 	keep_running = true;
 
 	while (keep_running) {
-		struct timeval tv;
-		tv.tv_sec = 0;
-		tv.tv_usec = 1000;	// wait 1ms for some input
-
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(msock, &readfds);
@@ -147,7 +143,8 @@ void CQnetRelay::Run(const char *cfgfile)
 		int maxfs = (msock > gsock) ? msock : gsock;
 
 		// don't care about writefds and exceptfds:
-		int ret = ::select(maxfs+1, &readfds, NULL, NULL, &tv);
+		// and we'll wait as long as needed
+		int ret = ::select(maxfs+1, &readfds, NULL, NULL, NULL);
 		if (ret < 0) {
 			printf("ERROR: Run: select returned err=%d, %s\n", errno, strerror(errno));
 			break;
@@ -186,10 +183,8 @@ void CQnetRelay::Run(const char *cfgfile)
 			if (ntohs(addr.sin_port) != G2_IN_PORT)
 				printf("DEBUG: Run: read from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_IN_PORT);
 
-		} else {
-			printf("ERROR: Run: Input from unknown fd!\n");
-			break;
 		}
+
 		if (len == 0) {
 			printf("DEBUG: Run: read zero bytes from %u\n", ntohs(addr.sin_port));
 			continue;
