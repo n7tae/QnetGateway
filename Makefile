@@ -100,7 +100,7 @@ installdvap : qngateway qnlink qndvap
 	systemctl daemon-reload
 	systemctl start qngateway.service
 	######### QnetLink #########
-	/bin/cp -f qnlib $(BINDIR)
+	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
