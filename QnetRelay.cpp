@@ -287,7 +287,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			stream_id = mpkt.header.id;
 			if (old_id == stream_id)
 				return false;
-			old_id = streamid;
+			old_id = stream_id;
 		}
 
 		SPKT gpkt;	// destination
