@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# from the PiStar servers...
 wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
 wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
 wget http://www.pistar.uk/downloads/DCS_Hosts.txt
