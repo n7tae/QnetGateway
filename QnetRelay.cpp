@@ -468,8 +468,6 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 
 	GetValue(cfg, "timing.play.wait", DELAY_BEFORE, 1, 10, 2);
 
-	GetValue(cfg, std::string(mmdvm_path+".acknowledge").c_str(), RPTR_ACK, false);
-
 	GetValue(cfg, std::string(mmdvm_path+".packet_wait").c_str(), WAIT_FOR_PACKETS, 6, 100, 25);
 
 	return false;

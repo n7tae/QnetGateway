@@ -63,7 +63,6 @@ private:
 	std::string MMDVM_IP, G2_INTERNAL_IP;
 	unsigned short MMDVM_IN_PORT, MMDVM_OUT_PORT, G2_IN_PORT, G2_OUT_PORT;
 	int WAIT_FOR_PACKETS, DELAY_BEFORE, DELAY_BETWEEN;
-	bool RPTR_ACK;
 
 	// parameters
 	int msock, gsock;
