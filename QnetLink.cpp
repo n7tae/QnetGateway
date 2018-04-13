@@ -318,7 +318,8 @@ static void RptrAckThread(char *arg)
 	unsigned char buf[56];
 	unsigned int aseed;
 	time_t tnow = 0;
-	unsigned char silence[12] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
+	//unsigned char silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x55, 0x2D, 0x16 };
+	unsigned char silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x16, 0x29, 0xf5 };
 	struct sigaction act;
 
 	act.sa_handler = sigCatch;
@@ -431,10 +432,12 @@ static void RptrAckThread(char *arg)
 				break;
 			case 9:
 				buf[14] |= 0x40;
-				memset((char *)buf + 15, 0, 9);
-				buf[24] = 0x70;
-				buf[25] = 0x4f;
-				buf[26] = 0x93;
+				//buf[24] = 0x70;
+				//buf[25] = 0x4f;
+				//buf[26] = 0x93;
+				buf[24] = 0x16;
+				buf[25] = 0x29;
+				buf[26] = 0xf5;
 				break;
 		}
 		sendto(rptr_sock, buf, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
