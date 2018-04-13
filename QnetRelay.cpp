@@ -275,6 +275,7 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 
 bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 {
+	static short old_id = 0U;
 	static short stream_id = 0U;
 	SMMDVMPKT mpkt;
 	if (len < 65)
@@ -282,8 +283,12 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 
 	if (49==len || 21==len) {
 		// grab the stream id if this is a header
-		if (49 == len)
+		if (49 == len) {
 			stream_id = mpkt.header.id;
+			if (old_id == stream_id)
+				return false;
+			old_id = streamid;
+		}
 
 		SPKT gpkt;	// destination
 		// sets most of the params
