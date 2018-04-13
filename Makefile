@@ -16,8 +16,11 @@
 # locations for the executibles and other files are set here
 # NOTE: IF YOU CHANGE THESE, YOU WILL NEED TO UPDATE THE service.* FILES AND
 # if you change these locations, make sure the sgs.service file is updated!
+
 BINDIR=/usr/local/bin
 CFGDIR=/usr/local/etc
+MMPATH=../MMDVMHost
+SYSDIR=/lib/systemd/system
 
 # use this if you want debugging help in the case of a crash
 #CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -DCFG_DIR=\"$(CFGDIR)\"
@@ -71,7 +74,7 @@ install : qngateway qnlink qnrelay
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
-	/bin/cp -f service.qngateway /lib/systemd/system/qngateway.service
+	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
 	systemctl start qngateway.service
@@ -80,13 +83,13 @@ install : qngateway qnlink qnrelay
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f service.qnlink /lib/systemd/system/qnlink.service
+	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
 	systemctl daemon-reload
 	systemctl start qnlink.service
 	######### QnetRelay #########
 	/bin/cp -f qnrelay $(BINDIR)
-	/bin/cp -f service.qnrelay /lib/systemd/system/qnrelay.service
+	/bin/cp -f system/qnrelay.service $(SYSDIR)
 	systemctl enable qnrelay.service
 	systemctl daemon-reload
 	systemctl start qnrelay.service
@@ -95,7 +98,7 @@ installdvap : qngateway qnlink qndvap
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
-	/bin/cp -f service.qngateway /lib/systemd/system/qngateway.service
+	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
 	systemctl start qngateway.service
@@ -104,13 +107,13 @@ installdvap : qngateway qnlink qndvap
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f service.qnlink /lib/systemd/system/qnlink.service
+	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
 	systemctl daemon-reload
 	systemctl start qnlink.service
 	######### QnetDVAP #########
 	/bin/cp -f qndvap $(BINDIR)
-	/bin/cp -f service.qndvap /lib/systemd/system/qndvap.service
+	/bin/cp -f system/qndvap.service $(SYSDIR)
 	systemctl enable qndvap.service
 	systemctl daemon-reload
 	systemctl start qndvap.service
@@ -119,7 +122,7 @@ installdvrptr : qngateway qnlink qndvrptr
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
-	/bin/cp -f service.qngateway /lib/systemd/system/qngateway.service
+	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
 	systemctl start qngateway.service
@@ -128,13 +131,13 @@ installdvrptr : qngateway qnlink qndvrptr
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/cp -f gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f service.qnlink /lib/systemd/system/qnlink.service
+	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
 	systemctl daemon-reload
 	systemctl start qnlink.service
 	######### QnetDVRPTR #########
 	/bin/cp -f qndvrptr $(BINDIR)
-	/bin/cp -f service.qndvrptr /lib/systemd/system/qndvrptr.service
+	/bin/cp -f system/qndvrptr.service $(SYSDIR)
 	systemctl enable qndvrptr.service
 	systemctl daemon-reload
 	systemctl start qndvrptr.service
@@ -142,31 +145,38 @@ installdvrptr : qngateway qnlink qndvrptr
 installdtmfs : qnlinktest
 	/bin/cp -f qnlinktest $(BINDIR)
 	/bin/cp -f proc_qnlinktest $(BINDIR)
-	/bin/cp -f service.qnlinktest /lib/systemd/system/qnlinktest.service
+	/bin/cp -f system/qnlinktest.service $(SYSDIR)
 	systemctl enable qnlinktest.service
 	systemctl daemon-reload
 	systemctl start qnlinktest.service
 
-uninstalldtmfs:
-	systemctl stop qnlinktest.service
-	systemctl disable qnlinktest.service
-	/bin/rm -f /lib/systemd/system/qnlinktest.service
+installmmdvm :
+	/bin/cp -f $(MMPATH)/MMDVMHost $(BINDIR)
+	/bin/cp -f $(MMPATH)/MMDVM.qn $(CFGDIR)
+	/bin/cp -f system/mmdvm.service $(SYSDIR)
+	systemctl enable mmdvm.service
 	systemctl daemon-reload
-	/bin/rm -f $(BINDIR)/qnlinktest
-	/bin/rm -f $(BINDIR)/proc_qnlinktest
-	systemctl daemon-reload
+	systemctl start mmdvm.service
+
+uninstallmmdvm :
+	systemctl stop mmdvm.service
+	systemctl disable mmdvm.service
+	/bin/rm -f $(SYSDIR)/mmdvm.service
+	/bin/rm -f $(BINDIR)/MMDVMHost
+	/bin/rm -f $(CFGDIR)/MMDVM.qn
+	sudo systemctl daemon-reload
 
 uninstall :
 	######### QnetGateway #########
 	systemctl stop qngateway.service
 	systemctl disable qngateway.service
-	/bin/rm -f /lib/systemd/system/qngateway.service
+	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service
 	systemctl disable qnlink.service
-	/bin/rm -f /lib/systemd/system/qnlink.service
+	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
 	/bin/rm -f $(CFGDIR)/already_linked.dat
 	/bin/rm -f $(CFGDIR)/already_unlinked.dat
@@ -180,7 +190,7 @@ uninstall :
 	######### QnetRelay #########
 	systemctl stop qnrelay.service
 	systemctl disable qnrelay.service
-	/bin/rm -f /lib/systemd/system/qnrelay.service
+	/bin/rm -f $(SYSDIR)/qnrelay.service
 	/bin/rm -f $(BINDIR)/qnrelay
 	systemctl daemon-reload
 
@@ -188,13 +198,13 @@ uninstalldvap :
 	######### QnetGateway #########
 	systemctl stop qngateway.service
 	systemctl disable qngateway.service
-	/bin/rm -f /lib/systemd/system/qngateway.service
+	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service
 	systemctl disable qnlink.service
-	/bin/rm -f /lib/systemd/system/qnlink.service
+	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
 	/bin/rm -f $(CFGDIR)/already_linked.dat
 	/bin/rm -f $(CFGDIR)/already_unlinked.dat
@@ -208,7 +218,7 @@ uninstalldvap :
 	######### QnetDVAP #########
 	systemctl stop qndvap.service
 	systemctl disable qndvap.service
-	/bin/rm -f /lib/systemd/system/qndvap.service
+	/bin/rm -f $(SYSDIR)/qndvap.service
 	/bin/rm -f $(BINDIR)/qndvap
 	systemctl daemon-reload
 
@@ -216,13 +226,13 @@ uninstalldvrptr :
 	######### QnetGateway #########
 	systemctl stop qngateway.service
 	systemctl disable qngateway.service
-	/bin/rm -f /lib/systemd/system/qngateway.service
+	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service
 	systemctl disable qnlink.service
-	/bin/rm -f /lib/systemd/system/qnlink.service
+	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
 	/bin/rm -f $(CFGDIR)/already_linked.dat
 	/bin/rm -f $(CFGDIR)/already_unlinked.dat
@@ -236,6 +246,15 @@ uninstalldvrptr :
 	######### QnetDVRPTR #########
 	systemctl stop qndvrptr.service
 	systemctl disable qndvrptr.service
-	/bin/rm -f /lib/systemd/system/qndvrptr.service
+	/bin/rm -f $(SYSDIR)/qndvrptr.service
 	/bin/rm -f $(BINDIR)/qndvrptr
+	systemctl daemon-reload
+
+uninstalldtmfs:
+	systemctl stop qnlinktest.service
+	systemctl disable qnlinktest.service
+	/bin/rm -f $(SYSDIR)/qnlinktest.service
+	systemctl daemon-reload
+	/bin/rm -f $(BINDIR)/qnlinktest
+	/bin/rm -f $(BINDIR)/proc_qnlinktest
 	systemctl daemon-reload
