@@ -39,8 +39,6 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
     We'll come back to MMDVMHost later, but for now let's work on the QnetGateway.
 
 9)  cd back to the home directory and clone the QnetGateway:
-    git clone git://github.com/n7tae/g2_ircddb.git
-    If this doesn't work, I've already moved the repository. Try:
     git clone git://github.com/n7tae/QnetGateway.git
 
 10) cd into the build directory and switch the branch: git checkout mmdvm
@@ -78,23 +76,7 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
 
     Now it's time to go back to the MMDVMHost...
 
-15) You need to setup MMDVMHost as a systemd service. You have at least two options.
-    a) use the info in MMDVMHost/linux/systemd and add a timer service.
-
-    This script base approach is overkill in my opinion. You don't need it, but it
-    should work fine.
-
-    b) Build your own mmdvm.service file based on the service.* files in the
-       QNetGateway build directory. You just need to copy the executable
-       and initialization files:
-       sudo cp MMDVMHost /usr/local/bin
-       sudo cp MMDVM.qn /usr/local/etc
-       Then create a mmdvm.service file based on my service.* files and
-       copy it: cp mmdvm.service /lib/systemd/system
-       And start the service:
-       sudo systemctl enable mmdvm.service
-       sudo systemctl daemon reload
-       sudo systemctl start mmdvm.service
+15) Start the MMDVM service: sudo make installmmdvm
 
 16) You should be up and running! You can see the log of any of the 4 services that
     make up the QnetGateway + MMDVMHost system:
