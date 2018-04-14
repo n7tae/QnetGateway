@@ -1,27 +1,20 @@
 Creating a DVAP or a Version 1 DVRPTR hotspot based on a Raspberry Pi or a BeagleBone
 Black that can connect to both DStar reflectors as well as XREF reflectors based on
-Scott Lawson KI4LKF software is easy.
+QnetGateway software is easy.
 
 Start with a Raspberry Pi with the latest Raspbian image (see http://raspberrypi.org)
-or a BeagleBone Black with the latest Debian image (see
-http://beagleboard.org/latest-images). For this latest version of QnetGateway requires
-the c++ compiler of at least version 4.9. This means you will need Debian 8 (Jessie).
+or most any other computer with the latest Debian-based image. For this latest version
+of QnetGateway requires the c++ compiler of at least version 4.9.
 
-For the BBB, the jessie Debian version is small enough to fit onto the on-board 2gb
-memory.The basic process is to first burn the image to a micro SD card then put
-it into the BBB and power it up while holding down switch S2 until the BBB lights
-start blinking. The process is done when the BBB LEDs quit blinking. Remove the
-SD card and boot up off the on-board jessie! See info on the BBB website listed
-above.
+Even if you are building an MMDVMHost-based hot-spot, the executables and their
+source code are very small, so you can get away with a system with minimum storage
+capacity. We have build gui-less versions on two gigabyte partitions!
 
 On the RPi, do "sudo raspi-config" and expand the partition, change the password
 for the 'pi' user and do any other configuration setup. You don't need to overclock
-the RPi for QnetGateway, the default clock rate is just fine. On the BBB, if you're
-using the armhf.com image, follow the instructions on the armhf.com website to
-expand the linux partion. Also don't forget to change the password for the 'debian'
-user.
+the RPi for QnetGateway, the default clock rate is just fine.
 
-After your Linux is set up, login and plug in your DVAP or DVRPTR_V1 device to see
+If you are using a DVAP Dongle or a DVRPTR_V1, login and plug in your device to see
 if the OS is recognizing it. The kernel should auto load drivers and you will see
 that with the "lsusb" command. The DVAP uses a FTDI chip and the DVRPTR uses Atmel.
 If you don't see an approprite output from "lsusb" after your device is plugged in,
@@ -34,24 +27,16 @@ where YOURDEVICEMODULE is "ftdi_sio" for the DVAP or is "cdc_acm" for the DVRPTR
 After a reboot you should see the device in the "lsusb" list. If you don't see
 the device listed, QnetGateway software will never be able to open it either.
 
-You will need several packages to build the QnetGateway gateway. You may already
-have all or most of these but it still doesn't hurt to be sure:
+You will need several packages to build the QnetGateway gateway. You will probably
+already have all or most of these but it still doesn't hurt to be sure:
 
 sudo apt-get update
 sudo apt-get upgrade
 sudo apt-get install make g++ unzip git libconfig++-dev
 
-and maybe a few more. Here is one of my favorites:
-
-sudo apt-get install avahi-daemon
-
-Then you can "ssh <user>@<hostname>.local" instead of "ssh <user>$<ip address>.
-NOTE: Windows user can download and use 'putty' to connect to the RPi or
-BBB.
-
-After you configure you RPi or BBB, update, upgrade and install all the required
-packages, the gateway installation can begin. Go to your login home directory and
-(without root privileges type:
+If you are building a QnetGateway + MMDVMHost system, please use the instructions
+in the MMDVM.README file. If you are building a QnetGateway for a DVAP or a
+DVRPTR_V1 read on...
 
 git clone git://github.com/n7tae/QnetGateway.git
 
@@ -72,7 +57,7 @@ at:
 
 Remeber the everything file contain detailed comments about all of the values you
 can set. Just read through it and edit accordingly. In the end you will need
-a configuration file called "g2.cfg".
+a configuration file called "qn.cfg".
 
 Additional information about the configuration as well as other important and
 useful features are also in the CONFIGURING file.
@@ -97,55 +82,47 @@ will download a HUGE list of reflectors and gateways from www.va3uv.com with por
 address that may need port-forwarding to your sytem. I have provided anotherscript,
 'get_reflectors.sh' that will download the same list from va3uv.com, but filter it
 so that it only contains DCS x-reflectors (DCSXXX), DStar reflectors (REFXXX) and
-X-reflectors (XRFXXX) and it will put all x-reflectors on port 20001 so you won't
-need any port-forwarding on your home router.
+X-reflectors (XRFXXX) and it will put all x-reflectors on port 20001 so you
+probably won't need any port-forwarding on your home router.
 
 There is another script, reflist.sh, that will download REF, XRF and DCS reflectors
-from the W6KD file server. This has the advantage over VA3UV in that the reflector
-IP address are in dotted-name format, rather than dotted-number format. These
-dotted-name IP address will be resolved to dotted-number by QnetLink when it starts
-up. The hope is that dotted-name IP addresses will change less frequently than
-dotted-number addresses, so this method should last longer than the other two
-methods.
+from another source. This is probably the preferred method to getting a gwys.txt
+file.
 
 Based on the above discussion, execute either "./reflist.sh", "./get_reflectors.sh" or
-"./get_gwy_list.sh". If you want to be able to update your hotspot dynamically,
-you can modify either one of these scripts by adding a "reboot" or "service
-QnetLink restart" command at the end and moving it to /usr/local/etc/exec_?X.sh
-where "?" is a number or letter. You can then execute this script with ?X in YRCALL.
-See the discussion of executables in the CONFIGURING text file.
+"./get_gwy_list.sh".
 
-If you plan on using DTMFS, you can also edit proc_QnetGateway_dtmfs.sh to add new
+If you plan on using DTMFS, you can also edit proc_qnlinktest to add new
 dtmfs commands.
 
-Then install your system. you have two choices, either QnetDVAP or dvrptr by
+Then install your system. you have two choices, either DVAP or DVRPTR_V1 by
 typing "sudo make installdvap" or "sudo make installdvrptr", respectively.
+This should get you up and running. It will take a few minutes for QnetGateway
+to get fully connected to the IRCDDB network.
+
 Finally, if you want/need DTMFS, type "sudo make installdtmfs".
 
-This will install the service scripts and symbolic links in /etc/init.d and
-everything else in /usr/local. The executables will be in /usr/local/bin and the
-g2.cfg file and other data will be in /usr/local/etc. If you find that you need to
-modify the configuration file, edit the one in /usr/local/etc as root. If you edit
-the file in the build directory, you will either have to copy these modified
-configuration files you you will have to reinstall the application.
+The service scripts in /lib/systemd/system and everything else in /usr/local:
+The executables will be in /usr/local/bin and the qn.cfg file and other data
+will be in /usr/local/etc.
 
-At this point, you can either reboot to start the three or four services, or start
-them manually with the "service" command. For example to start ircddb, type "sudo
-service QnetGateway start". (See the man page for service.)
+If you find that you need to modify the configuration file, remember that the
+installed systems read the /usr/local/etc/qn.cfg file, NOT THE ONE IN YOUR
+BUILD DIRECTORY. To keep them synced, it is good admin practice to modify the
+qn.cfg file in your build directory and then do a "sudo make uninstall<dvap or
+dvrptr>" followed by an "sudo make install<dvap or dvrptr>.
 
-If you are having trouble connecting, look in the *.log files in /var/log. These
-log files are recreated every time you restart a service. The beginning of each
-log file will report the values of all the configuration parameters (even the ones
-you didn't specify in g2.cfg) and after that
+If you are having trouble connecting, use journalctl to view the log output
+of each process. "sudo journalctl -u <service name> will show the log from that
+service. The QnetGateway service is qngateway, QnetLink is qnlink, QnetDVAP is
+qndvap and QnetDVRPTR is qndvrptr.
+
+The beginning of each log file will report the values of all the configuration
+parameters (even the ones you didn't specify in qm.cfg) and after that
 you will see the verbose reports of what each service is doing. These logs are
-invaluable for traking down problems with your g2.cfg file. In a putty or ssh
-shell, you can see in real time what is being added to the logs during operation
-by typing "tail -f /var/log/<service>.log", where <service> is one of the
-service programs, 'QnetGateway', 'QnetLink', 'QnetDVAP', etc.
-
-These services talk to each other through ports and the default values
-are set up for a 2 meter gateway (module C). If you are using a 70cm setup, just
-change the module from "c" to "b".
+invaluable for traking down problems with your qn.cfg file. You can see in real
+time what is being added to the logs during operation appending "-f" to the
+journalctl command.
 
 You can clean up the build directory of intermediate *.o files with "make clean"
 or, you can remove the intermediate *.o files and binary executables with "make
@@ -155,7 +132,7 @@ build directory and not the copies you installed into /usr/local/bin with the
 
 If you want to uninstall everything return to the build directory and type either
 "sudo make unistalldvap" or "sudo make uninstalldvrptr" and possibly "sudo make
-uninstalldtmfs".  This will shutdown and remove the service scripts and links and
-remove most everything from /usr/local.
+uninstalldtmfs".  This will shutdown the services and remove the service scripts
+and everything from /usr/local.
 
-Tom Early, n7tae@arrl.net
+Tom Early, n7tae (at) arrl (dot) net

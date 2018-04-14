@@ -1,5 +1,24 @@
+/*
+ *   Copyright (C) 2010, 2011, 2012 by Scott Lawson KI4LKF
+ *   addition Copyright (C) 2015 by Thomas A. Early N7TAE
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
 I have substantially modified (and hopefully simplified) the configuration
-of this software, now, modules g2_ircddb, g2_link, dvap_rptr and dvrptr
+of this software, now, modules QnetGateway, QnetLink, QnetDVAP and QnetDVRPTR
 all use a single configuration file. Further, and this is the exciting
 part, NEARLY ALL of the parameters these modules need have a useful
 default value. If the default value is acceptible to you (and it
@@ -7,7 +26,7 @@ probably will be) then you only need to specify what you need to change.
 
 
 This means that for most users, you will only need to specify a few
-parameters. For example, if you want to set up a 70cm dvap, your a working
+parameters. For example, if you want to set up a 70cm dvap, your working
 configuration file might be:
 
 -------------------------------------------------------------------
@@ -20,14 +39,15 @@ ircddb = {
 
 module = {
 	 b = {
-		type = "dvap" 
+		type = "dvap"
 		frequency = 445.474
 		serial_number = "AP123456"
 	}
 }
 
-g2_link {
+link = {
 	link_at_start = "CREF020A"
+	admin = [ "XX0XXX"]
 }
 
 -------------------------------------------------------------------
@@ -39,48 +59,31 @@ different modules running on different computers and these hidden
 configuration parameters to allow that are there, waiting to be defined.
 However, most hams won't have to bother with them!
 
-Some other features are discussed below.
+Some other features are discussed below and are pretty much directly
+quoted from KI4LKF original documentation.
 
 Tom Early, n7tae (at) arrl (dot) net
 
-/*
- *   Copyright (C) 2010, 2011, 2012 by Scott Lawson KI4LKF
- *   addition Copyright (C) 2015 by Thomas A. Early N7TAE
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful, 
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License 
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- */
 
-G2_ircDDB adapted from the OpenG2 
+G2_ircDDB adapted from the OpenG2
 
    DESCRIPTION
 =================
 
-g2_ircddb is a Dstar G2 gateway for the Dstar network with ircDDB routing
+QnetGateway is a Dstar G2 gateway for the Dstar network with ircDDB routing
 and USroot routing. It runs on Linux(as a Linux service).
 ircddb originated from the OpenG2 with only one change.
-   Instead of using the local Postgres database server, 
+   Instead of using the local Postgres database server,
        we use the remote IRC database server.(group2 or group1)
    So, the difference between OpenG2 and ircddb is 0.01%
-This new software g2_ircddb has been approved for use on the ircDDB network.
+This new software QnetGateway has been approved for use on the ircDDB network.
 
 IRC Gateways such as g2_ircdb (other IRC gateways copied from our OpenG2)
 connect to group2 server(USA/Canada) or group1 server(Europe).
 What are these group1, group2 servers? Group1 and group2 servers are really
 the combination of 2 programs running together:
 
-These are:  
+These are:
 ---- An IRC (Internet Relay Chat) program, in this case it is the inspIRCd
      program
 ---- the LDAP (Light Directory Access Protocol) program
@@ -97,15 +100,15 @@ home-network.
 
 Using a PERSONAL callsign to set up an ircDBB gateway
 =====================================================
-In g2_ircddb.cfg, set OWNER equal to your personal callsign.
-In g2_link.cfg, set OWNER equal to your personal callsign.
+In qn.cfg, set OWNER equal to your personal callsign.
+In QnetLink.cfg, set OWNER equal to your personal callsign.
 In your repeater config file, set OWNER equal to your personal callsign.
 
 Using a REPEATER callsign to set up an ircDBB gateway
 =====================================================
-In g2_ircddb.cfg, set OWNER equal to a REPEATER callsign (that you received
+In QnetGateway.cfg, set OWNER equal to a REPEATER callsign (that you received
 from the ham authority of your Country).
-In g2_link.cfg, set OWNER equal to a REPEATER callsign (that you received
+In QnetLink.cfg, set OWNER equal to a REPEATER callsign (that you received
 from the ham authority of your Country) In your repeater config file, set
 OWNER equal to a REPEATER callsign (that you received from the ham authority
 of your Country).
@@ -137,7 +140,7 @@ installations.
 
 That is all there is to it.
 
-When LDAP runs, it checks the Gateway password as listed in g2_ircddb.cfg:
+When LDAP runs, it checks the Gateway password as listed in QnetGateway.cfg:
 IRC_PASS=... When LDAP does NOT run, then the IRC_PASS is NOT checked.
 
 So, some groups of hams, have installed the inspIRCd server, without installing
@@ -146,14 +149,14 @@ you can use your personal callsign.
 
 g2_ircDDB supports the following commands in YRCALL
 
-Note: In the commands that folow, _ is a SPACE. 
+Note: In the commands that folow, _ is a SPACE.
 
 1)
-For Echotest/playback. 
+For Echotest/playback.
 YRCALL=_ _ _ _ _ _ _E
 
 2)
-For Voice Mail: 
+For Voice Mail:
 YRCALL=_ _ _ _ _ _ S0
 The above command will Store/create voice mail in the dvtool file
 x_voicemail.dat.
@@ -170,7 +173,7 @@ For inquiring the status of the link:
 YRCALL=_ _ _ _ _ _ _I
 
 4)
-For unlinking: 
+For unlinking:
 YRCALL=_ _ _ _ _ _ _U
 
 5)
@@ -195,23 +198,23 @@ Then the script exec_1.sh will be executed.
 Two scripts, exec_R.sh and exec_H.sh are included to reboot and halt your
 system, respectively. Also note that rpt1 is passed to these scripts\
 so you can use this as an input parameter for your scripts.
-Only admins can execute scripts, so set g2_link.admin to your callsign
+Only admins can execute scripts, so set QnetLink.admin to your callsign
 
 7)
-Enabling and disabling INCOMING HotSpotNode connections: 
+Enabling and disabling INCOMING HotSpotNode connections:
 To Enable:
 YRCALL=_ _ _ _ _ _ D1
 To Disable:
 YRCALL=_ _ _ _ _ _ D0
 
-Required software to run the g2_ircddb gateway correctly:
---- g2_ircddb: The G2 audio gateway.
---- g2_link: This communicates with g2_ircddb to link the local G2 gateway
-             to reflectors. Note: g2_link is NOT required if you only make
+Required software to run the QnetGateway gateway correctly:
+--- QnetGateway: The G2 audio gateway.
+--- QnetLink: This communicates with QnetGateway to link the local G2 gateway
+             to reflectors. Note: QnetLink is NOT required if you only make
              routing calls or talk locally on the repeater.
 --- rptr: This is our dstar repeater software that uses a GMSK adapter/modem.
-          Instead of rptr, you can use our dvap_rptr dstar repeater software
-          which uses a DVAP device. Intead of rptr, you can use our dvrptr
+          Instead of rptr, you can use our QnetDVAP dstar repeater software
+          which uses a DVAP device. Intead of rptr, you can use our QnetDVRPTR
           dstar repeater software which uses the DV-RPTR modem(dg1ht).
 
 ROUTING methods
@@ -221,7 +224,7 @@ KJ4NHF is one of our own Dstar repeaters, and KI4LKF is a personal callsign
 in our group.
 
 Example of ZONE routing:
- Lets say that your repeater is KJ4NHF, and you are currently on 
+ Lets say that your repeater is KJ4NHF, and you are currently on
  your local repeater module B, your callsign is KI4LKF
  and you want to reach remote gateway XXNYYY module C
  In this case, your radio should be programmed like this:
@@ -231,7 +234,7 @@ Example of ZONE routing:
  RPT2=KJ4NHF G
 
 Example of CALLSIGN routing:
- Lets say that your repeater is KJ4NHF, and you are currently on 
+ Lets say that your repeater is KJ4NHF, and you are currently on
  your local repeater module B, your callsign is KI4LKF
  and you want to talk to user XX0XXX
  In this case, your radio should be programmed like this:
@@ -241,7 +244,7 @@ Example of CALLSIGN routing:
  RPT2=KJ4NHF G
 
 Example of Cross-Band routing:
- Lets say that your repeater is KJ4NHF, and you are currently on 
+ Lets say that your repeater is KJ4NHF, and you are currently on
  your local repeater module B, your callsign is KI4LKF
  and you want to talk from your local module B to your local module C
  In this case, your radio should be programmed like this:
@@ -254,24 +257,24 @@ DTMF decoding and processing
 =============================
 Prepare the software to decode and process DTMF tones
 -----------------------------------------------------
-Edit the Shell script proc_g2_ircddb_dtmfs.sh
+Edit the Shell script proc_qnlinktest.sh
 Correct the value for G2 to be the local G2 gateway
-callsign(same value in  g2_ircddb.cfg  ---->  OWNER)
+callsign(same value in  qn.cfg  ---->  OWNER)
 Edit G2_INT_IP  as follows:
-      If your g2_ircddb.cfg, says "G2_INTERNAL_IP=0.0.0.0" then set
+      If your QnetGateway.cfg, says "G2_INTERNAL_IP=0.0.0.0" then set
       G2_INT_IP=127.0.0.1.
-      If your g2_ircddb, says G2_INTERNAL_IP=<real local IP address>
+      If your QnetGateway, says G2_INTERNAL_IP=<real local IP address>
       then set G2_INT_IP equal to the exact value of G2_INTERNAL_IP.
-Edit G2_INT_PORT  to be equal to G2_INTERNAL_PORT in g2_ircddb.cfg.
+Edit G2_INT_PORT  to be equal to G2_INTERNAL_PORT in QnetGateway.cfg.
 
 Note:   When local RF user has entered dtmf tones on the Dstar HT
-        and then PTT is released, g2_ircddb will print the whole
-        sequence in the g2_ircddb.log just before it creates the
+        and then PTT is released, QnetGateway will print the whole
+        sequence in the QnetGateway.log just before it creates the
         dtmf file under  /tmp.
 
 How to enter DTMF tones correctly on your Dstar HT
 --------------------------------------------------
-If you want to have perfect DTMF decoding/processing in g2_ircddb,
+If you want to have perfect DTMF decoding/processing in QnetGateway,
 follow these suggestions:
 
  1) Hold down each dtmf key for at least 150 milliseconds.
@@ -311,15 +314,15 @@ Note:
 You can extend the shell ascript to do more things.  like force
 your repeater to ID itself. Any YRCALL command that can be executed
 by g2link_test, can be added to the shell script. Basically, the
-Linux shell script proc_g2_ircddb_dtmfs.sh converts the decoded
+Linux shell script proc_QnetGateway_dtmfs.sh converts the decoded
 dtmf tones into YRCALL commands using g2link_test program.
 
 ===========
-g2_link is a small program that is used to link a local RF repeater
-band to a remote reflector. g2_link software is used by our g2_ircddb
+QnetLink is a small program that is used to link a local RF repeater
+band to a remote reflector. QnetLink software is used by our QnetGateway
 (an IRCddb gateway) and by our g2_ccs (a CCS gateway).
 
-Before we begin, there are some dat files included in the g2_link
+Before we begin, there are some dat files included in the QnetLink
 ZIP package. These dat files are:
 
 already_linked.dat
@@ -353,7 +356,7 @@ Start talking, and the gateway will record your audio into the file
 x_voicemail.dat where x is one of A.B or C. Now copy that file into
 id.dat.
 
-Open the file g2_link.cfg:
+Open the file QnetLink.cfg:
     You can add as many lines to gwys.txt, if you know of any other
     reflectors that you want to be able to connect to. REF reflectors
     use port 20001(for USER connections), DCS reflectors use port
@@ -361,54 +364,48 @@ Open the file g2_link.cfg:
     or 20001(for USER connections).
 
     You can have as many ADMIN lines as you want. ADMIN is user
-    callsign that can connect to your own gateway(g2_link) using
+    callsign that can connect to your own gateway(QnetLink) using
     DVTool, ...
-    
+
     Only ADMIN users can use the scripts feature of this software.
 
 Note:
-The zip file g2_lh conatain a small program that you can run to create
-the Dashboard for your gateway.
-
-Note:
-You may be thinking why did we put all this source code inside g2_link
-instead of putting it all inside the Gateway software g2_ircddb (or
+You may be thinking why did we put all this source code inside QnetLink
+instead of putting it all inside the Gateway software QnetGateway (or
 g2_ccs CCS gateway software). Because it is NOT a good design to burden
 the G2 gateway with code that is not DSTAR protocol and reflectors are
 NOT part of Dstar and they are not Dstar protocol.
 
 The only code that should be in a gateway, is G2 protocol code. This way
-we keep the gateways (g2_ircddb, g2_ccs) clean of any unneccesary source
+we keep the gateway (QnetGateway) clean of any unneccesary source
 code logic and containing only pure G2/dstar logic.
 
-dvap_rptr
+QnetDVAP
 
 The serial number required in the .cfg file is obtained from the label
 that can be seen on the DVAP circuit board. In most cases set the power
 to maximum level.
 
-dvrptr
+QnetDVRPTR
 
-
-
-The serial number required in the .cfg file can most easily be obtained
-by examining the /var/log/dvrptr.log file once the board has been
+The serial number required in the qn.cfg file can most easily be obtained
+by examining the /var/log/QnetDVRPTR.log file once the board has been
 powered up by the BBB or RasPi. Once you know the board serial number,
 edit /usr/local/etc/g2.cfg. Please note that once installed, you
 need to edit the configuration files in /usr/local/etc, not where you
 build the software. You need to be root to edit files in /usr/local/etc.
 After editing /usr/local/etc/g2.cfg file you can restart the effected
-program with "sudo service dvrptr restart". Or you can alway just
+program with "sudo service QnetDVRPTR restart". Or you can alway just
 reboot with "sudo reboot".
 
-Rig specific parameters are in "dvrptr.rf_rx_level", "dvrptr.inverse.rx" and
-"dvrptr.inverse.tx". You need to play with these to work best with your rig.
+Rig specific parameters are in "QnetDVRPTR.rf_rx_level", "QnetDVRPTR.inverse.rx" and
+"QnetDVRPTR.inverse.tx". You need to play with these to work best with your rig.
 With my Kenwood TM-V71, I use the default values.
 
 You can first start with inverse.rx, trying true or false. Use the echo command
 on your radio and look in the logs to see if you are getting into the
-dvprtr. Remember to restart the dvrptr service anytime you modify
-/usr/local/etc/g2.cfg. Once you are able to get into the dvrptr,
+dvprtr. Remember to restart the QnetDVRPTR service anytime you modify
+/usr/local/etc/g2.cfg. Once you are able to get into the QnetDVRPTR,
 then you can work out the inverse.tx paramter. Once you hear anything
 with in the echo mode, move rf_rx_level up or down to get the best
 audio.
