@@ -15,7 +15,8 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
 
 3)  cd into the MMDVMHost directory and compile: make
     If you're on a multicore system use: make -jx
-    where x is the number of cores on you system (RPi x=4, Odroid XU4 x=8)
+    where x is the number of processors on you system.
+    To tell how many processors you have: cat /cpu/info | grep processor | wc -l
 
 4)  Copy the ini file: cp MMDVM.ini MMDVM.qn
 
@@ -26,7 +27,7 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
     D-Star (at least for now). Very important: Set the [D-Star] Module. For UHF
     use B and for VHF use C.
 
-6)  Start it: ./MMDVMHost MMDVM.qn
+6)  Let's test it! Start it: ./MMDVMHost MMDVM.qn
 
 7)  Key your radio and see if the MMDVMHost responds with an acknowledgement. Then
     you'll know that everything on the MMDVM side is fine.
@@ -46,8 +47,10 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
 11) Then compile: make
     don't forget the -j option!
 
-12) You need a configuration file for QnetGateway. The simplest config file is:
+12) You need a configuration file called qn.cfg for QnetGateway. The simplest config
+    file is:
 
+	#
     ircddb = {
 	    logon = "YOUR CALLSIGN"
     }
@@ -62,24 +65,30 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
         admin = [ "AA0AAA" , "BB1BBB" , "CC3CCC" ]
     }
 
-    where x is the lowercase module you specified in the MMDVM.qn file. Use B and b
-    or C and c. Don't mix them up! You can add more stuff to the gn.cfg file. Please
-    see the qn.everything.cfg example.
+    where x is the lowercase module you specified in the MMDVM.qn file. Use a for A,
+    b and B or c and C. Don't mix them up! You can add more stuff to the gn.cfg file.
+    Please see the qn.everything.cfg example. By convention, you should use "a" for a
+    23cm repeater, "b" for 70cm and "c" for 2M.
 
-    Only callsigns in the admin list can execute scripts. Two scripts are include:
+    What's with the link.admin paramter? Only callsigns in the admin list can execute
+    scripts. Two scripts are include:
     YR = _ _ _ _ _ R X   will reboot you system, and
     YR = _ _ _ _ _ H X   will halt your system (never unplug a running computer!)
+    See the CONFIGURING file for info on how to add your own scripts.
 
 13) You need a gwys.txt file for all the reflectors: ./reflist.sh
+    This will download a format your reflect list. If you find you can no longer
+    connect to a reflector, it may be because its IP address has changed.
 
 14) Install and start the three QnetGateway services: sudo make install
 
     Now it's time to go back to the MMDVMHost...
 
 15) Start the MMDVM service: sudo make installmmdvm
+    You should be up and running now! Congratulations! <Fireworks!>
 
-16) You should be up and running! You can see the log of any of the 4 services that
-    make up the QnetGateway + MMDVMHost system:
+16) You can see the log of any of the 4 services that make up the QnetGateway +
+    MMDVMHost system:
     sudo journalctl -u qngateway -f
     sudo journalctl -u qnlink -f
     sudo journalctl -u qnrelay -f
