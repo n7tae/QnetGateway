@@ -5,6 +5,11 @@
 
 I'll assume you'll be doing this on a Raspberry Pi, but any modern Debian-based
 system should work. It just needs a g++ compiler with version greater than 4.9.
+These instructions assume you have configured your system with the locale, keyboard
+and time zone. When choosing locale, always choose a "UTF-8" version of your
+locale. And make sure you do "sudo apt-get update && sudo apt-get upgrade" before
+your start. On a Raspberry Pi, you can do all of this with the configureation menu:
+"sudo raspi-config".
 
 1)  Install the only external library you need: sudo apt-get install libconfig++-dev
     Yeah! No wxWidgets!
@@ -47,44 +52,25 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
 11) Then compile: make
     don't forget the -j option!
 
-12) You need a configuration file called qn.cfg for QnetGateway. The simplest config
-    file is:
-
-	#
-    ircddb = {
-	    logon = "YOUR CALLSIGN"
-    }
-
-    module = {
-        x = {
-            type = "mmdvm"
-        }
-    }
-
-    link = {
-        admin = [ "AA0AAA" , "BB1BBB" , "CC3CCC" ]
-    }
-
-    where x is the lowercase module you specified in the MMDVM.qn file. Use a for A,
-    b and B or c and C. Don't mix them up! You can add more stuff to the gn.cfg file.
-    Please see the qn.everything.cfg example. By convention, you should use "a" for a
-    23cm repeater, "b" for 70cm and "c" for 2M.
-
-    What's with the link.admin paramter? Only callsigns in the admin list can execute
-    scripts. Two scripts are include:
-    YR = _ _ _ _ _ R X   will reboot you system, and
-    YR = _ _ _ _ _ H X   will halt your system (never unplug a running computer!)
-    See the CONFIGURING file for info on how to add your own scripts.
+12) You need a configuration file called qn.cfg for QnetGateway. A good, nearly
+    working config file is qn.mmdvm.cfg. Copy it to qn.cfg and edit it.
 
 13) You need a gwys.txt file for all the reflectors: ./reflist.sh
-    This will download a format your reflect list. If you find you can no longer
-    connect to a reflector, it may be because its IP address has changed.
+    This will download and format your reflect list. If you find you can no longer
+    connect to a reflector, it may be because its IP address has changed. You can
+    execute the reflist.sh script again, copy it to /usr/local/etc, and then
+    either reboot you system, or put "_ _ _ _ _ _ _ L" in your URField and key
+    your radio.
 
 14) Install and start the three QnetGateway services: sudo make install
 
     Now it's time to go back to the MMDVMHost...
 
 15) Start the MMDVM service: sudo make installmmdvm
+    This command will fail if it can't find both MMDVMHost and MMDVM.qn
+    in the ../MMDVMHost directory. The systemd launch script for MMDVMHost
+    has a 30 second delay built in.
+
     You should be up and running now! Congratulations! <Fireworks!>
 
 16) You can see the log of any of the 4 services that make up the QnetGateway +
