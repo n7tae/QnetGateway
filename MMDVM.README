@@ -19,11 +19,11 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
 2)  Clone the MMDVMHost repository: git clone git://github.com/g4klx/MMDVMHost.git
 
 3)  cd into the MMDVMHost directory and compile: make
-    If you're on a multicore system use: make -jx
+    If you're system has multiple processors, use: make -jx
     where x is the number of processors on you system.
     To tell how many processors you have: cat /cpu/info | grep processor | wc -l
 
-4)  Copy the ini file: cp MMDVM.ini MMDVM.qn
+4)  Copy the ini file template: cp MMDVM.ini MMDVM.qn
 
 5)  Edit the MMDVM.qn file. Set your Callsign and Id. Turn off duplex. Enable an
     external display, if you have one. Set the Frequency(s). Set the Latitude and
@@ -55,19 +55,20 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
 12) You need a configuration file called qn.cfg for QnetGateway. A good, nearly
     working config file is qn.mmdvm.cfg. Copy it to qn.cfg and edit it.
 
-13) You need a gwys.txt file for all the reflectors: ./reflist.sh
-    This will download and format your reflect list. If you find you can no longer
-    connect to a reflector, it may be because its IP address has changed. You can
-    execute the reflist.sh script again, copy it to /usr/local/etc, and then
-    either reboot you system, or put "_ _ _ _ _ _ _ L" in your URField and key
-    your radio.
+13) You need a gwys.txt file for all the systems to which you may wish to link.
+    If you want to be able to link to repeaters: ./get_gwy_list.sh
+    If you are only interested in linking to reflectors: ./reflist.sh
+    This will download and format your gwys.txt file. If you find you can no
+    longer connect to a system, it may be because its IP address has changed. You
+    can execute either script again, copy it to /usr/local/etc, and then either
+    reboot you system, or put "       L" in your URField and key
+    your radio, or: sudo systemctl restart qnlink
 
-14) Install and start the three QnetGateway services: sudo make install
+14) We have a gwys.txt file and a qn.cfg in the build directory, so we are ready
+	to install and start the three QnetGateway services: sudo make install
 
-    Now it's time to start the MMDVMHost service. You'll do this from the
-    QnetGateway directory you are aleady in...
-
-15) Start the MMDVM service: sudo make installmmdvm
+15) Now it's time to start the MMDVMHost service. You'll do this from the
+    QnetGateway directory you are aleady in: sudo make installmmdvm
     This command will fail if it can't find both MMDVMHost and MMDVM.qn
     in the ../MMDVMHost directory.
 
@@ -86,4 +87,4 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
     Being able to detach from a screen session is very useful, especially if you are
     operating "headless"!
 
-17) Start other MMDVMHost services...
+17) Build and start other MMDVMHost services...
