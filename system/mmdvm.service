@@ -4,7 +4,6 @@ After=systemd-user-session.service
 
 [Service]
 Type=simple
-ExecStartPre=/bin/sleep 30
 ExecStart=/usr/local/bin/MMDVMHost /usr/local/etc/MMDVM.qn
 Restart=always
 

@@ -154,14 +154,16 @@ installmmdvm :
 	/bin/cp -f $(MMPATH)/MMDVMHost $(BINDIR)
 	/bin/cp -f $(MMPATH)/MMDVM.qn $(CFGDIR)
 	/bin/cp -f system/mmdvm.service $(SYSDIR)
-	systemctl enable mmdvm.service
+	/bin/cp -f system/mmdvm.timer $(SYSDIR)
+	systemctl enable mmdvm.timer
 	systemctl daemon-reload
 	systemctl start mmdvm.service
 
 uninstallmmdvm :
 	systemctl stop mmdvm.service
-	systemctl disable mmdvm.service
+	systemctl disable mmdvm.timer
 	/bin/rm -f $(SYSDIR)/mmdvm.service
+	/bin/rm -f $(SYSDIR)/mmdvm.timer
 	/bin/rm -f $(BINDIR)/MMDVMHost
 	/bin/rm -f $(CFGDIR)/MMDVM.qn
 	sudo systemctl daemon-reload
