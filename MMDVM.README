@@ -64,12 +64,12 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
 
 14) Install and start the three QnetGateway services: sudo make install
 
-    Now it's time to go back to the MMDVMHost...
+    Now it's time to start the MMDVMHost service. You'll do this from the
+    QnetGateway directory you are aleady in...
 
 15) Start the MMDVM service: sudo make installmmdvm
     This command will fail if it can't find both MMDVMHost and MMDVM.qn
-    in the ../MMDVMHost directory. The systemd launch script for MMDVMHost
-    has a 30 second delay built in.
+    in the ../MMDVMHost directory.
 
     You should be up and running now! Congratulations! <Fireworks!>
 
