@@ -21,18 +21,19 @@ BINDIR=/usr/local/bin
 CFGDIR=/usr/local/etc
 MMPATH=../MMDVMHost
 SYSDIR=/lib/systemd/system
+IRC=ircddb
 
 # use this if you want debugging help in the case of a crash
-#CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -DCFG_DIR=\"$(CFGDIR)\"
+#CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb
 
 # or, you can choose this for a much smaller executable without debugging help
-CPPFLAGS=-W -Wall -std=c++11
+CPPFLAGS=-W -Wall -std=c++11 -Iircddb
 
 LDFLAGS=-L/usr/lib -lconfig++ -lrt
 
-DSTROBJS = dstar_dv.o golay23.o
-IRCOBJS = IRCDDB.o IRCClient.o IRCReceiver.o IRCMessageQueue.o IRCProtocol.o IRCMessage.o IRCDDBApp.o IRCutils.o $(DSTROBJS)
-SRCS = $(wildcard *.cpp)
+DSTROBJS = $(IRC)/dstar_dv.o $(IRC)/golay23.o
+IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMessageQueue.o $(IRC)/IRCProtocol.o $(IRC)/IRCMessage.o $(IRC)/IRCDDBApp.o $(IRC)/IRCutils.o $(DSTROBJS)
+SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 PROGRAMS=qngateway qnlink qnrelay qndvap qndvrptr qnlinktest qnlinktestaudio
