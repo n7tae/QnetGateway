@@ -34,7 +34,7 @@ typedef struct pkt_tag {
 			unsigned char dst_rptr_id;	// 11
 			unsigned char snd_rptr_id;	// 12
 			unsigned char snd_term_id;	// 13
-			uint16_t streamid;			// 14
+			unsigned short streamid;	// 14
 			unsigned char ctrl;			// 16	sequence number hdr=0, voice%21, end|=0x40
 			union {
 				struct {
