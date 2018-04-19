@@ -373,7 +373,7 @@ static void readFrom20000()
 	short seq_no = 0;
 	uint16_t streamid;
 	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
-	SPKT net_buf;
+	SDSTR net_buf;
 	unsigned short stream_id_to_dvap = 0;
 	unsigned char frame_pos_to_dvap = 0;
 	unsigned char seq_to_dvap = 0;
@@ -400,21 +400,21 @@ static void readFrom20000()
 				}
 
 				/* check the module and gateway */
-				if (net_buf.vpkt.hdr.rpt1[7] != RPTR_MOD) {
+				if (net_buf.vpkt.hdr.r2[7] != RPTR_MOD) {
 					FD_CLR(insock, &readfd);
 					break;
 				}
-				memcpy(net_buf.vpkt.hdr.rpt2, OWNER, 7);
-				net_buf.vpkt.hdr.rpt2[7] = 'G';
+				memcpy(net_buf.vpkt.hdr.r1, OWNER, 7);
+				net_buf.vpkt.hdr.r1[7] = 'G';
 
 				if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
 					// restriction mode
-					memcpy(net_buf.vpkt.hdr.rpt2, RPTR, 7);
-					memcpy(net_buf.vpkt.hdr.rpt1, RPTR, 7);
+					memcpy(net_buf.vpkt.hdr.r1, RPTR, 7);
+					memcpy(net_buf.vpkt.hdr.r2, RPTR, 7);
 
-					if (memcmp(net_buf.vpkt.hdr.mycall, OWNER, 7) == 0) {
+					if (memcmp(net_buf.vpkt.hdr.my, OWNER, 7) == 0) {
 						/* this is an ACK back */
-						memcpy(net_buf.vpkt.hdr.mycall, RPTR, 7);
+						memcpy(net_buf.vpkt.hdr.my, RPTR, 7);
 					}
 				}
 
@@ -444,8 +444,8 @@ static void readFrom20000()
 				printf("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
 				        net_buf.vpkt.streamid,
 				        net_buf.vpkt.hdr.flag[0], net_buf.vpkt.hdr.flag[1], net_buf.vpkt.hdr.flag[2],
-				        net_buf.vpkt.hdr.mycall, net_buf.vpkt.hdr.sfx, net_buf.vpkt.hdr.urcall,
-				        net_buf.vpkt.hdr.rpt1, net_buf.vpkt.hdr.rpt2);
+				        net_buf.vpkt.hdr.my, net_buf.vpkt.hdr.nm, net_buf.vpkt.hdr.ur,
+				        net_buf.vpkt.hdr.r2, net_buf.vpkt.hdr.r1);
 
 				/* save the streamid that is winning */
 				streamid = net_buf.vpkt.streamid;
@@ -477,11 +477,11 @@ static void readFrom20000()
 				//memset(dvp_buf + 6, ' ', 41);
 				for (int f=0; f<3; f++)
 					dr.frame.hdr.flag[f] = net_buf.vpkt.hdr.flag[0];
-				memcpy(dr.frame.hdr.rpt1, net_buf.vpkt.hdr.rpt2, 8);
-				memcpy(dr.frame.hdr.rpt2, net_buf.vpkt.hdr.rpt1, 8);
-				memcpy(dr.frame.hdr.urcall, net_buf.vpkt.hdr.urcall, 8);
-				memcpy(dr.frame.hdr.mycall, net_buf.vpkt.hdr.mycall, 8);
-				memcpy(dr.frame.hdr.sfx, net_buf.vpkt.hdr.sfx, 4);
+				memcpy(dr.frame.hdr.rpt1, net_buf.vpkt.hdr.r1, 8);
+				memcpy(dr.frame.hdr.rpt2, net_buf.vpkt.hdr.r2, 8);
+				memcpy(dr.frame.hdr.urcall, net_buf.vpkt.hdr.ur, 8);
+				memcpy(dr.frame.hdr.mycall, net_buf.vpkt.hdr.my, 8);
+				memcpy(dr.frame.hdr.sfx, net_buf.vpkt.hdr.nm, 4);
 				calcPFCS(dr.frame.hdr.flag, dr.frame.hdr.pfcs);
 				frame_pos_to_dvap = 0;
 				seq_to_dvap = 0;
@@ -851,8 +851,8 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 static void ReadDVAPThread()
 {
 	REPLY_TYPE reply;
-	SPKT net_buf;
-	SPKT spack;
+	SDSTR net_buf;
+	SDSTR spack;
 	SDVAP_REGISTER dr;
 	time_t tnow = 0;
 	time_t S_ctrl_msg_time = 0;
@@ -974,25 +974,25 @@ static void ReadDVAPThread()
 			memcpy(&net_buf.vpkt.hdr, dr.frame.hdr.flag, 41);	// copy the header
 
 			/* RPT1 must always be the repeater + module */
-			memcpy(net_buf.vpkt.hdr.rpt2, RPTR_and_MOD, 8);
+			memcpy(net_buf.vpkt.hdr.r1, RPTR_and_MOD, 8);
 			/* copy RPT2 */
-			memcpy(net_buf.vpkt.hdr.rpt1, dr.frame.hdr.rpt1, 8);
+			memcpy(net_buf.vpkt.hdr.r2, dr.frame.hdr.rpt1, 8);
 
 			/* RPT2 must also be valid */
-			if ((net_buf.vpkt.hdr.rpt1[7] == 'A') ||
-				(net_buf.vpkt.hdr.rpt1[7] == 'B') ||
-				(net_buf.vpkt.hdr.rpt1[7] == 'C') ||
-				(net_buf.vpkt.hdr.rpt1[7] == 'G'))
-				memcpy(net_buf.vpkt.hdr.rpt1, RPTR, 7);
+			if ((net_buf.vpkt.hdr.r2[7] == 'A') ||
+				(net_buf.vpkt.hdr.r2[7] == 'B') ||
+				(net_buf.vpkt.hdr.r2[7] == 'C') ||
+				(net_buf.vpkt.hdr.r2[7] == 'G'))
+				memcpy(net_buf.vpkt.hdr.r2, RPTR, 7);
 			else
-				memset(net_buf.vpkt.hdr.rpt1, ' ', 8);
+				memset(net_buf.vpkt.hdr.r2, ' ', 8);
 
-			if ((memcmp(net_buf.vpkt.hdr.urcall, "CQCQCQ", 6) != 0) && (net_buf.vpkt.hdr.rpt1[0] != ' '))
-				memcpy(net_buf.vpkt.hdr.rpt1,  RPTR_and_G, 8);
+			if ((memcmp(net_buf.vpkt.hdr.ur, "CQCQCQ", 6) != 0) && (net_buf.vpkt.hdr.r2[0] != ' '))
+				memcpy(net_buf.vpkt.hdr.r2,  RPTR_and_G, 8);
 
 			/* 8th in rpt1, rpt2 must be diff */
-			if (net_buf.vpkt.hdr.rpt1[7] == net_buf.vpkt.hdr.rpt2[7])
-				memset(net_buf.vpkt.hdr.rpt1, ' ', 8);
+			if (net_buf.vpkt.hdr.r2[7] == net_buf.vpkt.hdr.r1[7])
+				memset(net_buf.vpkt.hdr.r2, ' ', 8);
 
 			/*
 			   Are we restricting the RF user ?
@@ -1002,21 +1002,21 @@ static void ReadDVAPThread()
 			     otherwise we drop the rf data
 			*/
 			if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
-				if (memcmp(net_buf.vpkt.hdr.mycall, RPTR, RPTR_SIZE) != 0) {
-					printf("mycall=[%.8s], not equal to %s\n", net_buf.vpkt.hdr.mycall, RPTR);
+				if (memcmp(net_buf.vpkt.hdr.my, RPTR, RPTR_SIZE) != 0) {
+					printf("mycall=[%.8s], not equal to %s\n", net_buf.vpkt.hdr.my, RPTR);
 					ok = false;
 				}
-			} else if (memcmp(net_buf.vpkt.hdr.mycall, "        ", 8) == 0) {
-				printf("Invalid value for mycall=[%.8s]\n", net_buf.vpkt.hdr.mycall);
+			} else if (memcmp(net_buf.vpkt.hdr.my, "        ", 8) == 0) {
+				printf("Invalid value for mycall=[%.8s]\n", net_buf.vpkt.hdr.my);
 				ok = false;
 			}
 
 			if (ok) {
 				for (i = 0; i < 8; i++) {
-					if (!isupper(net_buf.vpkt.hdr.mycall[i]) &&
-					        !isdigit(net_buf.vpkt.hdr.mycall[i]) &&
-					        (net_buf.vpkt.hdr.mycall[i] != ' ')) {
-						memset(net_buf.vpkt.hdr.mycall, ' ', 8);
+					if (!isupper(net_buf.vpkt.hdr.my[i]) &&
+					        !isdigit(net_buf.vpkt.hdr.my[i]) &&
+					        (net_buf.vpkt.hdr.my[i] != ' ')) {
+						memset(net_buf.vpkt.hdr.my, ' ', 8);
 						ok = false;
 						printf("Invalid value for MYCALL\n");
 						break;
@@ -1024,27 +1024,27 @@ static void ReadDVAPThread()
 				}
 
 				for (i = 0; i < 4; i++) {
-					if (!isupper(net_buf.vpkt.hdr.sfx[i]) &&
-					        !isdigit(net_buf.vpkt.hdr.sfx[i]) &&
-					        (net_buf.vpkt.hdr.sfx[i] != ' ')) {
-						memset(net_buf.vpkt.hdr.sfx, ' ', 4);
+					if (!isupper(net_buf.vpkt.hdr.nm[i]) &&
+					        !isdigit(net_buf.vpkt.hdr.nm[i]) &&
+					        (net_buf.vpkt.hdr.nm[i] != ' ')) {
+						memset(net_buf.vpkt.hdr.nm, ' ', 4);
 						break;
 					}
 				}
 
 				for (i = 0; i < 8; i++) {
-					if (!isupper(net_buf.vpkt.hdr.urcall[i]) &&
-					        !isdigit(net_buf.vpkt.hdr.urcall[i]) &&
-					        (net_buf.vpkt.hdr.urcall[i] != ' ') &&
-					        (net_buf.vpkt.hdr.urcall[i] != '/')) {
-						memcpy(net_buf.vpkt.hdr.urcall, "CQCQCQ  ", 8);
+					if (!isupper(net_buf.vpkt.hdr.ur[i]) &&
+					        !isdigit(net_buf.vpkt.hdr.ur[i]) &&
+					        (net_buf.vpkt.hdr.ur[i] != ' ') &&
+					        (net_buf.vpkt.hdr.ur[i] != '/')) {
+						memcpy(net_buf.vpkt.hdr.ur, "CQCQCQ  ", 8);
 						break;
 					}
 				}
 
 				/*** what if YRCALL is all spaces, we can NOT allow that ***/
-				if (memcmp(net_buf.vpkt.hdr.urcall, "        ", 8) == 0)
-					memcpy(net_buf.vpkt.hdr.urcall, "CQCQCQ  ", 8);
+				if (memcmp(net_buf.vpkt.hdr.ur, "        ", 8) == 0)
+					memcpy(net_buf.vpkt.hdr.ur, "CQCQCQ  ", 8);
 
 				/* change the rptr flags to net flags */
 				if (dr.frame.hdr.flag[0] == 0x40)
@@ -1061,16 +1061,16 @@ static void ReadDVAPThread()
 
 				/* for icom g2 */
 				spack.counter = C_COUNTER++;
-				memcpy(spack.spkt.mycall, net_buf.vpkt.hdr.mycall, 8);
+				memcpy(spack.spkt.mycall, net_buf.vpkt.hdr.my, 8);
 				memcpy(spack.spkt.rpt, OWNER, 7);
 				spack.spkt.rpt[7] = RPTR_MOD;
 				sendto(insock, spack.pkt_id, 26, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
 
 				// Before we send the data to the local gateway,
 				// set RPT1, RPT2 to be the local gateway
-				memcpy(net_buf.vpkt.hdr.rpt2, OWNER, 7);
-				if (net_buf.vpkt.hdr.rpt1[7] != ' ')
-					memcpy(net_buf.vpkt.hdr.rpt1, OWNER, 7);
+				memcpy(net_buf.vpkt.hdr.r1, OWNER, 7);
+				if (net_buf.vpkt.hdr.r2[7] != ' ')
+					memcpy(net_buf.vpkt.hdr.r2, OWNER, 7);
 
 				memcpy(net_buf.pkt_id, "DSTR", 4);
 				net_buf.counter = C_COUNTER++;

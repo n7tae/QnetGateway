@@ -118,10 +118,10 @@ private:
 
 	// input from our own local repeater modules
 	int srv_sock = -1;
-	SPKT rptrbuf; // 58 or 29 or 32, max is 58
+	SDSTR rptrbuf; // 58 or 29 or 32, max is 58
 	struct sockaddr_in fromRptr;
 
-	SPKT end_of_audio;
+	SDSTR end_of_audio;
 
 	// send packets to g2_link
 	struct sockaddr_in plug;

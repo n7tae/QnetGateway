@@ -39,11 +39,11 @@ typedef struct pkt_tag {
 			union {
 				struct {
 					unsigned char flag[3];	// 17
-					unsigned char rpt1[8];	// 20
-					unsigned char rpt2[8];	// 28
-					unsigned char urcall[8];// 36
-					unsigned char mycall[8];// 44
-					unsigned char sfx[4];	// 52
+					unsigned char r2[8];	// 20
+					unsigned char r1[8];	// 28
+					unsigned char ur[8];	// 36
+					unsigned char my[8];	// 44
+					unsigned char nm[4];	// 52
 					unsigned char pfcs[2];	// 56
 				} hdr;						// total 58
 				union {
@@ -60,7 +60,7 @@ typedef struct pkt_tag {
 			};
 		} vpkt;
 	};
-} SPKT;
+} SDSTR;
 #pragma pack(pop)
 
 // for the g2 external port
@@ -76,7 +76,7 @@ typedef struct dsvt_tag {
 	union {
 		struct {                    // index
 			unsigned char flag[3];  // 15
-			unsigned char rpt1[8];  // 18
+			unsigned char rpt1[8];	// 18
 			unsigned char rpt2[8];  // 26
 			unsigned char urcall[8];// 34
 			unsigned char mycall[8];// 42
@@ -111,7 +111,7 @@ typedef struct mmdvm_tag {	//									offset	  size
 			unsigned char yr[8];	// Your Call					27
 			unsigned char my[8];	// My Call						35
 			unsigned char nm[4];	// Name							43
-			unsigned short pcfs;	// checksum						47		49
+			unsigned short pfcs;	// checksum						47		49
 		} header;
 		struct {
 			unsigned short id;		// random id number				 5
@@ -121,5 +121,5 @@ typedef struct mmdvm_tag {	//									offset	  size
 			unsigned char ambe[12];	// voice + slow data			 9		21
 		} voice;
 	};
-} SMMDVMPKT;
+} SDSRP;
 #pragma pack(pop)

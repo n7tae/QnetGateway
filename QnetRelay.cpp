@@ -230,10 +230,10 @@ int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, c
 bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 {
 	if (29==len || 58==len) { //here is dstar data
-		SPKT buf;
-		::memcpy(buf.pkt_id, raw, len);	// transfer raw data to SPKT struct
+		SDSTR buf;
+		::memcpy(buf.pkt_id, raw, len);	// transfer raw data to SDSTR struct
 
-		SMMDVMPKT pkt;	// destination
+		SDSRP pkt;	// destination
 		// fill in some inital stuff
 		::memcpy(pkt.title, "DSRP", 4);
 		pkt.voice.id = buf.vpkt.streamid;
@@ -277,9 +277,9 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 {
 	static short old_id = 0U;
 	static short stream_id = 0U;
-	SMMDVMPKT mpkt;
+	SDSRP mpkt;
 	if (len < 65)
-		::memcpy(mpkt.title, raw, len);	// transfer raw data to SMMDVMPKT struct
+		::memcpy(mpkt.title, raw, len);	// transfer raw data to SDSRP struct
 
 	if (49==len || 21==len) {
 		// grab the stream id if this is a header
@@ -290,7 +290,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			old_id = stream_id;
 		}
 
-		SPKT gpkt;	// destination
+		SDSTR gpkt;	// destination
 		// sets most of the params
 		::memcpy(gpkt.pkt_id, "DSTR", 4);
 		gpkt.counter = COUNTER++;
@@ -312,7 +312,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
-			printf("INFO: ProcessMMDVM: sent header to port %u pkt = '%s'\n", G2_IN_PORT, std::string((char *)gpkt.vpkt.hdr.rpt1, 36).c_str());
+			printf("INFO: ProcessMMDVM: sent header to port %u pkt = '%s'\n", G2_IN_PORT, std::string((char *)gpkt.vpkt.hdr.r2, 36).c_str());
 		} else if (21 == len) {	// ambe
 			gpkt.remaining = 0x16;
 			gpkt.vpkt.ctrl = mpkt.header.seq;
