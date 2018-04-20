@@ -5,6 +5,14 @@ The QnetGateway is an D-Star IRCDDB gateway application that supports MMDVMHost 
 
 For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To build QnetGateway that uses a DVAP Dongle or DVRPTR V1, see the BUILDING file.
 
+To get started, clone the software to your Linux device:
+
+```
+git clone git://github.com/n7tae/QnetGateway.git
+```
+
+Then look to the MMDVM.README or the BUILDING file for more information.
+
 For details of interesting things QnetGatway can do, see the CONFIGURING file. For example, with QnetGateway, you can execute up to 36 different Linux scripts from you radio. Two scripts are include:
 
 ```
