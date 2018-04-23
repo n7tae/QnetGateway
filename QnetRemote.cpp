@@ -312,12 +312,8 @@ int main(int argc, char *argv[])
 	pkt.vpkt.hdr.flag[0] = pkt.vpkt.hdr.flag[1] = pkt.vpkt.hdr.flag[2] = 0x00;
 
 	REPEATER.resize(7, ' ');
-	std::string gateway(REPEATER + 'G');
-	printf("gateway = '%s'\n", gateway.c_str());
-	memcpy(pkt.vpkt.hdr.r2, gateway.c_str(), 8);
-	std::string repeater(REPEATER + module);
-	printf("module = '%s'\n", repeater.c_str());
-	memcpy(pkt.vpkt.hdr.r1, repeater.c_str(), 8);
+	memcpy(pkt.vpkt.hdr.r2, std::string(REPEATER + 'G').c_str(), 8);
+	memcpy(pkt.vpkt.hdr.r1, std::string(REPEATER + module).c_str(), 8);
 	mycall.resize(8, ' ');
 	memcpy(pkt.vpkt.hdr.my, mycall.c_str(), 8);
 	memcpy(pkt.vpkt.hdr.nm, "QNET", 4);
@@ -326,7 +322,6 @@ int main(int argc, char *argv[])
 	else
 		yourcall.resize(8, ' ');
 	memcpy(pkt.vpkt.hdr.ur, yourcall.c_str(), 8);
-	printf("header dump: '%.36s'\n", pkt.vpkt.hdr.r2);
 
 	calcPFCS(pkt.pkt_id);
 	// send the header
