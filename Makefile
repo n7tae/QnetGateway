@@ -146,8 +146,8 @@ installdvrptr : qngateway qnlink qndvrptr
 	systemctl daemon-reload
 	systemctl start qndvrptr.service
 
-installdtmf : QnetDTMF
-	/bin/cp -f QnetDTMF $(BINDIR)
+installdtmf : qndtmf
+	/bin/cp -f qndtmf $(BINDIR)
 	/bin/cp -f system/qndtmf.service $(SYSDIR)
 	systemctl enable qndtmf.service
 	systemctl daemon-reload
@@ -258,7 +258,7 @@ uninstalldvrptr :
 	/bin/rm -f $(BINDIR)/qndvrptr
 	systemctl daemon-reload
 
-uninstalldtmfs:
+uninstalldtmfs :
 	systemctl stop qndtmf.service
 	systemctl disable qndtmf.service
 	/bin/rm -f $(SYSDIR)/qndtmf.service

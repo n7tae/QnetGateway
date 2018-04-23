@@ -1,0 +1,54 @@
+                        ####### DTMF ########
+
+DTMF is available with the QnetGateway Software. You can do things like linking
+and unlinking from you radio's keyboard, if present. For example, typing
+"#75703" would link you to XRF757 C.
+
+DTMF is not enabled by default. To enable it, first create a DTMF script called
+"qndtmf" in the build directory. A complete, functional script is included
+and is called "qndtmf.sh", so you can start by just copying it to the target:
+
+cp qndtmf.sh qndtmf
+
+Then you can install DTMF: sudo make installdtmf
+
+To uninstall DTMF: sudo make uninstalldtmf
+
+Be sure to look at the script. It contains examples of all the DTMF commands it
+supports. You can add more if you are good at shell programming and understand
+how qnremote works.
+
+                     ######## QnetRemote #########
+
+QnetRemote is a program used to send any arbitrary YourCall to your QnetGateway
+system. It is install automatically when you install any of the supported modems:
+MMDVMHost, QnetDVAP or QnetDVRPTR. It's a very simple, yet powerful program.
+Open a shell to you system and type "qnremote" and it will remind you of the
+format it expects:
+
+pi@raspberrypi:~ $ qnremote
+Usage: qnremote <module> <mycall> <yourcall>
+Example: qnremote c n7tae xrf757cl
+Where...
+        c is the local repeater module
+        n7tae is the value of mycall
+        xrf757cl is the value of yourcall, in this case this is a Link command
+
+You simple specify the module the command will be sent to, and the MyCall and
+YourCall parameters. Here are some more examples:
+
+qnremote b w4wwm u	# W4WWM is unlinking module B.
+qnremote c w1bwb i  # W1BSB is requesting the status of module C
+
+Modules, callsigns and YourCall can all be in lowercase, qnremote will convert
+them to uppercase. QnetLink will validate that the specific MyCall is allowed
+to link or unlink, according to the configuration. (By default, any user can
+link or unlink a module, unless link_unlink is specified in the configuration
+file, see qn.everything.cfg.)
+
+qnremote can be used by the linux cron facility to automatically execute jobs
+at a certain time. If you want to link to XRF002 A on Saturday at 6:00 PM
+Mountain Time for the D-Star Users Net, don't forget to include an unlink
+command in your cron-executed script before you link! For instructions on how
+to do this search the web with "linux cron job".
+

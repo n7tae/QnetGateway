@@ -1,27 +1,23 @@
 #!/bin/bash
 
+# Copyright (C) 2011 by Scott Lawson KI4LKF
+# Copyright (C) 2018 by Thomas A. Early N7TAE
+#
 # This script finds files in the /tmp  directory
 #    The files have a name like x_mod_DTMF_NOTIFY, where x is one of 0 1 2
-#       0=A module,  
-#       1=B module,  
+#       0=A module,
+#       1=B module,
 #       2=C module
 #    The contents of these files can be as follows:
 
 # Example:  73       will unlink local module
-# Example:  #02102   will link local module to XRF021 B
-# Example:  D00126   will link local module to DCS001 Z
-# Example:  *01601   will link local module to REF016 A
+# Example:  #75703   will link local module to XRF757 C
+# Example:  D00617   will link local module to DCS006 Q
+# Example:  *00101   will link local module to REF001 C
 # Example:  99       will report status of the link
 
 # We set this to spaces, it will be set later
 LUSER="        "
-
-# The G2 INTERNAL IP/Port
-G2_INT_IP=127.0.0.1
-G2_INT_PORT=19000
-
-# This is the callsign of your Gateway, set it correctly
-G2=
 
 cd /tmp
 echo started at `date`
@@ -51,11 +47,11 @@ do
          echo "... with these contents: " $CMD " " $LUSER
          if [ "$CMD" = "73" ] ; then
             echo Unlinking local band $LOCAL_BAND requested by $LUSER
-            /usr/local/bin/qnlinktest ${G2_INT_IP} ${G2_INT_PORT} "" $G2 ${LOCAL_BAND} 20 1 "$LUSER"  "       U"  >/dev/null 2>&1
+            qnremote ${LOCAL_BAND} "$LUSER"  U  >/dev/null 2>&1
             echo
          elif [ "$CMD" = "99" ] ; then
             echo Link Status on local band $LOCAL_BAND requested by $LUSER
-            /usr/local/bin/qnlinktest ${G2_INT_IP} ${G2_INT_PORT} "" $G2 ${LOCAL_BAND} 20 1 "$LUSER"  "       I"  >/dev/null 2>&1
+            qnremote ${LOCAL_BAND} "$LUSER"  I  >/dev/null 2>&1
             echo
          else
             LEN=${#CMD}
@@ -135,7 +131,7 @@ do
                   echo garbage value in prefix
                else
                   echo linking local band $LOCAL_BAND to remote node ${RMT}${REMOTE_NODE} $REMOTE_BAND requested by $LUSER
-                  /usr/local/bin/qnlinktest ${G2_INT_IP} ${G2_INT_PORT} "" $G2 ${LOCAL_BAND} 20 1 "$LUSER"  ${RMT}${REMOTE_NODE}${REMOTE_BAND}L  >/dev/null 2>&1
+                  qnremote ${LOCAL_BAND} "$LUSER"  ${RMT}${REMOTE_NODE}${REMOTE_BAND}L  >/dev/null 2>&1
                   echo
                fi
             fi
