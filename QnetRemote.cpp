@@ -306,22 +306,27 @@ int main(int argc, char *argv[])
 		pkt.vpkt.snd_term_id = 0x02;
 	else
 		pkt.vpkt.snd_term_id = 0x00;
-	streamid_raw = (short)(::rand() & 0xFFFF);
+	streamid_raw = (unsigned short)(::rand() & 0xFFFF);
 	pkt.vpkt.streamid = htons(streamid_raw);
 	pkt.vpkt.ctrl = 0x80;
 	pkt.vpkt.hdr.flag[0] = pkt.vpkt.hdr.flag[1] = pkt.vpkt.hdr.flag[2] = 0x00;
 
 	REPEATER.resize(' ', 7);
-	memcpy(pkt.vpkt.hdr.r2, std::string(REPEATER + 'G').c_str(), 8);
-	memcpy(pkt.vpkt.hdr.r1, std::string(REPEATER + module).c_str(), 8);
+	std::string gateway(REPEATER + 'G');
+	printf("gateway = '%s'\n", gateway.c_str());
+	memcpy(pkt.vpkt.hdr.r2, gateway.c_str(), 8);
+	std::string repeater(REPEATER + module);
+	printf("module = '%s'\n", repeater.c_str());
+	memcpy(pkt.vpkt.hdr.r1, repeater.c_str(), 8);
 	mycall.resize(' ', 8);
 	memcpy(pkt.vpkt.hdr.my, mycall.c_str(), 8);
+	memcpy(pkt.vpkt.hdr.nm, "QNET", 4);
 	if (yourcall.size() < 3)
 		yourcall = std::string(8-yourcall.size(), ' ') + yourcall;	// right justify 1 or 2 letter commands
 	else
 		yourcall.resize(' ', 8);
 	memcpy(pkt.vpkt.hdr.ur, yourcall.c_str(), 8);
-	memcpy(pkt.vpkt.hdr.nm, "QNET", 4);
+	printf("header dump: '%.36s'\n", pkt.vpkt.hdr.r2);
 
 	calcPFCS(pkt.pkt_id);
 	// send the header
