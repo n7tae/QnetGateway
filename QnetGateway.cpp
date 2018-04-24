@@ -1006,6 +1006,8 @@ void CQnetGateway::process()
 						int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
 
 						if (i>=0  && i<3) {
+							if (bool_dtmf_debug)
+								printf("resetting dtmf[%d] (got a header)\n", i);
 							dtmf_last_frame[i] = 0;
 							dtmf_counter[i] = 0;
 							memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
@@ -1515,6 +1517,8 @@ void CQnetGateway::process()
 										printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
 
 
+									if (bool_dtmf_debug)
+										printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].lh_mycall);
 									memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
 									dtmf_buf_count[i] = 0;
 									dtmf_counter[i] = 0;
