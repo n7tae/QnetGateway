@@ -1563,13 +1563,14 @@ void CQnetGateway::process()
 								if ((ber_data[0] & 0x0ffc) == 0xfc0) {
 									dtmf_digit = (ber_data[0] & 0x03) | ((ber_data[2] & 0x60) >> 3);
 									if (dtmf_counter[i] > 0) {
+										if (bool_dtmf_debug)
+											printf("new digit=%d, counter[%d]=%d, lastframe=%d\n",
+																	dtmf_digit, i, dtmf_counter[i], dtmf_last_frame[i]);
 										if (dtmf_last_frame[i] != dtmf_digit)
 											dtmf_counter[i] = 0;
 									}
 									dtmf_last_frame[i] = dtmf_digit;
 									dtmf_counter[i]++;
-									if (bool_dtmf_debug)
-										printf("got a dtmf digit = %d and counter is %d\n", dtmf_digit, dtmf_counter[i]);
 
 									if ((dtmf_counter[i] == 5) && (dtmf_digit >= 0) && (dtmf_digit <= 15)) {
 										if (dtmf_buf_count[i] < MAX_DTMF_BUF) {
