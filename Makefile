@@ -258,7 +258,7 @@ uninstalldvrptr :
 	/bin/rm -f $(BINDIR)/qndvrptr
 	systemctl daemon-reload
 
-uninstalldtmfs :
+uninstalldtmf :
 	systemctl stop qndtmf.service
 	systemctl disable qndtmf.service
 	/bin/rm -f $(SYSDIR)/qndtmf.service
