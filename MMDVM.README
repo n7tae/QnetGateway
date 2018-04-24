@@ -21,7 +21,7 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
 3)  cd into the MMDVMHost directory and compile: make
     If you're system has multiple processors, use: make -jx
     where x is the number of processors on you system.
-    To tell how many processors you have: cat /cpu/info | grep processor | wc -l
+    To tell how many processors you have: cat /proc/cpuinfo | grep processor | wc -l
 
 4)  Copy the ini file template: cp MMDVM.ini MMDVM.qn
 
