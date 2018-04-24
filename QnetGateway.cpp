@@ -623,6 +623,12 @@ void CQnetGateway::process()
 
 	std::future<void> aprs_future, irc_data_future;
 
+	// dtmf stuff
+	int dtmf_buf_count[3] = {0, 0, 0};
+	char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
+	int dtmf_last_frame[3] = { 0, 0, 0 };
+	unsigned int dtmf_counter[3] = { 0, 0, 0 };
+
 	/* START:  TEXT crap */
 	bool new_group[3] = { true, true, true };
 	int header_type = 0;
@@ -982,10 +988,6 @@ void CQnetGateway::process()
 			         (rptrbuf.remaining == 0x13) ||    /* 19 bytes follow */
 			         (rptrbuf.remaining == 0x16)) ) {  /* 22 bytes follow */
 
-				int dtmf_buf_count[3] = {0, 0, 0};
-				char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
-				int dtmf_last_frame[3] = { 0, 0, 0 };
-				unsigned int dtmf_counter[3] = { 0, 0, 0 };
 				if (recvlen == 58) {
 
 					if (bool_qso_details)
