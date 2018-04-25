@@ -25,7 +25,7 @@ do
 	do
 		echo found file $i at `date`
 		LOCAL_BAND=${i:0:1}
-		if [[ "$LOCAL_BAND" = "A" ]] & [[ "$LOCAL_BAND" = "B" ]] && [[ "$LOCAL_BAND" = "C" ]] ; then
+		if [[ "$LOCAL_BAND" = "A" ]] || [[ "$LOCAL_BAND" = "B" ]] || [[ "$LOCAL_BAND" = "C" ]] ; then
 			CMD=`head -n 1 $i 2>/dev/null`
 			LUSER=`tail -n 1 $i 2>/dev/null`
 			echo "... with these contents: " $CMD " " $LUSER
