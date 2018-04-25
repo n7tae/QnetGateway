@@ -25,9 +25,7 @@ do
 	do
 		echo found file $i at `date`
 		LOCAL_BAND=${i:0:1}
-		if [[ "$x" != "A" ]] & [[ "$x" != "B" ]] && [[ "$x" != "C" ]] ; then
-			echo garbage value for local band
-		else
+		if [[ "$LOCAL_BAND" = "A" ]] & [[ "$LOCAL_BAND" = "B" ]] && [[ "$LOCAL_BAND" = "C" ]] ; then
 			CMD=`head -n 1 $i 2>/dev/null`
 			LUSER=`tail -n 1 $i 2>/dev/null`
 			echo "... with these contents: " $CMD " " $LUSER
@@ -116,7 +114,7 @@ do
 					fi
 
 					if [[ "$RMT" == "garbage" ]] ; then
-						echo garbage value in prefix
+						echo bad value in prefix
 					else
 						echo linking local band $LOCAL_BAND to remote node ${RMT}${REMOTE_NODE} $REMOTE_BAND requested by $LUSER
 						qnremote ${LOCAL_BAND} "$LUSER"  ${RMT}${REMOTE_NODE}${REMOTE_BAND}L  >/dev/null 2>&1
@@ -124,6 +122,8 @@ do
 					fi
 				fi
 			fi
+		else
+			echo "Local band '${LOCAL_BAND}' is bad"
 		fi
 		rm -f $i
 	done
