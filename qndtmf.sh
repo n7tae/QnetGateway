@@ -7,11 +7,11 @@
 #    The files have a name like x_mod_DTMF_NOTIFY, where x is one of A B or C, the local module
 #    The contents of these files can be as follows:
 
-# Example:  #        will unlink local module
+# Example:  #        will unlink local module, "       U"
 # Example:  B75703   will link local module to XRF757 C
 # Example:  D00617   will link local module to DCS006 Q
 # Example:  *00103   will link local module to REF001 C
-# Example:  0 or 00  will report status of the link
+# Example:  0 or 00  will report status of the link, "       I"
 
 # We set this to spaces, it will be set later
 LUSER="        "
@@ -127,7 +127,7 @@ do
 		fi
 		rm -f $i
 	done
-	sleep 3
+	sleep 2
 done
 
 exit 0

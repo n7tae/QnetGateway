@@ -2,7 +2,7 @@
 
 DTMF is available with the QnetGateway Software. You can do things like linking
 and unlinking from you radio's keyboard, if present. For example, typing
-"#75703" would link you to XRF757 C.
+"B75703" should link you to XRF757 C.
 
 DTMF is not enabled by default. To enable it, first create a DTMF script called
 "qndtmf" in the build directory. A complete, functional script is included
@@ -18,7 +18,7 @@ Be sure to look at the script. It contains examples of all the DTMF commands it
 supports. You can add more if you are good at shell programming and understand
 how qnremote works.
 
-                     ######## QnetRemote #########
+                    ######## QnetRemote #########
 
 QnetRemote is a program used to send any arbitrary YourCall to your QnetGateway
 system. It is install automatically when you install any of the supported modems:
