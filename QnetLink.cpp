@@ -176,7 +176,7 @@ static regex_t preg;
 const char* G2_html = "<table border=\"0\" width=\"95%\"><tr>"
                       "<td width=\"4%\"><img border=\"0\" src=g2ircddb.jpg></td>"
                       "<td width=\"96%\"><font size=\"2\">"
-                      "<b>REPEATER</b> G2_IRCDDB Gateway v3.09+"
+                      "<b>REPEATER</b> QnetGateway v1.0+"
                       "</font></td>"
                       "</tr></table>";
 
@@ -2901,7 +2901,7 @@ static void runit()
 								dcs_buf[59] = (ref_2_dcs[i].dcs_rptr_seq >> 8)  & 0xff;
 								dcs_buf[60] = (ref_2_dcs[i].dcs_rptr_seq >> 16) & 0xff;
 
-								ref_2_dcs[i].dcs_rptr_seq ++;
+								ref_2_dcs[i].dcs_rptr_seq++;
 
 								dcs_buf[61] = 0x01;
 								dcs_buf[62] = 0x00;

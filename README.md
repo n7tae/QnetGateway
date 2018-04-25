@@ -13,7 +13,9 @@ git clone git://github.com/n7tae/QnetGateway.git
 
 Then look to the MMDVM.README or the BUILDING file for more information.
 
-For details of interesting things QnetGatway can do, see the CONFIGURING file. For example, with QnetGateway, you can execute up to 36 different Linux scripts from you radio. Two scripts are include:
+QnetGateway includes a "remote control" program, called `qnremote`. After you build and install the system, type `qnremote` for a prompt on how to use it. Using this and cron, it's possible to setup schedules where you system will automatically link up to a reflector, or subscribe to a Routing Group. For More information, see DTMF+REMOTE.README.
+
+For other details of interesting things QnetGatway can do, see the CONFIGURING file. For example, with QnetGateway, you can execute up to 36 different Linux scripts from you radio. Two scripts are include:
 
 ```
 YourCall = "      HX"   will halt your system.

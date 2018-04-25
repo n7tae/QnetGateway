@@ -21,8 +21,7 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
 3)  cd into the MMDVMHost directory and compile: make
     If you're system has multiple processors, use: make -jx
     where x is the number of processors on you system.
-    To tell how many processors you have on Raspbian Stretch:
-    cat /proc/cpuinfo | grep processor | wc -l
+    To tell how many processors you have: cat /proc/cpuinfo | grep processor | wc -l
 
 4)  Copy the ini file template: cp MMDVM.ini MMDVM.qn
 
@@ -91,4 +90,10 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
     Being able to detach from a screen session is very useful, especially if you are
     operating "headless"!
 
-17) Build and start other MMDVMHost services...
+17) DTMF is _not_ enabled by default if you want it, you need to do two things:
+    First, create a working DTMF script: cp qndtmf.sh qndtmf
+    Then, install the DTMF service: sudo make installdtmf
+    You should be good to go, The DTMF command "00" should announce the linked
+    status of you module. See DTMF+REMOTE.README for more information.
+
+18) Build and start other MMDVMHost services...

@@ -24,10 +24,10 @@ SYSDIR=/lib/systemd/system
 IRC=ircddb
 
 # use this if you want debugging help in the case of a crash
-#CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb
+#CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\"
 
 # or, you can choose this for a much smaller executable without debugging help
-CPPFLAGS=-W -Wall -std=c++11 -Iircddb
+CPPFLAGS=-W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\"
 
 LDFLAGS=-L/usr/lib -lconfig++ -lrt
 
@@ -36,7 +36,7 @@ IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMess
 SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
-PROGRAMS=qngateway qnlink qnrelay qndvap qndvrptr qnlinktest qnlinktestaudio
+PROGRAMS=qngateway qnlink qnrelay qndvap qndvrptr qnremote qnlinktestaudio
 
 all : $(PROGRAMS)
 
@@ -55,8 +55,8 @@ qndvap : QnetDVAP.o DVAPDongle.o $(DSTROBJS)
 qndvrptr : QnetDVRPTR.o $(DSTROBJS)
 	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o $(DSTROBJS) $(LDFLAGS)
 
-qnlinktest : QnetLinkTest.o
-	g++ $(CPPFLAGS) -o qnlinktest QnetLinkTest.o  -lrt
+qnremote : QnetRemote.o
+	g++ $(CPPFLAGS) -o qnremote QnetRemote.o  $(LDFLAGS)
 
 qnlinktestaudio : QnetLinkTestAudio.o
 	g++ $(CPPFLAGS) -o qnlinktestaudio QnetLinkTestAudio.o  -lrt
@@ -74,6 +74,7 @@ clean:
 install : qngateway qnlink qnrelay
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
+	/bin/cp -f qnremote $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
@@ -98,6 +99,7 @@ install : qngateway qnlink qnrelay
 installdvap : qngateway qnlink qndvap
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
+	/bin/cp -f qnremote $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
@@ -122,6 +124,7 @@ installdvap : qngateway qnlink qndvap
 installdvrptr : qngateway qnlink qndvrptr
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
+	/bin/cp -f qnremote $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
@@ -143,13 +146,12 @@ installdvrptr : qngateway qnlink qndvrptr
 	systemctl daemon-reload
 	systemctl start qndvrptr.service
 
-installdtmfs : qnlinktest
-	/bin/cp -f qnlinktest $(BINDIR)
-	/bin/cp -f proc_qnlinktest $(BINDIR)
-	/bin/cp -f system/qnlinktest.service $(SYSDIR)
-	systemctl enable qnlinktest.service
+installdtmf : qndtmf
+	/bin/cp -f qndtmf $(BINDIR)
+	/bin/cp -f system/qndtmf.service $(SYSDIR)
+	systemctl enable qndtmf.service
 	systemctl daemon-reload
-	systemctl start qnlinktest.service
+	systemctl start qndtmf.service
 
 installmmdvm :
 	/bin/cp -f $(MMPATH)/MMDVMHost $(BINDIR)
@@ -175,6 +177,7 @@ uninstall :
 	systemctl disable qngateway.service
 	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
+	/bin/rm -f $(BINDIR)/qnremote
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service
@@ -203,6 +206,7 @@ uninstalldvap :
 	systemctl disable qngateway.service
 	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
+	/bin/rm -f $(BINDIR)/qnremote
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service
@@ -231,6 +235,7 @@ uninstalldvrptr :
 	systemctl disable qngateway.service
 	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
+	/bin/rm -f $(BINDIR)/qnremote
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service
@@ -253,11 +258,9 @@ uninstalldvrptr :
 	/bin/rm -f $(BINDIR)/qndvrptr
 	systemctl daemon-reload
 
-uninstalldtmfs:
-	systemctl stop qnlinktest.service
-	systemctl disable qnlinktest.service
-	/bin/rm -f $(SYSDIR)/qnlinktest.service
+uninstalldtmf :
+	systemctl stop qndtmf.service
+	systemctl disable qndtmf.service
+	/bin/rm -f $(SYSDIR)/qndtmf.service
 	systemctl daemon-reload
-	/bin/rm -f $(BINDIR)/qnlinktest
-	/bin/rm -f $(BINDIR)/proc_qnlinktest
-	systemctl daemon-reload
+	/bin/rm -f $(BINDIR)/qndtmf

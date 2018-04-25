@@ -623,6 +623,12 @@ void CQnetGateway::process()
 
 	std::future<void> aprs_future, irc_data_future;
 
+	// dtmf stuff
+	int dtmf_buf_count[3] = {0, 0, 0};
+	char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
+	int dtmf_last_frame[3] = { 0, 0, 0 };
+	unsigned int dtmf_counter[3] = { 0, 0, 0 };
+
 	/* START:  TEXT crap */
 	bool new_group[3] = { true, true, true };
 	int header_type = 0;
@@ -982,10 +988,6 @@ void CQnetGateway::process()
 			         (rptrbuf.remaining == 0x13) ||    /* 19 bytes follow */
 			         (rptrbuf.remaining == 0x16)) ) {  /* 22 bytes follow */
 
-				int dtmf_buf_count[3] = {0, 0, 0};
-				char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
-				int dtmf_last_frame[3] = { 0, 0, 0 };
-				unsigned int dtmf_counter[3] = { 0, 0, 0 };
 				if (recvlen == 58) {
 
 					if (bool_qso_details)
@@ -1006,6 +1008,8 @@ void CQnetGateway::process()
 						int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
 
 						if (i>=0  && i<3) {
+							if (bool_dtmf_debug)
+								printf("resetting dtmf[%d] (got a header)\n", i);
 							dtmf_last_frame[i] = 0;
 							dtmf_counter[i] = 0;
 							memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
@@ -1515,6 +1519,8 @@ void CQnetGateway::process()
 										printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
 
 
+									if (bool_dtmf_debug)
+										printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].lh_mycall);
 									memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
 									dtmf_buf_count[i] = 0;
 									dtmf_counter[i] = 0;
@@ -1552,7 +1558,7 @@ void CQnetGateway::process()
 								band_txt[i].num_dv_silent_frames = 0;
 								band_txt[i].num_bit_errors = 0;
 
-							} else {
+							} else {	// not the end of the voice stream
 								int ber_data[3];
 								int ber_errs = dstar_dv_decode(rptrbuf.vpkt.vasd.voice, ber_data);
 								if (ber_data[0] == 0xf85)
@@ -1563,20 +1569,26 @@ void CQnetGateway::process()
 								if ((ber_data[0] & 0x0ffc) == 0xfc0) {
 									dtmf_digit = (ber_data[0] & 0x03) | ((ber_data[2] & 0x60) >> 3);
 									if (dtmf_counter[i] > 0) {
+										if (bool_dtmf_debug)
+											printf("new digit=%d, counter[%d]=%d, lastframe=%d\n",
+																	dtmf_digit, i, dtmf_counter[i], dtmf_last_frame[i]);
 										if (dtmf_last_frame[i] != dtmf_digit)
 											dtmf_counter[i] = 0;
 									}
 									dtmf_last_frame[i] = dtmf_digit;
-									dtmf_counter[i] ++;
+									dtmf_counter[i]++;
 
 									if ((dtmf_counter[i] == 5) && (dtmf_digit >= 0) && (dtmf_digit <= 15)) {
 										if (dtmf_buf_count[i] < MAX_DTMF_BUF) {
 											const char *dtmf_chars = "147*2580369#ABCD";
 											dtmf_buf[i][ dtmf_buf_count[i] ] = dtmf_chars[dtmf_digit];
-											dtmf_buf_count[i] ++;
+											dtmf_buf_count[i]++;
+											if (bool_dtmf_debug)
+												printf("dtmf_buf[%d] = %s\n", i, dtmf_buf[i]);
 										}
 									}
-									const unsigned char silence[9] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8 };
+								//	const unsigned char silence[9] = { 0x4e, 0x8d, 0x32, 0x88, 0x26, 0x1a, 0x3f, 0x61, 0xe8 };
+									const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 									memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
 								} else
 									dtmf_counter[i] = 0;
