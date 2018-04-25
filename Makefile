@@ -22,6 +22,7 @@ CFGDIR=/usr/local/etc
 MMPATH=../MMDVMHost
 SYSDIR=/lib/systemd/system
 IRC=ircddb
+CRONDIR=/etc/cron.d
 
 # use this if you want debugging help in the case of a crash
 #CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\"
@@ -162,6 +163,12 @@ installmmdvm :
 	systemctl daemon-reload
 	systemctl start mmdvm.service
 
+installdash :
+	/bin/cp -f dash/qng-dash.sh $(BINDIR)
+	/bin/cp -f dash/qng-info.py $(BINDIR)
+	/bin/cp -f dash/qngdash $(CRONDIR)
+	/bin/sh $(BINDIR)/qng-dash.sh
+
 uninstallmmdvm :
 	systemctl stop mmdvm.service
 	systemctl disable mmdvm.timer
@@ -264,3 +271,8 @@ uninstalldtmf :
 	/bin/rm -f $(SYSDIR)/qndtmf.service
 	systemctl daemon-reload
 	/bin/rm -f $(BINDIR)/qndtmf
+
+uninstalldash :
+	/bin/rm -f $(SYSDIR)/qng-*
+	/bin/rm -f $(CRONDIR)/qngdash
+	/usr/bin/pkill python3
