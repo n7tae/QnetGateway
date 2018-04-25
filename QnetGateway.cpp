@@ -1569,9 +1569,6 @@ void CQnetGateway::process()
 								if ((ber_data[0] & 0x0ffc) == 0xfc0) {
 									dtmf_digit = (ber_data[0] & 0x03) | ((ber_data[2] & 0x60) >> 3);
 									if (dtmf_counter[i] > 0) {
-										if (bool_dtmf_debug)
-											printf("new digit=%d, counter[%d]=%d, lastframe=%d\n",
-																	dtmf_digit, i, dtmf_counter[i], dtmf_last_frame[i]);
 										if (dtmf_last_frame[i] != dtmf_digit)
 											dtmf_counter[i] = 0;
 									}
@@ -1583,11 +1580,8 @@ void CQnetGateway::process()
 											const char *dtmf_chars = "147*2580369#ABCD";
 											dtmf_buf[i][ dtmf_buf_count[i] ] = dtmf_chars[dtmf_digit];
 											dtmf_buf_count[i]++;
-											if (bool_dtmf_debug)
-												printf("dtmf_buf[%d] = %s\n", i, dtmf_buf[i]);
 										}
 									}
-								//	const unsigned char silence[9] = { 0x4e, 0x8d, 0x32, 0x88, 0x26, 0x1a, 0x3f, 0x61, 0xe8 };
 									const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 									memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
 								} else
