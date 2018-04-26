@@ -82,7 +82,7 @@ def get_data():
 def get_MMDVM():
     MMDVM_config = configparser.ConfigParser()
     MMDVM_config.read('/usr/local/etc/MMDVM.qn')
-    rawfreq = config['Info']['txfrequency']
+    rawfreq = MMDVM_config['Info']['txfrequency']
     freq = float(rawfreq)/1000000
     return freq
 
