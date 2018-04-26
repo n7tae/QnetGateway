@@ -325,6 +325,11 @@ int main(int argc, char *argv[])
 		/* read the packet */
 		nread = fread(dsvt.title, rlen, 1, fp);
 		printf("Read %d byte packet from %s\n", (int)nread*rlen, argv[3]);
+		if (rlen == 56)
+			printf("rpt1=%.8s rpt2=%.8s urcall=%.8s, mycall=%.8s, sfx=%.4s\n",
+							dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.urcall, dsvt.hdr.mycall, dsvt.hdr.sfx);
+		else
+			printf("streamid=%04X ctrl=%02X\n", dsvt.streamid, dsvt.counter);
 		if (nread == 1) {
 			if (memcmp(dsvt.title, "DSVT", 4) != 0) {
 				printf("DVST title not found\n");
