@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (strlen(argv[2]) > 8) {
-		printf("MYCALL can not be more than 8 characters, %s is invalid\n", argv[8]);
+		printf("MYCALL can not be more than 8 characters, %s is invalid\n", argv[2]);
 		return 1;
 	}
 	std::string mycall(argv[2]);
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
 
 
 	if (strlen(argv[3]) > 8) {
-		printf("YOURCALL can not be more than 8 characters, %s is invalid\n", argv[9]);
+		printf("YOURCALL can not be more than 8 characters, %s is invalid\n", argv[3]);
 		return 1;
 	}
 	std::string yourcall(argv[3]);

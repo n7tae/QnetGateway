@@ -186,9 +186,10 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 			if ((m->numParams >= 7) && 0==m->params[0].compare(currentNick) && 0==m->params[1].compare(channel)) {
 				if (app != NULL) {
 					app->userJoin(m->params[5], m->params[2], m->params[3]);
-					// app->userChanOp (m->params[5], 0==m->params[6].compare("H@"));
+					app->userChanOp (m->params[5], 0==m->params[6].compare("H@"));
 					// this mod is for ngircd
-					app->userChanOp (m->params[5], std::string::npos!=m->params[6].find('H') && std::string::npos!=m->params[6].find('@'));
+					// app->userChanOp (m->params[5], std::string::npos!=m->params[6].find('H') && std::string::npos!=m->params[6].find('@'));
+					// NOT NEEDED, W1BSB fixed it in ngircd
 				}
 			}
 		} else if (0 == m->command.compare("433")) { // nick collision

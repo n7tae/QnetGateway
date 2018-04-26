@@ -36,7 +36,7 @@ IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMess
 SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
-PROGRAMS=qngateway qnlink qnrelay qndvap qndvrptr qnremote qnlinktestaudio
+PROGRAMS=qngateway qnlink qnrelay qndvap qndvrptr qnremote qnvoice
 
 all : $(PROGRAMS)
 
@@ -58,8 +58,8 @@ qndvrptr : QnetDVRPTR.o $(DSTROBJS)
 qnremote : QnetRemote.o
 	g++ $(CPPFLAGS) -o qnremote QnetRemote.o  $(LDFLAGS)
 
-qnlinktestaudio : QnetLinkTestAudio.o
-	g++ $(CPPFLAGS) -o qnlinktestaudio QnetLinkTestAudio.o  -lrt
+qnvoice : QnetVoice.o
+	g++ $(CPPFLAGS) -o qnvoice QnetVoice.o  $(LDFLAGS)
 
 %.o : %.cpp
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
