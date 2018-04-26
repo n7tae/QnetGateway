@@ -365,13 +365,14 @@ int main(int argc, char *argv[])
 				memcpy(dstr.vpkt.hdr.r2, REPEATER.c_str(), REPEATER.size());
 				dstr.vpkt.hdr.r2[7] = 'G';
 				memcpy(dstr.vpkt.hdr.r1, REPEATER.c_str(), REPEATER.size());
-				dstr.vpkt.hdr.r2[7] = module;
+				dstr.vpkt.hdr.r1[7] = module;
 				memcpy(dstr.vpkt.hdr.ur, "CQCQCQ", 6);	/* yrcall */
 				memcpy(dstr.vpkt.hdr.my, mycall.c_str(), mycall.size());
 				memcpy(dstr.vpkt.hdr.nm, "QNET", 4);
 				calcPFCS(dstr.pkt_id);
 			} else {
 				dstr.remaining = 0x13;
+				dstr.vpkt.ctrl = dsvt.counter;
 				memcpy(dstr.vpkt.vasd.voice, dsvt.vasd.voice, 12);
 
 				if ((dstr.vpkt.vasd.text[0] != 0x55) || (dstr.vpkt.vasd.text[1] != 0x2d) || (dstr.vpkt.vasd.text[2] != 0x16)) {
