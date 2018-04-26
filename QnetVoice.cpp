@@ -329,7 +329,7 @@ int main(int argc, char *argv[])
 			printf("rpt1=%.8s rpt2=%.8s urcall=%.8s, mycall=%.8s, sfx=%.4s\n",
 							dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.urcall, dsvt.hdr.mycall, dsvt.hdr.sfx);
 		else
-			printf("streamid=%04X ctrl=%02X\n", dsvt.streamid, dsvt.counter);
+			printf("streamid=%04X counter=%02X\n", dsvt.streamid, dsvt.counter);
 		if (nread == 1) {
 			if (memcmp(dsvt.title, "DSVT", 4) != 0) {
 				printf("DVST title not found\n");
@@ -416,6 +416,11 @@ int main(int argc, char *argv[])
 			}
 
 			sendto(sockDst, dstr.pkt_id, rlen + 2,0, (struct sockaddr *)&toDst, sizeof(toDst));
+			if (rlen == 56)
+				printf("Sent DSTR HDR r2=%.8s r1=%.8s ur=%.8s my=%.8s nm=%.4s\n",
+						dstr.vpkt.hdr.r2, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.ur, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+			else
+				printf("Sent DSTR DATA streamid=%04X, ctrl=%02X\n", dstr.vpkt.streamid, dstr.vpkt.ctrl);
 		}
 		usleep(delay);
 	}
