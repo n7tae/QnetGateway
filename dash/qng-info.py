@@ -5,6 +5,7 @@ import datetime
 import socket
 import csv
 import configparser
+import libconf
 
 # HTML to send to browser
 html = """<!DOCTYPE html>
@@ -64,16 +65,26 @@ def get_data():
         readCSV = csv.reader(csvfile, delimiter=',')
         for row in readCSV:
           reflector = row[1] + row[2]
-    config = configparser.ConfigParser()
-    config.read('/usr/local/etc/MMDVM.qn')
-    cs = config['General']['callsign']
-    rawfreq = config['Info']['txfrequency']
-    freq = float(rawfreq)/1000000
+    with open('/usr/local/etc/qn.cfg') as f:
+        config = libconf.load(f)
+    cs = config.ircddb.login
+    for key in config.module:
+        if config['module'][key]['type'] == 'mmdvm':
+            freq = get_MMDVM()
+        else:
+            freq = config['module'][key]['frequency']
     data.append(cs)
     data.append(freq)
     data.append(str(get_ip()))
     data.append(reflector)
     return data
+
+def get_MMDVM():
+    MMDVM_config = configparser.ConfigParser()
+    MMDVM_config.read('/usr/local/etc/MMDVM.qn')
+    rawfreq = config['Info']['txfrequency']
+    freq = float(rawfreq)/1000000
+    return freq
 
 def run():
   print('starting server...')
