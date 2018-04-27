@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010, 2011, 2012 by Scott Lawson KI4LKF
- *   addition Copyright (C) 2015 by Thomas A. Early N7TAE
+ *   addition Copyright (C) 2018 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -288,7 +288,7 @@ Note: MAXIMUM dtmf sequence is up to 32 dtmf tones.
 
 What dtmf tones are being decoded and processed
 -----------------------------------------------
-To link to an XRF reflector:  Example:   #02102
+To link to an XRF reflector:  Example:   B02102
 That says:   link to XRF021  module B. So, we use the # dtmf key
 to mean that we're interested in linking to an XRF reflector. The
 last two digits are the remote module 01 thru 05 (which is
@@ -306,12 +306,12 @@ to mean that we're interested in linking to a REF reflector. The
 last two digits are the remote module 01 thru 05 (which is
 translated to A thru E).
 
-To unlink (from any reflector xrf or ref):    73
+To unlink (from any reflector xrf or ref):    #
 
-To get the "link status":  99
+To get the "link status":  0 or 00
 
 Note:
-You can extend the shell ascript to do more things.  like force
+You can extend the shell script to do more things.  like force
 your repeater to ID itself. Any YRCALL command that can be executed
 by g2link_test, can be added to the shell script. Basically, the
 Linux shell script proc_QnetGateway_dtmfs.sh converts the decoded
@@ -341,7 +341,7 @@ change these files, unless you want to have your own personal voice
 played over RF. These dat files were created using a computer and they
 are NOT anyone's voice.
 
-The only dat file that you should really change is id.dat. The file
+The only dat file most hams will need to change is id.dat. The file
 id.dat contains the audio "UNLINKED" and nothing else. When the gateway
 is not linked and the RF user sets YRCALL=_______I to request the
 status of the link, the file id.dat will be played back over RF. But
@@ -353,23 +353,9 @@ the audio:  "This is repeater ...". A simple way to create your own
 recorded "repeater identification file" id.dat is to use your Dstar HT
 and set YRCALL command:   YRCALL=______S0 and key up your repeater.
 Start talking, and the gateway will record your audio into the file
-x_voicemail.dat where x is one of A.B or C. Now copy that file into
-id.dat.
+x_voicemail.dat where x is one of A.B or C. Now copy that file:
+sudo cp -f /tmp/C_voicemail.dat /usr/local/etc/it.dat
 
-Open the file QnetLink.cfg:
-    You can add as many lines to gwys.txt, if you know of any other
-    reflectors that you want to be able to connect to. REF reflectors
-    use port 20001(for USER connections), DCS reflectors use port
-    30051 and XRF reflectors use either 30001(for Repeater linking)
-    or 20001(for USER connections).
-
-    You can have as many ADMIN lines as you want. ADMIN is user
-    callsign that can connect to your own gateway(QnetLink) using
-    DVTool, ...
-
-    Only ADMIN users can use the scripts feature of this software.
-
-Note:
 You may be thinking why did we put all this source code inside QnetLink
 instead of putting it all inside the Gateway software QnetGateway (or
 g2_ccs CCS gateway software). Because it is NOT a good design to burden
@@ -378,7 +364,7 @@ NOT part of Dstar and they are not Dstar protocol.
 
 The only code that should be in a gateway, is G2 protocol code. This way
 we keep the gateway (QnetGateway) clean of any unneccesary source
-code logic and containing only pure G2/dstar logic.
+code logic and containing only pure G2/D-Star logic.
 
 QnetDVAP
 
@@ -398,8 +384,8 @@ After editing /usr/local/etc/g2.cfg file you can restart the effected
 program with "sudo service QnetDVRPTR restart". Or you can alway just
 reboot with "sudo reboot".
 
-Rig specific parameters are in "QnetDVRPTR.rf_rx_level", "QnetDVRPTR.inverse.rx" and
-"QnetDVRPTR.inverse.tx". You need to play with these to work best with your rig.
+Rig specific parameters are in "module.x.rf_rx_level", "module.x.inverse.rx" and
+"module.x.inverse.tx". You need to play with these to work best with your rig.
 With my Kenwood TM-V71, I use the default values.
 
 You can first start with inverse.rx, trying true or false. Use the echo command
@@ -410,5 +396,5 @@ then you can work out the inverse.tx paramter. Once you hear anything
 with in the echo mode, move rf_rx_level up or down to get the best
 audio.
 
-Once you have a working system, it's a good idea to back up you g2.cfg
+Once you have a working system, it's a good idea to back up you qn.cfg
 files.

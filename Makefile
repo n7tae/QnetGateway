@@ -74,7 +74,7 @@ clean:
 install : qngateway qnlink qnrelay
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
-	/bin/cp -f qnremote $(BINDIR)
+	/bin/cp -f qnremote qnvoice $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
@@ -99,7 +99,7 @@ install : qngateway qnlink qnrelay
 installdvap : qngateway qnlink qndvap
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
-	/bin/cp -f qnremote $(BINDIR)
+	/bin/cp -f qnremote qnvoice $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
@@ -124,7 +124,7 @@ installdvap : qngateway qnlink qndvap
 installdvrptr : qngateway qnlink qndvrptr
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
-	/bin/cp -f qnremote $(BINDIR)
+	/bin/cp -f qnremote qnvoice $(BINDIR)
 	/bin/cp -f qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
@@ -178,6 +178,7 @@ uninstall :
 	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
 	/bin/rm -f $(BINDIR)/qnremote
+	/bin/rm -f $(BINDIR)/qnvoice
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service
@@ -207,6 +208,7 @@ uninstalldvap :
 	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
 	/bin/rm -f $(BINDIR)/qnremote
+	/bin/rm -f $(BINDIR)/qnvoice
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service
@@ -236,6 +238,7 @@ uninstalldvrptr :
 	/bin/rm -f $(SYSDIR)/qngateway.service
 	/bin/rm -f $(BINDIR)/qngateway
 	/bin/rm -f $(BINDIR)/qnremote
+	/bin/rm -f $(BINDIR)/qnvoice
 	/bin/rm -f $(CFGDIR)/qn.cfg
 	######### QnetLink #########
 	systemctl stop qnlink.service

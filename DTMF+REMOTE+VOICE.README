@@ -20,11 +20,11 @@ how qnremote works.
 
                     ######## QnetRemote #########
 
-QnetRemote is a program used to send any arbitrary YourCall to your QnetGateway
-system. It is install automatically when you install any of the supported modems:
-MMDVMHost, QnetDVAP or QnetDVRPTR. It's a very simple, yet powerful program.
-Open a shell to you system and type "qnremote" and it will remind you of the
-format it expects:
+QnetRemote is a command line program used to send any arbitrary YourCall to your
+QnetGateway system. It is install automatically when you install any of the
+supported modems: MMDVMHost, QnetDVAP or QnetDVRPTR. It's a very simple, yet
+powerful program. Open a shell to you system and type "qnremote" and it will
+remind you of the format it expects:
 
 pi@raspberrypi:~ $ qnremote
 Usage: qnremote <module> <mycall> <yourcall>
@@ -40,7 +40,7 @@ YourCall parameters. Here are some more examples:
 qnremote b w4wwm u	# W4WWM is unlinking module B.
 qnremote c w1bwb i  # W1BSB is requesting the status of module C
 
-Modules, callsigns and YourCall can all be in lowercase, qnremote will convert
+Modules, callsigns and YourCall can all be in lowercase, qnremote will conver
 them to uppercase. QnetLink will validate that the specific MyCall is allowed
 to link or unlink, according to the configuration. (By default, any user can
 link or unlink a module, unless link_unlink is specified in the configuration
@@ -51,4 +51,42 @@ at a certain time. If you want to link to XRF002 A on Saturday at 6:00 PM
 Mountain Time for the D-Star Users Net, don't forget to include an unlink
 command in your cron-executed script before you link! For instructions on how
 to do this search the web with "linux cron job".
+
+                    ######## QnetVoice ########
+
+QnetVoice is another command line program to send any DVTool-formatted file
+to a moule configured on you gateway. It has a simple interface, like
+QnetRemote. To get started, open a shell on your system and type "qnvoice":
+
+pi@raspberrypi:~ $ qnvoice
+Usage: qnvoice <module> <mycall> <dvtoolFile>
+Where...
+        module is one of your modules
+        mycall is your personal callsign
+        dvtoolFile is a dvtool file
+
+Please note that <module> and <mycall> are not case sensitive, but
+<dvtoolFile> is.
+
+So what's a DVTool file? All the voice prompts delivered with QnetGateway,
+in the QnetGateway/announce directory and DVTool files. And, you can
+easily create your own!
+
+To make your own DVTool file, just put "      S0" in your radio's YourCall
+and key up and talk. You will be making a "voice mail" DVTool file:
+/tmp/X_voicemail.dat, where X is the module on which you are transmitting.
+Once you have created it, you can move it out of the /tmp directory and
+rename it. Then you can use it in a qnvoice command. You can also replace
+all of the standard voice messsages with your own. If you want to do this
+put your versions in a directory outside of the build directoy and make
+a small script that will copy your messages over the existing, installed
+messages:
+
+#!/bin/bash
+
+sudo cp ./id.dat /usr/local/etc
+... more copy commands
+
+That way, when you pull down a new release and build and install it, you
+can quickly update the voice messages with your own.
 
