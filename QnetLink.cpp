@@ -3867,7 +3867,18 @@ static void AudioNotifyThread(char *arg)
 	sleep(delay_before);
 
 	memset(temp_file, '\0', sizeof(temp_file));
-	snprintf(temp_file, FILENAME_MAX, "%s/%s", announce_dir.c_str(), notify_msg + 2);
+	if (0 == memcmp(notify_msg + 2, "id.dat", 6)) {
+		// check for <mod>id.dat
+		snprintf(temp_file, FILENAME_MAX, "%s/%c%s", announce_dir.c_str(), mod, notify_msg + 1);
+		struct stat ssbuf;
+		if (stat(temp_file, &ssbuf))
+			// nope, no <mod>id.dat file, revert back to id.dat
+			snprintf(temp_file, FILENAME_MAX, "%s/%s", announce_dir.c_str(), notify_msg + 2);
+	} else
+		// not id.dat
+		snprintf(temp_file, FILENAME_MAX, "%s/%s", announce_dir.c_str(), notify_msg + 2);
+
+
 	printf("sending File:[%s], mod:[%c], RADIO_ID=[%s]\n", temp_file, mod, RADIO_ID);
 
 	fp = fopen(temp_file, "rb");
