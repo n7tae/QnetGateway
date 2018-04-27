@@ -71,8 +71,6 @@ static std::string my_g2_link_ip;
 static std::string gwys;
 static std::string status_file;
 static std::string announce_dir;
-static bool only_admin_login;
-static bool only_link_unlink;
 static bool qso_details;
 static bool bool_rptr_ack;
 static bool announce;
@@ -102,14 +100,10 @@ struct inbound {
 };
 
 // the Key in this inbound_list map is the unique IP address of the remote
-typedef std::map<std::string, inbound *> inbound_type;
-static inbound_type inbound_list;
-
-typedef std::set<std::string> admin_type;
-static admin_type admin;
-
-typedef std::set<std::string> link_unlink_user_type;
-static link_unlink_user_type link_unlink_user;
+static std::map<std::string, inbound *> inbound_list;
+static std::set<std::string> admin;
+static std::set<std::string> link_unlink_user;
+static std::set<std::string> link_blacklist;
 
 #define LH_MAX_SIZE 39
 typedef std::map<std::string, std::string> dt_lh_type;
@@ -253,11 +247,10 @@ static bool resolve_rmt(char *name, int type, struct sockaddr_in *addr)
 /* send keepalive to donglers */
 static void send_heartbeat()
 {
-	inbound_type::iterator pos;
 	inbound *inbound_ptr;
 	bool removed = false;
 
-	for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+	for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 		inbound_ptr = (inbound *)pos->second;
 		sendto(ref_g2_sock, REF_ACK, 3, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 
@@ -675,8 +668,6 @@ bool get_value(const Config &cfg, const char *path, std::string &value, int min,
 /* process configuration file */
 static bool read_config(char *cfgFile)
 {
-	admin_type::iterator pos;
-	link_unlink_user_type::iterator link_unlink_user_pos;
 	unsigned short i;
 	Config cfg;
 
@@ -715,7 +706,6 @@ static bool read_config(char *cfgFile)
 	}
 
 	key = "link.admin";
-	only_admin_login = false;
 	if (cfg.exists(key)) {
 		Setting &userlist = cfg.lookup(key);
 		if (userlist.isArray()) {
@@ -729,10 +719,9 @@ static bool read_config(char *cfgFile)
 					}
 					value.resize(CALL_SIZE, ' ');
 					if (admin.end() == admin.find(value)) {
-						if (admin.insert(value).second)
-							only_admin_login = true;
+						admin.insert(value).second;
 					} else
-						printf("could not add '%s' as user.\n", value.c_str());
+						printf("aready added '%s' as user.\n", value.c_str());
 				} else
 					printf("'%s' is the wrong length!\n", value.c_str());
 			}
@@ -741,21 +730,20 @@ static bool read_config(char *cfgFile)
 			return false;
 		}
 		printf("%s = [ ", key.c_str());
-		for (pos=admin.begin(); pos!=admin.end(); pos++) {
+		for (auto pos=admin.begin(); pos!=admin.end(); pos++) {
 			if (pos != admin.begin())
-				fprintf(stdout, ", ");
-			fprintf(stdout, "\"%s\"", (*pos).c_str());
+				printf(", ");
+			printf("\"%s\"", (*pos).c_str());
 		}
-		fprintf(stdout, " ]\n");
+		printf(" ]\n");
 	}
 
-	key = "link.link_unlink";
-	only_link_unlink = false;
+	key = "link.no_link_unlink";
 	if (cfg.exists(key)) {
-		Setting &unlinklist = cfg.lookup(key);
-		if (unlinklist.isArray()) {
-			for (i=0; i<unlinklist.getLength(); i++) {
-				value = (const char *)unlinklist[i];
+		Setting &linkblacklist = cfg.lookup(key);
+		if (linkblacklist.isArray()) {
+			for (i=0; i<linkblacklist.getLength(); i++) {
+				value = (const char *)linkblacklist[i];
 				int l = value.length();
 				if (l>2 && l<CALL_SIZE-2) {
 					for (unsigned int j=0; j<value.length(); j++) {
@@ -763,11 +751,10 @@ static bool read_config(char *cfgFile)
 							value[j] = toupper(value[j]);
 					}
 					value.resize(CALL_SIZE, ' ');
-					if (link_unlink_user.end() == link_unlink_user.find(value)) {
-						if (link_unlink_user.insert(value).second)
-							only_link_unlink = true;
+					if (link_blacklist.end() == link_blacklist.find(value)) {
+						link_blacklist.insert(value).second;
 					} else
-						printf("could not add '%s' to link-unlink.\n", value.c_str());
+						printf("already added '%s' to link-blacklist.\n", value.c_str());
 				} else
 					printf("'%s' is the wrong length!\n", value.c_str());
 			}
@@ -776,12 +763,45 @@ static bool read_config(char *cfgFile)
 			return false;
 		}
 		printf("%s = [ ", key.c_str());
-		for (link_unlink_user_pos=link_unlink_user.begin(); link_unlink_user_pos!=link_unlink_user.end(); link_unlink_user_pos++) {
-			if (link_unlink_user_pos != link_unlink_user.begin())
-				fprintf(stdout, ", ");
-			fprintf(stdout, "\"%s\"", (*link_unlink_user_pos).c_str());
+		for (auto pos=link_blacklist.begin(); pos!=link_blacklist.end(); pos++) {
+			if (pos != link_blacklist.begin())
+				printf(", ");
+			printf("\"%s\"", (*pos).c_str());
 		}
-		fprintf(stdout, " ]\n");
+		printf(" ]\n");
+	} else {
+		key = "link.link_unlink";
+		if (cfg.exists(key)) {
+			Setting &unlinklist = cfg.lookup(key);
+			if (unlinklist.isArray()) {
+				for (i=0; i<unlinklist.getLength(); i++) {
+					value = (const char *)unlinklist[i];
+					int l = value.length();
+					if (l>2 && l<CALL_SIZE-2) {
+						for (unsigned int j=0; j<value.length(); j++) {
+							if (islower(value[j]))
+								value[j] = toupper(value[j]);
+						}
+						value.resize(CALL_SIZE, ' ');
+						if (link_unlink_user.end() == link_unlink_user.find(value)) {
+							link_unlink_user.insert(value).second;
+						} else
+							printf("already added '%s' to link-unlink.\n", value.c_str());
+					} else
+						printf("'%s' is the wrong length!\n", value.c_str());
+				}
+			} else {
+				printf("%s is not an array!\n", key.c_str());
+				return false;
+			}
+			printf("%s = [ ", key.c_str());
+			for (auto pos=link_unlink_user.begin(); pos!=link_unlink_user.end(); pos++) {
+				if (pos != link_unlink_user.begin())
+					printf(", ");
+				printf("\"%s\"", (*pos).c_str());
+			}
+			printf(" ]\n");
+		}
 	}
 
 	key = "ircddb.login";
@@ -1190,19 +1210,12 @@ static void runit()
 	char tmp2[36]; // 8 for rpt1 + 24 for time_t in std::string format
 	unsigned char readBuffer[100]; // 58 or 29 or 32, max is 58
 	unsigned char readBuffer2[1024];
-	unsigned char dcs_buf[1000];
-	dt_lh_type::iterator dt_lh_pos;
-	dt_lh_type::reverse_iterator r_dt_lh_pos;
-
-	gwy_list_type::iterator gwy_pos;
+	unsigned char dcs_buf[1000];;
 
 	char call[CALL_SIZE + 1];
 	char ip[IP_SIZE + 1];
 	inbound *inbound_ptr;
-	inbound_type::iterator pos;
-	std::pair<inbound_type::iterator,bool> insert_pair;
 	bool found = false;
-	std::set<std::string>::iterator it;
 
 	char cmd_2_dcs[23];
 	unsigned char dcs_seq[3] = { 0x00, 0x00, 0x00 };
@@ -1615,7 +1628,7 @@ static void runit()
 					i = 2;
 
 				/* Is this repeater listed in gwys.txt? */
-				gwy_pos = gwy_list.find(call);
+				auto gwy_pos = gwy_list.find(call);
 				if (gwy_pos == gwy_list.end()) {
 					/* We did NOT find this repeater in gwys.txt, reject the incoming link request */
 					printf("Incoming link from %s,%s but not found in gwys.txt\n",call,ip);
@@ -1776,7 +1789,7 @@ static void runit()
 							tmp1[8] = '\0';
 
 							// delete the user if exists
-							for (dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
+							for (auto dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
 								if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0) {
 									dt_lh_list.erase(dt_lh_pos);
 									break;
@@ -1784,7 +1797,7 @@ static void runit()
 							}
 							/* Limit?, delete oldest user */
 							if (dt_lh_list.size() == LH_MAX_SIZE) {
-								dt_lh_pos = dt_lh_list.begin();
+								auto dt_lh_pos = dt_lh_list.begin();
 								dt_lh_list.erase(dt_lh_pos);
 							}
 							// add user
@@ -1800,7 +1813,7 @@ static void runit()
 
 						/* send data to donglers */
 						/* no changes here */
-						for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+						for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 							inbound_ptr = (inbound *)pos->second;
 							if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
 								readBuffer[0] = (unsigned char)(58 & 0xFF);
@@ -1960,7 +1973,7 @@ static void runit()
 
 					/* send data to donglers */
 					/* no changes here */
-					for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+					for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 						inbound_ptr = (inbound *)pos->second;
 						if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
 							readBuffer[0] = (unsigned char)(29 & 0xFF);
@@ -2076,7 +2089,7 @@ static void runit()
 				unsigned short k_idx = 0;
 				unsigned char tmp[2];
 
-				pos = inbound_list.find(ip);
+				auto pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
 					// printf("Remote station %s %s requested LH list\n", inbound_ptr->call, ip);
@@ -2091,7 +2104,7 @@ static void runit()
 					time(&tnow);
 					memcpy((char *)readBuffer2 + 6, (char *)&tnow, sizeof(time_t));
 
-					for (r_dt_lh_pos = dt_lh_list.rbegin(); r_dt_lh_pos != dt_lh_list.rend();  r_dt_lh_pos++) {
+					for (auto r_dt_lh_pos = dt_lh_list.rbegin(); r_dt_lh_pos != dt_lh_list.rend();  r_dt_lh_pos++) {
 						/* each entry has 24 bytes */
 
 						/* start at position 10 to bypass the header */
@@ -2162,7 +2175,7 @@ static void runit()
 				unsigned char tmp[2];
 				unsigned short total = 0;
 
-				pos = inbound_list.find(ip);
+				auto pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
 					// printf("Remote station %s %s requested linked repeaters list\n", inbound_ptr->call, ip);
@@ -2253,7 +2266,7 @@ static void runit()
 				unsigned char tmp[2];
 				unsigned short total = 0;
 
-				pos = inbound_list.find(ip);
+				auto pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
 					// printf("Remote station %s %s requested connected user list\n", inbound_ptr->call, ip);
@@ -2336,7 +2349,7 @@ static void runit()
 				time_t ltime;
 				struct tm tm;
 
-				pos = inbound_list.find(ip);
+				auto pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
 					// printf("Remote station %s %s requested date\n", inbound_ptr->call, ip);
@@ -2366,7 +2379,7 @@ static void runit()
 					(readBuffer2[1] == 192) &&
 					(readBuffer2[2] == 3) &&
 					(readBuffer2[3] == 0)) {
-				pos = inbound_list.find(ip);
+				auto pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
 					// printf("Remote station %s %s requested version\n", inbound_ptr->call, ip);
@@ -2405,7 +2418,7 @@ static void runit()
 					}
 				}
 
-				pos = inbound_list.find(ip);
+				auto pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					inbound_ptr = (inbound *)pos->second;
 					if (memcmp(inbound_ptr->call, "1NFO", 4) != 0)
@@ -2551,7 +2564,7 @@ static void runit()
 			}
 
 			/* find out if it is a connected dongle */
-			pos = inbound_list.find(ip);
+			auto pos = inbound_list.find(ip);
 			if (pos != inbound_list.end()) {
 				inbound_ptr = (inbound *)pos->second;
 				found = true;
@@ -2598,7 +2611,7 @@ static void runit()
 
 					if ((inbound_list.size() + 1) > max_dongles)
 						printf("Inbound DONGLE-p connection from %s but over the max_dongles limit of %d\n", ip, (int)inbound_list.size());
-					else if (only_admin_login && (admin.find(call) == admin.end()))
+					else if (admin.size() && (admin.find(call) == admin.end()))
 						printf("Incoming call [%s] from %s not an ADMIN\n", call, ip);
 					else if (regexec(&preg, call, 0, NULL, 0) != 0) {
 						printf("Invalid dongle callsign: CALL=%s,ip=%s\n", call, ip);
@@ -2627,7 +2640,7 @@ static void runit()
 							else
 								inbound_ptr->client = 'D';  /* dongle */
 
-							insert_pair = inbound_list.insert(std::pair<std::string, inbound *>(ip, inbound_ptr));
+							auto insert_pair = inbound_list.insert(std::pair<std::string, inbound *>(ip, inbound_ptr));
 							if (insert_pair.second) {
 								if (memcmp(inbound_ptr->call, "1NFO", 4) != 0)
 									printf("new CALL=%s, DONGLE-p, ip=%s, users=%d\n", inbound_ptr->call,ip, (int)inbound_list.size());
@@ -2687,7 +2700,7 @@ static void runit()
 					}
 				}
 				if (!found) {
-					pos = inbound_list.find(ip);
+					auto pos = inbound_list.find(ip);
 					if (pos != inbound_list.end()) {
 						inbound_ptr = (inbound *)pos->second;
 						inbound_ptr->countdown = TIMEOUT;
@@ -2776,7 +2789,7 @@ static void runit()
 							tmp1[8] = '\0';
 
 							// delete the user if exists
-							for (dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
+							for (auto dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
 								if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0) {
 									dt_lh_list.erase(dt_lh_pos);
 									break;
@@ -2784,7 +2797,7 @@ static void runit()
 							}
 							/* Limit?, delete oldest user */
 							if (dt_lh_list.size() == LH_MAX_SIZE) {
-								dt_lh_pos = dt_lh_list.begin();
+								auto dt_lh_pos = dt_lh_list.begin();
 								dt_lh_list.erase(dt_lh_pos);
 							}
 							// add user
@@ -2799,7 +2812,7 @@ static void runit()
 						sendto(rptr_sock, readBuffer2+2, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 
 						/* send the data to the donglers */
-						for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+						for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 							inbound_ptr = (inbound *)pos->second;
 							if (fromDst4.sin_addr.s_addr != inbound_ptr->sin.sin_addr.s_addr) {
 								sendto(ref_g2_sock, readBuffer2, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
@@ -2923,8 +2936,7 @@ static void runit()
 
 		if (FD_ISSET(dcs_g2_sock, &fdset)) {
 			fromlen = sizeof(struct sockaddr_in);
-			recvlen2 = recvfrom(dcs_g2_sock,(char *)dcs_buf,1000,
-			                    0,(struct sockaddr *)&fromDst4,&fromlen);
+			recvlen2 = recvfrom(dcs_g2_sock, (char *)dcs_buf, 1000, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
 			strncpy(ip, inet_ntoa(fromDst4.sin_addr),IP_SIZE);
 			ip[IP_SIZE] = '\0';
@@ -2965,7 +2977,7 @@ static void runit()
 							tmp1[8] = '\0';
 
 							// delete the user if exists
-							for (dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
+							for (auto dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
 								if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0) {
 									dt_lh_list.erase(dt_lh_pos);
 									break;
@@ -2973,7 +2985,7 @@ static void runit()
 							}
 							/* Limit?, delete oldest user */
 							if (dt_lh_list.size() == LH_MAX_SIZE) {
-								dt_lh_pos = dt_lh_list.begin();
+								auto dt_lh_pos = dt_lh_list.begin();
 								dt_lh_list.erase(dt_lh_pos);
 							}
 							// add user
@@ -3030,7 +3042,7 @@ static void runit()
 								sendto(rptr_sock, readBuffer2+2, 56, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 
 							/* send the data to the donglers */
-							for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+							for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 								inbound_ptr = (inbound *)pos->second;
 								for (j=0; j<5; j++)
 									sendto(ref_g2_sock, readBuffer2, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
@@ -3068,7 +3080,7 @@ static void runit()
 							sendto(rptr_sock, readBuffer2+2, 27, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 
 							/* send the data to the donglers */
-							for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+							for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 								inbound_ptr = (inbound *)pos->second;
 								sendto(ref_g2_sock, readBuffer2, 29, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 							}
@@ -3238,7 +3250,7 @@ static void runit()
 						tmp1[8] = '\0';
 
 						// delete the user if exists
-						for (dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
+						for (auto dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
 							if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0) {
 								dt_lh_list.erase(dt_lh_pos);
 								break;
@@ -3246,7 +3258,7 @@ static void runit()
 						}
 						/* Limit?, delete oldest user */
 						if (dt_lh_list.size() == LH_MAX_SIZE) {
-							dt_lh_pos = dt_lh_list.begin();
+							auto dt_lh_pos = dt_lh_list.begin();
 							dt_lh_list.erase(dt_lh_pos);
 						}
 						/* add user */
@@ -3273,8 +3285,13 @@ static void runit()
 						        (readBuffer[17] == 0x08) ||
 						        (readBuffer[17] == 0x20) ||
 						        (readBuffer[17] == 0x28))) {
-							if (only_link_unlink && (link_unlink_user.find(call) == link_unlink_user.end())) {
-								printf("link request denied, unauthorized rf user [%s]\n", call);
+							if (
+									// if there is a black list, is he in the blacklist?
+									(link_blacklist.size() && link_blacklist.end()!=link_blacklist.find(call)) ||
+									// or if there is an allow list, is he not in it?
+									(link_unlink_user.size() && link_unlink_user.find(call)==link_unlink_user.end())
+								) {
+								printf("link request denied, unauthorized user [%s]\n", call);
 							} else {
 								memset(temp_repeater, ' ', CALL_SIZE);
 								memcpy(temp_repeater, readBuffer + 36, CALL_SIZE - 2);
@@ -3295,8 +3312,13 @@ static void runit()
 								}
 							}
 						} else if ((readBuffer[43] == 'U') && (readBuffer[36] == ' ')) {
-							if (only_link_unlink && (link_unlink_user.find(call) == link_unlink_user.end())) {
-								printf("unlink request denied, unauthorized rf user [%s]\n", call);
+							if (
+									// if there is a black list, is he in the blacklist?
+									(link_blacklist.size() && link_blacklist.end()!=link_blacklist.find(call)) ||
+									// or if there is an allow list, is he not in it?
+									(link_unlink_user.size() && link_unlink_user.find(call)==link_unlink_user.end())
+								) {
+								printf("unlink request denied, unauthorized user [%s]\n", call);
 							} else {
 								if (to_remote_g2[i].to_call[0] != '\0') {
 									if (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port)) {
@@ -3423,7 +3445,7 @@ static void runit()
 						readBuffer2[35] = 'G';
 						memcpy(&readBuffer2[36], "CQCQCQ  ", 8);
 
-						for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+						for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 							inbound_ptr = (inbound *)pos->second;
 							for (j=0; j<5; j++)
 								sendto(ref_g2_sock, readBuffer2, 58, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
@@ -3559,7 +3581,7 @@ static void runit()
 						else
 							memcpy(readBuffer2 + 17, readBuffer + 20, 12);
 
-						for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+						for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 							inbound_ptr = (inbound *)pos->second;
 							sendto(ref_g2_sock, readBuffer2, 29, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 						}
@@ -3717,7 +3739,7 @@ static void runit()
 
 												// delete the user if exists and it is a local RF entry
 												p_tmp2 = NULL;
-												for (dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
+												for (auto dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++) {
 													if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0) {
 														strcpy(tmp2, (char *)dt_lh_pos->first.c_str());
 														p_tmp2 = strstr(tmp2, "=l");
@@ -3984,7 +4006,6 @@ int main(int argc, char **argv)
 	short i, j;
 	struct sigaction act;
 	char unlink_request[CALL_SIZE + 3];
-	inbound_type::iterator pos;
 	inbound *inbound_ptr;
 
 	char cmd_2_dcs[19];
@@ -4104,7 +4125,7 @@ int main(int argc, char **argv)
 	}
 
 	/* tell inbound dongles we are down */
-	for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
+	for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 		inbound_ptr = (inbound *)pos->second;
 		sendto(ref_g2_sock, queryCommand, 5, 0, (struct sockaddr *)&(inbound_ptr->sin), sizeof(struct sockaddr_in));
 	}
