@@ -46,7 +46,7 @@ struct sockaddr_in toDst;
 FILE *fp = NULL;
 time_t tNow = 0;
 short streamid_raw = 0;
-bool isdefined[3] = { false, false, false };
+int moduleport[3] = { 0, 0, 0 };
 std::string REPEATER, IP_ADDRESS;
 int PORT, PLAY_WAIT, PLAY_DELAY;
 
@@ -199,18 +199,16 @@ bool read_config(const char *cfgFile)
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
-			isdefined[m] = true;
+			get_value(cfg, std::string(path+".port").c_str(), moduleport[m], 1000, 65535, 1998+m);
 		}
 	}
-	if (false==isdefined[0] && false==isdefined[1] && false==isdefined[2]) {
+	if (0==moduleport[0] && 0==moduleport[1] && 0==moduleport[2]) {
 		printf("No repeaters defined!\n");
 		return true;
 	}
 
 	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, "127.0.0.1"))
 		return true;
-
-	get_value(cfg, "gateway.internal.port", PORT, 16000, 65535, 19000);
 
 	get_value(cfg, "timing.play.wait", PLAY_WAIT, 1, 10, 2);
 
@@ -261,6 +259,12 @@ int main(int argc, char *argv[])
 		module = toupper(module);
 	if ((module != 'A') && (module != 'B') && (module != 'C')) {
 		printf("module must be one of A B C\n");
+		return 1;
+	}
+
+	PORT = moduleport[module - 'A'];
+	if (0 == PORT) {
+		printf("module %c has no port defined!\n", module);
 		return 1;
 	}
 
