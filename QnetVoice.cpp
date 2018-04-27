@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
 	memset(RADIO_ID, ' ', 20);
 	RADIO_ID[20] = '\0';
 
-	memcpy(RADIO_ID, "QnetVoice Data", 4);
+	memcpy(RADIO_ID, "QnetVoice AMBE Data", 19);
 
 	unsigned long int delay = PLAY_DELAY * 1000L;
 	sleep(PLAY_WAIT);
@@ -367,9 +367,9 @@ int main(int argc, char *argv[])
 					dstr.vpkt.hdr.flag[i] = dsvt.hdr.flag[i];
 				memset(dstr.vpkt.hdr.r2, ' ', 36);
 				memcpy(dstr.vpkt.hdr.r2, REPEATER.c_str(), REPEATER.size());
-				dstr.vpkt.hdr.r2[7] = 'G';
+				dstr.vpkt.hdr.r1[7] = 'G';
 				memcpy(dstr.vpkt.hdr.r1, REPEATER.c_str(), REPEATER.size());
-				dstr.vpkt.hdr.r1[7] = module;
+				dstr.vpkt.hdr.r2[7] = module;
 				memcpy(dstr.vpkt.hdr.ur, "CQCQCQ", 6);	/* yrcall */
 				memcpy(dstr.vpkt.hdr.my, mycall.c_str(), mycall.size());
 				memcpy(dstr.vpkt.hdr.nm, "QNET", 4);
