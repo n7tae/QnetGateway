@@ -199,7 +199,7 @@ bool read_config(const char *cfgFile)
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
-			get_value(cfg, std::string(path+".port").c_str(), moduleport[m], 1000, 65535, 1998+m);
+			get_value(cfg, std::string(path+".port").c_str(), moduleport[m], 1000, 65535, 19998+m);
 		}
 	}
 	if (0==moduleport[0] && 0==moduleport[1] && 0==moduleport[2]) {
