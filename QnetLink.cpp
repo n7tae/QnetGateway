@@ -3869,7 +3869,7 @@ static void AudioNotifyThread(char *arg)
 	memset(temp_file, '\0', sizeof(temp_file));
 	if (0 == memcmp(notify_msg + 2, "id.dat", 6)) {
 		// check for <mod>id.dat
-		snprintf(temp_file, FILENAME_MAX, "%s/%c%s", announce_dir.c_str(), mod, notify_msg + 1);
+		snprintf(temp_file, FILENAME_MAX, "%s/%c%s", announce_dir.c_str(), mod, notify_msg + 2);
 		struct stat ssbuf;
 		if (stat(temp_file, &ssbuf))
 			// nope, no <mod>id.dat file, revert back to id.dat
