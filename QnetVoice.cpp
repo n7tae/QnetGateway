@@ -416,12 +416,14 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			sendto(sockDst, dstr.pkt_id, rlen + 2,0, (struct sockaddr *)&toDst, sizeof(toDst));
-			if (rlen == 56)
+			int sent = sendto(sockDst, dstr.pkt_id, rlen + 2,0, (struct sockaddr *)&toDst, sizeof(toDst));
+			if (sent == 58)
 				printf("Sent DSTR HDR r2=%.8s r1=%.8s ur=%.8s my=%.8s nm=%.4s\n",
 						dstr.vpkt.hdr.r2, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.ur, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
-			else
+			else if (sent == 29)
 				printf("Sent DSTR DATA streamid=%04X, ctrl=%02X\n", dstr.vpkt.streamid, dstr.vpkt.ctrl);
+			else
+				printf("ERROR: sendto returned %d!\n", sent);
 		}
 		usleep(delay);
 	}
