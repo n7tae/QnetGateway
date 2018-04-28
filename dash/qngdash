@@ -1,0 +1,6 @@
+# Cronjob to kick off dash
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+@reboot root /usr/local/bin/qng-dash.sh
