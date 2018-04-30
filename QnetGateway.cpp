@@ -1791,7 +1791,7 @@ void CQnetGateway::process()
 													ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
 													                       band_txt[i].lh_sfx,
 													                       //(strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
-													                       (band_txt[i].lh_yrcall,
+													                       band_txt[i].lh_yrcall,
 													                       band_txt[i].lh_rpt1,
 													                       band_txt[i].lh_rpt2,
 													                       band_txt[i].flags[0],
