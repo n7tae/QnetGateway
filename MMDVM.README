@@ -11,6 +11,11 @@ locale. And make sure you do "sudo apt-get update && sudo apt-get upgrade" befor
 your start. On a Raspberry Pi, you can do all of this with the configureation menu:
 "sudo raspi-config".
 
+If you are using a device that uses the GPIO header on the raspberry pi, you need to
+disable the serial0 console in the /boot/cmdline.txt file: Remove the reference to
+"console=serial0,115200" in this file. You should also disable bluetooth by adding:
+"dtoverlay=pi3-disable-bt" (without the quotes) to the end of the /boot/config.txt.
+
 1)  Install the only external library you need: sudo apt-get install libconfig++-dev
     Yeah! No wxWidgets!
 
