@@ -1529,7 +1529,8 @@ void CQnetGateway::process()
 
 								ii->sendHeardWithTXStats(band_txt[i].lh_mycall,
 								                         band_txt[i].lh_sfx,
-								                         (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
+								                         //(strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
+								                         band_txt[i].lh_yrcall,
 								                         band_txt[i].lh_rpt1,
 								                         band_txt[i].lh_rpt2,
 								                         band_txt[i].flags[0],
@@ -1783,13 +1784,14 @@ void CQnetGateway::process()
 													/*** if YRCALL is CQCQCQ, set dest_rptr ***/
 													if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
 														set_dest_rptr(i, band_txt[i].dest_rptr);
-														if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
-															band_txt[i].dest_rptr[0] = '\0';
+													//	if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
+													//		band_txt[i].dest_rptr[0] = '\0';
 													}
 
 													ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
 													                       band_txt[i].lh_sfx,
-													                       (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
+													                       //(strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
+													                       (band_txt[i].lh_yrcall,
 													                       band_txt[i].lh_rpt1,
 													                       band_txt[i].lh_rpt2,
 													                       band_txt[i].flags[0],
