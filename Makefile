@@ -166,10 +166,9 @@ installmmdvm :
 installdash :
 	/usr/bin/apt-get -y install python3-pip
 	/usr/bin/pip3 install libconf
-	/bin/cp -f dash/qng-dash.sh $(BINDIR)
 	/bin/cp -f dash/qng-info.py $(BINDIR)
 	/bin/cp -f dash/qngdash $(CRONDIR)
-	/bin/sh $(BINDIR)/qng-dash.sh
+	/bin/sh /usr/bin/python3 $(BINDIR)/qng-info.py &
 
 uninstallmmdvm :
 	systemctl stop mmdvm.service
@@ -278,6 +277,6 @@ uninstalldtmf :
 	/bin/rm -f $(BINDIR)/qndtmf
 
 uninstalldash :
-	/bin/rm -f $(SYSDIR)/qng-*
+	/bin/rm -f $(SYSDIR)/qng-info.py
 	/bin/rm -f $(CRONDIR)/qngdash
 	/usr/bin/pkill python3
