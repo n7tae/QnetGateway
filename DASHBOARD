@@ -1,12 +1,18 @@
      ##### DASH #####
 
-The first iteration of the dash is very rudimentary, but it provides the
+This is the minimum viable dashboard to be useful. It provides the
 following information, refreshed every 30s:
 
 * Node Callsign
 * Node TX Frequency
 * Node IP Address
 * Currently Linked Reflector
+
+It also has a button to disconnect the currently connected reflector, and a text
+field and button to connect to another reflector. Only the first 7 characters
+entered here will be used, the rest will be discarded. If the reflector entered
+is not valid (or not included in the gwys.txt file) the command will still run
+but have no effect.
 
 To access the dashboard, simply point a browser at the Hotspot's IP address or
 at http://<hostname>.local/ (on the same subnet).
