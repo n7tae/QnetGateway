@@ -375,7 +375,7 @@ bool IRCDDBApp::findServerUser()
 
 	for (it=d->user.begin(); it!=d->user.end(); ++it) {
 		IRCDDBAppUserObject u = it->second;
-		if (0==u.nick.compare(0, 2, "s-") && u.op && !d->myNick.compare(u.nick) && 0==u.nick.compare(d->bestServer)) {
+		if (0==u.nick.compare(0, 2, "s-") && u.op && d->myNick.compare(u.nick) && 0==u.nick.compare(d->bestServer)) {
 			d->currentServer = u.nick;
 			found = true;
 			break;
