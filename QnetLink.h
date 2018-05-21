@@ -1,0 +1,161 @@
+#pragma once
+
+/*
+ *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+#include <regex.h>
+
+#include <libconfig.h++>
+#include "versions.h"
+using namespace libconfig;
+
+/*** version number must be x.xx ***/
+#define VERSION LINK_VERSION
+#define CALL_SIZE 8
+#define IP_SIZE 15
+#define QUERY_SIZE 56
+#define MAXHOSTNAMELEN 64
+#define TIMEOUT 50
+#define LH_MAX_SIZE 39
+
+// This is the data payload in the map: inbound_list
+// This is for inbound dongles
+typedef struct inbound_tag {
+	char call[CALL_SIZE + 1];	// the callsign of the remote
+	struct sockaddr_in sin;		// IP and port of remote
+	short countdown;			// if countdown expires, the connection is terminated
+	char mod;					// A B C This user talked on this module
+	char client;				// dvap, dvdongle
+} SINBOUND;
+
+class CQnetLink {
+public:
+	// functions
+	CQnetLink();
+	~CQnetLink();
+	bool Init(const char *cfgfile);
+	void Process();
+	void Shutdown();
+private:
+	// functions
+	bool load_gwys(const std::string &filename);
+	void calcPFCS(unsigned char *packet, int len);
+	bool read_config(const char *);
+	bool srv_open();
+	void srv_close();
+	static void sigCatch(int signum);
+	void g2link(char from_mod, char *call, char to_mod);
+	void print_status_file();
+	void send_heartbeat();
+	bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
+	void audio_notify(char *notify_msg);
+	void rptr_ack(short i);
+	void AudioNotifyThread(char *arg);
+	void RptrAckThread(char *arg);
+	bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value);
+	bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value);
+	bool get_value(const Config &cfg, const char *path, bool &value, bool default_value);
+	bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value);
+
+	/* configuration data */
+	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, status_file, announce_dir;
+	bool only_admin_login, only_link_unlink, qso_details, bool_rptr_ack, announce;
+	int rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port, delay_between, delay_before;
+	char link_at_startup[CALL_SIZE+1];
+	unsigned int max_dongles, saved_max_dongles;
+	long rf_inactivity_timer[3];
+	const unsigned char REF_ACK[3] = { 3, 96, 0 };
+
+	// the Key in this inbound_list map is the unique IP address of the remote
+	std::map<std::string, SINBOUND *> inbound_list;
+
+	std::set<std::string> admin, link_unlink_user, link_blacklist;
+
+	std::map<std::string, std::string> dt_lh_list;
+
+	struct to_remote_g2_tag {
+		char to_call[CALL_SIZE + 1];
+		struct sockaddr_in toDst4;
+		char from_mod;
+		char to_mod;
+		short countdown;
+		bool is_connected;
+		unsigned char in_streamid[2];  // incoming from remote systems
+		unsigned char out_streamid[2]; // outgoing to remote systems
+	} to_remote_g2[3];
+
+	// broadcast for data arriving from xrf to local rptr
+	struct brd_from_xrf_tag {
+		unsigned char xrf_streamid[2];		// streamid from xrf
+		unsigned char rptr_streamid[2][2];	// generated streamid to rptr(s)
+	} brd_from_xrf;
+	unsigned char from_xrf_torptr_brd[56];
+	short brd_from_xrf_idx;
+
+	// broadcast for data arriving from local rptr to xrf
+	struct brd_from_rptr_tag {
+		unsigned char from_rptr_streamid[2];
+		unsigned char to_rptr_streamid[2][2];
+	} brd_from_rptr;
+	unsigned char fromrptr_torptr_brd[56];
+	short brd_from_rptr_idx;
+
+	struct tracing_tag {
+		unsigned char streamid[2];
+		time_t last_time;	// last time RF user talked
+	} tracing[3];
+
+	// input from remote
+	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock, rptr_sock;
+	struct sockaddr_in fromDst4;
+
+	// After we receive it from remote g2,
+	// we must feed it to our local repeater.
+	struct sockaddr_in toLocalg2;
+
+	// input from our own local repeater
+	struct sockaddr_in fromRptr;
+
+	fd_set fdset;
+	struct timeval tv;
+
+	static std::atomic<bool> keep_running;
+
+	// Used to validate incoming donglers
+	regex_t preg;
+
+	// the map of remotes
+	// key is the callsign, data is the host
+	std::map<std::string, std::string> gwy_list;
+
+	unsigned char queryCommand[QUERY_SIZE];
+
+	// START:  TEXT crap
+	char dtmf_mycall[3][CALL_SIZE + 1];
+	bool new_group[3];
+	int header_type;
+	bool GPS_seen[3];
+	unsigned char tmp_txt[3];
+	char *p_tmp2;
+	// END:  TEXT crap
+
+	// this is used for the "dashboard and qso_details" to avoid processing multiple headers
+	struct old_sid_tag {
+		unsigned char sid[2];
+	} old_sid[3];
+};
