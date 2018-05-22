@@ -19,7 +19,7 @@
 
 // for communicating with the g2 gateway on the internal port
 #pragma pack(push, 1)	// we need to be sure these structures don't have any dead space
-typedef struct pkt_tag {
+typedef struct dstr_tag {
 	unsigned char pkt_id[4];	//  0	"DSTR"
 	unsigned short counter;		//  4
 	unsigned char flag[3];		//  6	{ 0x73, 0x12, 0x00 }
@@ -93,7 +93,7 @@ typedef struct dsvt_tag {
 
 // for mmdvm
 #pragma pack(push, 1)
-typedef struct mmdvm_tag {	//									offset	  size
+typedef struct dsrp_tag {	//									offset	  size
 	unsigned char title[4];	// "DSRP"								 0
 	unsigned char tag;		// Poll   : 0xA							 4
 							// Header : busy ? 0x22 : 0x20

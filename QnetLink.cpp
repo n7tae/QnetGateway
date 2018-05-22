@@ -51,8 +51,10 @@
 #include <thread>
 #include <chrono>
 #include <libconfig.h++>
+
 #include "versions.h"
 #include "QnetLink.h"
+#include "QnetTypeDefs.h"
 
 using namespace libconfig;
 
@@ -161,7 +163,6 @@ void CQnetLink::RptrAckThread(char *arg)
 	char from_mod = arg[0];
 	char RADIO_ID[21];
 	memcpy(RADIO_ID, arg + 1, 21);
-	unsigned char buf[56];
 	unsigned int aseed;
 	time_t tnow = 0;
 	unsigned char silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x16, 0x29, 0xf5 };
@@ -188,101 +189,98 @@ void CQnetLink::RptrAckThread(char *arg)
 
 	printf("sending ACK+text, mod:[%c], RADIO_ID=[%s]\n", from_mod, RADIO_ID);
 
-	memcpy(buf,"DSVT", 4);
-	buf[4]  = 0x10;
-	buf[5]  = 0x00;
-	buf[6]  = 0x00;
-	buf[7]  = 0x00;
+	SDSVT dsvt;
 
-	buf[8]  = 0x20;
-	buf[9]  = 0x00;
-	buf[10] = 0x01;
-	buf[11] = 0x00;
+	memcpy(dsvt.title, "DSVT", 4);
+	dsvt.config  = 0x10;
+	dsvt.flaga[0] = dsvt.flaga[1] = dsvt.flaga[2]  = 0x0;
 
-	buf[12] = streamid_raw / 256U;
-	buf[13] = streamid_raw % 256U;
-	buf[14] = 0x80;
-	buf[15] = 0x01; /* we do not want to set this to 0x01 */
-	buf[16] = 0x00;
-	buf[17] = 0x00;
+	dsvt.id  = 0x20;
+	dsvt.flagb[0] =dsvt.flagb[2]  = 0x0;
+	dsvt.flagb[1] = 0x1;
 
-	memcpy(buf + 18, owner.c_str(), CALL_SIZE);
-	buf[25] = from_mod;
+	dsvt.streamid = htons(streamid_raw);
+	dsvt.counter = 0x80;
+	dsvt.hdr.flag[0] = 0x1;
+	dsvt.hdr.flag[1] = dsvt.hdr.flag[2] = 0x0;
 
-	memcpy(buf + 26,  owner.c_str(), CALL_SIZE);
-	buf[33] = 'G';
+	memcpy(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
+	dsvt.hdr.rpt1[7] = from_mod;
 
-	memcpy(buf + 34, "CQCQCQ  ", CALL_SIZE);
+	memcpy(dsvt.hdr.rpt2,  owner.c_str(), CALL_SIZE);
+	dsvt.hdr.rpt2[7] = 'G';
 
-	memcpy(buf + 42, owner.c_str(), CALL_SIZE);
-	buf[49] = from_mod;
+	memcpy(dsvt.hdr.urcall, "CQCQCQ  ", CALL_SIZE);
 
-	memcpy(buf + 50, "RPTR", 4);
-	calcPFCS(buf,56);
-	sendto(rptr_sock, buf, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
+	memcpy(dsvt.hdr.mycall, owner.c_str(), CALL_SIZE);
+	dsvt.hdr.mycall[7] = from_mod;
+
+	memcpy(dsvt.hdr.sfx, "RPTR", 4);
+	calcPFCS(dsvt.title,56);
+	sendto(rptr_sock, dsvt.title, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
 	std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 
-	buf[4] = 0x20;
-	memcpy(buf + 15, silence, 9);
+	dsvt.config = 0x20;
+	memcpy(dsvt.vasd.voice, silence, 9);
 
 	/* start sending silence + announcement text */
 
 	for (int i=0; i<10; i++) {
-		buf[14] = (unsigned char)i;
+		dsvt.counter = (unsigned char)i;
 		switch (i) {
 			case 0:
-				buf[24] = 0x55;
-				buf[25] = 0x2d;
-				buf[26] = 0x16;
+				dsvt.vasd.text[0] = 0x55;
+				dsvt.vasd.text[1] = 0x2d;
+				dsvt.vasd.text[2] = 0x16;
 				break;
 			case 1:
-				buf[24] = '@' ^ 0x70;
-				buf[25] = RADIO_ID[0] ^ 0x4f;
-				buf[26] = RADIO_ID[1] ^ 0x93;
+				dsvt.vasd.text[0] = '@' ^ 0x70;
+				dsvt.vasd.text[1] = RADIO_ID[0] ^ 0x4f;
+				dsvt.vasd.text[2] = RADIO_ID[1] ^ 0x93;
 				break;
 			case 2:
-				buf[24] = RADIO_ID[2] ^ 0x70;
-				buf[25] = RADIO_ID[3] ^ 0x4f;
-				buf[26] = RADIO_ID[4] ^ 0x93;
+				dsvt.vasd.text[0] = RADIO_ID[2] ^ 0x70;
+				dsvt.vasd.text[1] = RADIO_ID[3] ^ 0x4f;
+				dsvt.vasd.text[2] = RADIO_ID[4] ^ 0x93;
 				break;
 			case 3:
-				buf[24] = 'A' ^ 0x70;
-				buf[25] = RADIO_ID[5] ^ 0x4f;
-				buf[26] = RADIO_ID[6] ^ 0x93;
+				dsvt.vasd.text[0] = 'A' ^ 0x70;
+				dsvt.vasd.text[1] = RADIO_ID[5] ^ 0x4f;
+				dsvt.vasd.text[2] = RADIO_ID[6] ^ 0x93;
 				break;
 			case 4:
-				buf[24] = RADIO_ID[7] ^ 0x70;
-				buf[25] = RADIO_ID[8] ^ 0x4f;
-				buf[26] = RADIO_ID[9] ^ 0x93;
+				dsvt.vasd.text[0] = RADIO_ID[7] ^ 0x70;
+				dsvt.vasd.text[1] = RADIO_ID[8] ^ 0x4f;
+				dsvt.vasd.text[2] = RADIO_ID[9] ^ 0x93;
 				break;
 			case 5:
-				buf[24] = 'B' ^ 0x70;
-				buf[25] = RADIO_ID[10] ^ 0x4f;
-				buf[26] = RADIO_ID[11] ^ 0x93;
+				dsvt.vasd.text[0] = 'B' ^ 0x70;
+				dsvt.vasd.text[1] = RADIO_ID[10] ^ 0x4f;
+				dsvt.vasd.text[2] = RADIO_ID[11] ^ 0x93;
 				break;
 			case 6:
-				buf[24] = RADIO_ID[12] ^ 0x70;
-				buf[25] = RADIO_ID[13] ^ 0x4f;
-				buf[26] = RADIO_ID[14] ^ 0x93;
+				dsvt.vasd.text[0] = RADIO_ID[12] ^ 0x70;
+				dsvt.vasd.text[1] = RADIO_ID[13] ^ 0x4f;
+				dsvt.vasd.text[2] = RADIO_ID[14] ^ 0x93;
 				break;
 			case 7:
-				buf[24] = 'C' ^ 0x70;
-				buf[25] = RADIO_ID[15] ^ 0x4f;
-				buf[26] = RADIO_ID[16] ^ 0x93;
+				dsvt.vasd.text[0] = 'C' ^ 0x70;
+				dsvt.vasd.text[1] = RADIO_ID[15] ^ 0x4f;
+				dsvt.vasd.text[2] = RADIO_ID[16] ^ 0x93;
 				break;
 			case 8:
-				buf[24] = RADIO_ID[17] ^ 0x70;
-				buf[25] = RADIO_ID[18] ^ 0x4f;
-				buf[26] = RADIO_ID[19] ^ 0x93;
+				dsvt.vasd.text[0] = RADIO_ID[17] ^ 0x70;
+				dsvt.vasd.text[1] = RADIO_ID[18] ^ 0x4f;
+				dsvt.vasd.text[2] = RADIO_ID[19] ^ 0x93;
 				break;
 			case 9:
-				buf[14] |= 0x40;
-				buf[24] = 0x16;
-				buf[25] = 0x29;
-				buf[26] = 0xf5;
+				dsvt.counter |= 0x40;
+				dsvt.vasd.text[0] = 0x16;
+				dsvt.vasd.text[1] = 0x29;
+				dsvt.vasd.text[2] = 0xf5;
 				break;
 		}
-		sendto(rptr_sock, buf, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
+		sendto(rptr_sock, dsvt.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
 		if (i < 9)
 			std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 	}
@@ -1283,9 +1281,9 @@ void CQnetLink::Process()
 			socklen_t fromlen = sizeof(struct sockaddr_in);
 			int recvlen2 = recvfrom(xrf_g2_sock, (char *)readBuffer2, 100, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
-			strncpy(ip, inet_ntoa(fromDst4.sin_addr),IP_SIZE);
+			strncpy(ip, inet_ntoa(fromDst4.sin_addr), IP_SIZE);
 			ip[IP_SIZE] = '\0';
-			strncpy(call, (char *)readBuffer2,CALL_SIZE);
+			strncpy(call, (char *)readBuffer2, CALL_SIZE);
 			call[CALL_SIZE] = '\0';
 
 			/* a packet of length (CALL_SIZE + 1) is a keepalive from a repeater/reflector */
@@ -3421,8 +3419,7 @@ void CQnetLink::Process()
 					}
 
 					for (int i=0; i<3; i++) {
-						if ((to_remote_g2[i].is_connected) &&
-						        (memcmp(to_remote_g2[i].out_streamid, readBuffer + 14, 2) == 0)) {
+						if ((to_remote_g2[i].is_connected) && (memcmp(to_remote_g2[i].out_streamid, readBuffer + 14, 2) == 0)) {
 							/* check for broadcast */
 							if (memcmp(brd_from_rptr.from_rptr_streamid, readBuffer + 14, 2) == 0) {
 								memcpy(fromrptr_torptr_brd, "DSVT", 4);

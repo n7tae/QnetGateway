@@ -90,7 +90,7 @@ private:
 
 	struct to_remote_g2_tag {
 		char to_call[CALL_SIZE + 1];
-		struct sockaddr_in toDst4;
+		struct sockaddr_in toDst4;     // sin_port is in network byte order
 		char from_mod;
 		char to_mod;
 		short countdown;
