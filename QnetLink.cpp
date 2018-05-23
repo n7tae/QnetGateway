@@ -3636,7 +3636,6 @@ void CQnetLink::AudioNotifyThread(char *arg)
 
 	unsigned short rlen = 0;
 	size_t nread = 0;
-	unsigned char dstar_buf[56];
 	bool useTEXT = false;
 	short int TEXT_idx = 0;
 	char RADIO_ID[21];
@@ -3707,6 +3706,7 @@ void CQnetLink::AudioNotifyThread(char *arg)
 	}
 
 	/* stupid DVTOOL + 4 byte num_of_records */
+	unsigned char dstar_buf[10];
 	nread = fread(dstar_buf, 10, 1, fp);
 	if (nread != 1) {
 		printf("Cant read first 10 bytes from %s\n", temp_file);
@@ -3737,93 +3737,86 @@ void CQnetLink::AudioNotifyThread(char *arg)
 			break;
 		}
 
-		nread = fread(dstar_buf, rlen, 1, fp);
+		SDSVT dsvt;
+		nread = fread(dsvt.title, rlen, 1, fp);
 		if (nread == 1) {
-			if (memcmp(dstar_buf, "DSVT", 4) != 0) {
+			if (memcmp(dsvt.title, "DSVT", 4) != 0) {
 				printf("DVST not found in %s\n", temp_file);
 				break;
 			}
 
-			if (dstar_buf[8] != 0x20) {
+			if (dsvt.id != 0x20) {
 				printf("Not Voice type in %s\n", temp_file);
 				break;
 			}
 
-			if (dstar_buf[4] == 0x10)
-				;
-			else if (dstar_buf[4] == 0x20)
-				;
-			else {
+			if (dsvt.config!=0x10 && dsvt.config!=0x20) {
 				printf("Not a valid record type in %s\n", temp_file);
 				break;
 			}
 
-			dstar_buf[12] = streamid_raw / 256U;
-			dstar_buf[13] = streamid_raw % 256U;
+			dsvt.streamid = htons(streamid_raw);
 
 			if (rlen == 56) {
-				dstar_buf[15] = 0x01;
+				dsvt.hdr.flag[0] = 0x01;
 
-				memcpy(dstar_buf + 18, owner.c_str(), CALL_SIZE);
-				dstar_buf[25] = mod;
+				memcpy(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
+				dsvt.hdr.rpt1[7] = mod;
 
-				memcpy(dstar_buf + 26, owner.c_str(), CALL_SIZE);
-				dstar_buf[33] = 'G';
+				memcpy(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE);
+				dsvt.hdr.rpt2[7] = 'G';
 
-				memcpy(dstar_buf + 34, "CQCQCQ  ", 8);
+				memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
 
-				memcpy(dstar_buf + 42, owner.c_str(), CALL_SIZE);
-				dstar_buf[48] = ' ';
-				dstar_buf[49] = ' ';
+				memcpy(dsvt.hdr.mycall, owner.c_str(), CALL_SIZE);
+				dsvt.hdr.mycall[6] = dsvt.hdr.mycall[7] = ' ';
 
-				memcpy(dstar_buf + 50, "RPTR", 4);
-				calcPFCS(dstar_buf, 56);
+				memcpy(dsvt.hdr.sfx, "RPTR", 4);
+				calcPFCS(dsvt.title, 56);
 			} else {
 				if (useTEXT) {
-					if ((dstar_buf[24] != 0x55) ||
-					        (dstar_buf[25] != 0x2d) ||
-					        (dstar_buf[26] != 0x16)) {
+					if ((dsvt.vasd.text[0] != 0x55) || (dsvt.vasd.text[1] != 0x2d) || (dsvt.vasd.text[2] != 0x16)) {
 						if (TEXT_idx == 0) {
-							dstar_buf[24] = '@' ^ 0x70;
-							dstar_buf[25] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dstar_buf[26] = RADIO_ID[TEXT_idx++] ^ 0x93;
+							dsvt.vasd.text[0] = '@' ^ 0x70;
+							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
+							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
 						} else if (TEXT_idx == 2) {
-							dstar_buf[24] = RADIO_ID[TEXT_idx++] ^ 0x70;
-							dstar_buf[25] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dstar_buf[26] = RADIO_ID[TEXT_idx++] ^ 0x93;
+							dsvt.vasd.text[0] = RADIO_ID[TEXT_idx++] ^ 0x70;
+							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
+							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
 						} else if (TEXT_idx == 5) {
-							dstar_buf[24] = 'A' ^ 0x70;
-							dstar_buf[25] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dstar_buf[26] = RADIO_ID[TEXT_idx++] ^ 0x93;
+							dsvt.vasd.text[0] = 'A' ^ 0x70;
+							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
+							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
 						} else if (TEXT_idx == 7) {
-							dstar_buf[24] = RADIO_ID[TEXT_idx++] ^ 0x70;
-							dstar_buf[25] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dstar_buf[26] = RADIO_ID[TEXT_idx++] ^ 0x93;
+							dsvt.vasd.text[0] = RADIO_ID[TEXT_idx++] ^ 0x70;
+							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
+							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
 						} else if (TEXT_idx == 10) {
-							dstar_buf[24] = 'B' ^ 0x70;
-							dstar_buf[25] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dstar_buf[26] = RADIO_ID[TEXT_idx++] ^ 0x93;
+							dsvt.vasd.text[0] = 'B' ^ 0x70;
+							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
+							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
 						} else if (TEXT_idx == 12) {
-							dstar_buf[24] = RADIO_ID[TEXT_idx++] ^ 0x70;
-							dstar_buf[25] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dstar_buf[26] = RADIO_ID[TEXT_idx++] ^ 0x93;
+							dsvt.vasd.text[0] = RADIO_ID[TEXT_idx++] ^ 0x70;
+							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
+							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
 						} else if (TEXT_idx == 15) {
-							dstar_buf[24] = 'C' ^ 0x70;
-							dstar_buf[25] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dstar_buf[26] = RADIO_ID[TEXT_idx++] ^ 0x93;
+							dsvt.vasd.text[0] = 'C' ^ 0x70;
+							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
+							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
 						} else if (TEXT_idx == 17) {
-							dstar_buf[24] = RADIO_ID[TEXT_idx++] ^ 0x70;
-							dstar_buf[25] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dstar_buf[26] = RADIO_ID[TEXT_idx++] ^ 0x93;
+							dsvt.vasd.text[0] = RADIO_ID[TEXT_idx++] ^ 0x70;
+							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
+							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
 						} else {
-							dstar_buf[24] = 0x70;
-							dstar_buf[25] = 0x4f;
-							dstar_buf[26] = 0x93;
+							dsvt.vasd.text[0] = 0x70;
+							dsvt.vasd.text[1] = 0x4f;
+							dsvt.vasd.text[2] = 0x93;
 						}
 					}
 				}
 			}
-			sendto(rptr_sock,  dstar_buf, rlen, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+			sendto(rptr_sock, dsvt.title, rlen, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 	}
