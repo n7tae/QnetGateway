@@ -22,6 +22,8 @@
 
 #include <libconfig.h++>
 #include "versions.h"
+#include "QnetTypeDefs.h"
+
 using namespace libconfig;
 
 /*** version number must be x.xx ***/
@@ -32,6 +34,11 @@ using namespace libconfig;
 #define MAXHOSTNAMELEN 64
 #define TIMEOUT 50
 #define LH_MAX_SIZE 39
+
+typedef struct refdsvt_tag {
+	unsigned char head[2];
+	SDSVT dsvt;
+} SREFDSVT;
 
 // This is the data payload in the map: inbound_list
 // This is for inbound dongles
@@ -95,28 +102,28 @@ private:
 		char to_mod;
 		short countdown;
 		bool is_connected;
-		unsigned char in_streamid[2];  // incoming from remote systems
-		unsigned char out_streamid[2]; // outgoing to remote systems
+		unsigned short in_streamid;  // incoming from remote systems
+		unsigned short out_streamid; // outgoing to remote systems
 	} to_remote_g2[3];
 
 	// broadcast for data arriving from xrf to local rptr
 	struct brd_from_xrf_tag {
-		unsigned char xrf_streamid[2];		// streamid from xrf
-		unsigned char rptr_streamid[2][2];	// generated streamid to rptr(s)
+		unsigned short xrf_streamid;		// streamid from xrf
+		unsigned short rptr_streamid[2];	// generated streamid to rptr(s)
 	} brd_from_xrf;
-	unsigned char from_xrf_torptr_brd[56];
+	SDSVT from_xrf_torptr_brd;
 	short brd_from_xrf_idx;
 
 	// broadcast for data arriving from local rptr to xrf
 	struct brd_from_rptr_tag {
-		unsigned char from_rptr_streamid[2];
-		unsigned char to_rptr_streamid[2][2];
+		unsigned short from_rptr_streamid;
+		unsigned short to_rptr_streamid[2];
 	} brd_from_rptr;
-	unsigned char fromrptr_torptr_brd[56];
+	SDSVT fromrptr_torptr_brd;
 	short brd_from_rptr_idx;
 
 	struct tracing_tag {
-		unsigned char streamid[2];
+		unsigned short streamid;
 		time_t last_time;	// last time RF user talked
 	} tracing[3];
 
@@ -156,6 +163,6 @@ private:
 
 	// this is used for the "dashboard and qso_details" to avoid processing multiple headers
 	struct old_sid_tag {
-		unsigned char sid[2];
+		unsigned short sid;
 	} old_sid[3];
 };

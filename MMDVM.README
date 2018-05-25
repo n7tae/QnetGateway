@@ -69,7 +69,7 @@ disable the serial0 console in the /boot/cmdline.txt file: Remove the reference 
     entries, at the end of the file.
     If you find you can no longer connect to a system, it may be because its IP
     address has changed. You can execute either script again, copy it to
-    /usr/local/etc, and then: either reboot you system, or put "       L" in your
+    /usr/local/etc, and then: either reboot you system, or put "       F" in your
     URField and key your radio, or: sudo systemctl restart qnlink
 
 14) We have a gwys.txt file and a qn.cfg in the build directory, so we are ready
