@@ -25,5 +25,5 @@ public:
 
 	~CRandom();
 
-	short NewStreamID();
+	unsigned short NewStreamID();
 };

@@ -29,10 +29,10 @@ CRandom::CRandom()
 
 CRandom::~CRandom() {}
 
-short CRandom::NewStreamID()
+unsigned short CRandom::NewStreamID()
 {
-	short r = 0;
+	unsigned short r = 0;
 	while (0 == r)
-		r = 0xffff & random();
+		r = 0xffffu & random();
 	return r;
 }
