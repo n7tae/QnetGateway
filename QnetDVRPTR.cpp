@@ -25,6 +25,8 @@
 #include <string>
 #include <libconfig.h++>
 
+#include "Random.h"
+
 using namespace libconfig;
 
 #define VERSION DVRPTR_VERSION
@@ -2676,7 +2678,7 @@ int main(int argc, const char **argv)
 	dstar_dv_init();
 
 	time(&tNow);
-	srand(tNow + getpid());
+	CRandom Random;
 
 	time(&time_rqst);
 
@@ -2932,7 +2934,7 @@ int main(int argc, const char **argv)
 				Send_Network_Header[11] =  0x00;
 				Send_Network_Header[12] =  0x01;
 				Send_Network_Header[13] =  SND_TERM_ID;
-				streamid_raw = (::rand() % 65535U) + 1U;
+				streamid_raw = Random.NewStreamID();
 				Send_Network_Header[14] = streamid_raw / 256U;
 				Send_Network_Header[15] = streamid_raw % 256U;
 				Send_Network_Header[16] =  0x80;

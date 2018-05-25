@@ -23,6 +23,7 @@
 #include <libconfig.h++>
 #include "versions.h"
 #include "QnetTypeDefs.h"
+#include "Random.h"
 
 using namespace libconfig;
 
@@ -165,4 +166,6 @@ private:
 	struct old_sid_tag {
 		unsigned short sid;
 	} old_sid[3];
+
+	CRandom Random;
 };

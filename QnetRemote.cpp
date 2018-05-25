@@ -36,6 +36,7 @@
 #include <string>
 
 #include "QnetTypeDefs.h"
+#include "Random.h"
 
 using namespace libconfig;
 
@@ -283,7 +284,7 @@ int main(int argc, char *argv[])
 	RADIO_ID.resize(20, ' ');
 
 	time(&tNow);
-	srand(tNow + getpid());
+	CRandom Random;
 
 	if (dst_open(IP_ADDRESS.c_str(), PORT))
 		return 1;
@@ -306,7 +307,7 @@ int main(int argc, char *argv[])
 		pkt.vpkt.snd_term_id = 0x02;
 	else
 		pkt.vpkt.snd_term_id = 0x00;
-	streamid_raw = (unsigned short)(::rand() & 0xFFFF);
+	streamid_raw = Random.NewStreamID();
 	pkt.vpkt.streamid = htons(streamid_raw);
 	pkt.vpkt.ctrl = 0x80;
 	pkt.vpkt.hdr.flag[0] = pkt.vpkt.hdr.flag[1] = pkt.vpkt.hdr.flag[2] = 0x00;

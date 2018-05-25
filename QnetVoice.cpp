@@ -36,6 +36,7 @@
 #include <libconfig.h++>
 
 #include "QnetTypeDefs.h"
+#include "Random.h"
 
 using namespace libconfig;
 
@@ -304,7 +305,7 @@ int main(int argc, char *argv[])
 	sleep(PLAY_WAIT);
 
 	time(&tNow);
-	srand(tNow + getpid());
+	CRandom Random;
 
 	if (dst_open(IP_ADDRESS.c_str(), PORT))
 		return 1;
@@ -318,7 +319,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		if (rlen == 56)
-			streamid_raw = (short)(::rand() & 0xFFFF);
+			streamid_raw = Random.NewStreamID();
 		else if (rlen == 27)
 			;
 		else {

@@ -50,6 +50,7 @@ using namespace libconfig;
 
 #include "DVAPDongle.h"
 #include "QnetTypeDefs.h"
+#include "Random.h"
 
 #define VERSION DVAP_VERSION
 #define CALL_SIZE 8
@@ -110,6 +111,7 @@ extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
 
 CDVAPDongle dongle;
+CRandom Random;
 
 static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
 {
@@ -469,7 +471,7 @@ static void readFrom20000()
 				while ((space < 1) && keep_running)
 					usleep(5);
 				SDVAP_REGISTER dr;
-				stream_id_to_dvap = (rand_r(&aseed) % 65535U) + 1U;
+				stream_id_to_dvap = Random.NewStreamID();
 				dr.header = 0xa02f;
 				dr.frame.streamid = stream_id_to_dvap;
 				dr.frame.framepos = 0x80;
@@ -734,7 +736,6 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	struct sigaction act;
 	time_t tnow = 0;
 	unsigned char silence[12] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
-	unsigned int aseed_ack = 0;
 
 	act.sa_handler = sig_catch;
 	sigemptyset(&act.sa_mask);
@@ -754,9 +755,8 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	sleep(DELAY_BEFORE);
 
 	time(&tnow);
-	aseed_ack = tnow + getpid();
 
-	uint16_t stream_id_to_dvap = (rand_r(&aseed_ack) % 65535U) + 1U;
+	uint16_t stream_id_to_dvap = Random.NewStreamID();
 
 	// HEADER
 	while ((space < 1) && keep_running)
@@ -1082,7 +1082,7 @@ static void ReadDVAPThread()
 				net_buf.vpkt.dst_rptr_id = 0x00;
 				net_buf.vpkt.snd_rptr_id = 0x01;
 				net_buf.vpkt.snd_term_id = SND_TERM_ID;
-				streamid_raw = (rand_r(&aseed) % 65535U) + 1U;
+				streamid_raw = Random.NewStreamID();
 				net_buf.vpkt.streamid = streamid_raw;
 				net_buf.vpkt.ctrl = 0x80;
 				sequence = 0;

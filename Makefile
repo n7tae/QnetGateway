@@ -43,23 +43,23 @@ all : $(PROGRAMS)
 qngateway : $(IRCOBJS) QnetGateway.o aprs.o
 	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
 
-qnlink : QnetLink.o
-	g++ $(CPPFLAGS) -o qnlink QnetLink.o $(LDFLAGS) -pthread
+qnlink : QnetLink.o Random.o
+	g++ $(CPPFLAGS) -o qnlink QnetLink.o Random.o $(LDFLAGS) -pthread
 
 qnrelay : QnetRelay.o
 	g++ $(CPPFLAGS) -o qnrelay QnetRelay.o $(LDFLAGS)
 
-qndvap : QnetDVAP.o DVAPDongle.o $(DSTROBJS)
-	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o $(DSTROBJS) $(LDFLAGS) -pthread
+qndvap : QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS)
+	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) $(LDFLAGS) -pthread
 
-qndvrptr : QnetDVRPTR.o $(DSTROBJS)
-	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o $(DSTROBJS) $(LDFLAGS)
+qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o
+	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o Random.o $(DSTROBJS) $(LDFLAGS)
 
-qnremote : QnetRemote.o
-	g++ $(CPPFLAGS) -o qnremote QnetRemote.o  $(LDFLAGS)
+qnremote : QnetRemote.o Random.o
+	g++ $(CPPFLAGS) -o qnremote QnetRemote.o Random.o $(LDFLAGS)
 
-qnvoice : QnetVoice.o
-	g++ $(CPPFLAGS) -o qnvoice QnetVoice.o  $(LDFLAGS)
+qnvoice : QnetVoice.o Random.o
+	g++ $(CPPFLAGS) -o qnvoice QnetVoice.o Random.o $(LDFLAGS)
 
 %.o : %.cpp
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@

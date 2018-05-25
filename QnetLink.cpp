@@ -162,7 +162,6 @@ void CQnetLink::RptrAckThread(char *arg)
 	char from_mod = arg[0];
 	char RADIO_ID[21];
 	memcpy(RADIO_ID, arg + 1, 21);
-	unsigned int aseed;
 	time_t tnow = 0;
 	unsigned char silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x16, 0x29, 0xf5 };
 	struct sigaction act;
@@ -180,9 +179,8 @@ void CQnetLink::RptrAckThread(char *arg)
 	}
 
 	time(&tnow);
-	aseed = tnow + pthread_self();
 
-	u_int16_t streamid_raw = (::rand_r(&aseed) % 65535U) + 1U;
+	short int streamid_raw = Random.NewStreamID();
 
 	sleep(delay_before);
 
@@ -3377,7 +3375,6 @@ void CQnetLink::AudioNotifyThread(char *arg)
 	char mod;
 	char *p = NULL;
 	u_int16_t streamid_raw = 0;
-	unsigned int aseed;
 	time_t tnow = 0;
 	struct sigaction act;
 
@@ -3453,7 +3450,6 @@ void CQnetLink::AudioNotifyThread(char *arg)
 	}
 
 	time(&tnow);
-	aseed = tnow + pthread_self();
 
 	while (keep_running) {
 		/* 2 byte length */
@@ -3462,7 +3458,7 @@ void CQnetLink::AudioNotifyThread(char *arg)
 			break;
 
 		if (rlen == 56)
-			streamid_raw = (::rand_r(&aseed) % 65535U) + 1U;
+			streamid_raw = Random.NewStreamID();
 		else if (rlen == 27)
 			;
 		else {
