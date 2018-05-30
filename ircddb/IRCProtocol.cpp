@@ -10,6 +10,7 @@
 
 IRCProtocol::IRCProtocol(IRCApplication *app, const std::string &callsign, const std::string &password, const std::string &channel, const std::string &versionInfo)
 {
+	srand(time(NULL));
 	this->password = password;
 	this->channel = channel;
 	this->app = app;
