@@ -531,7 +531,7 @@ int CQnetGateway::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *
 		return 2;
 	}
 
-	if ((*mod != 'A') && (*mod != 'B') && (*mod != 'C')) {
+	if (*mod == 'G') {
 		printf("Invalid module %c\n", *mod);
 		return 2;
 	}
