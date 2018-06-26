@@ -36,9 +36,16 @@ IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMess
 SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
-PROGRAMS=qngateway qnlink qnrelay qndvap qndvrptr qnremote qnvoice
 
-all : $(PROGRAMS)
+ALL_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr
+MDV_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay
+DVP_PROGRAMS=qngateway qnlink qnremote qnvoice qndvap
+DVR_PROGRAMS=qngateway qnlink qnremote qnvoice qndvrptr
+
+all    : $(ALL_PROGRAMS)
+mmdvm  : $(MDV_PROGRAMS)
+dvap   : $(DVP_PROGRAMS)
+dvrptr : $(DVR_PROGRAMS)
 
 qngateway : $(IRCOBJS) QnetGateway.o aprs.o
 	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
@@ -71,11 +78,11 @@ clean:
 
 -include $(DEPS)
 
-install : qngateway qnlink qnrelay
+install : $(MDV_PROGRAMS)
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
-	/bin/cp -f qn.cfg $(CFGDIR)
+	/bin/ln -s qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
@@ -83,7 +90,7 @@ install : qngateway qnlink qnrelay
 	######### QnetLink #########
 	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
-	/bin/cp -f gwys.txt $(CFGDIR)
+	/bin/ln -s gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
 	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
@@ -96,11 +103,11 @@ install : qngateway qnlink qnrelay
 	systemctl daemon-reload
 	systemctl start qnrelay.service
 
-installdvap : qngateway qnlink qndvap
+installdvap : $(DVP_PROGRAMS)
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
-	/bin/cp -f qn.cfg $(CFGDIR)
+	/bin/ln -s qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
@@ -108,7 +115,7 @@ installdvap : qngateway qnlink qndvap
 	######### QnetLink #########
 	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
-	/bin/cp -f gwys.txt $(CFGDIR)
+	/bin/ln -s gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
 	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
@@ -121,11 +128,11 @@ installdvap : qngateway qnlink qndvap
 	systemctl daemon-reload
 	systemctl start qndvap.service
 
-installdvrptr : qngateway qnlink qndvrptr
+installdvrptr : $(DVR_PROGRAMS)
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
-	/bin/cp -f qn.cfg $(CFGDIR)
+	/bin/ln -s qn.cfg $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
@@ -133,7 +140,7 @@ installdvrptr : qngateway qnlink qndvrptr
 	######### QnetLink #########
 	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
-	/bin/cp -f gwys.txt $(CFGDIR)
+	/bin/ln -s gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(CFGDIR)
 	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
@@ -147,7 +154,7 @@ installdvrptr : qngateway qnlink qndvrptr
 	systemctl start qndvrptr.service
 
 installdtmf : qndtmf
-	/bin/cp -f qndtmf $(BINDIR)
+	/bin/ln -s qndtmf $(BINDIR)
 	/bin/cp -f system/qndtmf.service $(SYSDIR)
 	systemctl enable qndtmf.service
 	systemctl daemon-reload
@@ -155,7 +162,7 @@ installdtmf : qndtmf
 
 installmmdvm :
 	/bin/cp -f $(MMPATH)/MMDVMHost $(BINDIR)
-	/bin/cp -f $(MMPATH)/MMDVM.qn $(CFGDIR)
+	/bin/ln -s $(MMPATH)/MMDVM.qn $(CFGDIR)
 	/bin/cp -f system/mmdvm.service $(SYSDIR)
 	/bin/cp -f system/mmdvm.timer $(SYSDIR)
 	systemctl enable mmdvm.timer
