@@ -78,7 +78,7 @@ clean:
 
 -include $(DEPS)
 
-install : $(MDV_PROGRAMS)
+install : $(MDV_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
@@ -103,7 +103,7 @@ install : $(MDV_PROGRAMS)
 	systemctl daemon-reload
 	systemctl start qnrelay.service
 
-installdvap : $(DVP_PROGRAMS)
+installdvap : $(DVP_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
@@ -128,7 +128,7 @@ installdvap : $(DVP_PROGRAMS)
 	systemctl daemon-reload
 	systemctl start qndvap.service
 
-installdvrptr : $(DVR_PROGRAMS)
+installdvrptr : $(DVR_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
@@ -160,7 +160,7 @@ installdtmf : qndtmf
 	systemctl daemon-reload
 	systemctl start qndtmf.service
 
-installmmdvm :
+installmmdvm : $(MMPATH)/MMDVMhost $(MMPATH)/MMDVM.qn
 	/bin/cp -f $(MMPATH)/MMDVMHost $(BINDIR)
 	/bin/ln -s $(MMPATH)/MMDVM.qn $(CFGDIR)
 	/bin/cp -f system/mmdvm.service $(SYSDIR)
