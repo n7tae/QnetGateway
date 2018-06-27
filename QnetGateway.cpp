@@ -170,47 +170,47 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 	return;
 }
 
-bool CQnetGateway::get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
+bool CQnetGateway::get_value(const Config &cfg, const std::string path, int &value, int min, int max, int default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
 			value = default_value;
 	} else
 		value = default_value;
-	printf("%s = [%d]\n", path, value);
+	printf("%s = [%d]\n", path.c_str(), value);
 	return true;
 }
 
-bool CQnetGateway::get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
+bool CQnetGateway::get_value(const Config &cfg, const std::string path, double &value, double min, double max, double default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
 			value = default_value;
 	} else
 		value = default_value;
-	printf("%s = [%lg]\n", path, value);
+	printf("%s = [%lg]\n", path.c_str(), value);
 	return true;
 }
 
-bool CQnetGateway::get_value(const Config &cfg, const char *path, bool &value, bool default_value)
+bool CQnetGateway::get_value(const Config &cfg, const std::string path, bool &value, bool default_value)
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
+	printf("%s = [%s]\n", path.c_str(), value ? "true" : "false");
 	return true;
 }
 
-bool CQnetGateway::get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
+bool CQnetGateway::get_value(const Config &cfg, const std::string path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
 		if (l<min || l>max) {
-			printf("%s is invalid\n", path);
+			printf("%s is invalid\n", path.c_str());
 			return false;
 		}
 	} else
 		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
+	printf("%s = [%s]\n", path.c_str(), value.c_str());
 	return true;
 }
 
@@ -230,8 +230,9 @@ bool CQnetGateway::read_config(char *cfgFile)
 		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
 		return true;
 	}
-
-	if (! get_value(cfg, "ircddb.login", owner, 3, CALL_SIZE-2, "UNDEFINED"))
+	// ircddb
+	std::string path("ircddb.");
+	if (! get_value(cfg, path+"login", owner, 3, CALL_SIZE-2, "UNDEFINED"))
 		return true;
 	OWNER = owner;
 	ToLower(owner);
@@ -239,36 +240,59 @@ bool CQnetGateway::read_config(char *cfgFile)
 	printf("OWNER=[%s]\n", OWNER.c_str());
 	OWNER.resize(CALL_SIZE, ' ');
 
+	if (! get_value(cfg, path+"host", ircddb.ip, 3, MAXHOSTNAMELEN, "rr.openquad.net"))
+		return true;
+
+	get_value(cfg, path+"port", ircddb.port, 1000, 65535, 9007);
+
+	if(! get_value(cfg, path+"password", irc_pass, 0, 512, "1111111111111111"))
+		return true;
+
+	// modules
+	is_icom = is_not_icom = false;
 	for (short int m=0; m<3; m++) {
 		std::string path = "module.";
 		path += m + 'a';
+		path += '.';
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm")) {
+			rptr.mod[m].defined = true;
+			if (0 == strcasecmp(type.c_str(), "icom")) {
+				rptr.mod[m].package_version = ICOM_VERSION;
+				is_icom = true;
+			} if (0 == strcasecmp(type.c_str(), "dvap")) {
+				rptr.mod[m].package_version = DVAP_VERSION;
+				is_not_icom = true;
+			} else if (0 == strcasecmp(type.c_str(), "dvrptr")) {
+				rptr.mod[m].package_version = DVRPTR_VERSION;
+				is_not_icom = true;
+			} else if (0 == strcasecmp(type.c_str(), "mmdvm")) {
+				rptr.mod[m].package_version = MMDVM_VERSION;
+				is_not_icom = true;
+			} else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
-			rptr.mod[m].defined = true;
-			if (0 == strcasecmp(type.c_str(), "dvap"))
-				rptr.mod[m].package_version = DVAP_VERSION;
-			else if (0 == strcasecmp(type.c_str(), "dvrptr"))
-				rptr.mod[m].package_version = DVRPTR_VERSION;
-			else
-				rptr.mod[m].package_version = MMDVM_VERSION;
-			if (! get_value(cfg, std::string(path+".ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, "127.0.0.1"))
+			if (is_icom && is_not_icom) {
+				printf("cannot define both icom and non-icom modules\n");
 				return true;
-			get_value(cfg, std::string(path+".port").c_str(), rptr.mod[m].portip.port, 16000, 65535, 19998+m);
-			get_value(cfg, std::string(path+".frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
-			get_value(cfg, std::string(path+".offset").c_str(), rptr.mod[m].offset,-1.0e12, 1.0e12, 0.0);
-			get_value(cfg, std::string(path+".range").c_str(), rptr.mod[m].range, 0.0, 1609344.0, 0.0);
-			get_value(cfg, std::string(path+".agl").c_str(), rptr.mod[m].agl, 0.0, 1000.0, 0.0);
-			get_value(cfg, std::string(path+".latitude").c_str(), rptr.mod[m].latitude, -90.0, 90.0, 0.0);
-			get_value(cfg, std::string(path+".longitude").c_str(), rptr.mod[m].longitude, -180.0, 180.0, 0.0);
-			if (! cfg.lookupValue(path+".desc1", rptr.mod[m].desc1))
+			}
+			if (is_not_icom) {
+				if (! get_value(cfg, std::string(path+"ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, "127.0.0.1"))
+					return true;
+				get_value(cfg, std::string(path+"port").c_str(), rptr.mod[m].portip.port, 16000, 65535, 19998+m);
+			}
+			get_value(cfg, std::string(path+"frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
+			get_value(cfg, std::string(path+"offset").c_str(), rptr.mod[m].offset,-1.0e12, 1.0e12, 0.0);
+			get_value(cfg, std::string(path+"range").c_str(), rptr.mod[m].range, 0.0, 1609344.0, 0.0);
+			get_value(cfg, std::string(path+"agl").c_str(), rptr.mod[m].agl, 0.0, 1000.0, 0.0);
+			get_value(cfg, std::string(path+"latitude").c_str(), rptr.mod[m].latitude, -90.0, 90.0, 0.0);
+			get_value(cfg, std::string(path+"longitude").c_str(), rptr.mod[m].longitude, -180.0, 180.0, 0.0);
+			if (! cfg.lookupValue(path+"desc1", rptr.mod[m].desc1))
 				rptr.mod[m].desc1 = "";
-			if (! cfg.lookupValue(path+".desc2", rptr.mod[m].desc2))
+			if (! cfg.lookupValue(path+"desc2", rptr.mod[m].desc2))
 				rptr.mod[m].desc2 = "";
-			if (! get_value(cfg, std::string(path+".url").c_str(), rptr.mod[m].url, 0, 80, "github.com/n7tae/QnetGateway"))
+			if (! get_value(cfg, std::string(path+"url").c_str(), rptr.mod[m].url, 0, 80, "github.com/n7tae/QnetGateway"))
 				return true;
 			// truncate strings
 			if (rptr.mod[m].desc1.length() > 20)
@@ -283,78 +307,85 @@ bool CQnetGateway::read_config(char *cfgFile)
 			rptr.mod[m].defined = false;
 	}
 	if (false==rptr.mod[0].defined && false==rptr.mod[1].defined && false==rptr.mod[2].defined) {
-		printf("No repeaters defined!\n");
+		printf("No modules defined!\n");
 		return true;
 	}
 
-	if (! get_value(cfg, "file.status", status_file, 1, FILENAME_MAX, "/usr/local/etc/RPTR_STATUS.txt"))
+	// gateway
+	path = "gateway.";
+	if (! get_value(cfg, path+"local_irc_ip", local_irc_ip, 7, IP_SIZE, "0.0.0.0"))
 		return true;
 
-	if (! get_value(cfg, "gateway.local_irc_ip", local_irc_ip, 7, IP_SIZE, "0.0.0.0"))
+	if (! get_value(cfg, path+"external.ip", g2_external.ip, 7, IP_SIZE, "0.0.0.0"))
 		return true;
 
-	get_value(cfg, "gateway.send_qrgs_maps", bool_send_qrgs, true);
+	get_value(cfg, path+"external.port", g2_external.port, 1024, 65535, 40000);
 
-	if (! get_value(cfg, "aprs.host", rptr.aprs.ip, 7, MAXHOSTNAMELEN, "rotate.aprs.net"))
+	if (! get_value(cfg, path+"internal.ip", g2_internal.ip, 7, IP_SIZE, "0.0.0.0"))
 		return true;
 
-	get_value(cfg, "aprs.port", rptr.aprs.port, 10000, 65535, 14580);
+	get_value(cfg, path+"internal.port", g2_internal.port, 16000, 65535, 19000);
 
-	get_value(cfg, "aprs.interval", rptr.aprs_interval, 40, 1000, 40);
+	get_value(cfg, path+"regen_header", bool_regen_header, true);
 
-	if (! get_value(cfg, "aprs.filter", rptr.aprs_filter, 0, 512, ""))
+	get_value(cfg, path+"aprs_send", bool_send_aprs, true);
+
+	get_value(cfg, path+"send_qrgs_maps", bool_send_qrgs, true);
+
+	// APRS
+	path = "aprs.";
+	if (! get_value(cfg, path+"host", rptr.aprs.ip, 7, MAXHOSTNAMELEN, "rotate.aprs.net"))
 		return true;
 
-	if (! get_value(cfg, "gateway.external.ip", g2_external.ip, 7, IP_SIZE, "0.0.0.0"))
+	get_value(cfg, path+"port", rptr.aprs.port, 10000, 65535, 14580);
+
+	get_value(cfg, path+"interval", rptr.aprs_interval, 40, 1000, 40);
+
+	if (! get_value(cfg, path+"filter", rptr.aprs_filter, 0, 512, ""))
 		return true;
 
-	get_value(cfg, "gateway.external.port", g2_external.port, 1024, 65535, 40000);
+	// log
+	path = "log.";
+	get_value(cfg, path+"qso", bool_qso_details, false);
 
-	if (! get_value(cfg, "gateway.internal.ip", g2_internal.ip, 7, IP_SIZE, "0.0.0.0"))
-		return true;
+	get_value(cfg, path+"irc", bool_irc_debug, false);
 
-	get_value(cfg, "gateway.internal.port", g2_internal.port, 16000, 65535, 19000);
-
+	get_value(cfg, path+"dtmf", bool_dtmf_debug, false);
 	if (! get_value(cfg, "link.outgoing_ip", g2_link.ip, 7, IP_SIZE, "127.0.0.1"))
 		return true;
 
-	get_value(cfg, "link.port", g2_link.port, 16000, 65535, 18997);
-
-	get_value(cfg, "log.qso", bool_qso_details, false);
-
-	get_value(cfg, "log.irc", bool_irc_debug, false);
-
-	get_value(cfg, "log.dtmf", bool_dtmf_debug, false);
-
-	get_value(cfg, "gateway.regen_header", bool_regen_header, true);
-
-	get_value(cfg, "gateway.aprs_send", bool_send_aprs, true);
-
-	if (! get_value(cfg, "file.echotest", echotest_dir, 2, FILENAME_MAX, "/tmp"))
+	// file
+	path = "file.";
+	if (! get_value(cfg, path+"echotest", echotest_dir, 2, FILENAME_MAX, "/tmp"))
 		return true;
 
-	get_value(cfg, "timing.play.wait", play_wait, 1, 10, 2);
-
-	get_value(cfg, "timing.play.delay", play_delay, 9, 25, 19);
-
-	get_value(cfg, "timing.timeeout.echo", echotest_rec_timeout, 1, 10, 1);
-
-	get_value(cfg, "timing.timeout.voicemail", voicemail_rec_timeout, 1, 10, 1);
-
-	get_value(cfg, "timing.timeout.remote_g2", from_remote_g2_timeout, 1, 10, 2);
-
-	get_value(cfg, "timing.timeout.local_rptr", from_local_rptr_timeout, 1, 10, 1);
-
-	if (! get_value(cfg, "ircddb.host", ircddb.ip, 3, MAXHOSTNAMELEN, "rr.openquad.net"))
+	if (! get_value(cfg, path+"dtmf",  dtmf_dir, 2,FILENAME_MAX, "/tmp"))
 		return true;
 
-	get_value(cfg, "ircddb.port", ircddb.port, 1000, 65535, 9007);
-
-	if(! get_value(cfg, "ircddb.password", irc_pass, 0, 512, "1111111111111111"))
+	if (! get_value(cfg, path+"status", status_file, 1, FILENAME_MAX, "/usr/local/etc/RPTR_STATUS.txt"))
 		return true;
 
-	if (! get_value(cfg, "file.dtmf",  dtmf_dir, 2,FILENAME_MAX, "/tmp"))
+	// link
+	path = "link.";
+	get_value(cfg, path+"port", g2_link.port, 16000, 65535, 18997);
+
+	if (! get_value(cfg, path+"ip", g2_link.ip, 7, 15, "127.0.0.1"))
 		return true;
+
+	// timing
+	path = "timing.play.";
+	get_value(cfg, path+"wait", play_wait, 1, 10, 2);
+
+	get_value(cfg, path+"delay", play_delay, 9, 25, 19);
+
+	path = "timing.timeout.";
+	get_value(cfg, path+"echo", echotest_rec_timeout, 1, 10, 1);
+
+	get_value(cfg, path+"voicemail", voicemail_rec_timeout, 1, 10, 1);
+
+	get_value(cfg, path+"remote_g2", from_remote_g2_timeout, 1, 10, 2);
+
+	get_value(cfg, path+"local_rptr", from_local_rptr_timeout, 1, 10, 1);
 
 	return false;
 }
@@ -669,6 +700,15 @@ void CQnetGateway::process()
 		printf("get_irc_data thread started\n");
 
 	ii->kickWatchdog(IRCDDB_VERSION);
+
+	if (is_icom) {	// send INIT to Icom Stack
+		unsigned char buf[10];
+		memset(buf, 0, 10);
+		memcpy(buf, "INIT", 4);
+		buf[6] = 0x73U;
+		sendto(srv_sock, buf, 10, 0, (struct sockaddr *)&, sizeof(struct sockaddr_in));
+		printf("Waiting for ICOM controller...\n");
+	}
 
 	while (keep_running) {
 		for (int i=0; i<3; i++) {
@@ -2446,13 +2486,8 @@ int CQnetGateway::init(char *cfgfile)
 		return 1;
 	}
 
-	rptr.mod[0].band = "23cm";
-	rptr.mod[1].band = "70cm";
-	rptr.mod[2].band = "2m";
-
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < 3; i++)
 		memset(&band_txt[0], 0, sizeof(SBANDTXT));
-	}
 
 	/* process configuration file */
 	if ( read_config(cfgfile) ) {
@@ -2472,6 +2507,9 @@ int CQnetGateway::init(char *cfgfile)
 	rptr.mod[0].call += "-A";
 	rptr.mod[1].call += "-B";
 	rptr.mod[2].call += "-C";
+	rptr.mod[0].band = "23cm";
+	rptr.mod[1].band = "70cm";
+	rptr.mod[2].band = "2m";
 	printf("Repeater callsigns: [%s] [%s] [%s]\n", rptr.mod[0].call.c_str(), rptr.mod[1].call.c_str(), rptr.mod[2].call.c_str());
 
 	if (bool_send_aprs) {
@@ -2520,7 +2558,9 @@ int CQnetGateway::init(char *cfgfile)
 		return 1;
 	}
 
-	/* Open udp INTERNAL port (default: 19000) */
+	// Open G2 INTERNAL:
+	// default non-icom 127.0.0.1:19000
+	// default icom     172.10.0.5:20000
 	srv_sock = open_port(g2_internal);
 	if (0 > srv_sock) {
 		printf("Can't open %s:%d\n", g2_internal.ip.c_str(), g2_internal.port);
