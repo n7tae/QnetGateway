@@ -47,6 +47,7 @@ all    : $(ALL_PROGRAMS)
 mmdvm  : $(MDV_PROGRAMS)
 dvap   : $(DVP_PROGRAMS)
 dvrptr : $(DVR_PROGRAMS)
+icom   : $(ICM_PROGRAMS)
 
 qngateway : $(IRCOBJS) QnetGateway.o aprs.o
 	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
