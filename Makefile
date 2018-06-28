@@ -41,6 +41,7 @@ ALL_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr
 MDV_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay
 DVP_PROGRAMS=qngateway qnlink qnremote qnvoice qndvap
 DVR_PROGRAMS=qngateway qnlink qnremote qnvoice qndvrptr
+ICM_PROGRAMS=qngateway qnlink qnremote qnvoice
 
 all    : $(ALL_PROGRAMS)
 mmdvm  : $(MDV_PROGRAMS)
@@ -102,6 +103,25 @@ install : $(MDV_PROGRAMS) gwys.txt qn.cfg
 	systemctl enable qnrelay.service
 	systemctl daemon-reload
 	systemctl start qnrelay.service
+
+installicom : $(ICM_PROGRAMS) gwys.txt qn.cfg
+	######### QnetGateway #########
+	/bin/cp -f qngateway $(BINDIR)
+	/bin/cp -f qnremote qnvoice $(BINDIR)
+	/bin/ln -s qn.cfg $(CFGDIR)
+	/bin/cp -f system/qngateway.service $(SYSDIR)
+	systemctl enable qngateway.service
+	systemctl daemon-reload
+	systemctl start qngateway.service
+	######### QnetLink #########
+	/bin/cp -f qnlink $(BINDIR)
+	/bin/cp -f announce/*.dat $(CFGDIR)
+	/bin/ln -s gwys.txt $(CFGDIR)
+	/bin/cp -f exec_?.sh $(CFGDIR)
+	/bin/cp -f system/qnlink.service $(SYSDIR)
+	systemctl enable qnlink.service
+	systemctl daemon-reload
+	systemctl start qnlink.service
 
 installdvap : $(DVP_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
@@ -207,6 +227,30 @@ uninstall :
 	/bin/rm -f $(SYSDIR)/qnrelay.service
 	/bin/rm -f $(BINDIR)/qnrelay
 	systemctl daemon-reload
+
+uninstallicom :
+	######### QnetGateway #########
+	systemctl stop qngateway.service
+	systemctl disable qngateway.service
+	/bin/rm -f $(SYSDIR)/qngateway.service
+	/bin/rm -f $(BINDIR)/qngateway
+	/bin/rm -f $(BINDIR)/qnremote
+	/bin/rm -f $(BINDIR)/qnvoice
+	/bin/rm -f $(CFGDIR)/qn.cfg
+	######### QnetLink #########
+	systemctl stop qnlink.service
+	systemctl disable qnlink.service
+	/bin/rm -f $(SYSDIR)/qnlink.service
+	/bin/rm -f $(BINDIR)/qnlink
+	/bin/rm -f $(CFGDIR)/already_linked.dat
+	/bin/rm -f $(CFGDIR)/already_unlinked.dat
+	/bin/rm -f $(CFGDIR)/failed_linked.dat
+	/bin/rm -f $(CFGDIR)/id.dat
+	/bin/rm -f $(CFGDIR)/linked.dat
+	/bin/rm -f $(CFGDIR)/unlinked.dat
+	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
+	/bin/rm -f $(CFGDIR)/gwys.txt
+	/bin/rm -f $(CFGDIR)/exec_?.sh
 
 uninstalldvap :
 	######### QnetGateway #########
