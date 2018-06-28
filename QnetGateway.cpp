@@ -263,7 +263,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 			if (0 == strcasecmp(type.c_str(), "icom")) {
 				rptr.mod[m].package_version = ICOM_VERSION;
 				is_icom = true;
-			} if (0 == strcasecmp(type.c_str(), "dvap")) {
+			} else if (0 == strcasecmp(type.c_str(), "dvap")) {
 				rptr.mod[m].package_version = DVAP_VERSION;
 				is_not_icom = true;
 			} else if (0 == strcasecmp(type.c_str(), "dvrptr")) {
