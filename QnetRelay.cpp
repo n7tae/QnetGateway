@@ -258,13 +258,13 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 				dsrp.header.seq = 0;
 			}
 			//memcpy(dsrp.header.flag, dstr.vpkt.hdr.flag, 41);
-			memcpy(dsrp.header.flag, dstr.vptk.hdr.flags, 3);
-			memcpy(dsrp.header.r1, dstr.vpkt.hdr.r1, 8);
-			memcpy(dsrp.header.r2, dstr.vpkt.hdr.r2, 8);
-			memcpy(dsrp.header.ur, dstr.vpkt.hdr.ur, 8);
-			memcpy(dstr.header.my, dstr.vpkt.hdr.my, 8);
-			memcpy(dstr.header.nm, dstr.vpkt.hdr.nm, 4);
-			dsrp.header.pfcs = dstr.vpkt.hdr.pfcs;
+			memcpy(dsrp.header.flag, dstr.vpkt.hdr.flag, 3);
+			memcpy(dsrp.header.r1,   dstr.vpkt.hdr.r1,   8);
+			memcpy(dsrp.header.r2,   dstr.vpkt.hdr.r2,   8);
+			memcpy(dsrp.header.ur,   dstr.vpkt.hdr.ur,   8);
+			memcpy(dsrp.header.my,   dstr.vpkt.hdr.my,   8);
+			memcpy(dsrp.header.nm,   dstr.vpkt.hdr.nm,   4);
+			memcpy(dsrp.header.pfcs, dstr.vpkt.hdr.pfcs, 2);
 			int ret = SendTo(msock, dsrp.title, 49, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 49) {
 				printf("ERROR: ProcessGateway: Could not write Header mmdvm packet\n");
@@ -314,13 +314,13 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			dstr.remaining = 0x30;
 			dstr.vpkt.ctrl = 0x80;
 			//memcpy(dstr.vpkt.hdr.flag, dsrp.header.flag, 41);
-			memcpy(dstr.vpkt.hdr.flags, dsrp.header.flag, 3);
-			memcpy(dstr.vpkt.hdr.r1, dsrp.header.r1, 8);
-			memcpy(dstr.vpkt.hdr.r2, dsrp.header.r2, 8);
-			memcpy(dstr.vpkt.hdr.ur, dsrp.header.ur, 8);
-			memcpy(dstr.vpkt.hdr.my, dsrp.header.my, 8);
-			memcpy(dstr.vpkt.hdr.nm, dsrp.header.nm, 4);
-			dstr.vpkt.hdr.pfcs = dsrp.header.pfcs;
+			memcpy(dstr.vpkt.hdr.flag, dsrp.header.flag, 3);
+			memcpy(dstr.vpkt.hdr.r1,   dsrp.header.r1,   8);
+			memcpy(dstr.vpkt.hdr.r2,   dsrp.header.r2,   8);
+			memcpy(dstr.vpkt.hdr.ur,   dsrp.header.ur,   8);
+			memcpy(dstr.vpkt.hdr.my,   dsrp.header.my,   8);
+			memcpy(dstr.vpkt.hdr.nm,   dsrp.header.nm,   4);
+			memcpy(dstr.vpkt.hdr.pfcs, dsrp.header.pfcs, 2);
 			int ret = SendTo(msock, dstr.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 58) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");

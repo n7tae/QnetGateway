@@ -111,7 +111,7 @@ typedef struct dsrp_tag {	//									offset	  size
 			unsigned char ur[8];	// Your Call					27
 			unsigned char my[8];	// My Call						35
 			unsigned char nm[4];	// Name							43
-			unsigned short pfcs;	// checksum						47		49
+			unsigned char pfcs[2];	// checksum						47		49
 		} header;
 		struct {
 			unsigned short id;		// random id number				 5
