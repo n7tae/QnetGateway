@@ -108,7 +108,7 @@ typedef struct dsrp_tag {	//									offset	  size
 									// 0x01 Dstar Relay Unavailable
 			unsigned char r2[8];	// Repeater 2					11
 			unsigned char r1[8];	// Repeater 1					19
-			unsigned char yr[8];	// Your Call					27
+			unsigned char ur[8];	// Your Call					27
 			unsigned char my[8];	// My Call						35
 			unsigned char nm[4];	// Name							43
 			unsigned short pfcs;	// checksum						47		49

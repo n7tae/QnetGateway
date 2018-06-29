@@ -918,13 +918,9 @@ void CQnetGateway::process()
 						         (g2buf.hdr.flag[0] == 0x28) ||
 						         (g2buf.hdr.flag[0] == 0x40))) {
 							if (bool_qso_details)
-								printf("START from g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s and port %u\n",
-								        g2buf.streamid,
-								        g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2],
-								        g2buf.hdr.mycall,
-								        g2buf.hdr.sfx, g2buf.hdr.urcall,
-								        g2buf.hdr.rpt1, g2buf.hdr.rpt2,
-								        g2buflen, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+								printf("START DVST G2, id=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n",
+								ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.rpt1, g2buf.hdr.rpt2,
+								g2buf.hdr.urcall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
 
 							memcpy(rptrbuf.pkt_id, "DSTR", 4);
 							rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);	// bump the counter
@@ -951,10 +947,8 @@ void CQnetGateway::process()
 						}
 					}
 				} else {	// g2buflen == 27
-					if (g2buf.counter & 0x40) {
-						if (bool_qso_details)
-							printf("END from g2: streamID=%04x, %d bytes from IP=%s\n", g2buf.streamid, g2buflen,inet_ntoa(fromDst4.sin_addr));
-					}
+					if (bool_qso_details && g2buf.counter & 0x40)
+						printf("Send G2 end of stream: id=%04x\n", ntohs(g2buf.streamid));
 
 					/* find out which repeater module to send the data to */
 					int i;
@@ -1084,12 +1078,10 @@ void CQnetGateway::process()
 					if (recvlen == 58) {
 
 						if (bool_qso_details)
-							printf("START from rptr: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
-									ntohs(rptrbuf.counter),
-									ntohs(rptrbuf.vpkt.streamid),
-									rptrbuf.vpkt.hdr.flag[0], rptrbuf.vpkt.hdr.flag[1], rptrbuf.vpkt.hdr.flag[2],
-									rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, rptrbuf.vpkt.hdr.ur,
-									rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, recvlen, inet_ntoa(fromRptr.sin_addr));
+							printf("START DSTR RPTR: cntr=%04x id=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n",
+									ntohs(rptrbuf.counter), ntohs(rptrbuf.vpkt.streamid),
+									rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2,
+									rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
 
 						if ((memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) == 0) &&  /* rpt1 is this repeater */
 								/*** (memcmp(rptrbuf + 44, OWNER, 7) != 0) && ***/  /* MYCALL is NOT this repeater */
@@ -2136,10 +2128,8 @@ void CQnetGateway::process()
 										}
 						}
 
-						if (rptrbuf.vpkt.ctrl & 0x40) {
-							if (bool_qso_details)
-								printf("END from rptr: cntr=%04x, streamID=%04x, %d bytes\n", ntohs(rptrbuf.counter), ntohs(rptrbuf.vpkt.streamid), recvlen);
-						}
+						if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
+							printf("END DSTR RPTR: cntr=%04x, id=%04x\n", ntohs(rptrbuf.counter), ntohs(rptrbuf.vpkt.streamid));
 					}
 				}
 			}
