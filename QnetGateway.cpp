@@ -948,7 +948,7 @@ void CQnetGateway::process()
 					}
 				} else {	// g2buflen == 27
 					if (bool_qso_details && g2buf.counter & 0x40)
-						printf("id=%04x\n END G2", ntohs(g2buf.streamid));
+						printf("id=%04x END G2\n", ntohs(g2buf.streamid));
 
 					/* find out which repeater module to send the data to */
 					int i;
