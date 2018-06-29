@@ -918,7 +918,7 @@ void CQnetGateway::process()
 						         (g2buf.hdr.flag[0] == 0x28) ||
 						         (g2buf.hdr.flag[0] == 0x40))) {
 							if (bool_qso_details)
-								printf("START DVST G2, id=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n",
+								printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n",
 								ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.rpt1, g2buf.hdr.rpt2,
 								g2buf.hdr.urcall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
 
@@ -948,7 +948,7 @@ void CQnetGateway::process()
 					}
 				} else {	// g2buflen == 27
 					if (bool_qso_details && g2buf.counter & 0x40)
-						printf("Send G2 end of stream: id=%04x\n", ntohs(g2buf.streamid));
+						printf("id=%04x\n END G2", ntohs(g2buf.streamid));
 
 					/* find out which repeater module to send the data to */
 					int i;
@@ -1078,8 +1078,8 @@ void CQnetGateway::process()
 					if (recvlen == 58) {
 
 						if (bool_qso_details)
-							printf("START DSTR RPTR: cntr=%04x id=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n",
-									ntohs(rptrbuf.counter), ntohs(rptrbuf.vpkt.streamid),
+							printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n",
+									ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter),
 									rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2,
 									rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
 
@@ -1251,12 +1251,9 @@ void CQnetGateway::process()
 												for (int j=0; j<5; j++)
 													sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-												printf("Routing to IP=%s port=%u, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
-														inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
-														g2buf.streamid, g2buf.hdr.mycall,
-														g2buf.hdr.sfx, g2buf.hdr.urcall,
-														g2buf.hdr.rpt1, g2buf.hdr.rpt2,
-														56);
+												printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
+												ntohs(g2buf.streamid), inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
+												g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
 
 												time(&(to_remote_g2[i].last_time));
 											}
@@ -1328,12 +1325,9 @@ void CQnetGateway::process()
 												for (int j=0; j<5; j++)
 													sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-												printf("Routing to IP=%s, port=%u, streamID=%04x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes\n",
-														inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
-														g2buf.streamid, g2buf.hdr.mycall,
-														g2buf.hdr.sfx, g2buf.hdr.urcall,
-														g2buf.hdr.rpt1, g2buf.hdr.rpt2,
-														56);
+												printf("Routing to IP=%s:%u id=%04x my=%.8s sfx=%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n",
+												inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
+												g2buf.streamid, g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
 
 												time(&(to_remote_g2[i].last_time));
 											}
@@ -2129,7 +2123,7 @@ void CQnetGateway::process()
 						}
 
 						if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
-							printf("END DSTR RPTR: cntr=%04x, id=%04x\n", ntohs(rptrbuf.counter), ntohs(rptrbuf.vpkt.streamid));
+							printf("id=%04x, cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
 					}
 				}
 			}
