@@ -162,7 +162,7 @@ installdtmf : qndtmf
 
 installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM.qn
 	( /bin/cp -f $(MMPATH)/MMDVMHost $(BINDIR) )
-	cd $(MMPATH) ; /bin/ln -s $(shell pwd)/MMDVM.qn $(CFGDIR)
+	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM.qn $(CFGDIR)
 	/bin/cp -f system/mmdvm.service $(SYSDIR)
 	/bin/cp -f system/mmdvm.timer $(SYSDIR)
 	systemctl enable mmdvm.timer
