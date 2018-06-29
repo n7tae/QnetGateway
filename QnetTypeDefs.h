@@ -39,8 +39,8 @@ typedef struct dstr_tag {
 			union {
 				struct {
 					unsigned char flag[3];	// 17
-					unsigned char r2[8];	// 20
-					unsigned char r1[8];	// 28
+					unsigned char r1[8];	// 20
+					unsigned char r2[8];	// 28
 					unsigned char ur[8];	// 36
 					unsigned char my[8];	// 44
 					unsigned char nm[4];	// 52

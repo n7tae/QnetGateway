@@ -402,12 +402,12 @@ static void readFrom20000()
 				}
 
 				/* check the module and gateway */
-				if (net_buf.vpkt.hdr.r2[7] != RPTR_MOD) {
+				if (net_buf.vpkt.hdr.r1[7] != RPTR_MOD) {
 					FD_CLR(insock, &readfd);
 					break;
 				}
-				memcpy(net_buf.vpkt.hdr.r1, OWNER, 7);
-				net_buf.vpkt.hdr.r1[7] = 'G';
+				memcpy(net_buf.vpkt.hdr.r2, OWNER, 7);
+				net_buf.vpkt.hdr.r2[7] = 'G';
 
 				if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
 					// restriction mode
@@ -447,7 +447,7 @@ static void readFrom20000()
 				        net_buf.vpkt.streamid,
 				        net_buf.vpkt.hdr.flag[0], net_buf.vpkt.hdr.flag[1], net_buf.vpkt.hdr.flag[2],
 				        net_buf.vpkt.hdr.my, net_buf.vpkt.hdr.nm, net_buf.vpkt.hdr.ur,
-				        net_buf.vpkt.hdr.r2, net_buf.vpkt.hdr.r1);
+				        net_buf.vpkt.hdr.r1, net_buf.vpkt.hdr.r2);
 
 				/* save the streamid that is winning */
 				streamid = net_buf.vpkt.streamid;
@@ -945,7 +945,7 @@ static void ReadDVAPThread()
 			printf("From DVAP: flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
 			        dr.frame.hdr.flag[0], dr.frame.hdr.flag[1], dr.frame.hdr.flag[2],
 			        dr.frame.hdr.mycall, dr.frame.hdr.sfx, dr.frame.hdr.urcall,
-			        dr.frame.hdr.rpt2, dr.frame.hdr.rpt1);
+			        dr.frame.hdr.rpt1, dr.frame.hdr.rpt2);
 
 			ok = true;
 
@@ -971,12 +971,14 @@ static void ReadDVAPThread()
 				}
 			}
 
-			memcpy(&net_buf.vpkt.hdr, dr.frame.hdr.flag, 41);	// copy the header
+			memcpy(&net_buf.vpkt.hdr, dr.frame.hdr.flag, 41);	// copy the header, but...
+			memcpy(net_buf.vpkt.hdr.r1, dr.frame.hdr.rpt1, 8);	// swap r1 <--> r2
+			memcpy(net_buf.vpkt.hdr.r2, dr.frame.hdr.rpt2, 8);	// Internet Labs DVAP Dongle Tech. Ref. V 1.01 has it backwards!
 
 			/* RPT1 must always be the repeater + module */
 			memcpy(net_buf.vpkt.hdr.r1, RPTR_and_MOD, 8);
 			/* copy RPT2 */
-			memcpy(net_buf.vpkt.hdr.r2, dr.frame.hdr.rpt1, 8);
+			memcpy(net_buf.vpkt.hdr.r2, dr.frame.hdr.rpt2, 8);
 
 			/* RPT2 must also be valid */
 			if ((net_buf.vpkt.hdr.r2[7] == 'A') ||

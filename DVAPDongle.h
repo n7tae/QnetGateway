@@ -18,7 +18,7 @@
  */
 
  #include <stdint.h>
- 
+
 enum REPLY_TYPE {
 	RT_TIMEOUT,
 	RT_ERR,
@@ -66,8 +66,8 @@ typedef struct dvp_register_tag {
 			union {
 				struct {
 					unsigned char flag[3];
-					unsigned char rpt1[8];
 					unsigned char rpt2[8];
+					unsigned char rpt1[8];
 					unsigned char urcall[8];
 					unsigned char mycall[8];
 					unsigned char sfx[4];
