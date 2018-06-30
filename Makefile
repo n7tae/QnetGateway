@@ -181,7 +181,7 @@ installdtmf : qndtmf
 	systemctl daemon-reload
 	systemctl start qndtmf.service
 
-installmmdvm : $(MMPATH)/MMDVMhost $(MMPATH)/MMDVM.qn
+installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM.qn
 	/bin/cp -f $(MMPATH)/MMDVMHost $(BINDIR)
 	cd $(MMPATH) ; /bin/ln -s $(shell pwd)/MMDVM.qn $(CFGDIR)
 	/bin/cp -f system/mmdvm.service $(SYSDIR)
