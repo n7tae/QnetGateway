@@ -115,12 +115,12 @@ bool dst_open(const char *ip, const short port)
 	toDst.sin_port = htons(port);
 	toDst.sin_addr.s_addr = inet_addr(ip);
 
-	if (bind(sockDst, (struct sockaddr *)&toDst, sizeof(struct sockaddr_in)) != 0) {
-		printf("Failed to bind %s:%d, errno=%d, %s\n", ip, port, errno, strerror(errno));
-		close(sockDst);
-		sockDst = -1;
-		return true;
-	}
+//	if (bind(sockDst, (struct sockaddr *)&toDst, sizeof(struct sockaddr_in)) != 0) {
+//		printf("Failed to bind %s:%d, errno=%d, %s\n", ip, port, errno, strerror(errno));
+//		close(sockDst);
+//		sockDst = -1;
+//		return true;
+//	}
 	return false;
 }
 
