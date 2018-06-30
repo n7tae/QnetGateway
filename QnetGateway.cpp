@@ -252,7 +252,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 		return true;
 
 	// modules
-	is_icom = is_not_icom = false;
+	bool is_icom = is_not_icom = false;
 	for (short int m=0; m<3; m++) {
 		std::string path = "module.";
 		path += m + 'a';
@@ -260,16 +260,16 @@ bool CQnetGateway::read_config(char *cfgFile)
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
 			rptr.mod[m].defined = true;
-			if (0 == strcasecmp(type.c_str(), "icom")) {
+			if (0 == type.compare("icom")) {
 				rptr.mod[m].package_version = ICOM_VERSION;
 				is_icom = true;
-			} else if (0 == strcasecmp(type.c_str(), "dvap")) {
+			} else if (0 == type.compare("dvap")) {
 				rptr.mod[m].package_version = DVAP_VERSION;
 				is_not_icom = true;
-			} else if (0 == strcasecmp(type.c_str(), "dvrptr")) {
+			} else if (0 == type.compare("dvrptr")) {
 				rptr.mod[m].package_version = DVRPTR_VERSION;
 				is_not_icom = true;
-			} else if (0 == strcasecmp(type.c_str(), "mmdvm")) {
+			} else if (0 == type.compare("mmdvm")) {
 				rptr.mod[m].package_version = MMDVM_VERSION;
 				is_not_icom = true;
 			} else {

@@ -50,6 +50,7 @@ short streamid_raw = 0;
 int moduleport[3] = { 0, 0, 0 };
 std::string REPEATER, IP_ADDRESS;
 int PORT, PLAY_WAIT, PLAY_DELAY;
+bool is_icom = false;
 
 unsigned short crc_tabccitt[256] = {
 	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
@@ -196,11 +197,12 @@ bool read_config(const char *cfgFile)
 		path += m + 'a';
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm")) {
+			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm") && strcasecmp(type.c_str(), "icom")) {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
-			get_value(cfg, std::string(path+".port").c_str(), moduleport[m], 1000, 65535, 19998+m);
+			is_icom = strcasecmp(type.c_str(), "icom") ? false : true;
+			get_value(cfg, std::string(path+".port").c_str(), moduleport[m], 1000, 65535, is_icom ? 20000 : 19998+m);
 		}
 	}
 	if (0==moduleport[0] && 0==moduleport[1] && 0==moduleport[2]) {
@@ -208,7 +210,7 @@ bool read_config(const char *cfgFile)
 		return true;
 	}
 
-	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, "127.0.0.1"))
+	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, is_icom ? "172.16.0.20" : "127.0.0.1"))
 		return true;
 
 	get_value(cfg, "timing.play.wait", PLAY_WAIT, 1, 10, 2);
@@ -332,7 +334,7 @@ int main(int argc, char *argv[])
 		printf("Read %d byte packet from %s\n", (int)nread*rlen, argv[3]);
 		if (rlen == 56)
 			printf("rpt1=%.8s rpt2=%.8s urcall=%.8s, mycall=%.8s, sfx=%.4s\n",
-							dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.urcall, dsvt.hdr.mycall, dsvt.hdr.sfx);
+			dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.urcall, dsvt.hdr.mycall, dsvt.hdr.sfx);
 		else
 			printf("streamid=%04X counter=%02X\n", dsvt.streamid, dsvt.counter);
 		if (nread == 1) {
@@ -368,9 +370,9 @@ int main(int argc, char *argv[])
 					dstr.vpkt.hdr.flag[i] = dsvt.hdr.flag[i];
 				memset(dstr.vpkt.hdr.r2, ' ', 36);
 				memcpy(dstr.vpkt.hdr.r2, REPEATER.c_str(), REPEATER.size());
-				dstr.vpkt.hdr.r1[7] = 'G';
+				dstr.vpkt.hdr.r1[7] = module;
 				memcpy(dstr.vpkt.hdr.r1, REPEATER.c_str(), REPEATER.size());
-				dstr.vpkt.hdr.r2[7] = module;
+				dstr.vpkt.hdr.r2[7] = 'G';
 				memcpy(dstr.vpkt.hdr.ur, "CQCQCQ", 6);	/* yrcall */
 				memcpy(dstr.vpkt.hdr.my, mycall.c_str(), mycall.size());
 				memcpy(dstr.vpkt.hdr.nm, "QNET", 4);
@@ -423,8 +425,8 @@ int main(int argc, char *argv[])
 
 			int sent = sendto(sockDst, dstr.pkt_id, rlen + 2,0, (struct sockaddr *)&toDst, sizeof(toDst));
 			if (sent == 58)
-				printf("Sent DSTR HDR r2=%.8s r1=%.8s ur=%.8s my=%.8s nm=%.4s\n",
-						dstr.vpkt.hdr.r2, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.ur, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+				printf("Sent DSTR HDR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
+				dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 			else if (sent == 29)
 				printf("Sent DSTR DATA streamid=%04X, ctrl=%02X\n", dstr.vpkt.streamid, dstr.vpkt.ctrl);
 			else

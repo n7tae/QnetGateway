@@ -50,6 +50,7 @@ short streamid_raw = 0;
 bool isdefined[3] = { false, false, false };
 std::string REPEATER, IP_ADDRESS;
 int PORT, PLAY_WAIT, PLAY_DELAY;
+bool is_icom = false;
 
 unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 
@@ -197,10 +198,11 @@ bool read_config(const char *cfgFile)
 		path += m + 'a';
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm")) {
+			if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("icom")) {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
+			is_icom = type.compare("icom") ? false : true;
 			isdefined[m] = true;
 		}
 	}
@@ -209,10 +211,10 @@ bool read_config(const char *cfgFile)
 		return true;
 	}
 
-	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, "127.0.0.1"))
+	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, is_icom ? "172.16.0.1" : "127.0.0.1"))
 		return true;
 
-	get_value(cfg, "gateway.internal.port", PORT, 16000, 65535, 19000);
+	get_value(cfg, "gateway.internal.port", PORT, 16000, 65535, is_icom ? 20000 : 19000);
 
 	get_value(cfg, "timing.play.wait", PLAY_WAIT, 1, 10, 2);
 
@@ -234,11 +236,11 @@ int main(int argc, char *argv[])
 
 	if (argc != 4) {
 		printf("Usage: %s <module> <mycall> <yourcall>\n", argv[0]);
-		printf("Example: %s c n7tae xrf757cl\n", argv[0]);
+		printf("Example: %s c n7tae xrf757al\n", argv[0]);
 		printf("Where...\n");
 		printf("        c is the local repeater module\n");
 		printf("        n7tae is the value of mycall\n");
-		printf("        xrf757cl is the value of yourcall, in this case this is a Link command\n\n");
+		printf("        xrf757al is the value of yourcall, in this case this is a Link command\n\n");
 		return 0;
 	}
 
