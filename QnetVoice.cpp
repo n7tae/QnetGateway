@@ -42,15 +42,17 @@ using namespace libconfig;
 
 #define VERSION "v3.1"
 
-int sockDst = -1;
-struct sockaddr_in toDst;
+int sockFrm = -1;
 FILE *fp = NULL;
 time_t tNow = 0;
-short streamid_raw = 0;
+unsigned short streamid_raw = 0U;
 int moduleport[3] = { 0, 0, 0 };
 std::string moduleip[3];
 std::string REPEATER;
-int PORT, PLAY_WAIT, PLAY_DELAY;
+std::string FROM_ADDRESS;
+int FROM_PORT;
+
+int PLAY_WAIT, PLAY_DELAY;
 bool is_icom = false;
 
 unsigned short crc_tabccitt[256] = {
@@ -94,41 +96,43 @@ void calcPFCS(unsigned char rawbytes[58])
 
 }
 
-bool dst_open(const char *ip, const short port)
+bool dst_open(const char *ip, const unsigned short int port)
 {
-	sockDst = socket(PF_INET,SOCK_DGRAM,0);
-	if (sockDst == -1) {
+	sockFrm = socket(PF_INET,SOCK_DGRAM,0);
+	if (sockFrm == -1) {
 		printf("Failed to create DSTAR socket\n");
 		return true;
 	}
-	fcntl(sockDst,F_SETFL,O_NONBLOCK);
+	fcntl(sockFrm,F_SETFL,O_NONBLOCK);
 
 	int reuse = 1;
-	if (setsockopt(sockDst,SOL_SOCKET,SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-		close(sockDst);
-		sockDst = -1;
+	if (setsockopt(sockFrm,SOL_SOCKET,SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
+		close(sockFrm);
+		sockFrm = -1;
 		printf("setsockopt DSTAR REUSE failed\n");
 		return true;
 	}
-	memset(&toDst,0,sizeof(struct sockaddr_in));
-	toDst.sin_family = AF_INET;
-	toDst.sin_port = htons(port);
-	toDst.sin_addr.s_addr = inet_addr(ip);
 
-//	if (bind(sockDst, (struct sockaddr *)&toDst, sizeof(struct sockaddr_in)) != 0) {
-//		printf("Failed to bind %s:%d, errno=%d, %s\n", ip, port, errno, strerror(errno));
-//		close(sockDst);
-//		sockDst = -1;
-//		return true;
-//	}
+	struct sockaddr_in fromAddr;
+	memset(&fromAddr, 0, sizeof(struct sockaddr_in));
+	fromAddr.sin_family = AF_INET;
+	fromAddr.sin_port = htons(port);
+	fromAddr.sin_addr.s_addr = inet_addr(ip);
+
+	if (bind(sockFrm, (struct sockaddr *)&fromAddr, sizeof(struct sockaddr_in)) != 0) {
+		printf("Failed to bind %s:%d, errno=%d, %s\n", ip, port, errno, strerror(errno));
+		close(sockFrm);
+		sockFrm = -1;
+		return true;
+	}
 	return false;
 }
 
 void dst_close()
 {
-	if (sockDst != -1) {
-		close(sockDst);
-		sockDst = -1;
+	if (sockFrm != -1) {
+		close(sockFrm);
+		sockFrm = -1;
 	}
 	return;
 }
@@ -198,6 +202,10 @@ bool read_config(const char *cfgFile)
 		return true;
 	REPEATER.resize(6, ' ');
 	printf("REPEATER=[%s]\n", REPEATER.c_str());
+
+	if (! get_value(cfg, "gateway.ip", FROM_ADDRESS, 7, 15, "127.0.0.1"))
+		return true;
+	get_value(cfg, "gateway.internal.ip", FROM_PORT, 1000, 65535, 19000);
 
 	for (short int m=0; m<3; m++) {
 		std::string path = "module.";
@@ -271,12 +279,17 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	PORT = moduleport[module - 'A'];
-	std::string IP_ADDRESS(moduleip[module - 'A']);
-	if (0 == PORT) {
+	// set up the destination port
+	int m = module - 'A';
+	if (0 >= moduleport[m]) {
 		printf("module %c has no port defined!\n", module);
 		return 1;
 	}
+	struct sockaddr_in toAddr;
+	memset(&toAddr, 0, sizeof(struct sockaddr_in));
+	toAddr.sin_family = AF_INET;
+	toAddr.sin_addr.s_addr = inet_addr(moduleip[m].c_str());
+	toAddr.sin_port = htons((unsigned short int)moduleport[m]);
 
 	if (strlen(argv[2]) > 8) {
 		printf("MYCALL can not be more than 8 characters, %s is invalid\n", argv[2]);
@@ -316,10 +329,10 @@ int main(int argc, char *argv[])
 	time(&tNow);
 	CRandom Random;
 
-	short int sport = (short int)PORT;
-	if (dst_open(IP_ADDRESS.c_str(), sport))
+	unsigned short int uiport = (unsigned short int)FROM_PORT;
+	if (dst_open(FROM_ADDRESS.c_str(), uiport))
 		return 1;
-	printf("Opened %s:%u for writing\n", IP_ADDRESS.c_str(), sport);
+	printf("Opened %s:%u for writing\n", FROM_ADDRESS.c_str(), uiport);
 
 	// Read and reformat and write packets
 	while (true) {
@@ -341,11 +354,6 @@ int main(int argc, char *argv[])
 		/* read the packet */
 		nread = fread(dsvt.title, rlen, 1, fp);
 		printf("Read %d byte packet from %s\n", (int)nread*rlen, argv[3]);
-		if (rlen == 56)
-			printf("rpt1=%.8s rpt2=%.8s urcall=%.8s, mycall=%.8s, sfx=%.4s\n",
-			dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.urcall, dsvt.hdr.mycall, dsvt.hdr.sfx);
-		else
-			printf("streamid=%04X counter=%02X\n", dsvt.streamid, dsvt.counter);
 		if (nread == 1) {
 			if (memcmp(dsvt.title, "DSVT", 4) != 0) {
 				printf("DVST title not found\n");
@@ -364,6 +372,7 @@ int main(int argc, char *argv[])
 
 			dstr.counter = htons(G2_COUNTER++);
 			if (rlen == 56) {
+				printf("r1=%.8s r2=%.8s ur=%.8s, my=%.8s/%.4s\n", dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.urcall, dsvt.hdr.mycall, dsvt.hdr.sfx);
 				memcpy(dstr.pkt_id, "DSTR", 4);
 				dstr.flag[0] = 0x73;
 				dstr.flag[1] = 0x12;
@@ -440,13 +449,11 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			int sent = sendto(sockDst, dstr.pkt_id, rlen + 2,0, (struct sockaddr *)&toDst, sizeof(toDst));
+			int sent = sendto(sockFrm, dstr.pkt_id, rlen + 2,0, (struct sockaddr *)&toAddr, sizeof(toAddr));
 			if (sent == 58)
 				printf("Sent DSTR HDR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
 				dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
-			else if (sent == 29)
-				printf("Sent DSTR DATA streamid=%04X, ctrl=%02X\n", dstr.vpkt.streamid, dstr.vpkt.ctrl);
-			else
+			else if (sent != 29)
 				printf("ERROR: sendto returned %d!\n", sent);
 		}
 		usleep(delay);
