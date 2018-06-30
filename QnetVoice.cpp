@@ -353,7 +353,6 @@ int main(int argc, char *argv[])
 
 		/* read the packet */
 		nread = fread(dsvt.title, rlen, 1, fp);
-		printf("Read %d byte packet from %s\n", (int)nread*rlen, argv[3]);
 		if (nread == 1) {
 			if (memcmp(dsvt.title, "DSVT", 4) != 0) {
 				printf("DVST title not found\n");
