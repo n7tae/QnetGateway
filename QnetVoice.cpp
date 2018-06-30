@@ -96,13 +96,14 @@ void calcPFCS(unsigned char rawbytes[58])
 
 bool dst_open(const char *ip, const short port)
 {
-	int reuse = 1;
-
 	sockDst = socket(PF_INET,SOCK_DGRAM,0);
 	if (sockDst == -1) {
 		printf("Failed to create DSTAR socket\n");
 		return true;
 	}
+	fcntl(sockDst,F_SETFL,O_NONBLOCK);
+
+	int reuse = 1;
 	if (setsockopt(sockDst,SOL_SOCKET,SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
 		close(sockDst);
 		sockDst = -1;
@@ -114,7 +115,12 @@ bool dst_open(const char *ip, const short port)
 	toDst.sin_port = htons(port);
 	toDst.sin_addr.s_addr = inet_addr(ip);
 
-	fcntl(sockDst,F_SETFL,O_NONBLOCK);
+	if (bind(sockDst, (struct sockaddr *)&toDst, sizeof(struct sockaddr_in)) != 0) {
+		printf("Failed to bind %s:%d, errno=%d, %s\n", ip, port, errno, strerror(errno));
+		close(sockDst);
+		sockDst = -1;
+		return true;
+	}
 	return false;
 }
 
@@ -379,8 +385,8 @@ int main(int argc, char *argv[])
 				dstr.vpkt.ctrl = dsvt.counter;
 				for (int i=0; i<3; i++)
 					dstr.vpkt.hdr.flag[i] = dsvt.hdr.flag[i];
-				memset(dstr.vpkt.hdr.r2, ' ', 36);
-				memcpy(dstr.vpkt.hdr.r2, REPEATER.c_str(), REPEATER.size());
+				memset(dstr.vpkt.hdr.flag+3, ' ', 36);
+				memcpy(dstr.vpkt.hdr.flag+3, REPEATER.c_str(), REPEATER.size());
 				dstr.vpkt.hdr.r1[7] = module;
 				memcpy(dstr.vpkt.hdr.r1, REPEATER.c_str(), REPEATER.size());
 				dstr.vpkt.hdr.r2[7] = 'G';
