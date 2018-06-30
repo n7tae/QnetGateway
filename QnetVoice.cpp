@@ -93,7 +93,7 @@ void calcPFCS(unsigned char rawbytes[58])
 
 }
 
-bool dst_open(const char *ip, const int port)
+bool dst_open(const char *ip, const short port)
 {
 	int reuse = 1;
 
@@ -309,7 +309,8 @@ int main(int argc, char *argv[])
 	time(&tNow);
 	CRandom Random;
 
-	if (dst_open(IP_ADDRESS.c_str(), PORT))
+	short int sport = (short int)PORT;
+	if (dst_open(IP_ADDRESS.c_str(), sport))
 		return 1;
 
 	// Read and reformat and write packets
