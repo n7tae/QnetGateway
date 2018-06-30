@@ -386,9 +386,9 @@ int main(int argc, char *argv[])
 				for (int i=0; i<3; i++)
 					dstr.vpkt.hdr.flag[i] = dsvt.hdr.flag[i];
 				memset(dstr.vpkt.hdr.flag+3, ' ', 36);
-				memcpy(dstr.vpkt.hdr.flag+3, REPEATER.c_str(), REPEATER.size());
-				dstr.vpkt.hdr.r1[7] = module;
 				memcpy(dstr.vpkt.hdr.r1, REPEATER.c_str(), REPEATER.size());
+				dstr.vpkt.hdr.r1[7] = module;
+				memcpy(dstr.vpkt.hdr.r2, REPEATER.c_str(), REPEATER.size());
 				dstr.vpkt.hdr.r2[7] = 'G';
 				memcpy(dstr.vpkt.hdr.ur, "CQCQCQ", 6);	/* yrcall */
 				memcpy(dstr.vpkt.hdr.my, mycall.c_str(), mycall.size());
