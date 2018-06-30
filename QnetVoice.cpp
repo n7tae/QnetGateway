@@ -48,7 +48,8 @@ FILE *fp = NULL;
 time_t tNow = 0;
 short streamid_raw = 0;
 int moduleport[3] = { 0, 0, 0 };
-std::string REPEATER, IP_ADDRESS;
+std::string moduleip[3];
+std::string REPEATER;
 int PORT, PLAY_WAIT, PLAY_DELAY;
 bool is_icom = false;
 
@@ -203,15 +204,14 @@ bool read_config(const char *cfgFile)
 			}
 			is_icom = strcasecmp(type.c_str(), "icom") ? false : true;
 			get_value(cfg, std::string(path+".port").c_str(), moduleport[m], 1000, 65535, is_icom ? 20000 : 19998+m);
+			if (! get_value(cfg, std::string(path+".ip").c_str(), moduleip[m], 7, 15, is_icom ? "172.16.0.20" : "127.0.0.1"))
+				return true;
 		}
 	}
 	if (0==moduleport[0] && 0==moduleport[1] && 0==moduleport[2]) {
 		printf("No repeaters defined!\n");
 		return true;
 	}
-
-	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, is_icom ? "172.16.0.20" : "127.0.0.1"))
-		return true;
 
 	get_value(cfg, "timing.play.wait", PLAY_WAIT, 1, 10, 2);
 
@@ -266,6 +266,7 @@ int main(int argc, char *argv[])
 	}
 
 	PORT = moduleport[module - 'A'];
+	std::string IP_ADDRESS(moduleip[module - 'A']);
 	if (0 == PORT) {
 		printf("module %c has no port defined!\n", module);
 		return 1;
@@ -301,7 +302,7 @@ int main(int argc, char *argv[])
 	memset(RADIO_ID, ' ', 20);
 	RADIO_ID[20] = '\0';
 
-	memcpy(RADIO_ID, "QnetVoice AMBE Data", 19);
+	memcpy(RADIO_ID, "QnetVoice", 9);
 
 	unsigned long int delay = PLAY_DELAY * 1000L;
 	sleep(PLAY_WAIT);
@@ -312,6 +313,7 @@ int main(int argc, char *argv[])
 	short int sport = (short int)PORT;
 	if (dst_open(IP_ADDRESS.c_str(), sport))
 		return 1;
+	printf("Opened %s:%u for writing\n", IP_ADDRESS.c_str(), sport);
 
 	// Read and reformat and write packets
 	while (true) {
@@ -364,7 +366,15 @@ int main(int argc, char *argv[])
 				dstr.vpkt.icm_id = 0x20;
 				dstr.vpkt.dst_rptr_id = dsvt.flagb[0];
 				dstr.vpkt.snd_rptr_id = dsvt.flagb[1];
-				dstr.vpkt.snd_term_id = dsvt.flagb[2];
+				//dstr.vpkt.snd_term_id = dsvt.flagb[2];
+				if (module == 'A')
+					dstr.vpkt.snd_term_id = 0x03;
+				else if (module == 'B')
+					dstr.vpkt.snd_term_id = 0x01;
+				else if (module == 'C')
+					dstr.vpkt.snd_term_id = 0x02;
+				else
+					dstr.vpkt.snd_term_id = 0x00;
 				dstr.vpkt.streamid = htons(streamid_raw);
 				dstr.vpkt.ctrl = dsvt.counter;
 				for (int i=0; i<3; i++)
