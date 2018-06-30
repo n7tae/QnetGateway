@@ -807,7 +807,7 @@ void CQnetGateway::process()
 
 					// Send end_of_audio to local repeater.
 					// Let the repeater re-initialize
-					end_of_audio.counter = toRptr[i].G2_COUNTER;
+					end_of_audio.counter = is_icom ? G2_COUNTER_OUT++ :toRptr[i].G2_COUNTER++;
 					if (i == 0)
 						end_of_audio.vpkt.snd_term_id = 0x03;
 					else if (i == 1)
@@ -820,7 +820,6 @@ void CQnetGateway::process()
 					for (int j=0; j<2; j++)
 						sendto(srv_sock, end_of_audio.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
-					toRptr[i].G2_COUNTER++;
 
 					toRptr[i].streamid = 0;
 					toRptr[i].adr = 0;
@@ -929,7 +928,20 @@ void CQnetGateway::process()
 							rptrbuf.flag[2] = 0x00;
 							rptrbuf.remaining = 0x30;
 							rptrbuf.vpkt.icm_id = 0x20;
-							memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 47);
+							//memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 47);
+							rptrbuf.vpkt.dst_rptr_id = g2buf.flagb[0];
+							rptrbuf.vpkt.snd_rptr_id = g2buf.flagb[1];
+							rptrbuf.vpkt.snd_term_id = g2buf.flagb[2];
+							rptrbuf.vpkt.streamid    = g2buf.streamid;
+							rptrbuf.vpkt.ctrl        = g2buf.ctrl;
+							memcpy(rptrbuf.vpkt.hdr.flag, g2buf.hdr.flag,   3);
+							memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt1,   8);
+							memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt2,   8);
+							memcpy(rptrbuf.vpkt.hdr.ur,   g2buf.hdr.urcall, 8);
+							memcpy(rptrbuf.vpkt.hdr.my,   g2buf.hdr.mycall, 8);
+							memcpy(rptrbuf.vpkt.hdr.nm,   g2buf.hdr.sfx,    4);
+							memcpy(rptrbuf.vpkt.hdr.pfcs, g2buf.hdr.pfcs,   2);
+
 							sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 							/* save the header */
@@ -947,7 +959,7 @@ void CQnetGateway::process()
 						}
 					}
 				} else {	// g2buflen == 27
-					if (bool_qso_details && g2buf.counter & 0x40)
+					if (bool_qso_details && g2buf.ctrl & 0x40)
 						printf("id=%04x END G2\n", ntohs(g2buf.streamid));
 
 					/* find out which repeater module to send the data to */
@@ -973,7 +985,7 @@ void CQnetGateway::process()
 							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 
 							/* End of stream ? */
-							if (g2buf.counter & 0x40) {
+							if (g2buf.ctrl & 0x40) {
 								/* clear the saved header */
 								memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
 								toRptr[i].saved_adr = 0;
@@ -990,7 +1002,7 @@ void CQnetGateway::process()
 					if ((i == 3) && bool_regen_header) {
 						/* check if this a continuation of audio that timed out */
 
-						if (g2buf.counter & 0x40)
+						if (g2buf.ctrl & 0x40)
 							;  /* we do not care about end-of-QSO */
 						else {
 							/* for which repeater this stream has timed out ?  */
@@ -2442,7 +2454,19 @@ void CQnetGateway::PlayFileThread(char *file)
 				dstr.flag[2] = 0x00;
 				dstr.remaining = 0x30;
 				dstr.vpkt.icm_id = 0x20;
-				memcpy(&dstr.vpkt.dst_rptr_id, dsvt.flagb, 47);
+				//memcpy(&dstr.vpkt.dst_rptr_id, dsvt.flagb, 47);
+				dstr.vpkt.dst_rptr_id = dsvt.flagb[0];
+				dstr.vpkt.snd_rptr_id = dsvt.flagb[1];
+				dstr.vpkt.snd_term_id = dsvt.flagb[2];
+				dstr.vpkt.streamid    = dsvt.streamid;
+				dstr.vpkt.ctrl        = dsvt.ctrl;
+				memcpy(dstr.vpkt.hdr.flag, dsvt.hdr.flag,   3);
+				memcpy(dstr.vpkt.hdr.r1,   dsvt.hdr.rpt1,   8);
+				memcpy(dstr.vpkt.hdr.r2,   dsvt.hdr.rpt2,   8);
+				memcpy(dstr.vpkt.hdr.ur,   dsvt.hdr.urcall, 8);
+				memcpy(dstr.vpkt.hdr.my,   dsvt.hdr.mycall, 8);
+				memcpy(dstr.vpkt.hdr.nm,   dsvt.hdr.sfx,    4);
+				memcpy(dstr.vpkt.hdr.pfcs, dsvt.hdr.pfcs,   2);
 
 				/* We did not change anything */
 				// calcPFCS(rptr_buf, 58);

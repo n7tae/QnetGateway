@@ -390,7 +390,7 @@ int main(int argc, char *argv[])
 				else
 					dstr.vpkt.snd_term_id = 0x00;
 				dstr.vpkt.streamid = htons(streamid_raw);
-				dstr.vpkt.ctrl = dsvt.counter;
+				dstr.vpkt.ctrl = dsvt.ctrl;
 				for (int i=0; i<3; i++)
 					dstr.vpkt.hdr.flag[i] = dsvt.hdr.flag[i];
 				memset(dstr.vpkt.hdr.flag+3, ' ', 36);
@@ -404,7 +404,7 @@ int main(int argc, char *argv[])
 				calcPFCS(dstr.pkt_id);
 			} else {
 				dstr.remaining = 0x13;
-				dstr.vpkt.ctrl = dsvt.counter;
+				dstr.vpkt.ctrl = dsvt.ctrl;
 				memcpy(dstr.vpkt.vasd.voice, dsvt.vasd.voice, 12);
 
 				if ((dstr.vpkt.vasd.text[0] != 0x55) || (dstr.vpkt.vasd.text[1] != 0x2d) || (dstr.vpkt.vasd.text[2] != 0x16)) {

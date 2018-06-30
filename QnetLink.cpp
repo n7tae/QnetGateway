@@ -197,7 +197,7 @@ void CQnetLink::RptrAckThread(char *arg)
 	dsvt.flagb[1] = 0x1;
 
 	dsvt.streamid = htons(streamid_raw);
-	dsvt.counter = 0x80;
+	dsvt.ctrl = 0x80;
 	dsvt.hdr.flag[0] = 0x1;
 	dsvt.hdr.flag[1] = dsvt.hdr.flag[2] = 0x0;
 
@@ -223,7 +223,7 @@ void CQnetLink::RptrAckThread(char *arg)
 	/* start sending silence + announcement text */
 
 	for (int i=0; i<10; i++) {
-		dsvt.counter = (unsigned char)i;
+		dsvt.ctrl = (unsigned char)i;
 		switch (i) {
 			case 0:
 				dsvt.vasd.text[0] = 0x55;
@@ -271,7 +271,7 @@ void CQnetLink::RptrAckThread(char *arg)
 				dsvt.vasd.text[2] = RADIO_ID[19] ^ 0x93;
 				break;
 			case 9:
-				dsvt.counter |= 0x40;
+				dsvt.ctrl |= 0x40;
 				dsvt.vasd.text[0] = 0x16;
 				dsvt.vasd.text[1] = 0x29;
 				dsvt.vasd.text[2] = 0xf5;
@@ -1716,7 +1716,7 @@ void CQnetLink::Process()
 						}
 					}
 				} else if (found) {	// length is 27
-					if ((dsvt.counter & 0x40) != 0) {
+					if ((dsvt.ctrl & 0x40) != 0) {
 						for (int i=0; i<3; i++) {
 							if (old_sid[i].sid == dsvt.streamid) {
 								if (qso_details)
@@ -1761,7 +1761,7 @@ void CQnetLink::Process()
 							sendto(rptr_sock, from_xrf_torptr_brd.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 						}
 
-						if (dsvt.counter & 0x40) {
+						if (dsvt.ctrl & 0x40) {
 							brd_from_xrf.xrf_streamid = brd_from_xrf.rptr_streamid[0] = brd_from_xrf.rptr_streamid[1] = 0x0;
 							brd_from_xrf_idx = 0;
 						}
@@ -1796,7 +1796,7 @@ void CQnetLink::Process()
 								memcpy(dcs_buf + 31, xrf_2_dcs[i].mycall, 8);
 								memcpy(dcs_buf + 39, xrf_2_dcs[i].sfx, 4);
 								memcpy(dcs_buf + 43, &dsvt.streamid, 2);
-								dcs_buf[45] = dsvt.counter;  /* cycle sequence */
+								dcs_buf[45] = dsvt.ctrl;  /* cycle sequence */
 								memcpy(dcs_buf + 46, dsvt.vasd.voice, 12);
 
 								dcs_buf[58] = (xrf_2_dcs[i].dcs_rptr_seq >> 0)  & 0xff;
@@ -1811,7 +1811,7 @@ void CQnetLink::Process()
 								sendto(dcs_g2_sock, dcs_buf, 100, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 							}
 
-							if (dsvt.counter & 0x40) {
+							if (dsvt.ctrl & 0x40) {
 								to_remote_g2[i].in_streamid = 0x0;
 							}
 							break;
@@ -2501,7 +2501,7 @@ void CQnetLink::Process()
 						}
 					}
 				} else if (found) {
-					if (rdsvt.dsvt.counter & 0x40U) {
+					if (rdsvt.dsvt.ctrl & 0x40U) {
 						for (int i=0; i<3; i++) {
 							if (old_sid[i].sid == rdsvt.dsvt.streamid) {
 								if (qso_details)
@@ -2562,7 +2562,7 @@ void CQnetLink::Process()
 								sendto(dcs_g2_sock, dcs_buf, 100, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 							}
 
-							if (rdsvt.dsvt.counter & 0x40) {
+							if (rdsvt.dsvt.ctrl & 0x40) {
 								to_remote_g2[i].in_streamid = 0x0;
 							}
 							break;
@@ -2655,7 +2655,7 @@ void CQnetLink::Process()
 							else
 								rdsvt.dsvt.flagb[2] = 0x02;
 							memcpy(&rdsvt.dsvt.streamid, dcs_buf+43, 2);
-							rdsvt.dsvt.counter = 0x80;
+							rdsvt.dsvt.ctrl = 0x80;
 							rdsvt.dsvt.hdr.flag[0] = rdsvt.dsvt.hdr.flag[1] = rdsvt.dsvt.hdr.flag[2] = 0x00;
 							memcpy(rdsvt.dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
 							rdsvt.dsvt.hdr.rpt1[7] = to_remote_g2[i].from_mod;
@@ -2697,7 +2697,7 @@ void CQnetLink::Process()
 							else
 								rdsvt.dsvt.flagb[2] = 0x02;
 							memcpy(&rdsvt.dsvt.streamid, dcs_buf+43, 2);
-							rdsvt.dsvt.counter = dcs_buf[45];
+							rdsvt.dsvt.ctrl = dcs_buf[45];
 							memcpy(rdsvt.dsvt.vasd.voice, dcs_buf+46, 12);
 
 							/* send the data to the local gateway/repeater */

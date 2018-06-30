@@ -72,7 +72,7 @@ typedef struct dsvt_tag {
 	unsigned char id;		//  8   0x20
 	unsigned char flagb[3];	//  9   0x0 0x1 0x1
 	unsigned short streamid;// 12
-	unsigned char counter;	// 14   hdr: 0x80 vsad: framecounter (mod 21)
+	unsigned char ctrl;		// 14   hdr: 0x80 vsad: framecounter (mod 21)
 	union {
 		struct {                    // index
 			unsigned char flag[3];  // 15
