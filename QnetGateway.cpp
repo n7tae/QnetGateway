@@ -259,6 +259,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 		path += '.';
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
+			printf("%s = [%s]\n", std::string(path+".type").c_str(), type.c_str());
 			rptr.mod[m].defined = true;
 			if (0 == type.compare("icom")) {
 				rptr.mod[m].package_version = ICOM_VERSION;
