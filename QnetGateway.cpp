@@ -1161,7 +1161,7 @@ void CQnetGateway::process()
 
 								/* select the band for aprs processing, and lock on the stream ID */
 								if (bool_send_aprs)
-									aprs->SelectBand(i, rptrbuf.vpkt.streamid);
+									aprs->SelectBand(i, ntohs(rptrbuf.vpkt.streamid));
 							}
 						}
 
@@ -1241,7 +1241,9 @@ void CQnetGateway::process()
 												g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
 												g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
 												g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-												memcpy(&g2buf.streamid, &rptrbuf.vpkt.streamid, 44);
+												g2buf.streamid = rptrbuf.vpkt.streamid;
+												g2buf.ctrl = rptrbuf.vpkt.ctrl;
+												memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
 												/* set rpt1 */
 												memset(g2buf.hdr.rpt1, ' ', 8);
 												memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
@@ -1252,6 +1254,8 @@ void CQnetGateway::process()
 												g2buf.hdr.rpt2[7] = 'G';
 												/* set yrcall, can NOT let it be slash and repeater + module */
 												memcpy(g2buf.hdr.urcall, "CQCQCQ  ", 8);
+												memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
+												memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
 
 												/* set PFCS */
 												calcPFCS(g2buf.title, 56);
@@ -1318,7 +1322,9 @@ void CQnetGateway::process()
 												g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
 												g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
 												g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-												memcpy(&g2buf.streamid, &rptrbuf.vpkt.streamid, 44);
+												g2buf.streamid = rptrbuf.vpkt.streamid;
+												g2buf.ctrl = rptrbuf.vpkt.ctrl;
+												memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
 												/* set rpt1 */
 												memset(g2buf.hdr.rpt1, ' ', 8);
 												memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
@@ -1328,7 +1334,11 @@ void CQnetGateway::process()
 												memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
 												g2buf.hdr.rpt2[7] = 'G';
 												/* set PFCS */
+												memcpy(g2buf.hdr.urcall, rptrbuf.vpkt.hdr.ur, 8);
+												memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
+												memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
 												calcPFCS(g2buf.title, 56);
+
 
 												// The remote repeater has been set, lets fill in the dest_rptr
 												// so that later we can send that to the LIVE web site
@@ -1421,7 +1431,7 @@ void CQnetGateway::process()
 									try {
 										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, vm[i].file);
 									} catch (const std::exception &e) {
-										printf("Filed to start voicemail playback. Exception: %s\n", e.what());
+										printf("Failed to start voicemail playback. Exception: %s\n", e.what());
 									}
 								} else
 									printf("No voicemail to recall or still recording\n");
@@ -1434,19 +1444,14 @@ void CQnetGateway::process()
 									printf("Already recording for voicemail on mod %d\n", i);
 								else {
 									memset(tempfile, '\0', sizeof(tempfile));
-									snprintf(tempfile, FILENAME_MAX, "%s/%c_%s",
-											 echotest_dir.c_str(), rptrbuf.vpkt.hdr. r1[7],
-											 "voicemail.dat");
+									snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr. r1[7], "voicemail.dat");
 
-									vm[i].fd = open(tempfile,
-													O_CREAT | O_WRONLY | O_TRUNC | O_APPEND,
-													S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+									vm[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 									if (vm[i].fd < 0)
 										printf("Failed to create file %s for voicemail\n", tempfile);
 									else {
 										strcpy(vm[i].file, tempfile);
-										printf("Recording mod %c for voicemail into file:[%s]\n",
-												rptrbuf.vpkt.hdr.r1[7], vm[i].file);
+										printf("Recording mod %c for voicemail into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], vm[i].file);
 
 										time(&vm[i].last_time);
 										vm[i].streamid = rptrbuf.vpkt.streamid;
@@ -1460,10 +1465,10 @@ void CQnetGateway::process()
 										recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
 										memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
 										memset(recbuf.hdr.rpt1, ' ', 8);
-										memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
+										memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.size());
 										recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
 										memset(recbuf.hdr.rpt2, ' ', 8);
-										memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
+										memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.size());
 										recbuf.hdr.rpt2[7] = 'G';
 										memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
 
@@ -1583,7 +1588,7 @@ void CQnetGateway::process()
 							if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
 								time(&band_txt[i].last_time);
 
-								if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {	// end of voice data
+								if (rptrbuf.vpkt.ctrl & 0x40) {	// end of voice data
 									if (dtmf_buf_count[i] > 0) {
 										dtmf_file = dtmf_dir;
 										dtmf_file.push_back('/');
