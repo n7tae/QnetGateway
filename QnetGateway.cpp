@@ -252,7 +252,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 		return true;
 
 	// modules
-	bool is_icom = is_not_icom = false;
+	is_icom = is_not_icom = false;
 	for (short int m=0; m<3; m++) {
 		std::string path = "module.";
 		path += m + 'a';
