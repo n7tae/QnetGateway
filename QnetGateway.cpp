@@ -2577,6 +2577,37 @@ int CQnetGateway::init(char *cfgfile)
 	rptr.mod[2].band = "2m";
 	printf("Repeater callsigns: [%s] [%s] [%s]\n", rptr.mod[0].call.c_str(), rptr.mod[1].call.c_str(), rptr.mod[2].call.c_str());
 
+	for (i = 0; i < 3; i++) {
+		rptr.mod[i].frequency = rptr.mod[i].offset = rptr.mod[i].latitude = rptr.mod[i].longitude = rptr.mod[i].agl = rptr.mod[i].range = 0.0;
+		band_txt[i].streamID[0] = band_txt[i].streamID[1] = 0;
+		band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
+		band_txt[i].lh_mycall[0] = '\0';
+		band_txt[i].lh_sfx[0] = '\0';
+		band_txt[i].lh_yrcall[0] = '\0';
+		band_txt[i].lh_rpt1[0] = '\0';
+		band_txt[i].lh_rpt2[0] = '\0';
+
+		band_txt[i].last_time = 0;
+
+		band_txt[i].txt[0] = '\0';
+		band_txt[i].txt_cnt = 0;
+		band_txt[i].txt_stats_sent = false;
+
+		band_txt[i].dest_rptr[0] = '\0';
+
+		band_txt[i].temp_line[0] = '\0';
+		band_txt[i].temp_line_cnt = 0;
+		band_txt[i].gprmc[0] = '\0';
+		band_txt[i].gpid[0] = '\0';
+		band_txt[i].is_gps_sent = false;
+		band_txt[i].gps_last_time = 0;
+
+		band_txt[i].num_dv_frames = 0;
+		band_txt[i].num_dv_silent_frames = 0;
+		band_txt[i].num_bit_errors = 0;
+
+	}
+
 	if (bool_send_aprs) {
 		aprs = new CAPRS(&rptr);
 		if (aprs)
