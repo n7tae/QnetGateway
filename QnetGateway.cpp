@@ -2579,7 +2579,7 @@ int CQnetGateway::init(char *cfgfile)
 
 	for (i = 0; i < 3; i++) {
 		rptr.mod[i].frequency = rptr.mod[i].offset = rptr.mod[i].latitude = rptr.mod[i].longitude = rptr.mod[i].agl = rptr.mod[i].range = 0.0;
-		band_txt[i].streamID[0] = band_txt[i].streamID[1] = 0;
+		band_txt[i].streamID = 0;
 		band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
 		band_txt[i].lh_mycall[0] = '\0';
 		band_txt[i].lh_sfx[0] = '\0';
