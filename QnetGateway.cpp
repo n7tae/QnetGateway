@@ -937,8 +937,13 @@ void CQnetGateway::process()
 							rptrbuf.vpkt.streamid    = g2buf.streamid;
 							rptrbuf.vpkt.ctrl        = g2buf.ctrl;
 							memcpy(rptrbuf.vpkt.hdr.flag, g2buf.hdr.flag,   3);
-							memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt1,   8);
-							memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt2,   8);
+							if (is_icom) {
+								memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt2,   8);
+								memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt1,   8);
+							} else {
+								memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt1,   8);
+								memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt2,   8);
+							}
 							memcpy(rptrbuf.vpkt.hdr.ur,   g2buf.hdr.urcall, 8);
 							memcpy(rptrbuf.vpkt.hdr.my,   g2buf.hdr.mycall, 8);
 							memcpy(rptrbuf.vpkt.hdr.nm,   g2buf.hdr.sfx,    4);
@@ -2468,8 +2473,13 @@ void CQnetGateway::PlayFileThread(char *file)
 				dstr.vpkt.streamid    = dsvt.streamid;
 				dstr.vpkt.ctrl        = dsvt.ctrl;
 				memcpy(dstr.vpkt.hdr.flag, dsvt.hdr.flag,   3);
-				memcpy(dstr.vpkt.hdr.r1,   dsvt.hdr.rpt1,   8);
-				memcpy(dstr.vpkt.hdr.r2,   dsvt.hdr.rpt2,   8);
+				if (is_icom) {
+					memcpy(dstr.vpkt.hdr.r1,   dsvt.hdr.rpt2,   8);
+					memcpy(dstr.vpkt.hdr.r2,   dsvt.hdr.rpt1,   8);
+				} else {
+					memcpy(dstr.vpkt.hdr.r1,   dsvt.hdr.rpt1,   8);
+					memcpy(dstr.vpkt.hdr.r2,   dsvt.hdr.rpt2,   8);
+				}
 				memcpy(dstr.vpkt.hdr.ur,   dsvt.hdr.urcall, 8);
 				memcpy(dstr.vpkt.hdr.my,   dsvt.hdr.mycall, 8);
 				memcpy(dstr.vpkt.hdr.nm,   dsvt.hdr.sfx,    4);
