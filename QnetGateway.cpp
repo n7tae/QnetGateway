@@ -862,8 +862,7 @@ void CQnetGateway::process()
 			if (to_remote_g2[i].toDst4.sin_addr.s_addr != 0) {
 				time(&t_now);
 				if ((t_now - to_remote_g2[i].last_time) > from_local_rptr_timeout) {
-					printf("Inactivity from local rptr mod %d, removing stream id %04x\n",
-					        i, to_remote_g2[i].streamid);
+					printf("Inactivity from local rptr mod %d, removing stream id %04x\n", i, to_remote_g2[i].streamid);
 
 					memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
 					to_remote_g2[i].streamid = 0;
@@ -898,10 +897,8 @@ void CQnetGateway::process()
 			}
 
 
-			if ( ((g2buflen == 56) || (g2buflen == 27)) &&
-			      (0==memcmp(g2buf.title, "DSVT", 4)) &&
-			      ((g2buf.config == 0x10) || (g2buf.config == 0x20)) &&  /* header or voiceframe */
-			        (g2buf.id == 0x20)) {    /* voice type */
+			if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) &&
+			      (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 				if (g2buflen == 56) {
 
 					// Find out the local repeater module IP/port to send the data to
@@ -920,8 +917,8 @@ void CQnetGateway::process()
 						         (g2buf.hdr.flag[0] == 0x40))) {
 							if (bool_qso_details)
 								printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n",
-								ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.rpt1, g2buf.hdr.rpt2,
-								g2buf.hdr.urcall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+									ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.rpt1, g2buf.hdr.rpt2,
+									g2buf.hdr.urcall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
 
 							memcpy(rptrbuf.pkt_id, "DSTR", 4);
 							rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);	// bump the counter
@@ -973,8 +970,7 @@ void CQnetGateway::process()
 					int i;
 					for (i=0; i<3; i++) {
 						/* streamid match ? */
-						if ((toRptr[i].streamid==g2buf.streamid) &&
-						        (toRptr[i].adr == fromDst4.sin_addr.s_addr)) {
+						if (toRptr[i].streamid==g2buf.streamid && toRptr[i].adr==fromDst4.sin_addr.s_addr) {
 							memcpy(rptrbuf.pkt_id, "DSTR", 4);
 							rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
 							rptrbuf.flag[0] = 0x73;
@@ -1017,7 +1013,7 @@ void CQnetGateway::process()
 								/* match saved stream ? */
 								if (0==memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) && toRptr[i].saved_adr==fromDst4.sin_addr.s_addr) {
 									/* repeater module is inactive ?  */
-									if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
+									if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
 										printf("Re-generating header for streamID=%04x\n", g2buf.streamid);
 
 										toRptr[i].saved_hdr[4] = (unsigned char)(((is_icom ? G2_COUNTER_OUT : toRptr[i].G2_COUNTER) >> 8) & 0xff);
@@ -1079,12 +1075,9 @@ void CQnetGateway::process()
 					sendto(srv_sock, rptrbuf.pkt_id, 10, 0, (struct sockaddr *)&toRptr[0].band_addr, sizeof(struct sockaddr_in));
 				// end of ICOM handshaking
 				/////////////////////////////////////////////////////////////////////
-				} else if ( ((recvlen == 58) || (recvlen == 29) || (recvlen == 32)) &&
-						(rptrbuf.flag[0] == 0x73) && (rptrbuf.flag[1] == 0x12) &&
-						(rptrbuf.vpkt.icm_id == 0x20) && (rptrbuf.flag[2] == 0x00) &&
-						((rptrbuf.remaining == 0x30) ||    /* 48 bytes follow */
-						 (rptrbuf.remaining == 0x13) ||    /* 19 bytes follow */
-						 (rptrbuf.remaining == 0x16)) ) {  /* 22 bytes follow */
+				} else if ( (recvlen==58 || recvlen==29 || recvlen==32) &&
+						rptrbuf.flag[0]==0x73 && rptrbuf.flag[1]==0x12 && rptrbuf.flag[2]==0x0 && rptrbuf.vpkt.icm_id==0x20 &&
+						(rptrbuf.remaining==0x30 || rptrbuf.remaining==0x13 || rptrbuf.remaining==0x16) ) {
 					if (is_icom) {	// acknowledge packet to ICOM
 						SDSTR reply;
 						memcpy(reply.pkt_id, "DSTR", 4);
@@ -1098,16 +1091,14 @@ void CQnetGateway::process()
 
 						if (bool_qso_details)
 							printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n",
-									ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter),
-									rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2,
-									rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
+								ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1,
+								rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
 
-						if ((memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) == 0) &&  /* rpt1 is this repeater */
-								/*** (memcmp(rptrbuf + 44, OWNER, 7) != 0) && ***/  /* MYCALL is NOT this repeater */
-								((rptrbuf.vpkt.hdr.flag[0] == 0x00) ||                 /* normal */
-								 (rptrbuf.vpkt.hdr.flag[0] == 0x08) ||                 /* EMR */
-								 (rptrbuf.vpkt.hdr.flag[0] == 0x20) ||                 /* BREAK */
-								 (rptrbuf.vpkt.hdr.flag[0] == 0x28))) {                /* EMR + BREAK */
+						if (0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	// rpt1 is this repeater
+								(rptrbuf.vpkt.hdr.flag[0]==0x00 ||				// normal
+								 rptrbuf.vpkt.hdr.flag[0]==0x08 ||				// EMR
+								 rptrbuf.vpkt.hdr.flag[0]==0x20 ||				// BREAK
+								 rptrbuf.vpkt.hdr.flag[0]==0x28)) {				// EMR + BREAK (0x1, announcements are not allowed)
 
 							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
 
@@ -1190,27 +1181,23 @@ void CQnetGateway::process()
 						if (mycall_valid == REG_NOERROR)
 							sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
-						if ((mycall_valid == REG_NOERROR) &&
-								(memcmp(rptrbuf.vpkt.hdr.ur, "XRF", 3) != 0) &&             /* not a reflector */
-								(memcmp(rptrbuf.vpkt.hdr.ur, "REF", 3) != 0) &&             /* not a reflector */
-								(memcmp(rptrbuf.vpkt.hdr.ur, "DCS", 3) != 0) &&             /* not a reflector */
-								(rptrbuf.vpkt.hdr.ur[0] != ' ') &&                          /* must have something */
-								(memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) != 0)) {          /* urcall is NOT CQCQCQ */
-							if ((rptrbuf.vpkt.hdr.ur[0] == '/') &&                          /* urcall starts with a slash */
-									(memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) == 0) &&   /* rpt1 is this repeater */
-									((rptrbuf.vpkt.hdr.r1[7] == 'A') ||
-									 (rptrbuf.vpkt.hdr.r1[7] == 'B') ||
-									 (rptrbuf.vpkt.hdr.r1[7] == 'C')) &&                      /* mod is A,B,C */
-									(memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) == 0) &&   /* rpt2 is this repeater */
-									(rptrbuf.vpkt.hdr.r2[7] == 'G') &&                        /* local Gateway */
-									/*** (memcmp(rptrbuf + 44, OWNER, 7) != 0) && ***/          /* mycall is NOT this repeater */
+						if (mycall_valid==REG_NOERROR &&
+								memcmp(rptrbuf.vpkt.hdr.ur, "XRF", 3) &&	// not a reflector
+								memcmp(rptrbuf.vpkt.hdr.ur, "REF", 3) &&
+								memcmp(rptrbuf.vpkt.hdr.ur, "DCS", 3) &&
+								rptrbuf.vpkt.hdr.ur[0]!=' ' && 				// must have something
+								memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6)) {	// urcall is NOT CQCQCQ
+							if (rptrbuf.vpkt.hdr.ur[0]=='/' &&										// repeater routing!
+									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 this repeater
+									(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// with a valid module
+									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) && 			// rpt2 is this repeater
+									rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
+									(rptrbuf.vpkt.hdr.flag[0]== 0x00 ||	// normal
+									 rptrbuf.vpkt.hdr.flag[0]== 0x08 ||	// EMR
+									 rptrbuf.vpkt.hdr.flag[0]== 0x20 ||	// BK
+									 rptrbuf.vpkt.hdr.flag[0]== 0x28)) {// EMR + BK
 
-									((rptrbuf.vpkt.hdr.flag[0] == 0x00) ||                         /* normal */
-									 (rptrbuf.vpkt.hdr.flag[0] == 0x08) ||                         /* EMR */
-									 (rptrbuf.vpkt.hdr.flag[0] == 0x20) ||                         /* BK */
-									 (rptrbuf.vpkt.hdr.flag[0] == 0x28))                           /* EMR + BK */
-							   ) {
-								if (memcmp(rptrbuf.vpkt.hdr.ur+1, OWNER.c_str(), 6) != 0) {   /* the value after the slash in urcall, is NOT this repeater */
+								if (memcmp(rptrbuf.vpkt.hdr.ur+1, OWNER.c_str(), 6)) {	// the value after the slash is NOT this repeater
 									int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
 
 									if (i>=0 && i<3) {
@@ -1283,20 +1270,17 @@ void CQnetGateway::process()
 										}
 									}
 								}
-							} else if ((memcmp(rptrbuf.vpkt.hdr.ur, OWNER.c_str(), 7) != 0) &&	/* urcall is not this repeater */
-									   (memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) == 0) &&	/* rpt1 is this repeater */
-									   ((rptrbuf.vpkt.hdr.r1[7] == 'A') ||
-										(rptrbuf.vpkt.hdr.r1[7] == 'B') ||
-										(rptrbuf.vpkt.hdr.r1[7] == 'C')) &&						/* mod is A,B,C */
-									   (memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) == 0) &&	/* rpt2 is this repeater */
-									   (rptrbuf.vpkt.hdr.r2[7] == 'G') &&							/* local Gateway */
-									   /*** (memcmp(rptrbuf + 44, OWNER, 7) != 0) && ***/			/* mycall is NOT this repeater */
+							} else if (memcmp(rptrbuf.vpkt.hdr.ur, OWNER.c_str(), 7) &&				// urcall is not this repeater
+									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 is this repeater
+									(rptrbuf.vpkt.hdr.r1[7]>='A'&& rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod is A,B,C
+									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&				// rpt2 is this repeater
+									rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
 
-									   ((rptrbuf.vpkt.hdr.flag[0] == 0x00) ||						/* normal */
-										(rptrbuf.vpkt.hdr.flag[0] == 0x08) ||						/* EMR */
-										(rptrbuf.vpkt.hdr.flag[0] == 0x20) ||						/* BK */
-										(rptrbuf.vpkt.hdr.flag[0] == 0x28))							/* EMR + BK */
-									  ) {
+									   (rptrbuf.vpkt.hdr.flag[0]==0x00 ||	// normal
+										rptrbuf.vpkt.hdr.flag[0]==0x08 ||	// EMR
+										rptrbuf.vpkt.hdr.flag[0]==0x20 ||	// BK
+										rptrbuf.vpkt.hdr.flag[0]==0x28)) {	// EMR + BK
+
 
 								memset(temp_radio_user, ' ', 8);
 								memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur, 8);
@@ -1354,7 +1338,7 @@ void CQnetGateway::process()
 												for (int j=0; j<5; j++)
 													sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-												printf("Routing to IP=%s:%u id=%04x my=%.8s sfx=%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n",
+												printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n",
 												inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
 												g2buf.streamid, g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
 
@@ -1495,18 +1479,14 @@ void CQnetGateway::process()
 									printf("Already recording for echotest on mod %d\n", i);
 								else {
 									memset(tempfile, '\0', sizeof(tempfile));
-									snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(),
-															rptrbuf.vpkt.hdr.r1[7], "echotest.dat");
+									snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr.r1[7], "echotest.dat");
 
-									recd[i].fd = open(tempfile,
-													  O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND,
-													  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+									recd[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 									if (recd[i].fd < 0)
 										printf("Failed to create file %s for echotest\n", tempfile);
 									else {
 										strcpy(recd[i].file, tempfile);
-										printf("Recording mod %c for echotest into file:[%s]\n",
-															rptrbuf.vpkt.hdr.r1[7], recd[i].file);
+										printf("Recording mod %c for echotest into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], recd[i].file);
 
 										time(&recd[i].last_time);
 										recd[i].streamid = rptrbuf.vpkt.streamid;
@@ -1538,16 +1518,12 @@ void CQnetGateway::process()
 								}
 							}
 						/* check for cross-banding */
-						} else if (0 == (memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6)) &&			/* yrcall is CQCQCQ */
-								(0 == memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7)) && 	/* rpt1 is this repeater */
-								(0 == memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7)) &&	/* rpt2 is this repeater */
-								((rptrbuf.vpkt.hdr.r1[7] == 'A') ||
-								 (rptrbuf.vpkt.hdr.r1[7] == 'B') ||
-								 (rptrbuf.vpkt.hdr.r1[7] == 'C')) &&                   /* mod of rpt1 is A,B,C */
-								((rptrbuf.vpkt.hdr.r2[7] == 'A') ||
-								 (rptrbuf.vpkt.hdr.r2[7] == 'B') ||
-								 (rptrbuf.vpkt.hdr.r2[7] == 'C')) &&           /* !!! usually a G of rpt2, but we see A,B,C */
-								(rptrbuf.vpkt.hdr.r2[7] != rptrbuf.vpkt.hdr.r1[7])) {  /* cross-banding? make sure NOT the same */
+						} else if ( 0==memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) &&		// yrcall is CQCQCQ
+									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&	// rpt1 is this repeater
+									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	// rpt2 is this repeater
+								(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod of rpt1 is A,B,C
+								(rptrbuf.vpkt.hdr.r2[7]>='A' && rptrbuf.vpkt.hdr.r2[7]<='C') &&	// !!! usually G on rpt2, but we see A,B,C with
+								rptrbuf.vpkt.hdr.r2[7]!=rptrbuf.vpkt.hdr.r1[7] ) {				// cross-banding? make sure NOT the same
 							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
 
 							if (i>=0 && i<3) {
@@ -1559,7 +1535,7 @@ void CQnetGateway::process()
 
 							i = rptrbuf.vpkt.hdr.r2[7] - 'A';
 
-							/* valid destination repeater module? */
+							// valid destination repeater module?
 							if (i>=0 && i<3) {
 								// toRptr[i] :    receiving from a remote system or cross-band
 								// band_txt[i] :  local RF is talking.
@@ -1617,18 +1593,9 @@ void CQnetGateway::process()
 										dtmf_last_frame[i] = 0;
 									}
 
-									ii->sendHeardWithTXStats(band_txt[i].lh_mycall,
-															 band_txt[i].lh_sfx,
-															 //(strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
-															 band_txt[i].lh_yrcall,
-															 band_txt[i].lh_rpt1,
-															 band_txt[i].lh_rpt2,
-															 band_txt[i].flags[0],
-															 band_txt[i].flags[1],
-															 band_txt[i].flags[2],
-															 band_txt[i].num_dv_frames,
-															 band_txt[i].num_dv_silent_frames,
-															 band_txt[i].num_bit_errors);
+									ii->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1,
+										band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames,
+										band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
 
 									band_txt[i].streamID = 0;
 									band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
@@ -1687,13 +1654,8 @@ void CQnetGateway::process()
 						else
 							memcpy(tmp_txt, rptrbuf.vpkt.vasd1.text, 3);
 
-						// printf("%x%x%x\n", tmp_txt[0], tmp_txt[1], tmp_txt[2]);
-						// printf("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
-
-						/* extract 20-byte RADIO ID */
+						// extract 20-byte RADIO ID
 						if ((tmp_txt[0] != 0x55) || (tmp_txt[1] != 0x2d) || (tmp_txt[2] != 0x16)) {
-							// printf("%x%x%x\n", tmp_txt[0], tmp_txt[1], tmp_txt[2]);
-							// printf("%c%c%c\n", tmp_txt[0] ^ 0x70, tmp_txt[1] ^ 0x4f, tmp_txt[2] ^ 0x93);
 
 							for (int i=0; i<3; i++) {
 								if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
@@ -1701,8 +1663,7 @@ void CQnetGateway::process()
 										tmp_txt[0] = tmp_txt[0] ^ 0x70;
 										header_type = tmp_txt[0] & 0xf0;
 
-										if ((header_type == 0x50) ||  /* header  */
-												(header_type == 0xc0)) {  /* squelch */
+										if ((header_type == 0x50) ||  /* header  */ (header_type == 0xc0)) {  /* squelch */
 											new_group[i] = false;
 											to_print[i] = 0;
 											ABC_grp[i] = false;
@@ -1819,19 +1780,6 @@ void CQnetGateway::process()
 
 											if (band_txt[i].txt_cnt >= 20) {
 												band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
-												/***
-												ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
-																	   band_txt[i].lh_sfx,
-																	   (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
-																	   band_txt[i].lh_rpt1,
-																	   band_txt[i].lh_rpt2,
-																	   band_txt[i].flags[0],
-																	   band_txt[i].flags[1],
-																	   band_txt[i].flags[2],
-																	   band_txt[i].dest_rptr,
-																	   band_txt[i].txt);
-												***/
-												// printf("TEXT1=[%s]\n", band_txt[i].txt);
 												band_txt[i].txt_cnt = 0;
 											}
 										} else {
@@ -1851,11 +1799,10 @@ void CQnetGateway::process()
 												band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2] ^ 0x93;
 												band_txt[i].txt_cnt ++;
 
-												/*
-												   We should NOT see any more text,
-												   if we already processed text,
-												   so blank out the codes.
-												*/
+												// We should NOT see any more text,
+												// if we already processed text,
+												// so blank out the codes.
+
 												if (band_txt[i].txt_stats_sent) {
 													if (recvlen == 29) {
 														rptrbuf.vpkt.vasd.text[0] = 0x70;
@@ -1878,18 +1825,9 @@ void CQnetGateway::process()
 														//		band_txt[i].dest_rptr[0] = '\0';
 														}
 
-														ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
-																			   band_txt[i].lh_sfx,
-																			   //(strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
-																			   band_txt[i].lh_yrcall,
-																			   band_txt[i].lh_rpt1,
-																			   band_txt[i].lh_rpt2,
-																			   band_txt[i].flags[0],
-																			   band_txt[i].flags[1],
-																			   band_txt[i].flags[2],
-																			   band_txt[i].dest_rptr,
-																			   band_txt[i].txt);
-														// printf("TEXT2=[%s], destination repeater=[%s]\n", band_txt[i].txt, band_txt[i].dest_rptr);
+														ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx,band_txt[i].lh_yrcall,
+															band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1],
+															band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 														band_txt[i].txt_stats_sent = true;
 													}
 													band_txt[i].txt_cnt = 0;
@@ -1923,7 +1861,7 @@ void CQnetGateway::process()
 													((tmp_txt[1] ^ 0x4f) == '\r') ||
 													((tmp_txt[2] ^ 0x93) == '\r')
 												) {
-													if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+													if (0 == memcmp(band_txt[i].temp_line, "$GPRMC", 6)) {
 														memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 														band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
 													} else if (band_txt[i].temp_line[0] != '$') {
