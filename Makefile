@@ -76,7 +76,7 @@ qnvoice : QnetVoice.o Random.o
 .PHONY: clean
 
 clean:
-	$(RM) $(OBJS) $(DEPS) $(PROGRAMS)
+	$(RM) $(OBJS) $(DEPS) $(ALL_PROGRAMS)
 
 -include $(DEPS)
 
