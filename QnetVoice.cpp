@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 
 	fp = fopen(qnvoice_file.c_str(), "w");
 	if (fp) {
-		fprintf(fp, "%c_%s_%s\n", module, argv[3], RADIO_ID);
+		fprintf(fp, "%c_%s_%s\n", module, argv[2], RADIO_ID);
 		fclose(fp);
 	} else {
 		printf("Failed to open %s for writing", qnvoice_file.c_str());
