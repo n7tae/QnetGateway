@@ -28,7 +28,6 @@
 using namespace libconfig;
 
 bool isamod[3] = { false, false, false };
-std::string REPEATER;
 std::string announce_dir;
 std::string qnvoice_file;
 
@@ -94,11 +93,6 @@ bool read_config(const char *cfgFile)
 		return true;
 	}
 
-	if (! get_value(cfg, "ircddb.login", REPEATER, 3, 6, "UNDEFINED"))
-		return true;
-	REPEATER.resize(6, ' ');
-	printf("REPEATER=[%s]\n", REPEATER.c_str());
-
 	for (short int m=0; m<3; m++) {
 		std::string path = "module.";
 		path += m + 'a';
@@ -144,12 +138,6 @@ int main(int argc, char *argv[])
 	if (read_config(cfgfile.c_str()))
 		return 1;
 
-	if (REPEATER.size() > 6) {
-		printf("repeaterCallsign can not be more than 6 characters, %s is invalid\n", REPEATER.c_str());
-		return 1;
-	}
-	ToUpper(REPEATER);
-
 	char module = argv[1][0];
 	if (islower(module))
 		module = toupper(module);
@@ -161,9 +149,9 @@ int main(int argc, char *argv[])
 	char pathname[FILENAME_MAX];
 	snprintf(pathname, FILENAME_MAX, "%s/%s", announce_dir.c_str(), argv[2]);
 
-	FILE *fp = fopen(argv[2], "rb");
+	FILE *fp = fopen(pathname, "rb");
 	if (!fp) {
-		printf("Failed to find file %s for reading\n", argv[2]);
+		printf("Failed to find file %s for reading\n", pathname);
 		return 1;
 	}
 	fclose(fp);
