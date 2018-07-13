@@ -41,6 +41,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include <iostream>
+#include <fstream>
 #include <future>
 #include <exception>
 #include <atomic>
@@ -682,6 +684,8 @@ bool CQnetLink::read_config(const char *cfgFile)
 	if (! get_value(cfg, "file.status", status_file, 2, FILENAME_MAX, "/usr/local/etc/RPTR_STATUS.txt"))
 		return true;
 
+	get_value(cfg, "file.qnvoicefile", qnvoice_file, 2, FILENAME_MAX, "/tmp/qnvoice.txt");
+
 	get_value(cfg, "timing.play.delay", delay_between, 9, 25, 19);
 
 	get_value(cfg, "link.acknowledge", bool_rptr_ack, true);
@@ -1252,6 +1256,26 @@ void CQnetLink::Process()
 				}
 			}
 			time(&hb);
+		}
+
+		// play a qnvoice file if it is specified
+		std::ifstream voicefile(qnvoice_file.c_str(), std::ifstream::in);
+		if (voicefile) {
+			char line[FILENAME_MAX];
+			voicefile.getline(line, FILENAME_MAX);
+			// trim whitespace
+			char *start = line;
+			while (isspace(*start))
+				start++;
+			char *end = start + strlen(start) - 1;
+			while (isspace(*end))
+				*end-- = (char)0;
+			// anthing reasonable left?
+			if (strlen(start) > 2)
+				audio_notify(start);
+			//clean-up
+			voicefile.close();
+			remove(qnvoice_file.c_str());
 		}
 
 		FD_ZERO(&fdset);
