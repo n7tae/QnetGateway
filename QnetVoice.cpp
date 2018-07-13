@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 	char pathname[FILENAME_MAX];
 	snprintf(pathname, FILENAME_MAX, "%s/%s", announce_dir.c_str(), argv[2]);
 
-	FILE *fp = fopen(argv[3], "rb");
+	FILE *fp = fopen(argv[2], "rb");
 	if (!fp) {
 		printf("Failed to find file %s for reading\n", argv[2]);
 		return 1;
