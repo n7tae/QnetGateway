@@ -3487,7 +3487,7 @@ void CQnetLink::AudioNotifyThread(char *arg)
 			dsvt.streamid = htons(streamid_raw);
 
 			if (rlen == 56) {
-				dsvt.hdr.flag[0] = 0x01;
+				dsvt.hdr.flag[0] = 0x0;
 
 				memcpy(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
 				dsvt.hdr.rpt1[7] = mod;
