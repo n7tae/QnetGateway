@@ -35,8 +35,9 @@ sudo apt-get upgrade
 sudo apt-get install make g++ unzip git libconfig++-dev
 
 If you are building a QnetGateway + MMDVMHost system, please use the instructions
-in the MMDVM.README file. If you are building a QnetGateway for a DVAP or a
-DVRPTR_V1 read on...
+in the MMDVM.README file. If you are building a QnetGateway for an Icom repeater,
+use the qn.icom.cfg configuration file as a starting point for your configuration.
+If you are building a QnetGateway for a DVAP or a DVRPTR_V1 read on...
 
 git clone git://github.com/n7tae/QnetGateway.git
 
@@ -44,20 +45,28 @@ This will create a QnetGateway directory with everything you need to build a dva
 dvrptr ircddb gateway.
 
 The first thing to do is change to the build directory with "cd QnetGateway" and then
-type "make" to build all the QnetGateway executables. If you need DTMFS then also
-execute "make g2link_test".
+choose a target to make. There are targets for each of the supported devices:
+. "make icom"   will build all programs needed for the Icom repeater.
+. "make dvap"   will build all programs needed for the DVAP Dongle.
+. "make dvrptr" will build all programs needed for the DVRPTR_V1.
+. "make mmdvm"  will build all programs needed for MMDVMHost support. (You need
+  to download and build MMDVMHost separately, see the MMDVM.README file for more info.
+. "make" will build all the QnetGateway executables.
 
-Next, create your qn.cfg configuration file. There are two example for you to look
+Next, create your qn.cfg configuration file. There are three example for you to look
 at:
 . qn.everything.cfg contains all parameter with lengthly comments about what
   each parameter does. The definitions that are commented out are defined with
   their default value.
 . qn.dvap.cfg is the simplest possible configuration for a 2m DVAP. If you have
   a 70cm DVAP rename the module to "b" and change the frequency.
+. qn.icom.cfg is the starting place for configuring an Icom repeater. Please note
+  that QnetGateway doesn't support the 23cm data only module in the Icom repeater
+  stack.
 
-Remeber the everything file contain detailed comments about all of the values you
-can set. Just read through it and edit accordingly. In the end you will need
-a configuration file called "qn.cfg".
+Remeber the everything file or the icom file contain detailed comments about all of
+the values you can set. Just read through it and edit accordingly. In the end you will
+need a configuration file called "qn.cfg".
 
 Additional information about the configuration as well as other important and
 useful features are also in the CONFIGURING file.
@@ -79,38 +88,36 @@ problem"!
 
 There are MANY OTHER gateways to which you can connect. Executing get_gwys_list.sh
 will download a HUGE list of reflectors and gateways from www.va3uv.com with port
-address that may need port-forwarding to your sytem. I have provided anotherscript,
-'get_reflectors.sh' that will download the same list from va3uv.com, but filter it
-so that it only contains DCS x-reflectors (DCSXXX), DStar reflectors (REFXXX) and
-X-reflectors (XRFXXX) and it will put all x-reflectors on port 20001 so you
-probably won't need any port-forwarding on your home router.
+address that may need port-forwarding to your sytem.
 
 There is another script, reflist.sh, that will download REF, XRF and DCS reflectors
 from another source. This is probably the preferred method to getting a gwys.txt
-file.
+file. This source is extremely up-to-date.
 
-Based on the above discussion, execute either "./reflist.sh", "./get_reflectors.sh" or
-"./get_gwy_list.sh".
+Based on the above discussion, execute either "./reflist.sh" or "./get_gwy_list.sh".
 
-If you plan on using DTMFS, you can also edit proc_qnlinktest to add new
-dtmfs commands.
+If you plan on using DTMF, you need to copy "qndtmf.sh" to "qndtmf". This is the
+file that interprets dtmf command and executes them. As supplied, it parses the
+DTMF string and executes a QnetRemote command to perform linking and unlinking
+and other useful tasks. It is a /bin/bash script so you can modify it! You can
+change the commands or create new commands.
 
-Then install your system. you have two choices, either DVAP or DVRPTR_V1 by
-typing "sudo make installdvap" or "sudo make installdvrptr", respectively.
-This should get you up and running. It will take a few minutes for QnetGateway
-to get fully connected to the IRCDDB network.
+You are now ready to install your QnetGateway system. If you are installing an
+MMDVM-based system, follow the instructions in MMDVM.README.
+
+To install either DVAP or DVRPTR_V1, type "sudo make installdvap" or "sudo make
+installdvrptr", respectively. If you are installing on an Icom repeater, type
+"sudo make installicom". This should get you up and running. It will take a few
+minutes for QnetGateway to get fully connected to the IRCDDB network.
 
 Finally, if you want/need DTMFS, type "sudo make installdtmfs".
 
 The service scripts in /lib/systemd/system and everything else in /usr/local:
 The executables will be in /usr/local/bin and the qn.cfg file and other data
-will be in /usr/local/etc.
-
-If you find that you need to modify the configuration file, remember that the
-installed systems read the /usr/local/etc/qn.cfg file, NOT THE ONE IN YOUR
-BUILD DIRECTORY. To keep them synced, it is good admin practice to modify the
-qn.cfg file in your build directory and then do a "sudo make uninstall<dvap or
-dvrptr>" followed by an "sudo make install<dvap or dvrptr>.
+will be in /usr/local/etc. Please note that the qn.cfg file and the gwys.txt
+file are actually symbolic links and point back to the files you created in
+the build directory. So if you want modify them later, modify the files in the
+build directory.
 
 If you are having trouble connecting, use journalctl to view the log output
 of each process. "sudo journalctl -u <service name> will show the log from that
@@ -118,21 +125,18 @@ service. The QnetGateway service is qngateway, QnetLink is qnlink, QnetDVAP is
 qndvap and QnetDVRPTR is qndvrptr.
 
 The beginning of each log file will report the values of all the configuration
-parameters (even the ones you didn't specify in qm.cfg) and after that
+parameters (even the ones you didn't specify in qn.cfg) and after that
 you will see the verbose reports of what each service is doing. These logs are
 invaluable for traking down problems with your qn.cfg file. You can see in real
 time what is being added to the logs during operation appending "-f" to the
 journalctl command.
 
-You can clean up the build directory of intermediate *.o files with "make clean"
-or, you can remove the intermediate *.o files and binary executables with "make
-realclean".  Note that "make realclean" only removes the binary files from your
-build directory and not the copies you installed into /usr/local/bin with the
-"sudo make install..." command.
+You can clean up the build directory of intermediate *.o files, *.d file and the
+executables with "make clean".
 
-If you want to uninstall everything return to the build directory and type either
-"sudo make unistalldvap" or "sudo make uninstalldvrptr" and possibly "sudo make
-uninstalldtmfs".  This will shutdown the services and remove the service scripts
-and everything from /usr/local.
+If you want to uninstall everything return to the build directory and type
+"sudo make unistalldvap", "sudo make uninstalldvrptr" or "sudo make uninstallicom"
+and possibly "sudo make uninstalldtmfs".  This will shutdown the services and
+remove the service scripts and everything from /usr/local.
 
 Tom Early, n7tae (at) arrl (dot) net

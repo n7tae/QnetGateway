@@ -1,7 +1,7 @@
 QnetGateway
 ===========
 
-The QnetGateway is an D-Star IRCDDB gateway application that supports MMDVMHost (and all of its supported repeater modems) as well as the DVAP Dongle and the DVRPTR_V1. It is *incredibly easy* to build and install the system.
+The QnetGateway is an D-Star IRCDDB gateway application that supports MMDVMHost (and all of its supported repeater modems) as well as the DVAP Dongle, the DVRPTR_V1 and now the Icom repeater. It is *incredibly easy* to build and install the system.
 
 For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To build QnetGateway that uses a DVAP Dongle or DVRPTR V1, see the BUILDING file.
 
