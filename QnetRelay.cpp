@@ -230,42 +230,49 @@ int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, c
 bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 {
 	if (29==len || 58==len) { //here is dstar data
-		SDSTR buf;
-		::memcpy(buf.pkt_id, raw, len);	// transfer raw data to SDSTR struct
+		SDSTR dstr;
+		::memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
 
-		SDSRP pkt;	// destination
+		SDSRP dsrp;	// destination
 		// fill in some inital stuff
-		::memcpy(pkt.title, "DSRP", 4);
-		pkt.voice.id = buf.vpkt.streamid;
-		pkt.voice.seq = buf.vpkt.ctrl;
+		::memcpy(dsrp.title, "DSRP", 4);
+		dsrp.voice.id = dstr.vpkt.streamid;	// voice or header is the same position
+		dsrp.voice.seq = dstr.vpkt.ctrl;	// ditto
 		if (29 == len) {	// write an AMBE packet
-			pkt.tag = 0x21U;
-			if (pkt.voice.seq & 0x40)
-//				printf("INFO: ProcessGateway: sending voice end-of-stream\n");
-				;
-			else if (pkt.voice.seq > 20)
-				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", pkt.voice.seq);
-			pkt.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
-			memcpy(pkt.voice.ambe, buf.vpkt.vasd.voice, 12);
-			int ret = SendTo(msock, pkt.title, 21, MMDVM_IP, MMDVM_IN_PORT);
+			dsrp.tag = 0x21U;
+			if (log_qso && dsrp.voice.seq&0x40)
+				printf("Sent DSRP end of streamid=%04x\n", ntohs(dsrp.voice.id));
+			else if (dsrp.voice.seq > 20)
+				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", dsrp.voice.seq);
+			dsrp.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
+			memcpy(dsrp.voice.ambe, dstr.vpkt.vasd.voice, 12);
+			int ret = SendTo(msock, dsrp.title, 21, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 21) {
 				printf("ERROR: ProcessGateway: Could not write AMBE mmdvm packet\n");
 				return true;
 			}
 		} else {			// write a Header packet
-			pkt.tag = 0x20U;
-			pkt.header.id =  buf.vpkt.streamid;
-			if (pkt.header.seq) {
+			dsrp.tag = 0x20U;
+			if (dsrp.header.seq) {
 //				printf("DEBUG: ProcessGateway: unexpected pkt.header.seq %d, resetting to 0\n", pkt.header.seq);
-				pkt.header.seq = 0;
+				dsrp.header.seq = 0;
 			}
-			memcpy(pkt.header.flag, buf.vpkt.hdr.flag, 41);
-			int ret = SendTo(msock, pkt.title, 49, MMDVM_IP, MMDVM_IN_PORT);
+			//memcpy(dsrp.header.flag, dstr.vpkt.hdr.flag, 41);
+			memcpy(dsrp.header.flag, dstr.vpkt.hdr.flag, 3);
+			memcpy(dsrp.header.r1,   dstr.vpkt.hdr.r1,   8);
+			memcpy(dsrp.header.r2,   dstr.vpkt.hdr.r2,   8);
+			memcpy(dsrp.header.ur,   dstr.vpkt.hdr.ur,   8);
+			memcpy(dsrp.header.my,   dstr.vpkt.hdr.my,   8);
+			memcpy(dsrp.header.nm,   dstr.vpkt.hdr.nm,   4);
+			memcpy(dsrp.header.pfcs, dstr.vpkt.hdr.pfcs, 2);
+			int ret = SendTo(msock, dsrp.title, 49, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 49) {
 				printf("ERROR: ProcessGateway: Could not write Header mmdvm packet\n");
 				return true;
 			}
-			printf("INFO: ProcessGateway: sent header to port %u pkt = '%s'\n", MMDVM_IN_PORT, std::string((char *)pkt.header.r2, 36).c_str());
+			if (log_qso)
+				printf("Sent DSRP to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MMDVM_IN_PORT, ntohs(dsrp.header.id),
+				dsrp.header.ur, dsrp.header.r1, dsrp.header.r2, dsrp.header.my, dsrp.header.nm);
 		}
 
 	} else
@@ -277,53 +284,65 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 {
 	static short old_id = 0U;
 	static short stream_id = 0U;
-	SDSRP mpkt;
+	SDSRP dsrp;
 	if (len < 65)
-		::memcpy(mpkt.title, raw, len);	// transfer raw data to SDSRP struct
+		::memcpy(dsrp.title, raw, len);	// transfer raw data to SDSRP struct
 
 	if (49==len || 21==len) {
 		// grab the stream id if this is a header
 		if (49 == len) {
-			stream_id = mpkt.header.id;
+			stream_id = dsrp.header.id;
 			if (old_id == stream_id)
 				return false;
 			old_id = stream_id;
 		}
 
-		SDSTR gpkt;	// destination
+		SDSTR dstr;	// destination
 		// sets most of the params
-		::memcpy(gpkt.pkt_id, "DSTR", 4);
-		gpkt.counter = COUNTER++;
-		gpkt.flag[0] = 0x73;
-		gpkt.flag[1] = 0x12;
-		gpkt.flag[2] = 0x0;
-		gpkt.vpkt.icm_id = 0x20;
-		gpkt.vpkt.dst_rptr_id = 0x0;
-		gpkt.vpkt.snd_rptr_id = 0x1;
-		gpkt.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
-		gpkt.vpkt.streamid = stream_id;
+		::memcpy(dstr.pkt_id, "DSTR", 4);
+		dstr.counter = htons(COUNTER++);
+		dstr.flag[0] = 0x73;
+		dstr.flag[1] = 0x12;
+		dstr.flag[2] = 0x0;
+		dstr.vpkt.icm_id = 0x20;
+		dstr.vpkt.dst_rptr_id = 0x0;
+		dstr.vpkt.snd_rptr_id = 0x1;
+		dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
+		dstr.vpkt.streamid = stream_id;
 
 		if (49 == len) {	// header
-			gpkt.remaining = 0x30;
-			gpkt.vpkt.ctrl = 0x80;
-			::memcpy(gpkt.vpkt.hdr.flag, mpkt.header.flag, 41);
-			int ret = SendTo(msock, gpkt.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
+			dstr.remaining = 0x30;
+			dstr.vpkt.ctrl = 0x80;
+			//memcpy(dstr.vpkt.hdr.flag, dsrp.header.flag, 41);
+			memcpy(dstr.vpkt.hdr.flag, dsrp.header.flag, 3);
+			memcpy(dstr.vpkt.hdr.r1,   dsrp.header.r1,   8);
+			memcpy(dstr.vpkt.hdr.r2,   dsrp.header.r2,   8);
+			memcpy(dstr.vpkt.hdr.ur,   dsrp.header.ur,   8);
+			memcpy(dstr.vpkt.hdr.my,   dsrp.header.my,   8);
+			memcpy(dstr.vpkt.hdr.nm,   dsrp.header.nm,   4);
+			memcpy(dstr.vpkt.hdr.pfcs, dsrp.header.pfcs, 2);
+			int ret = SendTo(msock, dstr.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
 			if (ret != 58) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
-			printf("INFO: ProcessMMDVM: sent header to port %u pkt = '%s'\n", G2_IN_PORT, std::string((char *)gpkt.vpkt.hdr.r2, 36).c_str());
+			if (log_qso)
+				printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid),
+				dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 		} else if (21 == len) {	// ambe
-			gpkt.remaining = 0x16;
-			gpkt.vpkt.ctrl = mpkt.header.seq;
-			::memcpy(gpkt.vpkt.vasd.voice, mpkt.voice.ambe, 12);
-			int ret = SendTo(msock, gpkt.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
+			dstr.remaining = 0x16;
+			dstr.vpkt.ctrl = dsrp.header.seq;
+			memcpy(dstr.vpkt.vasd.voice, dsrp.voice.ambe, 12);
+			int ret = SendTo(msock, dstr.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
+			if (log_qso && dstr.vpkt.ctrl&0x40)
+				printf("Sent dstr end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+
 			if (ret != 29) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 				return true;
 			}
 		}
-	} else if (len < 65 && mpkt.tag == 0xAU) {
+	} else if (len < 65 && dsrp.tag == 0xAU) {
 //		printf("MMDVM Poll: '%s'\n", (char *)mpkt.poll_msg);
 	} else
 		printf("DEBUG: ProcessMMDVM: unusual packet len=%d\n", len);
@@ -469,11 +488,7 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	} else
 		return true;
 
-	GetValue(cfg, "timing.play.delay", DELAY_BETWEEN, 9, 25, 19);
-
-	GetValue(cfg, "timing.play.wait", DELAY_BEFORE, 1, 10, 2);
-
-	GetValue(cfg, std::string(mmdvm_path+".packet_wait").c_str(), WAIT_FOR_PACKETS, 6, 100, 25);
+	GetValue(cfg, "log.qso", log_qso, false);
 
 	return false;
 }
@@ -495,8 +510,8 @@ int main(int argc, const char **argv)
 	}
 
 	if ('-' == argv[1][0]) {
-		printf("\nMMDVM Modem Version #%s Copyright (C) 2018 by Thomas A. Early N7TAE\n", MMDVM_VERSION);
-		printf("MMDVM Modem comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
+		printf("\nQnetRelay Version #%s Copyright (C) 2018 by Thomas A. Early N7TAE\n", RELAY_VERSION);
+		printf("QnetRelay comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
 		return 0;
 	}

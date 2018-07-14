@@ -85,7 +85,12 @@ class CQnetGateway {
 public:
 	CQnetGateway();
 	~CQnetGateway();
+	void process();
+	int init(char *cfgfile);
+
 private:
+	bool is_icom, is_not_icom;
+
 	SPORTIP g2_internal, g2_external, g2_link, ircddb;
 
 	std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass;
@@ -155,10 +160,10 @@ private:
 
 	// read configuration file
 	bool read_config(char *);
-	bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value);
-	bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value);
-	bool get_value(const Config &cfg, const char *path, bool &value, bool default_value);
-	bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value);
+	bool get_value(const Config &cfg, const std::string path, int &value, int min, int max, int default_value);
+	bool get_value(const Config &cfg, const std::string path, double &value, double min, double max, double default_value);
+	bool get_value(const Config &cfg, const std::string path, bool &value, bool default_value);
+	bool get_value(const Config &cfg, const std::string path, std::string &value, int min, int max, const char *default_value);
 
 /* aprs functions, borrowed from my retired IRLP node 4201 */
 	void gps_send(short int rptr_idx);
@@ -169,8 +174,4 @@ private:
 
 	void set_dest_rptr(int mod_ndx, char *dest_rptr);
 	bool validate_csum(SBANDTXT &bt, bool is_gps);
-
-public:
-	void process();
-	int init(char *cfgfile);
 };

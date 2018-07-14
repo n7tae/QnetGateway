@@ -81,7 +81,7 @@ private:
 	bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value);
 
 	/* configuration data */
-	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, status_file, announce_dir;
+	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, status_file, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, bool_rptr_ack, announce;
 	int rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port, delay_between, delay_before;
 	char link_at_startup[CALL_SIZE+1];

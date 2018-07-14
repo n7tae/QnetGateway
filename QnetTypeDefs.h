@@ -72,7 +72,7 @@ typedef struct dsvt_tag {
 	unsigned char id;		//  8   0x20
 	unsigned char flagb[3];	//  9   0x0 0x1 0x1
 	unsigned short streamid;// 12
-	unsigned char counter;	// 14   hdr: 0x80 vsad: framecounter (mod 21)
+	unsigned char ctrl;		// 14   hdr: 0x80 vsad: framecounter (mod 21)
 	union {
 		struct {                    // index
 			unsigned char flag[3];  // 15
@@ -108,10 +108,10 @@ typedef struct dsrp_tag {	//									offset	  size
 									// 0x01 Dstar Relay Unavailable
 			unsigned char r2[8];	// Repeater 2					11
 			unsigned char r1[8];	// Repeater 1					19
-			unsigned char yr[8];	// Your Call					27
+			unsigned char ur[8];	// Your Call					27
 			unsigned char my[8];	// My Call						35
 			unsigned char nm[4];	// Name							43
-			unsigned short pfcs;	// checksum						47		49
+			unsigned char pfcs[2];	// checksum						47		49
 		} header;
 		struct {
 			unsigned short id;		// random id number				 5
