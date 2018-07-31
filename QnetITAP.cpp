@@ -246,6 +246,7 @@ void CQnetITAP::Run(const char *cfgfile)
 
 	keep_running = true;
 	unsigned poll_counter = 0;
+	bool is_alive = false;
 
 	while (keep_running) {
 		fd_set readfds;
@@ -265,14 +266,23 @@ void CQnetITAP::Run(const char *cfgfile)
 			printf("ERROR: Run: select returned err=%d, %s\n", errno, strerror(errno));
 			break;
 		}
-		if (ret == 0)
+
+		if (0 == ret) {
+			// nothing to read, so do the polling or pinging
+			unsigned char buf[3];
+			if (poll_counter++ < 18) {
+				unsigned char poll[3] = { 0xffu, 0xffu, 0xffu };
+				::memcpy(buf, poll, 3);
+			} else {
+				unsigned char ping[3] = { 0x02u, 0x02u, 0xffu };
+				::memcpy(buf, ping, 3);
+			}
+			SendTo((unsigned char)0x03U, buf);
 			continue;
+		}
 
 		// there is something to read!
 		unsigned char buf[100];
-		sockaddr_in addr;
-		memset(&addr, 0, sizeof(sockaddr_in));
-		socklen_t size = sizeof(sockaddr);
 		ssize_t len;
 		REPLY_TYPE rt = RT_NOTHING;
 
@@ -288,6 +298,9 @@ void CQnetITAP::Run(const char *cfgfile)
 				continue;
 
 		} else if (FD_ISSET(gsock, &readfds)) {
+			sockaddr_in addr;
+			memset(&addr, 0, sizeof(sockaddr_in));
+			socklen_t size = sizeof(sockaddr);
 			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
 
 			if (len < 0) {
@@ -298,18 +311,6 @@ void CQnetITAP::Run(const char *cfgfile)
 			if (ntohs(addr.sin_port) != G2_IN_PORT)
 				printf("DEBUG: Run: read from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_IN_PORT);
 
-		} else {
-			// nothing to read, so do the polling or pinging
-			if (poll_counter < 18) {
-				unsigned char poll[3] = { 0xffu, 0xffu, 0xffu };
-				::memcpy(buf, poll, 3);
-				poll_counter++;
-			} else {
-				unsigned char ping[3] = { 0x02u, 0x02u, 0xffu };
-				::memcpy(buf, ping, 3);
-			}
-			SendTo((unsigned char)0x03U, buf);
-			continue;
 		}
 
 		if (rt != RT_NOTHING) {
@@ -326,10 +327,13 @@ void CQnetITAP::Run(const char *cfgfile)
 						printf("DEBUG: Run: got data   acknowledgement\n");
 						break;
 					case RT_PONG:
-						printf("DEBUG: Run: got pong\n");
+						if (! is_alive) {
+							printf("Icom Radio is connected.\n");
+							is_alive = true;
+						}
 						break;
 					case RT_TIMEOUT:
-						printf("DEBUG: Run: got timeout\n");
+						printf("DEBUG: Run: got a timeout.\n");
 						break;
 					default:
 						break;
@@ -339,12 +343,6 @@ void CQnetITAP::Run(const char *cfgfile)
 			//printf("read %d bytes from QnetGateway\n", (int)len);
 			if (ProcessGateway(len, buf))
 				break;
-		} else {
-			char title[5];
-			for (int i=0; i<4; i++)
-				title[i] = (buf[i]>=0x20u && buf[i]<0x7fu) ? buf[i] : '.';
-			title[4] = '\0';
-			printf("DEBUG: Run: received unknow packet '%s' len=%d\n", title, (int)len);
 		}
 	}
 
