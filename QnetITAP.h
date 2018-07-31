@@ -36,7 +36,6 @@ enum REPLY_TYPE {
 	RT_UNKNOWN,
 	RT_HEADER,
 	RT_DATA,
-	RT_EOT,
 	RT_HEADER_ACK,
 	RT_DATA_ACK,
 	RT_PONG,
@@ -65,14 +64,12 @@ typedef struct itap_tag {
 			unsigned char ur[8];
 			unsigned char my[8];
 			unsigned char nm[4];
-			unsigned char end; // 0xFFU for writing
 		} header;
 		struct {
 			unsigned char counter;	// ordinal counter is reset with each header
 			unsigned char sequence;	// is modulo 21
 			unsigned char ambe[9];
 			unsigned char text[3];
-			unsigned char end;	// 0xFFU for writing
 		} voice;
 	};
 } SITAP;

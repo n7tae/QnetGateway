@@ -190,7 +190,7 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 	while (offset < length) {
 		ret = ::read(serfd, buf + offset, length - offset);
 		if (ret < 0) {
-			printf("Error when reading buffer from the Icom radio %d: %s", errno, strerror(errno));
+			printf("Error when reading buffer from the Icom radio %d: %s\n", errno, strerror(errno));
 			return RT_ERROR;
 		}
 
@@ -207,10 +207,7 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 		case 0x10U:
 			return RT_HEADER;
 		case 0x12U:
-			if ((buf[3U] & 0x40U) == 0x40U)
-				return RT_EOT;
-			else
-				return RT_DATA;
+			return RT_DATA;
 		case 0x21U:
 			return RT_HEADER_ACK;
 		case 0x23U:
@@ -315,7 +312,7 @@ void CQnetITAP::Run(const char *cfgfile)
 
 		if (rt != RT_NOTHING) {
 			//printf("read %d bytes from ITAP\n", (int)buf[0]);
-			if (RT_DATA==rt || RT_HEADER==rt || RT_EOT==rt) {
+			if (RT_DATA==rt || RT_HEADER==rt) {
 				if (ProcessITAP(buf))
 					break;
 			} else {
@@ -422,7 +419,6 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			else if (dstr.vpkt.ctrl > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
 			memcpy(itap.voice.ambe, dstr.vpkt.vasd.voice, 12);
-			itap.voice.end = 0xFFU;
 			int ret = SendTo(itap.length, &itap.length);
 			if (ret != 17) {
 				printf("ERROR: ProcessGateway: Could not write AMBE ITAP packet\n");
@@ -439,64 +435,59 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 {
 	static short stream_id = 0U;
 	SITAP itap;
-	unsigned int len = buf[0];
-	if (len < 42)
-		::memcpy(&itap.length, buf, len);	// transfer raw data to SDSRP struct
+	unsigned int len = (0x10U == buf[1]) ? 41 : 16;
+	::memcpy(&itap.length, buf, len);	// transfer raw data to SITAP struct
 
-	if (41==len || 16==len) {
-		// create a stream id if this is a header
-		if (41 == len)
-			stream_id = random.NewStreamID();
+	// create a stream id if this is a header
+	if (41 == len)
+		stream_id = random.NewStreamID();
 
-		SDSTR dstr;	// destination
-		// sets most of the params
-		::memcpy(dstr.pkt_id, "DSTR", 4);
-		dstr.counter = htons(COUNTER++);
-		dstr.flag[0] = 0x73;
-		dstr.flag[1] = 0x12;
-		dstr.flag[2] = 0x0;
-		dstr.vpkt.icm_id = 0x20;
-		dstr.vpkt.dst_rptr_id = 0x0;
-		dstr.vpkt.snd_rptr_id = 0x1;
-		dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
-		dstr.vpkt.streamid = stream_id;
+	SDSTR dstr;	// destination
+	// sets most of the params
+	::memcpy(dstr.pkt_id, "DSTR", 4);
+	dstr.counter = htons(COUNTER++);
+	dstr.flag[0] = 0x73;
+	dstr.flag[1] = 0x12;
+	dstr.flag[2] = 0x0;
+	dstr.vpkt.icm_id = 0x20;
+	dstr.vpkt.dst_rptr_id = 0x0;
+	dstr.vpkt.snd_rptr_id = 0x1;
+	dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
+	dstr.vpkt.streamid = stream_id;
 
-		if (41 == len) {	// header
-			dstr.remaining = 0x30;
-			dstr.vpkt.ctrl = 0x80;
-			//memcpy(dstr.vpkt.hdr.flag, dsrp.header.flag, 41);
-			memcpy(dstr.vpkt.hdr.flag, itap.header.flag, 3);
-			memcpy(dstr.vpkt.hdr.r1,   itap.header.r1,   8);
-			memcpy(dstr.vpkt.hdr.r2,   itap.header.r2,   8);
-			memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);
-			memcpy(dstr.vpkt.hdr.my,   itap.header.my,   8);
-			memcpy(dstr.vpkt.hdr.nm,   itap.header.nm,   4);
-			calcPFCS(dstr.vpkt.hdr.flag, dstr.vpkt.hdr.pfcs);
-			int ret = SendTo(vsock, dstr.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
-			if (ret != 58) {
-				printf("ERROR: ProcessITAP: Could not write gateway header packet\n");
-				return true;
-			}
-			if (log_qso)
-				printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid),
-						dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
-		} else if (16 == len) {	// ambe
-			dstr.remaining = 0x16;
-			dstr.vpkt.ctrl = itap.voice.sequence;
-			memcpy(dstr.vpkt.vasd.voice, itap.voice.ambe, 12);
-			int ret = SendTo(vsock, dstr.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
-			if (log_qso && dstr.vpkt.ctrl&0x40)
-				printf("Sent dstr end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+	if (41 == len) {	// header
+		dstr.remaining = 0x30;
+		dstr.vpkt.ctrl = 0x80;
 
-			if (ret != 29) {
-				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
-				return true;
-			}
+		memcpy(dstr.vpkt.hdr.flag, itap.header.flag, 3);
+		memcpy(dstr.vpkt.hdr.r1,   itap.header.r1,   8);
+		memcpy(dstr.vpkt.hdr.r2,   itap.header.r2,   8);
+		memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);
+		memcpy(dstr.vpkt.hdr.my,   itap.header.my,   8);
+		memcpy(dstr.vpkt.hdr.nm,   itap.header.nm,   4);
+		calcPFCS(dstr.vpkt.hdr.flag, dstr.vpkt.hdr.pfcs);
+		int ret = SendTo(vsock, dstr.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
+		if (ret != 58) {
+			printf("ERROR: ProcessITAP: Could not write gateway header packet\n");
+			return true;
 		}
-//	} else if (len < 65 && dsrp.tag == 0xAU) {
-//		printf("MMDVM Poll: '%s'\n", (char *)mpkt.poll_msg);
-	} else
-		printf("DEBUG: ProcessMMDVM: unusual packet len=%d\n", (int)buf[0]);
+		if (log_qso)
+			printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid),
+					dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+	} else if (16 == len) {	// ambe
+		dstr.remaining = 0x16;
+		dstr.vpkt.ctrl = itap.voice.sequence;
+		memcpy(dstr.vpkt.vasd.voice, itap.voice.ambe, 12);
+		int ret = SendTo(vsock, dstr.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
+		if (ret != 29) {
+			printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
+			return true;
+		}
+
+		if (log_qso && (dstr.vpkt.ctrl & 0x40))
+			printf("Sent dstr end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+	}
+
 	return false;
 }
 
