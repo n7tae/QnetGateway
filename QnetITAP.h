@@ -98,7 +98,7 @@ private:
 	int OpenSocket(const std::string &address, const unsigned short port);
 	int OpenITAP();
 	int SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port);
-	int SendTo(const unsigned char *buf);
+	int SendTo(const unsigned char length, const unsigned char *buf);
 	REPLY_TYPE GetITAPData(unsigned char *buf);
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
 

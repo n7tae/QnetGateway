@@ -245,6 +245,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	printf("vsock=%d, gsock=%d serfd=%d\n", vsock, gsock, serfd);
 
 	keep_running = true;
+	unsigned poll_counter = 0;
 
 	while (keep_running) {
 		fd_set readfds;
@@ -253,9 +254,13 @@ void CQnetITAP::Run(const char *cfgfile)
 		FD_SET(gsock, &readfds);
 		int maxfs = (serfd > gsock) ? serfd : gsock;
 
+		struct timeval tv;
+		tv.tv_sec = (poll_counter >= 18) ? 1 : 0;
+		tv.tv_usec = (poll_counter >= 18) ? 0 : 100000;
+
 		// don't care about writefds and exceptfds:
-		// and we'll wait as long as needed
-		int ret = ::select(maxfs+1, &readfds, NULL, NULL, NULL);
+		// and we'll wait for 100 ms or 1 s, depending on ;
+		int ret = ::select(maxfs+1, &readfds, NULL, NULL, &tv);
 		if (ret < 0) {
 			printf("ERROR: Run: select returned err=%d, %s\n", errno, strerror(errno));
 			break;
@@ -282,9 +287,7 @@ void CQnetITAP::Run(const char *cfgfile)
 			if (rt == RT_TIMEOUT)
 				continue;
 
-		}
-
-		if (FD_ISSET(gsock, &readfds)) {
+		} else if (FD_ISSET(gsock, &readfds)) {
 			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
 
 			if (len < 0) {
@@ -295,10 +298,17 @@ void CQnetITAP::Run(const char *cfgfile)
 			if (ntohs(addr.sin_port) != G2_IN_PORT)
 				printf("DEBUG: Run: read from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_IN_PORT);
 
-		}
-
-		if (len == 0) {
-			printf("DEBUG: Run: read zero bytes from %u\n", ntohs(addr.sin_port));
+		} else {
+			// nothing to read, so do the polling or pinging
+			if (poll_counter < 18) {
+				unsigned char poll[3] = { 0xffu, 0xffu, 0xffu };
+				::memcpy(buf, poll, 3);
+				poll_counter++;
+			} else {
+				unsigned char ping[3] = { 0x02u, 0x02u, 0xffu };
+				::memcpy(buf, ping, 3);
+			}
+			SendTo((unsigned char)0x03U, buf);
 			continue;
 		}
 
@@ -343,10 +353,10 @@ void CQnetITAP::Run(const char *cfgfile)
 	::close(vsock);
 }
 
-int CQnetITAP::SendTo(const unsigned char *buf)
+int CQnetITAP::SendTo(const unsigned char length, const unsigned char *buf)
 {
 	unsigned int ptr = 0;
-	unsigned int len = buf[0];
+	const unsigned int len = (int)length;
 
 	while (ptr < len) {
 		ssize_t n = ::write(serfd, buf + ptr, len - ptr);
@@ -396,7 +406,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(itap.header.ur,   dstr.vpkt.hdr.ur,   8);
 			memcpy(itap.header.my,   dstr.vpkt.hdr.my,   8);
 			memcpy(itap.header.nm,   dstr.vpkt.hdr.nm,   4);
-			int ret = SendTo(&itap.length);
+			int ret = SendTo(itap.length, &itap.length);
 			if (ret != 49) {
 				printf("41: ProcessGateway: Could not write Header ITAP packet\n");
 				return true;
@@ -415,7 +425,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
 			memcpy(itap.voice.ambe, dstr.vpkt.vasd.voice, 12);
 			itap.voice.end = 0xFFU;
-			int ret = SendTo(&itap.length);
+			int ret = SendTo(itap.length, &itap.length);
 			if (ret != 17) {
 				printf("ERROR: ProcessGateway: Could not write AMBE ITAP packet\n");
 				return true;
