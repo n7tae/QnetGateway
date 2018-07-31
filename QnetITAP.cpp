@@ -165,6 +165,7 @@ int CQnetITAP::OpenSocket(const std::string &address, const unsigned short port)
 REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 {
 	// Shamelessly adapted from Jonathan G4KLX's CIcomController::GetResponse()
+	// and CSerialController::read()
 	// Get the start of the frame or nothing at all
 	int ret = ::read(serfd, buf, 1U);
 	if (ret < 0) {
@@ -188,17 +189,23 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 	unsigned int offset = 1U;
 
 	while (offset < length) {
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(serfd, &fds);
+		int n = ::select(serfd+1, &fds, NULL, NULL, NULL);	// wait untill it's ready. won't return a zero.
+		if (n < 0) {
+			printf("ERROR: GetITAPData: select returned error %d: %s\n", errno, strerror(errno));
+			return RT_ERROR;
+		}
+
 		ret = ::read(serfd, buf + offset, length - offset);
-		if (ret < 0) {
+		if (ret < 0 && errno!=EAGAIN) {
 			printf("Error when reading buffer from the Icom radio %d: %s\n", errno, strerror(errno));
 			return RT_ERROR;
 		}
 
 		if (ret > 0)
 			offset += ret;
-
-		if (ret == 0)
-			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	}
 
 	switch (buf[1U]) {
@@ -286,10 +293,8 @@ void CQnetITAP::Run(const char *cfgfile)
 		if (FD_ISSET(serfd, &readfds)) {
 			rt = GetITAPData(buf);
 
-			if (rt == RT_ERROR) {
-				printf("ERROR: Run: recvfrom(USB) return error %d, %s\n", errno, strerror(errno));
+			if (rt == RT_ERROR)
 				break;
-			}
 
 			if (rt == RT_TIMEOUT)
 				continue;
