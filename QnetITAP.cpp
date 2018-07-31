@@ -361,8 +361,10 @@ int CQnetITAP::SendTo(const unsigned char length, const unsigned char *buf)
 	while (ptr < len) {
 		ssize_t n = ::write(serfd, buf + ptr, len - ptr);
 		if (n < 0) {
-			printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
-			return -1;
+			if (EAGAIN != errno) {
+				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
+				return -1;
+			}
 		}
 
 		if (n > 0)
@@ -406,16 +408,16 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(itap.header.ur,   dstr.vpkt.hdr.ur,   8);
 			memcpy(itap.header.my,   dstr.vpkt.hdr.my,   8);
 			memcpy(itap.header.nm,   dstr.vpkt.hdr.nm,   4);
-			int ret = SendTo(itap.length, &itap.length);
-			if (ret != 49) {
-				printf("41: ProcessGateway: Could not write Header ITAP packet\n");
+			itap.header.end = 0xFFU;
+			if (42 != SendTo(42U, &itap.length)) {
+				printf("ERROR: ProcessGateway: Could not write Header ITAP packet\n");
 				return true;
 			}
 			if (log_qso)
 				printf("Sent ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(),
 						itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
 		} else {	// write an AMBE packet
-			itap.length = 17U;
+			itap.length = 16U;
 			itap.type = 0x22U;
 			itap.voice.counter = counter++;
 			itap.voice.sequence = dstr.vpkt.ctrl;
@@ -424,8 +426,8 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			else if (dstr.vpkt.ctrl > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
 			memcpy(itap.voice.ambe, dstr.vpkt.vasd.voice, 12);
-			int ret = SendTo(itap.length, &itap.length);
-			if (ret != 17) {
+			itap.voice.end = 0xFFU;
+			if (17 != SendTo(17U, &itap.length)) {
 				printf("ERROR: ProcessGateway: Could not write AMBE ITAP packet\n");
 				return true;
 			}
