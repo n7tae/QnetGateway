@@ -98,7 +98,8 @@ bool read_config(const char *cfgFile)
 		path += m + 'a';
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm") && strcasecmp(type.c_str(), "icom")) {
+			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm") &&
+				strcasecmp(type.c_str(), "icom") && strcasecmp(type.c_str(), "itap")) {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}

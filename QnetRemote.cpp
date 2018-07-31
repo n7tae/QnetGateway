@@ -198,7 +198,7 @@ bool read_config(const char *cfgFile)
 		path += m + 'a';
 		std::string type;
 		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("icom")) {
+			if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("icom") && type.compare("itap")) {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}

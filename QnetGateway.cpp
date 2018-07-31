@@ -273,6 +273,9 @@ bool CQnetGateway::read_config(char *cfgFile)
 			} else if (0 == type.compare("mmdvm")) {
 				rptr.mod[m].package_version = MMDVM_VERSION;
 				is_not_icom = true;
+			} else if (0 == type.compare("itap")) {
+				rptr.mod[m].package_version = ITAP_VERSION;
+				is_not_icom = true;
 			} else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
