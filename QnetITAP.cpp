@@ -392,7 +392,7 @@ int CQnetITAP::SendTo(const int fd, const unsigned char *buf, const int size, co
 
 bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 {
-	static unsigned int counter = 0;
+	static unsigned char counter = 0;
 	if (29==len || 58==len) { //here is dstar data
 		SDSTR dstr;
 		::memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
@@ -460,7 +460,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 	dstr.vpkt.dst_rptr_id = 0x0;
 	dstr.vpkt.snd_rptr_id = 0x1;
 	dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
-	dstr.vpkt.streamid = stream_id;
+	dstr.vpkt.streamid = htons(stream_id);
 
 	if (41 == len) {	// header
 		dstr.remaining = 0x30;
