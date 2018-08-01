@@ -676,7 +676,7 @@ bool CQnetLink::read_config(const char *cfgFile)
 		return true;
 	get_value(cfg, "gateway.external.port", to_g2_external_port, 1024, 65535, 40000);
 
-	get_value(cfg, "gateway.log.qso", qso_details, true);
+	get_value(cfg, "log.qso", qso_details, true);
 
 	if (! get_value(cfg, "file.gwys", gwys, 2, FILENAME_MAX, "/usr/local/etc/gwys.txt"))
 		return true;
@@ -2452,7 +2452,7 @@ void CQnetLink::Process()
 						if (old_sid[i].sid != rdsvt.dsvt.streamid) {
 							if (qso_details)
 								printf("START from remote g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s, source=%.8s\n",
-								        rdsvt.dsvt.streamid, rdsvt.dsvt.hdr.flag[0], rdsvt.dsvt.hdr.flag[0], rdsvt.dsvt.hdr.flag[0],
+								        ntohs(rdsvt.dsvt.streamid), rdsvt.dsvt.hdr.flag[0], rdsvt.dsvt.hdr.flag[0], rdsvt.dsvt.hdr.flag[0],
 								        rdsvt.dsvt.hdr.mycall, rdsvt.dsvt.hdr.sfx, rdsvt.dsvt.hdr.urcall, rdsvt.dsvt.hdr.rpt1, rdsvt.dsvt.hdr.rpt2,
 								        length, inet_ntoa(fromDst4.sin_addr), source_stn);
 
@@ -2529,7 +2529,7 @@ void CQnetLink::Process()
 						for (int i=0; i<3; i++) {
 							if (old_sid[i].sid == rdsvt.dsvt.streamid) {
 								if (qso_details)
-									printf("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", rdsvt.dsvt.streamid, length, inet_ntoa(fromDst4.sin_addr));
+									printf("END from remote g2: streamID=%04x, %d bytes from IP=%s\n", ntohs(rdsvt.dsvt.streamid), length, inet_ntoa(fromDst4.sin_addr));
 
 								old_sid[i].sid = 0x0;
 
@@ -2737,7 +2737,7 @@ void CQnetLink::Process()
 								old_sid[i].sid = 0x0;
 
 								if (qso_details)
-									printf("END from dcs: streamID=%04x, %d bytes from IP=%s\n", rdsvt.dsvt.streamid, length, inet_ntoa(fromDst4.sin_addr));
+									printf("END from dcs: streamID=%04x, %d bytes from IP=%s\n", ntohs(rdsvt.dsvt.streamid), length, inet_ntoa(fromDst4.sin_addr));
 
 								to_remote_g2[i].in_streamid = 0x0;
 								dcs_seq[i] = 0xff;
@@ -2853,7 +2853,7 @@ void CQnetLink::Process()
 				if (length == 58) {
 					if (qso_details)
 						printf("START from local g2: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
-						        dstr.counter, dstr.vpkt.streamid, dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2],
+						        ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2],
 						        dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm, dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, length, inet_ntoa(fromRptr.sin_addr));
 
 					/* save mycall */
@@ -3291,7 +3291,7 @@ void CQnetLink::Process()
 
 							if (dstr.vpkt.ctrl & 0x40U) {
 								if (qso_details)
-									printf("END from local g2: cntr=%04x, streamID=%04x, %d bytes\n", dstr.counter, ntohs(dstr.vpkt.streamid), length);
+									printf("END from local g2: cntr=%04x, streamID=%04x, %d bytes\n", ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), length);
 
 								if (bool_rptr_ack)
 									rptr_ack(i);
