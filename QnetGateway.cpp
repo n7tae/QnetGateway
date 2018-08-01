@@ -289,7 +289,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 				return true;
 			get_value(cfg, std::string(path+"port").c_str(), rptr.mod[m].portip.port, 16000, 65535, is_icom ? 20000 : 19998+m);
 			get_value(cfg, std::string(path+"frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
-			get_value(cfg, std::string(path+"offset").c_str(), rptr.mod[m].offset,-1.0e12, 1.0e12, 0.0);
+			get_value(cfg, std::string(path+"offset").c_str(), rptr.mod[m].offset, -1.0e12, 1.0e12, 0.0);
 			get_value(cfg, std::string(path+"range").c_str(), rptr.mod[m].range, 0.0, 1609344.0, 0.0);
 			get_value(cfg, std::string(path+"agl").c_str(), rptr.mod[m].agl, 0.0, 1000.0, 0.0);
 			get_value(cfg, std::string(path+"latitude").c_str(), rptr.mod[m].latitude, -90.0, 90.0, 0.0);
@@ -2448,7 +2448,7 @@ void CQnetGateway::PlayFileThread(char *file)
 
 void CQnetGateway::qrgs_and_maps()
 {
-	for(int i=0; i<3; i++) {
+	for (int i=0; i<3; i++) {
 		std::string rptrcall = OWNER;
 		rptrcall.resize(CALL_SIZE-1);
 		rptrcall += i + 'A';
@@ -2519,7 +2519,7 @@ int CQnetGateway::init(char *cfgfile)
 	printf("Repeater callsigns: [%s] [%s] [%s]\n", rptr.mod[0].call.c_str(), rptr.mod[1].call.c_str(), rptr.mod[2].call.c_str());
 
 	for (i = 0; i < 3; i++) {
-		rptr.mod[i].frequency = rptr.mod[i].offset = rptr.mod[i].latitude = rptr.mod[i].longitude = rptr.mod[i].agl = rptr.mod[i].range = 0.0;
+		//rptr.mod[i].frequency = rptr.mod[i].offset = rptr.mod[i].latitude = rptr.mod[i].longitude = rptr.mod[i].agl = rptr.mod[i].range = 0.0;
 		band_txt[i].streamID = 0;
 		band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
 		band_txt[i].lh_mycall[0] = '\0';
