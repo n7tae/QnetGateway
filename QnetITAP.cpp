@@ -322,12 +322,12 @@ void CQnetITAP::Run(const char *cfgfile)
 					break;
 			} else {
 				switch (rt) {
-					case RT_HEADER_ACK:
-						printf("DEBUG: Run: got header acknowledgement\n");
-						break;
-					case RT_DATA_ACK:
-						printf("DEBUG: Run: got data   acknowledgement\n");
-						break;
+					//case RT_HEADER_ACK:
+					//	printf("DEBUG: Run: got header acknowledgement\n");
+					//	break;
+					//case RT_DATA_ACK:
+					//	printf("DEBUG: Run: got data   acknowledgement\n");
+					//	break;
 					case RT_PONG:
 						if (! is_alive) {
 							printf("Icom Radio is connected.\n");
