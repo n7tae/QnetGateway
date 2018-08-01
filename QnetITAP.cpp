@@ -182,7 +182,7 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 	unsigned int length = buf[0U];
 
 	if (length >= 100U) {
-		printf("Invalid data received from the Icom radio");
+		printf("Invalid data received from the Icom radio, length=%d\n", length);
 		return RT_ERROR;
 	}
 
