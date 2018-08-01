@@ -2088,7 +2088,7 @@ void CQnetGateway::process()
 						}
 
 						if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
-							printf("id=%04x, cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
+							printf("id=%04x cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
 					}
 				}
 			}

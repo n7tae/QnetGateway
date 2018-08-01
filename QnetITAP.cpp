@@ -492,6 +492,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 			memcpy(dstr.vpkt.hdr.r1,   itap.header.r1,   8);
 			memcpy(dstr.vpkt.hdr.r2,   itap.header.r2,   8);
 			memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);
+			dstr.vpkt.hdr.flag[0] &= ~0x40U;	// clear this bit
 		}
 
 		memcpy(dstr.vpkt.hdr.my,   itap.header.my,   8);
