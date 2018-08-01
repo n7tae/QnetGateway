@@ -1,5 +1,7 @@
 /*
  *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *
+ *   CQnetITAP::GetITAPData() is based on some code that is...
  *   Copyright (C) 2011-2015,2018 by Jonathan Naylor G4KLX
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -466,16 +468,18 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 		dstr.remaining = 0x30;
 		dstr.vpkt.ctrl = 0x80;
 
-
 		memcpy(dstr.vpkt.hdr.flag, itap.header.flag, 3);
+
+		////////////////// Terminal or Access /////////////////////////
 		if (0 == memcmp(itap.header.r1, "DIRECT", 6)) {
 			// Terminal Mode!
 			memcpy(dstr.vpkt.hdr.r1, RPTR, 7);	// build r1
 			dstr.vpkt.hdr.r1[7] = RPTR_MOD;		// with module
-			memcpy(dstr.vpkt.hdr.r2, RPTR, 7);	// build r1
+			memcpy(dstr.vpkt.hdr.r2, RPTR, 7);	// build r2
 			dstr.vpkt.hdr.r2[7] = 'G';			// with gateway
-			if (' ' == itap.header.ur[2]) {
-				// it's command, we have to right-shift it!
+			if (' '==itap.header.ur[2] && ' '!=itap.header.ur[0]) {
+				// it's a command because it has as space in the 3rd position, we have to right-justify it!
+				// Terminal Mode left justifies short commands.
 				memset(dstr.vpkt.hdr.ur, ' ', 8);	// first file ur with spaces
 				if (' ' == itap.header.ur[1])
 					dstr.vpkt.hdr.ur[7] = itap.header.ur[0];		// one char command, like "E" or "I"
@@ -487,8 +491,9 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 			// Access Point Mode
 			memcpy(dstr.vpkt.hdr.r1,   itap.header.r1,   8);
 			memcpy(dstr.vpkt.hdr.r2,   itap.header.r2,   8);
-			memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);	// ur is at least 3 chars
+			memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);
 		}
+
 		memcpy(dstr.vpkt.hdr.my,   itap.header.my,   8);
 		memcpy(dstr.vpkt.hdr.nm,   itap.header.nm,   4);
 		calcPFCS(dstr.vpkt.hdr.flag, dstr.vpkt.hdr.pfcs);
