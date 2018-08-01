@@ -402,7 +402,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 
 	// timing
 	path = "timing.play.";
-	get_value(cfg, path+"wait", play_wait, 1, 10, 2);
+	get_value(cfg, path+"wait", play_wait, 1, 10, 1);
 
 	get_value(cfg, path+"delay", play_delay, 9, 25, 19);
 

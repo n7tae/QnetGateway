@@ -216,7 +216,7 @@ bool read_config(const char *cfgFile)
 
 	get_value(cfg, "gateway.internal.port", PORT, 16000, 65535, is_icom ? 20000 : 19000);
 
-	get_value(cfg, "timing.play.wait", PLAY_WAIT, 1, 10, 2);
+	get_value(cfg, "timing.play.wait", PLAY_WAIT, 1, 10, 1);
 
 	get_value(cfg, "timing.play.delay", PLAY_DELAY, 9, 25, 19);
 

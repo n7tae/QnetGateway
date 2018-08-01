@@ -695,7 +695,7 @@ bool CQnetLink::read_config(const char *cfgFile)
 	if (! get_value(cfg, "file.announce_dir", announce_dir, 2, FILENAME_MAX, "/usr/local/etc"))
 		return true;
 
-	get_value(cfg, "timing.play.wait", delay_before, 1, 10, 2);
+	get_value(cfg, "timing.play.wait", delay_before, 1, 10, 1);
 
 	memset(link_at_startup, 0, CALL_SIZE+1);
 	if (get_value(cfg, "link.link_at_start", value, 5, CALL_SIZE, "NONE")) {
