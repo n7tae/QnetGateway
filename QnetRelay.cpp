@@ -240,9 +240,9 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 		dsrp.voice.seq = dstr.vpkt.ctrl;	// ditto
 		if (29 == len) {	// write an AMBE packet
 			dsrp.tag = 0x21U;
-			if (log_qso && dsrp.voice.seq&0x40)
+			if (log_qso && (dsrp.voice.seq & 0x40))
 				printf("Sent DSRP end of streamid=%04x\n", ntohs(dsrp.voice.id));
-			else if (dsrp.voice.seq > 20)
+			if ((dsrp.voice.seq & ~0x40U) > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", dsrp.voice.seq);
 			dsrp.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
 			memcpy(dsrp.voice.ambe, dstr.vpkt.vasd.voice, 12);

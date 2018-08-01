@@ -423,9 +423,9 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			itap.type = 0x22U;
 			itap.voice.counter = counter++;
 			itap.voice.sequence = dstr.vpkt.ctrl;
-			if (log_qso && dstr.vpkt.ctrl&0x40)
+			if (log_qso && (dstr.vpkt.ctrl & 0x40))
 				printf("Sent ITAP end of stream\n");
-			else if (dstr.vpkt.ctrl > 20)
+			if ((dstr.vpkt.ctrl & ~0x40U) > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
 			memcpy(itap.voice.ambe, dstr.vpkt.vasd.voice, 12);
 			itap.voice.end = 0xFFU;
