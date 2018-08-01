@@ -466,10 +466,29 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 		dstr.remaining = 0x30;
 		dstr.vpkt.ctrl = 0x80;
 
+
 		memcpy(dstr.vpkt.hdr.flag, itap.header.flag, 3);
-		memcpy(dstr.vpkt.hdr.r1,   itap.header.r1,   8);
-		memcpy(dstr.vpkt.hdr.r2,   itap.header.r2,   8);
-		memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);
+		if (0 == memcmp(itap.header.r1, "DIRECT", 6)) {
+			// Terminal Mode!
+			memcpy(dstr.vpkt.hdr.r1, RPTR, 7);	// build r1
+			dstr.vpkt.hdr.r1[7] = RPTR_MOD;		// with module
+			memcpy(dstr.vpkt.hdr.r2, RPTR, 7);	// build r1
+			dstr.vpkt.hdr.r2[7] = 'G';			// with gateway
+			if (' ' == itap.header.ur[2]) {
+				// it's command, we have to right-shift it!
+				memset(dstr.vpkt.hdr.ur, ' ', 8);	// first file ur with spaces
+				if (' ' == itap.header.ur[1])
+					dstr.vpkt.hdr.ur[7] = itap.header.ur[0];		// one char command, like "E" or "I"
+				else
+					memcpy(dstr.vpkt.hdr.ur+6, itap.header.ur, 2);	// two char command, like "HX" or "S0"
+			} else
+				memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);	// ur is at least 3 chars
+		} else {
+			// Access Point Mode
+			memcpy(dstr.vpkt.hdr.r1,   itap.header.r1,   8);
+			memcpy(dstr.vpkt.hdr.r2,   itap.header.r2,   8);
+			memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);	// ur is at least 3 chars
+		}
 		memcpy(dstr.vpkt.hdr.my,   itap.header.my,   8);
 		memcpy(dstr.vpkt.hdr.nm,   itap.header.nm,   4);
 		calcPFCS(dstr.vpkt.hdr.flag, dstr.vpkt.hdr.pfcs);
