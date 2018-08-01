@@ -1,6 +1,6 @@
-Creating a DVAP or a Version 1 DVRPTR hotspot based on a Raspberry Pi or a BeagleBone
-Black that can connect to both DStar reflectors as well as XREF reflectors based on
-QnetGateway software is easy.
+Creating a hotspot based on a Raspberry Pi or a BeagleBone Black that can connect to
+XRF and DCS reflectors as well as XREF reflectors based on QnetGateway software is
+easy.
 
 Start with a Raspberry Pi with the latest Raspbian image (see http://raspberrypi.org)
 or most any other computer with the latest Debian-based image. For this latest version
@@ -8,17 +8,15 @@ of QnetGateway requires the c++ compiler of at least version 4.9.
 
 Even if you are building an MMDVMHost-based hot-spot, the executables and their
 source code are very small, so you can get away with a system with minimum storage
-capacity. We have build gui-less versions on two gigabyte partitions!
+capacity. We have build gui-less versions on two gigabyte partitions! You don't need
+to overclock the RPi for QnetGateway, the default clock rate is just fine.
 
-On the RPi, do "sudo raspi-config" and expand the partition, change the password
-for the 'pi' user and do any other configuration setup. You don't need to overclock
-the RPi for QnetGateway, the default clock rate is just fine.
-
-If you are using a DVAP Dongle or a DVRPTR_V1, login and plug in your device to see
-if the OS is recognizing it. The kernel should auto load drivers and you will see
-that with the "lsusb" command. The DVAP uses a FTDI chip and the DVRPTR uses Atmel.
-If you don't see an approprite output from "lsusb" after your device is plugged in,
-you need to enable it by executing:
+If you are using a DVAP Dongle or a DVRPTR_V1, or connecting to an Icom Terminal and
+Access Point enabled radio,login and plug in your device to see if the OS is
+recognizing it. The kernel should auto load drivers and you will see that with the
+"lsusb" command. The DVAP and the Icom radio digital-to-serial cable uses a FTDI chip
+and the DVRPTR uses Atmel. If you don't see an approprite output from "lsusb" after
+your device is plugged in, you need to enable it by executing:
 
 sudo depmod
 sudo modprobe <YOURDEVICEMODULE>
@@ -47,11 +45,13 @@ dvrptr ircddb gateway.
 The first thing to do is change to the build directory with "cd QnetGateway" and then
 choose a target to make. There are targets for each of the supported devices:
 . "make icom"   will build all programs needed for the Icom repeater.
+. "make itap"   will build all programs needed for Icom Terminal and Access mode.
 . "make dvap"   will build all programs needed for the DVAP Dongle.
 . "make dvrptr" will build all programs needed for the DVRPTR_V1.
 . "make mmdvm"  will build all programs needed for MMDVMHost support. (You need
   to download and build MMDVMHost separately, see the MMDVM.README file for more info.
-. "make" will build all the QnetGateway executables.
+. "make" will build all the QnetGateway executables. This is useful if you are
+  experimenting around with lots of different devices.
 
 Next, create your qn.cfg configuration file. There are three example for you to look
 at:
@@ -63,6 +63,8 @@ at:
 . qn.icom.cfg is the starting place for configuring an Icom repeater. Please note
   that QnetGateway doesn't support the 23cm data only module in the Icom repeater
   stack.
+. qn.itap.cfg is a simple configuration file for Icom's Terminal and Access Point
+  Mode. Please read ITAP.README for more information.
 
 Remeber the everything file or the icom file contain detailed comments about all of
 the values you can set. Just read through it and edit accordingly. In the end you will
@@ -104,6 +106,9 @@ change the commands or create new commands.
 
 You are now ready to install your QnetGateway system. If you are installing an
 MMDVM-based system, follow the instructions in MMDVM.README.
+
+If you are installing Icom's Terminal and Access Point mode, please follow the
+instructions in ITAP.README.
 
 To install either DVAP or DVRPTR_V1, type "sudo make installdvap" or "sudo make
 installdvrptr", respectively. If you are installing on an Icom repeater, type
