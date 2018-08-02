@@ -46,11 +46,15 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
     radio and use the approprite cable to connect to your hot-spot. Turn on the
     radio and press the menu key and go to the "DV Gateway" menu item and press
     the enter key and select either Access Point or Terminal mode. If you select
-    Access point, adjust the frequency in the usual way.
+    Access Point, adjust the frequency in the usual way.
 
     If you are using Access Point mode, you'll probably want to turn down the
     volume and disable other audio prompts from the radio that is operating
     as an access point. Please refer to the Icom manual to do this.
+
+    Please note that Access Point Mode is a work in progress. There are still
+    significant performance issues, especially when the radio in AP Mode is
+    transmitting. It is usable, but just barely. Terminal Mode works well.
 
 8)  We have a gwys.txt file and a qn.cfg in the build directory, so we are ready
 	to install and start the three QnetGateway services: sudo make installitap
