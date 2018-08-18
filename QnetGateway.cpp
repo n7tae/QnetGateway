@@ -285,7 +285,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 				return true;
 			}
 
-			if (! get_value(cfg, std::string(path+"ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, is_icom ? "172.16.0.20" : "127.0.0.1"))
+			if (! get_value(cfg, std::string(path+"ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, is_icom ? "172.16.0.1" : "127.0.0.1"))
 				return true;
 			get_value(cfg, std::string(path+"port").c_str(), rptr.mod[m].portip.port, 16000, 65535, is_icom ? 20000 : 19998+m);
 			get_value(cfg, std::string(path+"frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
@@ -349,7 +349,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 
 	get_value(cfg, path+"external.port", g2_external.port, 1024, 65535, 40000);
 
-	if (! get_value(cfg, path+"internal.ip", g2_internal.ip, 7, IP_SIZE, is_icom ? "172.16.0.1" : "0.0.0.0"))
+	if (! get_value(cfg, path+"internal.ip", g2_internal.ip, 7, IP_SIZE, is_icom ? "172.16.0.20" : "0.0.0.0"))
 		return true;
 
 	get_value(cfg, path+"internal.port", g2_internal.port, 16000, 65535, is_icom ? 20000 : 19000);
@@ -2597,7 +2597,7 @@ int CQnetGateway::init(char *cfgfile)
 
 	// Open G2 INTERNAL:
 	// default non-icom 127.0.0.1:19000
-	// default icom     172.16.0.1:20000
+	// default icom     172.16.0.20:20000
 	srv_sock = open_port(g2_internal);
 	if (0 > srv_sock) {
 		printf("Can't open %s:%d\n", g2_internal.ip.c_str(), g2_internal.port);
