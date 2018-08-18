@@ -211,7 +211,7 @@ bool read_config(const char *cfgFile)
 		return true;
 	}
 
-	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, is_icom ? "172.16.0.1" : "127.0.0.1"))
+	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, is_icom ? "172.16.0.20" : "127.0.0.1"))
 		return true;
 
 	get_value(cfg, "gateway.internal.port", PORT, 16000, 65535, is_icom ? 20000 : 19000);
