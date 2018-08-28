@@ -11,7 +11,7 @@ locale. And make sure you do "sudo apt-get update && sudo apt-get upgrade" befor
 your start. On a Raspberry Pi, you can do all of this with the configureation menu:
 "sudo raspi-config".
 
-1)  Install the only external library you need: sudo apt-get install libconfig++-dev
+1)  Install the only external library you need: sudo apt install libconfig++-dev
     Yeah! No wxWidgets!
 
 2)  From your home directory, clone the QnetGateway software:
@@ -68,7 +68,7 @@ your start. On a Raspberry Pi, you can do all of this with the configureation me
     sudo journalctl -u qnitap -f
 
     You can do all three of these in one terminal window (that you can detach from!)
-    by using "screen": sudo apt-get install screen
+    by using "screen": sudo apt install screen
     If you don't know how to use screen: http://aperiodic.net/screen/quick_reference
     Being able to detach from a screen session is very useful, especially if you are
     operating "headless"!

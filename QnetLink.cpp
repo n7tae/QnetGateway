@@ -2666,7 +2666,7 @@ void CQnetLink::Process()
 							rdsvt.head[0] = (unsigned char)(58 & 0xFF);
 							rdsvt.head[1] = (unsigned char)(58 >> 8 & 0x1F);
 							rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
-							memcpy(rdsvt.dsvt.title + 2, "DSVT", 4);
+							memcpy(rdsvt.dsvt.title, "DSVT", 4);
 							rdsvt.dsvt.config = 0x10;
 							rdsvt.dsvt.flaga[0] = rdsvt.dsvt.flaga[1] = rdsvt.dsvt.flaga[2] = 0x00;
 							rdsvt.dsvt.id = 0x20;
