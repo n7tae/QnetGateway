@@ -1,10 +1,12 @@
 [Unit]
 Description=QnetGateway
-After=systemd-user-session.service
+Requires=network.target
+After=systemd-user-session.service network.target
 
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/qngateway /usr/local/etc/qn.cfg
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

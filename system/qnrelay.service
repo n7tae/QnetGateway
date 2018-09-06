@@ -1,10 +1,12 @@
 [Unit]
 Description=QnetRelay
-After=systemd-user-session.service
+Requires=qngateway.service
+After=systemd-user-session.service qngateway.service
 
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/qnrelay /usr/local/etc/qn.cfg
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

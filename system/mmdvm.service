@@ -1,6 +1,7 @@
 [Unit]
 Description=MMDVMHost
-After=systemd-user-session.service
+Requires=qnrelay.service
+After=systemd-user-session.service qnrelay.service
 
 [Service]
 Type=simple

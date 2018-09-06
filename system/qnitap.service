@@ -1,6 +1,7 @@
 [Unit]
 Description=QnetITAP
-After=systemd-user-session.service
+Requires=qngateway.service
+After=systemd-user-session.service qngateway.service
 
 [Service]
 Type=simple
