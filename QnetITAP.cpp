@@ -253,6 +253,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	keep_running = true;
 	unsigned poll_counter = 0;
 	bool is_alive = false;
+	std::chrono::steady_clock::time_point lastdata = std::chrono::steady_clock::now();
 
 	while (keep_running) {
 		fd_set readfds;
@@ -273,17 +274,23 @@ void CQnetITAP::Run(const char *cfgfile)
 			break;
 		}
 
+		// check for a dead or disconnected radio
+		std::chrono::steady_clock::duration sincelastdata = std::chrono::steady_clock::now() - lastdata;
+		double deadtime = sincelastdata.count() * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
+		if (10.0 < deadtime) {
+			print("no activity from radio for 10 sec. Exiting...\n");
+			break;
+		}
+
 		if (0 == ret) {
 			// nothing to read, so do the polling or pinging
-			unsigned char buf[3];
 			if (poll_counter++ < 18) {
 				unsigned char poll[3] = { 0xffu, 0xffu, 0xffu };
-				::memcpy(buf, poll, 3);
+				SendTo((unsigned char)0x03U, poll);
 			} else {
 				unsigned char ping[3] = { 0x02u, 0x02u, 0xffu };
-				::memcpy(buf, ping, 3);
+				SendTo((unsigned char)0x03U, ping);
 			}
-			SendTo((unsigned char)0x03U, buf);
 			continue;
 		}
 
@@ -318,6 +325,7 @@ void CQnetITAP::Run(const char *cfgfile)
 		}
 
 		if (rt != RT_NOTHING) {
+			lastdata = std::chrono::steady_clock::now();
 			//printf("read %d bytes from ITAP\n", (int)buf[0]);
 			if (RT_DATA==rt || RT_HEADER==rt) {
 				if (ProcessITAP(buf))
@@ -335,9 +343,6 @@ void CQnetITAP::Run(const char *cfgfile)
 							printf("Icom Radio is connected.\n");
 							is_alive = true;
 						}
-						break;
-					case RT_TIMEOUT:
-						printf("DEBUG: Run: got a timeout.\n");
 						break;
 					default:
 						break;
