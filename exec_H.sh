@@ -1,2 +1,2 @@
 #!/bin/sh
-halt
+shutdown - h now

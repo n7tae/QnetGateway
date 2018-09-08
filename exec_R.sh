@@ -1,2 +1,2 @@
 #!/bin/sh
-reboot
+shutdown -r now
