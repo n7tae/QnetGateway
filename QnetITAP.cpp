@@ -278,7 +278,7 @@ void CQnetITAP::Run(const char *cfgfile)
 		std::chrono::steady_clock::duration sincelastdata = std::chrono::steady_clock::now() - lastdata;
 		double deadtime = sincelastdata.count() * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
 		if (10.0 < deadtime) {
-			print("no activity from radio for 10 sec. Exiting...\n");
+			printf("no activity from radio for 10 sec. Exiting...\n");
 			break;
 		}
 
