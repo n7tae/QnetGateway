@@ -2300,8 +2300,8 @@ void CQnetLink::Process()
 
 					if ((inbound_list.size() + 1) > max_dongles)
 						printf("Inbound DONGLE-p connection from %s but over the max_dongles limit of %d\n", ip, (int)inbound_list.size());
-					else if (admin.size() && (admin.find(call) == admin.end()))
-						printf("Incoming call [%s] from %s not an ADMIN\n", call, ip);
+					//else if (admin.size() && (admin.find(call) == admin.end()))
+					//	printf("Incoming call [%s] from %s not an ADMIN\n", call, ip);
 					else if (regexec(&preg, call, 0, NULL, 0) != 0) {
 						printf("Invalid dongle callsign: CALL=%s,ip=%s\n", call, ip);
 

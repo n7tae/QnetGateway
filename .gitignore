@@ -1,5 +1,6 @@
 *.o
 *.d
+*.gch
 qnitap
 qndvap
 qndvrptr
