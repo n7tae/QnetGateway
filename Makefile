@@ -81,7 +81,7 @@ qnvoice : QnetVoice.o Random.o
 .PHONY: clean
 
 clean:
-	$(RM) $(OBJS) $(DEPS) $(ALL_PROGRAMS)
+	$(RM) $(OBJS) $(DEPS) $(ALL_PROGRAMS) *.gch
 
 -include $(DEPS)
 
