@@ -920,8 +920,8 @@ void CQnetGateway::process()
 						         (g2buf.hdr.flag[0] == 0x40))) {
 							if (bool_qso_details)
 								printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n",
-									ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.rpt1, g2buf.hdr.rpt2,
-									g2buf.hdr.urcall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+									ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2,
+									g2buf.hdr.mycall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
 
 							memcpy(rptrbuf.pkt_id, "DSTR", 4);
 							rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);	// bump the counter
