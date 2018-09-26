@@ -662,15 +662,313 @@ bool CQnetGateway::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs,
 	return false;
 }
 
-/* run the main loop for QnetGateway */
-void CQnetGateway::process()
+bool CQnetGateway::Flag_is_ok(unsigned char flag)
+{
+	//      normal          break          emr          emr+break
+	return 0x00U==flag || 0x08U==flag || 0x20U==flag || 0x28U==flag;
+}
+
+void CQnetGateway::ProcessTimeouts()
+{
+	for (int i=0; i<3; i++) {
+		time_t t_now;
+		/* echotest recording timed out? */
+		if (recd[i].last_time != 0) {
+			time(&t_now);
+			if ((t_now - recd[i].last_time) > echotest_rec_timeout) {
+				printf("Inactivity on echotest recording mod %d, removing stream id=%04x\n",
+					i, recd[i].streamid);
+
+				recd[i].streamid = 0;
+				recd[i].last_time = 0;
+				close(recd[i].fd);
+				recd[i].fd = -1;
+				// printf("Closed echotest audio file:[%s]\n", recd[i].file);
+
+				/* START: echotest thread setup */
+				try {
+					std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, recd[i].file);
+				} catch (const std::exception &e) {
+					printf("Failed to start echotest thread. Exception: %s\n", e.what());
+					// when the echotest thread runs, it deletes the file,
+					// Because the echotest thread did NOT start, we delete the file here
+					unlink(recd[i].file);
+				}
+				/* END: echotest thread setup */
+			}
+		}
+
+		/* voicemail recording timed out? */
+		if (vm[i].last_time != 0) {
+			time(&t_now);
+			if ((t_now - vm[i].last_time) > voicemail_rec_timeout) {
+				printf("Inactivity on voicemail recording mod %d, removing stream id=%04x\n",
+						i, vm[i].streamid);
+
+				vm[i].streamid = 0;
+				vm[i].last_time = 0;
+				close(vm[i].fd);
+				vm[i].fd = -1;
+				// printf("Closed voicemail audio file:[%s]\n", vm[i].file);
+			}
+		}
+
+		// any stream going to local repeater timed out?
+		if (toRptr[i].last_time != 0) {
+			time(&t_now);
+			//   The stream can be from a cross-band, or from a remote system,
+			//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
+			//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
+			if ((t_now - toRptr[i].last_time) > from_remote_g2_timeout) {
+				printf("Inactivity to local rptr mod index %d, removing stream id %04x\n", i, toRptr[i].streamid);
+
+				// Send end_of_audio to local repeater.
+				// Let the repeater re-initialize
+				end_of_audio.counter = is_icom ? G2_COUNTER_OUT++ :toRptr[i].G2_COUNTER++;
+				if (i == 0)
+					end_of_audio.vpkt.snd_term_id = 0x03;
+				else if (i == 1)
+					end_of_audio.vpkt.snd_term_id = 0x01;
+				else
+					end_of_audio.vpkt.snd_term_id = 0x02;
+				end_of_audio.vpkt.streamid = toRptr[i].streamid;
+				end_of_audio.vpkt.ctrl = toRptr[i].sequence | 0x40;
+
+				for (int j=0; j<2; j++)
+					sendto(srv_sock, end_of_audio.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+
+				toRptr[i].streamid = 0;
+				toRptr[i].adr = 0;
+				toRptr[i].last_time = 0;
+			}
+		}
+
+		/* any stream coming from local repeater timed out ? */
+		if (band_txt[i].last_time != 0) {
+			time(&t_now);
+			if ((t_now - band_txt[i].last_time) > from_local_rptr_timeout) {
+				/* This local stream never went to a remote system, so trace the timeout */
+				if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0)
+					printf("Inactivity from local rptr band %d, removing stream id %04x\n", i, band_txt[i].streamID);
+
+				band_txt[i].streamID = 0;
+				band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
+				band_txt[i].lh_mycall[0] = '\0';
+				band_txt[i].lh_sfx[0] = '\0';
+				band_txt[i].lh_yrcall[0] = '\0';
+				band_txt[i].lh_rpt1[0] = '\0';
+				band_txt[i].lh_rpt2[0] = '\0';
+
+				band_txt[i].last_time = 0;
+
+				band_txt[i].txt[0] = '\0';
+				band_txt[i].txt_cnt = 0;
+
+				band_txt[i].dest_rptr[0] = '\0';
+
+				band_txt[i].num_dv_frames = 0;
+				band_txt[i].num_dv_silent_frames = 0;
+				band_txt[i].num_bit_errors = 0;
+			}
+		}
+
+		/* any stream from local repeater to a remote gateway timed out ? */
+		if (to_remote_g2[i].toDst4.sin_addr.s_addr != 0) {
+			time(&t_now);
+			if ((t_now - to_remote_g2[i].last_time) > from_local_rptr_timeout) {
+				printf("Inactivity from local rptr mod %d, removing stream id %04x\n", i, to_remote_g2[i].streamid);
+
+				memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
+				to_remote_g2[i].streamid = 0;
+				to_remote_g2[i].last_time = 0;
+			}
+		}
+	}
+}
+
+void CQnetGateway::ProcessRouting()
 {
 	SDSVT g2buf;
-	fd_set fdset;
+	socklen_t fromlen = sizeof(struct sockaddr_in);
+	int g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
+
+	// save incoming port for mobile systems
+	if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
+		printf("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+		portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
+	} else {
+		if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr]) {
+			printf("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
+			portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
+		}
+	}
+
+	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
+		if (g2buflen == 56) {
+
+			// Find out the local repeater module IP/port to send the data to
+			int i = g2buf.hdr.rpt1[7] - 'A';
+
+			/* valid repeater module? */
+			if (i>=0 && i<3) {
+				// toRptr[i] is active if a remote system is talking to it or
+				// toRptr[i] is receiving data from a cross-band
+				if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
+					if (bool_qso_details)
+						printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n", ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+
+					memcpy(rptrbuf.pkt_id, "DSTR", 4);
+					rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);	// bump the counter
+					rptrbuf.flag[0] = 0x73;
+					rptrbuf.flag[1] = 0x12;
+					rptrbuf.flag[2] = 0x00;
+					rptrbuf.remaining = 0x30;
+					rptrbuf.vpkt.icm_id = 0x20;
+					//memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 47);
+					rptrbuf.vpkt.dst_rptr_id = g2buf.flagb[0];
+					rptrbuf.vpkt.snd_rptr_id = g2buf.flagb[1];
+					rptrbuf.vpkt.snd_term_id = g2buf.flagb[2];
+					rptrbuf.vpkt.streamid    = g2buf.streamid;
+					rptrbuf.vpkt.ctrl        = g2buf.ctrl;
+					memcpy(rptrbuf.vpkt.hdr.flag, g2buf.hdr.flag,   3);
+					if (is_icom) {
+						memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt2,   8);
+						memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt1,   8);
+					} else {
+						memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt1,   8);
+						memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt2,   8);
+					}
+					memcpy(rptrbuf.vpkt.hdr.ur,   g2buf.hdr.urcall, 8);
+					memcpy(rptrbuf.vpkt.hdr.my,   g2buf.hdr.mycall, 8);
+					memcpy(rptrbuf.vpkt.hdr.nm,   g2buf.hdr.sfx,    4);
+					memcpy(rptrbuf.vpkt.hdr.pfcs, g2buf.hdr.pfcs,   2);
+
+					sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+					/* save the header */
+					memcpy(toRptr[i].saved_hdr, rptrbuf.pkt_id, 58);
+					toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
+
+					/* This is the active streamid */
+					toRptr[i].streamid = g2buf.streamid;
+					toRptr[i].adr = fromDst4.sin_addr.s_addr;
+
+					/* time it, in case stream times out */
+					time(&toRptr[i].last_time);
+
+					toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+				}
+			}
+		} else {	// g2buflen == 27
+			if (bool_qso_details && g2buf.ctrl & 0x40)
+				printf("id=%04x END G2\n", ntohs(g2buf.streamid));
+
+			/* find out which repeater module to send the data to */
+			int i;
+			for (i=0; i<3; i++) {
+				/* streamid match ? */
+				if (toRptr[i].streamid==g2buf.streamid && toRptr[i].adr==fromDst4.sin_addr.s_addr) {
+					memcpy(rptrbuf.pkt_id, "DSTR", 4);
+					rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
+					rptrbuf.flag[0] = 0x73;
+					rptrbuf.flag[1] = 0x12;
+					rptrbuf.flag[2] = 0x00;
+					rptrbuf.remaining= 0x13;
+					rptrbuf.vpkt.icm_id = 0x20;
+					memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
+
+					sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+					/* timeit */
+					time(&toRptr[i].last_time);
+
+					toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+
+					/* End of stream ? */
+					if (g2buf.ctrl & 0x40) {
+						/* clear the saved header */
+						memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
+						toRptr[i].saved_adr = 0;
+
+						toRptr[i].last_time = 0;
+						toRptr[i].streamid = 0;
+						toRptr[i].adr = 0;
+					}
+					break;
+				}
+			}
+
+			/* no match ? */
+			if ((i == 3) && bool_regen_header) {
+				/* check if this a continuation of audio that timed out */
+
+				if (g2buf.ctrl & 0x40)
+					;  /* we do not care about end-of-QSO */
+				else {
+					/* for which repeater this stream has timed out ?  */
+					for (i = 0; i < 3; i++) {
+						/* match saved stream ? */
+						if (0==memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) && toRptr[i].saved_adr==fromDst4.sin_addr.s_addr) {
+							/* repeater module is inactive ?  */
+							if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
+								printf("Re-generating header for streamID=%04x\n", g2buf.streamid);
+
+								toRptr[i].saved_hdr[4] = (unsigned char)(((is_icom ? G2_COUNTER_OUT : toRptr[i].G2_COUNTER) >> 8) & 0xff);
+								toRptr[i].saved_hdr[5] = (unsigned char)((is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++) & 0xff);
+
+								/* re-generate/send the header */
+								sendto(srv_sock, toRptr[i].saved_hdr, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+								/* send this audio packet to repeater */
+								memcpy(rptrbuf.pkt_id, "DSTR", 4);
+								rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
+								rptrbuf.flag[0] = 0x73;
+								rptrbuf.flag[1] = 0x12;
+								rptrbuf.flag[2] = 0x00;
+								rptrbuf.remaining = 0x13;
+								rptrbuf.vpkt.icm_id = 0x20;
+								memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
+
+								sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+								/* make sure that any more audio arriving will be accepted */
+								toRptr[i].streamid = g2buf.streamid;
+								toRptr[i].adr = fromDst4.sin_addr.s_addr;
+
+								/* time it, in case stream times out */
+								time(&toRptr[i].last_time);
+
+								toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void CQnetGateway::ProcessRepeater()
+{
+	// dtmf stuff
+	int dtmf_buf_count[3] = {0, 0, 0};
+	char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
+	int dtmf_last_frame[3] = { 0, 0, 0 };
+	unsigned int dtmf_counter[3] = { 0, 0, 0 };
+
+	// text stuff
+	bool new_group[3] = { true, true, true };
+	int header_type = 0;
+	short to_print[3] = { 0, 0, 0 };
+	bool ABC_grp[3] = { false, false, false };
+	bool C_seen[3] = { false, false, false };
+	unsigned char tmp_txt[3];
 
 	char temp_radio_user[CALL_SIZE + 1];
 	char temp_mod;
-	time_t t_now;
 
 	char arearp_cs[CALL_SIZE + 1];
 	char zonerp_cs[CALL_SIZE + 1];
@@ -680,35 +978,1053 @@ void CQnetGateway::process()
 	long num_recs = 0L;
 	short int rec_len = 56;
 
-	std::future<void> aprs_future, irc_data_future;
+	SDSVT g2buf;
 
-	// dtmf stuff
-	int dtmf_buf_count[3] = {0, 0, 0};
-	char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
-	int dtmf_last_frame[3] = { 0, 0, 0 };
-	unsigned int dtmf_counter[3] = { 0, 0, 0 };
+	socklen_t fromlen = sizeof(struct sockaddr_in);
+	int recvlen = recvfrom(srv_sock, rptrbuf.pkt_id, 58,  0, (struct sockaddr *)&fromRptr, &fromlen);
 
-	/* START:  TEXT crap */
-	bool new_group[3] = { true, true, true };
-	int header_type = 0;
-	short to_print[3] = { 0, 0, 0 };
-	bool ABC_grp[3] = { false, false, false };
-	bool C_seen[3] = { false, false, false };
-	unsigned char tmp_txt[3];
-	/* END:  TEXT crap */
+	if (0 == memcmp(rptrbuf.pkt_id, "DSTR", 4)) {
+		/////////////////////////////////////////////////////////////////////
+		// some ICOM handshaking...
+		if (is_icom && 10==recvlen && 0x72==rptrbuf.flag[0]) {	// ACK from rptr
+			NEW_REPLY_SEQ = ntohs(rptrbuf.counter);
+			if (NEW_REPLY_SEQ == OLD_REPLY_SEQ) {
+				G2_COUNTER_OUT = NEW_REPLY_SEQ;
+				OLD_REPLY_SEQ = NEW_REPLY_SEQ - 1;
+			} else
+				OLD_REPLY_SEQ = NEW_REPLY_SEQ;
+		} else if (is_icom && 0x73U==rptrbuf.flag[0] && (0x21U==rptrbuf.flag[1] || 0x11U==rptrbuf.flag[1] || 0x0U==rptrbuf.flag[1])) {
+			rptrbuf.flag[0] = 0x72U;
+			memset(rptrbuf.flag+1, 0x0U, 3);
+			sendto(srv_sock, rptrbuf.pkt_id, 10, 0, (struct sockaddr *)&toRptr[0].band_addr, sizeof(struct sockaddr_in));
+		// end of ICOM handshaking
+		/////////////////////////////////////////////////////////////////////
+		} else if ( (recvlen==58 || recvlen==29 || recvlen==32) && rptrbuf.flag[0]==0x73 && rptrbuf.flag[1]==0x12 && rptrbuf.flag[2]==0x0 && rptrbuf.vpkt.icm_id==0x20 && (rptrbuf.remaining==0x30 || rptrbuf.remaining==0x13 || rptrbuf.remaining==0x16) ) {
+			if (is_icom) {	// acknowledge packet to ICOM
+				SDSTR reply;
+				memcpy(reply.pkt_id, "DSTR", 4);
+				reply.counter = rptrbuf.counter;
+				reply.flag[0] = 0x72U;
+				memset(reply.flag+1, 0, 3);
+				sendto(srv_sock, reply.pkt_id, 10, 0, (struct sockaddr *)&toRptr[0].band_addr, sizeof(struct sockaddr_in));
+			}
 
-	int max_nfds = 0;
+			if (recvlen == 58) {
 
+				if (bool_qso_details)
+					printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
+
+				if (0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	Flag_is_ok(rptrbuf.vpkt.hdr.flag[0])) {
+
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0  && i<3) {
+						if (bool_dtmf_debug)
+							printf("resetting dtmf[%d] (got a header)\n", i);
+						dtmf_last_frame[i] = 0;
+						dtmf_counter[i] = 0;
+						memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
+						dtmf_buf_count[i] = 0;
+
+						/* Initialize the LAST HEARD data for the band */
+
+						band_txt[i].streamID = rptrbuf.vpkt.streamid;
+
+						memcpy(band_txt[i].flags, rptrbuf.vpkt.hdr.flag, 3);
+
+						memcpy(band_txt[i].lh_mycall, rptrbuf.vpkt.hdr.my, 8);
+						band_txt[i].lh_mycall[8] = '\0';
+
+						memcpy(band_txt[i].lh_sfx, rptrbuf.vpkt.hdr.nm, 4);
+						band_txt[i].lh_sfx[4] = '\0';
+
+						memcpy(band_txt[i].lh_yrcall, rptrbuf.vpkt.hdr.ur, 8);
+						band_txt[i].lh_yrcall[8] = '\0';
+
+						memcpy(band_txt[i].lh_rpt1, rptrbuf.vpkt.hdr.r1, 8);
+						band_txt[i].lh_rpt1[8] = '\0';
+
+						memcpy(band_txt[i].lh_rpt2, rptrbuf.vpkt.hdr.r2, 8);
+						band_txt[i].lh_rpt2[8] = '\0';
+
+						time(&band_txt[i].last_time);
+
+						band_txt[i].txt[0] = '\0';
+						band_txt[i].txt_cnt = 0;
+						band_txt[i].txt_stats_sent = false;
+
+						band_txt[i].dest_rptr[0] = '\0';
+
+						/* try to process GPS mode: GPRMC and ID */
+						band_txt[i].temp_line[0] = '\0';
+						band_txt[i].temp_line_cnt = 0;
+						band_txt[i].gprmc[0] = '\0';
+						band_txt[i].gpid[0] = '\0';
+						band_txt[i].is_gps_sent = false;
+						// band_txt[i].gps_last_time = 0; DO NOT reset it
+
+						new_group[i] = true;
+						to_print[i] = 0;
+						ABC_grp[i] = false;
+
+						band_txt[i].num_dv_frames = 0;
+						band_txt[i].num_dv_silent_frames = 0;
+						band_txt[i].num_bit_errors = 0;
+
+						/* select the band for aprs processing, and lock on the stream ID */
+						if (bool_send_aprs)
+							aprs->SelectBand(i, ntohs(rptrbuf.vpkt.streamid));
+					}
+				}
+
+				/* Is MYCALL valid ? */
+				memset(temp_radio_user, ' ', 8);
+				memcpy(temp_radio_user, rptrbuf.vpkt.hdr.my, 8);
+				temp_radio_user[8] = '\0';
+
+				int mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
+
+				if (mycall_valid == REG_NOERROR)
+					; // printf("MYCALL [%s] passed IRC expression validation\n", temp_radio_user);
+				else {
+					if (mycall_valid == REG_NOMATCH)
+						printf("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
+					else
+						printf("Failed to validate MYCALL [%s], regexec error=%d\n", temp_radio_user, mycall_valid);
+				}
+
+				/* send data qnlink */
+				if (mycall_valid == REG_NOERROR)
+					sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
+
+				if ( mycall_valid==REG_NOERROR &&
+						memcmp(rptrbuf.vpkt.hdr.ur, "XRF", 3) &&	// not a reflector
+						memcmp(rptrbuf.vpkt.hdr.ur, "REF", 3) &&
+						memcmp(rptrbuf.vpkt.hdr.ur, "DCS", 3) &&
+						rptrbuf.vpkt.hdr.ur[0]!=' ' && 				// must have something
+						memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) )	// urcall is NOT CQCQCQ
+				{
+					if ( rptrbuf.vpkt.hdr.ur[0]=='/' &&										// repeater routing!
+							0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 this repeater
+							(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// with a valid module
+							0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) && 			// rpt2 is this repeater
+							rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
+							Flag_is_ok(rptrbuf.vpkt.hdr.flag[0]) )
+					{
+						if (memcmp(rptrbuf.vpkt.hdr.ur+1, OWNER.c_str(), 6)) {	// the value after the slash is NOT this repeater
+							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+							if (i>=0 && i<3) {
+								/* one radio user on a repeater module at a time */
+								if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
+									/* YRCALL=/repeater + mod */
+									/* YRCALL=/KJ4NHFB */
+
+									memset(temp_radio_user, ' ', 8);
+									memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur+1, 6);
+									temp_radio_user[6] = ' ';
+									temp_radio_user[7] = rptrbuf.vpkt.hdr.ur[7];
+									if (temp_radio_user[7] == ' ')
+										temp_radio_user[7] = 'A';
+									temp_radio_user[CALL_SIZE] = '\0';
+
+									bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
+									if (result) { /* it is a repeater */
+										uint32_t address;
+										/* set the destination */
+										to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
+										memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
+										to_remote_g2[i].toDst4.sin_family = AF_INET;
+										to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
+										// if the address is in the portmap, we'll use that saved port instead of the default port
+										auto theAddress = portmap.find(address);
+										to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end()) ? g2_external.port : theAddress->second);
+
+										memcpy(g2buf.title, "DSVT", 4);
+										g2buf.config = 0x10;
+										g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
+										g2buf.id =  rptrbuf.vpkt.icm_id;
+										g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+										g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+										g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+										g2buf.streamid = rptrbuf.vpkt.streamid;
+										g2buf.ctrl = rptrbuf.vpkt.ctrl;
+										memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
+										/* set rpt1 */
+										memset(g2buf.hdr.rpt1, ' ', 8);
+										memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+										g2buf.hdr.rpt1[7] = temp_mod;
+										/* set rpt2 */
+										memset(g2buf.hdr.rpt2, ' ', 8);
+										memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+										g2buf.hdr.rpt2[7] = 'G';
+										/* set yrcall, can NOT let it be slash and repeater + module */
+										memcpy(g2buf.hdr.urcall, "CQCQCQ  ", 8);
+										memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
+										memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
+
+										/* set PFCS */
+										calcPFCS(g2buf.title, 56);
+
+										// The remote repeater has been set, lets fill in the dest_rptr
+										// so that later we can send that to the LIVE web site
+										memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
+										band_txt[i].dest_rptr[CALL_SIZE] = '\0';
+
+										// send to remote gateway
+										for (int j=0; j<5; j++)
+											sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+
+										printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
+										ntohs(g2buf.streamid), inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
+										g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
+
+										time(&(to_remote_g2[i].last_time));
+									}
+								}
+							}
+						}
+					}
+					else if (memcmp(rptrbuf.vpkt.hdr.ur, OWNER.c_str(), 7) &&				// urcall is not this repeater
+							0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 is this repeater
+							(rptrbuf.vpkt.hdr.r1[7]>='A'&& rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod is A,B,C
+							0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&				// rpt2 is this repeater
+							rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
+							Flag_is_ok(rptrbuf.vpkt.hdr.flag[0])) {
+
+
+						memset(temp_radio_user, ' ', 8);
+						memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur, 8);
+						temp_radio_user[8] = '\0';
+						bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
+						if (result) {
+							/* destination is a remote system */
+							if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
+								int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+								if (i>=0 && i<3) {
+									/* one radio user on a repeater module at a time */
+									if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
+										uint32_t address;
+										/* set the destination */
+										to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
+										memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
+										to_remote_g2[i].toDst4.sin_family = AF_INET;
+										to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
+										// if the address is in the portmap, we'll use that port instead of the default
+										auto theAddress = portmap.find(address);
+										to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
+
+										memcpy(g2buf.title, "DSVT", 4);
+										g2buf.config = 0x10;
+										g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
+										g2buf.id = rptrbuf.vpkt.icm_id;
+										g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+										g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+										g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+										g2buf.streamid = rptrbuf.vpkt.streamid;
+										g2buf.ctrl = rptrbuf.vpkt.ctrl;
+										memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
+										/* set rpt1 */
+										memset(g2buf.hdr.rpt1, ' ', 8);
+										memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+										g2buf.hdr.rpt1[7] = temp_mod;
+										/* set rpt2 */
+										memset(g2buf.hdr.rpt2, ' ', 8);
+										memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+										g2buf.hdr.rpt2[7] = 'G';
+										/* set PFCS */
+										memcpy(g2buf.hdr.urcall, rptrbuf.vpkt.hdr.ur, 8);
+										memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
+										memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
+										calcPFCS(g2buf.title, 56);
+
+
+										// The remote repeater has been set, lets fill in the dest_rptr
+										// so that later we can send that to the LIVE web site
+										memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
+										band_txt[i].dest_rptr[CALL_SIZE] = '\0';
+
+										/* send to remote gateway */
+										for (int j=0; j<5; j++)
+											sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+
+										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n",
+										inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
+										g2buf.streamid, g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
+
+										time(&(to_remote_g2[i].last_time));
+									}
+								}
+							}
+							else
+							{
+								int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+								if (i>=0 && i<3) {
+									/* the user we are trying to contact is on our gateway */
+									/* make sure they are on a different module */
+									if (temp_mod != rptrbuf.vpkt.hdr.r1[7]) {
+										/*
+										   The remote repeater has been set, lets fill in the dest_rptr
+										   so that later we can send that to the LIVE web site
+										*/
+										memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.r2, 8);
+										band_txt[i].dest_rptr[7] = temp_mod;
+										band_txt[i].dest_rptr[8] = '\0';
+
+										i = temp_mod - 'A';
+
+										/* valid destination repeater module? */
+										if (i>=0 && i<3) {
+											/*
+											   toRptr[i] :    receiving from a remote system or cross-band
+											   band_txt[i] :  local RF is talking.
+											*/
+											if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
+												printf("CALLmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.r1[7], temp_mod);
+
+												rptrbuf.vpkt.hdr.r2[7] = temp_mod;
+												rptrbuf.vpkt.hdr.r1[7] = 'G';
+												calcPFCS(rptrbuf.pkt_id, 58);
+
+												sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+												/* This is the active streamid */
+												toRptr[i].streamid = rptrbuf.vpkt.streamid;
+												toRptr[i].adr = fromRptr.sin_addr.s_addr;
+
+												/* time it, in case stream times out */
+												time(&toRptr[i].last_time);
+
+												/* bump the G2 counter */
+												if (is_icom)
+													G2_COUNTER_OUT++;
+												else
+													toRptr[i].G2_COUNTER++;
+
+												toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+											}
+										}
+									}
+									else
+										printf("icom rule: no routing from %.8s to %s%c\n", rptrbuf.vpkt.hdr.r1, arearp_cs, temp_mod);
+								}
+							}
+						}
+					}
+				}
+				else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      C0", 8)) {
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						/* voicemail file is closed */
+						if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
+							unlink(vm[i].file);
+							printf("removed voicemail file: %s\n", vm[i].file);
+							vm[i].file[0] = '\0';
+						} else
+							printf("No voicemail to clear or still recording\n");
+					}
+				}
+				else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      R0", 8)) {
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						/* voicemail file is closed */
+						if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
+							try {
+								std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, vm[i].file);
+							} catch (const std::exception &e) {
+								printf("Failed to start voicemail playback. Exception: %s\n", e.what());
+							}
+						} else
+							printf("No voicemail to recall or still recording\n");
+					}
+				}
+				else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      S0", 8)) {
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						if (vm[i].fd >= 0)
+							printf("Already recording for voicemail on mod %d\n", i);
+						else {
+							memset(tempfile, '\0', sizeof(tempfile));
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr. r1[7], "voicemail.dat");
+
+							vm[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+							if (vm[i].fd < 0)
+								printf("Failed to create file %s for voicemail\n", tempfile);
+							else {
+								strcpy(vm[i].file, tempfile);
+								printf("Recording mod %c for voicemail into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], vm[i].file);
+
+								time(&vm[i].last_time);
+								vm[i].streamid = rptrbuf.vpkt.streamid;
+
+								memcpy(recbuf.title, "DSVT", 4);
+								recbuf.config = 0x10;
+								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+								recbuf.id =  rptrbuf.vpkt.icm_id;
+								recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+								recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+								recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+								memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
+								memset(recbuf.hdr.rpt1, ' ', 8);
+								memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.size());
+								recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
+								memset(recbuf.hdr.rpt2, ' ', 8);
+								memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.size());
+								recbuf.hdr.rpt2[7] = 'G';
+								memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
+
+								calcPFCS(recbuf.title, 56);
+
+								rec_len = 56;
+								(void)write(vm[i].fd, "DVTOOL", 6);
+								(void)write(vm[i].fd, &num_recs, 4);
+								(void)write(vm[i].fd, &rec_len, 2);
+								(void)write(vm[i].fd, &recbuf, rec_len);
+							}
+						}
+					}
+				}
+				else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "       E", 8)) {
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						if (recd[i].fd >= 0)
+							printf("Already recording for echotest on mod %d\n", i);
+						else {
+							memset(tempfile, '\0', sizeof(tempfile));
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr.r1[7], "echotest.dat");
+
+							recd[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+							if (recd[i].fd < 0)
+								printf("Failed to create file %s for echotest\n", tempfile);
+							else {
+								strcpy(recd[i].file, tempfile);
+								printf("Recording mod %c for echotest into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], recd[i].file);
+
+								time(&recd[i].last_time);
+								recd[i].streamid = rptrbuf.vpkt.streamid;
+
+								memcpy(recbuf.title, "DSVT", 4);
+								recbuf.config = 0x10;
+								recbuf.id =  rptrbuf.vpkt.icm_id;
+								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+								recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+								recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+								recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+								memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
+								memset(recbuf.hdr.rpt1, ' ', 8);
+								memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
+								recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
+								memset(recbuf.hdr.rpt2, ' ', 8);
+								memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
+								recbuf.hdr.rpt2[7] = 'G';
+								memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
+
+								calcPFCS(recbuf.title, 56);
+
+								rec_len = 56;
+								(void)write(recd[i].fd, "DVTOOL", 6);
+								(void)write(recd[i].fd, &num_recs, 4);
+								(void)write(recd[i].fd, &rec_len, 2);
+								(void)write(recd[i].fd, &recbuf, rec_len);
+							}
+						}
+					}
+				/* check for cross-banding */
+				}
+				else if ( 0==memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) &&		// yrcall is CQCQCQ
+							0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&	// rpt1 is this repeater
+							0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	// rpt2 is this repeater
+						(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod of rpt1 is A,B,C
+						(rptrbuf.vpkt.hdr.r2[7]>='A' && rptrbuf.vpkt.hdr.r2[7]<='C') &&	// !!! usually G on rpt2, but we see A,B,C with
+						rptrbuf.vpkt.hdr.r2[7]!=rptrbuf.vpkt.hdr.r1[7] ) {				// cross-banding? make sure NOT the same
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						// The remote repeater has been set, lets fill in the dest_rptr
+						// so that later we can send that to the LIVE web site
+						memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.r2, 8);
+						band_txt[i].dest_rptr[8] = '\0';
+					}
+
+					i = rptrbuf.vpkt.hdr.r2[7] - 'A';
+
+					// valid destination repeater module?
+					if (i>=0 && i<3) {
+						// toRptr[i] :    receiving from a remote system or cross-band
+						// band_txt[i] :  local RF is talking.
+						if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
+							printf("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.r1[7], rptrbuf.vpkt.hdr.r2[7]);
+
+							rptrbuf.vpkt.hdr.r1[7] = 'G';
+							calcPFCS(rptrbuf.pkt_id, 58);
+
+							sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+							/* This is the active streamid */
+							toRptr[i].streamid = rptrbuf.vpkt.streamid;
+							toRptr[i].adr = fromRptr.sin_addr.s_addr;
+
+							/* time it, in case stream times out */
+							time(&toRptr[i].last_time);
+
+							/* bump the G2 counter */
+							if (is_icom)
+								G2_COUNTER_OUT++;
+							else
+								toRptr[i].G2_COUNTER ++;
+
+							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+						}
+					}
+				}
+			}
+			else
+			{	// recvlen is 29 or 32
+				for (int i=0; i<3; i++) {
+					if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
+						time(&band_txt[i].last_time);
+
+						if (rptrbuf.vpkt.ctrl & 0x40) {	// end of voice data
+							if (dtmf_buf_count[i] > 0) {
+								dtmf_file = dtmf_dir;
+								dtmf_file.push_back('/');
+								dtmf_file.push_back('A'+i);
+								dtmf_file += "_mod_DTMF_NOTIFY";
+								if (bool_dtmf_debug)
+									printf("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
+								FILE *dtmf_fp = fopen(dtmf_file.c_str(), "w");
+								if (dtmf_fp) {
+									fprintf(dtmf_fp, "%s\n%s", dtmf_buf[i], band_txt[i].lh_mycall);
+									fclose(dtmf_fp);
+								} else
+									printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
+
+
+								if (bool_dtmf_debug)
+									printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].lh_mycall);
+								memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
+								dtmf_buf_count[i] = 0;
+								dtmf_counter[i] = 0;
+								dtmf_last_frame[i] = 0;
+							}
+
+							ii->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
+
+							band_txt[i].streamID = 0;
+							band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
+							band_txt[i].lh_mycall[0] = '\0';
+							band_txt[i].lh_sfx[0] = '\0';
+							band_txt[i].lh_yrcall[0] = '\0';
+							band_txt[i].lh_rpt1[0] = '\0';
+							band_txt[i].lh_rpt2[0] = '\0';
+
+							band_txt[i].last_time = 0;
+
+							band_txt[i].txt[0] = '\0';
+							band_txt[i].txt_cnt = 0;
+
+							band_txt[i].dest_rptr[0] = '\0';
+
+							band_txt[i].num_dv_frames = 0;
+							band_txt[i].num_dv_silent_frames = 0;
+							band_txt[i].num_bit_errors = 0;
+
+						}
+						else
+						{	// not the end of the voice stream
+							int ber_data[3];
+							int ber_errs = dstar_dv_decode(rptrbuf.vpkt.vasd.voice, ber_data);
+							if (ber_data[0] == 0xf85)
+								band_txt[i].num_dv_silent_frames++;
+							band_txt[i].num_bit_errors += ber_errs;
+							band_txt[i].num_dv_frames++;
+
+							if ((ber_data[0] & 0x0ffc) == 0xfc0) {
+								dtmf_digit = (ber_data[0] & 0x03) | ((ber_data[2] & 0x60) >> 3);
+								if (dtmf_counter[i] > 0) {
+									if (dtmf_last_frame[i] != dtmf_digit)
+										dtmf_counter[i] = 0;
+								}
+								dtmf_last_frame[i] = dtmf_digit;
+								dtmf_counter[i]++;
+
+								if ((dtmf_counter[i] == 5) && (dtmf_digit >= 0) && (dtmf_digit <= 15)) {
+									if (dtmf_buf_count[i] < MAX_DTMF_BUF) {
+										const char *dtmf_chars = "147*2580369#ABCD";
+										dtmf_buf[i][ dtmf_buf_count[i] ] = dtmf_chars[dtmf_digit];
+										dtmf_buf_count[i]++;
+									}
+								}
+								const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
+								memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
+							} else
+								dtmf_counter[i] = 0;
+						}
+						break;
+					}
+				}
+
+				if (recvlen == 29)
+					memcpy(tmp_txt, rptrbuf.vpkt.vasd.text, 3);
+				else
+					memcpy(tmp_txt, rptrbuf.vpkt.vasd1.text, 3);
+
+				// extract 20-byte RADIO ID
+				if ((tmp_txt[0] != 0x55) || (tmp_txt[1] != 0x2d) || (tmp_txt[2] != 0x16)) {
+
+					for (int i=0; i<3; i++) {
+						if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
+							if (new_group[i]) {
+								tmp_txt[0] = tmp_txt[0] ^ 0x70;
+								header_type = tmp_txt[0] & 0xf0;
+
+								if ((header_type == 0x50) ||  /* header  */ (header_type == 0xc0)) {  /* squelch */
+									new_group[i] = false;
+									to_print[i] = 0;
+									ABC_grp[i] = false;
+								}
+								else if (header_type == 0x30) { /* GPS or GPS id or APRS */
+									new_group[i] = false;
+									to_print[i] = tmp_txt[0] & 0x0f;
+									ABC_grp[i] = false;
+									if (to_print[i] > 5)
+										to_print[i] = 5;
+									else if (to_print[i] < 1)
+										to_print[i] = 1;
+
+									if ((to_print[i] > 1) && (to_print[i] <= 5)) {
+										/* something went wrong? all bets are off */
+										if (band_txt[i].temp_line_cnt > 200) {
+											printf("Reached the limit in the OLD gps mode\n");
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										}
+
+										/* fresh GPS string, re-initialize */
+										if ((to_print[i] == 5) && ((tmp_txt[1] ^ 0x4f) == '$')) {
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										}
+
+										/* do not copy CR, NL */
+										if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
+											band_txt[i].temp_line_cnt++;
+										}
+										if (((tmp_txt[2] ^ 0x93) != '\r') && ((tmp_txt[2] ^ 0x93) != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2] ^ 0x93;
+											band_txt[i].temp_line_cnt++;
+										}
+
+										if (((tmp_txt[1] ^ 0x4f) == '\r') || ((tmp_txt[2] ^ 0x93) == '\r')) {
+											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+											} else if (band_txt[i].temp_line[0] != '$') {
+												memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+												band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+												if (bool_send_aprs && !band_txt[i].is_gps_sent)
+													gps_send(i);
+											}
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										} else if (((tmp_txt[1] ^ 0x4f) == '\n') || ((tmp_txt[2] ^ 0x93) == '\n')) {
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										}
+										to_print[i] -= 2;
+									}
+									else
+									{
+										/* something went wrong? all bets are off */
+										if (band_txt[i].temp_line_cnt > 200) {
+											printf("Reached the limit in the OLD gps mode\n");
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										}
+
+										/* do not copy CR, NL */
+										if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
+											band_txt[i].temp_line_cnt++;
+										}
+
+										if ((tmp_txt[1] ^ 0x4f) == '\r') {
+											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+											} else if (band_txt[i].temp_line[0] != '$') {
+												memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+												band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+												if (bool_send_aprs && !band_txt[i].is_gps_sent)
+													gps_send(i);
+											}
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										} else if ((tmp_txt[1] ^ 0x4f) == '\n') {
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										}
+										to_print[i] --;
+									}
+								}
+								else if (header_type == 0x40) { /* ABC text */
+									new_group[i] = false;
+									to_print[i] = 3;
+									ABC_grp[i] = true;
+									C_seen[i] = ((tmp_txt[0] & 0x0f) == 0x03)?true:false;
+
+									band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1] ^ 0x4f;
+									band_txt[i].txt_cnt++;
+
+									band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2] ^ 0x93;
+									band_txt[i].txt_cnt++;
+
+									/*
+									   We should NOT see any more text,
+									   if we already processed text,
+									   so blank out the codes.
+									*/
+									if (band_txt[i].txt_stats_sent) {
+										if (recvlen == 29) {
+											rptrbuf.vpkt.vasd.text[0] = 0x70;
+											rptrbuf.vpkt.vasd.text[1] = 0x4f;
+											rptrbuf.vpkt.vasd.text[2] = 0x93;
+										} else {
+											rptrbuf.vpkt.vasd1.text[0] = 0x70;
+											rptrbuf.vpkt.vasd1.text[1] = 0x4f;
+											rptrbuf.vpkt.vasd1.text[2] = 0x93;
+										}
+									}
+
+									if (band_txt[i].txt_cnt >= 20) {
+										band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
+										band_txt[i].txt_cnt = 0;
+									}
+								} else {
+									new_group[i] = false;
+									to_print[i] = 0;
+									ABC_grp[i] = false;
+								}
+							}
+							else
+							{
+								if (to_print[i] == 3) {
+									if (ABC_grp[i]) {
+										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[0] ^ 0x70;
+										band_txt[i].txt_cnt ++;
+
+										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1] ^ 0x4f;
+										band_txt[i].txt_cnt ++;
+
+										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2] ^ 0x93;
+										band_txt[i].txt_cnt ++;
+
+										// We should NOT see any more text,
+										// if we already processed text,
+										// so blank out the codes.
+
+										if (band_txt[i].txt_stats_sent) {
+											if (recvlen == 29) {
+												rptrbuf.vpkt.vasd.text[0] = 0x70;
+												rptrbuf.vpkt.vasd.text[1] = 0x4f;
+												rptrbuf.vpkt.vasd.text[2] = 0x93;
+											} else {
+												rptrbuf.vpkt.vasd1.text[0] = 0x70;
+												rptrbuf.vpkt.vasd1.text[1] = 0x4f;
+												rptrbuf.vpkt.vasd1.text[2] = 0x93;
+											}
+										}
+
+										if ((band_txt[i].txt_cnt >= 20) || C_seen[i]) {
+											band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
+											if (!band_txt[i].txt_stats_sent) {
+												/*** if YRCALL is CQCQCQ, set dest_rptr ***/
+												if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
+													set_dest_rptr(i, band_txt[i].dest_rptr);
+												//	if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
+												//		band_txt[i].dest_rptr[0] = '\0';
+												}
+
+												ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx,band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+												band_txt[i].txt_stats_sent = true;
+											}
+											band_txt[i].txt_cnt = 0;
+										}
+										if (C_seen[i])
+											C_seen[i] = false;
+									} else {
+										/* something went wrong? all bets are off */
+										if (band_txt[i].temp_line_cnt > 200) {
+											printf("Reached the limit in the OLD gps mode\n");
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										}
+
+										/* do not copy CR, NL */
+										if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
+											band_txt[i].temp_line_cnt++;
+										}
+										if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
+											band_txt[i].temp_line_cnt++;
+										}
+										if (((tmp_txt[2] ^ 0x93) != '\r') && ((tmp_txt[2] ^ 0x93) != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2] ^ 0x93;
+											band_txt[i].temp_line_cnt++;
+										}
+
+										if (
+											((tmp_txt[0] ^ 0x70) == '\r') ||
+											((tmp_txt[1] ^ 0x4f) == '\r') ||
+											((tmp_txt[2] ^ 0x93) == '\r')
+										) {
+											if (0 == memcmp(band_txt[i].temp_line, "$GPRMC", 6)) {
+												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+											} else if (band_txt[i].temp_line[0] != '$') {
+												memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+												band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+												if (bool_send_aprs && !band_txt[i].is_gps_sent)
+													gps_send(i);
+											}
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										} else if (((tmp_txt[0] ^ 0x70) == '\n') || ((tmp_txt[1] ^ 0x4f) == '\n') || ((tmp_txt[2] ^ 0x93) == '\n')) {
+											band_txt[i].temp_line[0] = '\0';
+											band_txt[i].temp_line_cnt = 0;
+										}
+									}
+								} else if (to_print[i] == 2) {
+									/* something went wrong? all bets are off */
+									if (band_txt[i].temp_line_cnt > 200) {
+										printf("Reached the limit in the OLD gps mode\n");
+										band_txt[i].temp_line[0] = '\0';
+										band_txt[i].temp_line_cnt = 0;
+									}
+
+									/* do not copy CR, NL */
+									if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
+										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
+										band_txt[i].temp_line_cnt++;
+									}
+									if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
+										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
+										band_txt[i].temp_line_cnt++;
+									}
+
+									if (((tmp_txt[0] ^ 0x70) == '\r') || ((tmp_txt[1] ^ 0x4f) == '\r')) {
+										if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+											memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+											band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+										} else if (band_txt[i].temp_line[0] != '$') {
+											memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+											band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+											if (bool_send_aprs && !band_txt[i].is_gps_sent)
+												gps_send(i);
+										}
+										band_txt[i].temp_line[0] = '\0';
+										band_txt[i].temp_line_cnt = 0;
+									} else if (((tmp_txt[0] ^ 0x70) == '\n') || ((tmp_txt[1] ^ 0x4f)  == '\n')) {
+										band_txt[i].temp_line[0] = '\0';
+										band_txt[i].temp_line_cnt = 0;
+									}
+								} else if (to_print[i] == 1) {
+									/* something went wrong? all bets are off */
+									if (band_txt[i].temp_line_cnt > 200) {
+										printf("Reached the limit in the OLD gps mode\n");
+										band_txt[i].temp_line[0] = '\0';
+										band_txt[i].temp_line_cnt = 0;
+									}
+
+									/* do not copy CR, NL */
+									if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
+										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
+										band_txt[i].temp_line_cnt++;
+									}
+
+									if ((tmp_txt[0] ^ 0x70) == '\r') {
+										if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+											memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+											band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+										} else if (band_txt[i].temp_line[0] != '$') {
+											memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+											band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+											if (bool_send_aprs && !band_txt[i].is_gps_sent)
+												gps_send(i);
+										}
+										band_txt[i].temp_line[0] = '\0';
+										band_txt[i].temp_line_cnt = 0;
+									} else if ((tmp_txt[0] ^ 0x70) == '\n') {
+										band_txt[i].temp_line[0] = '\0';
+										band_txt[i].temp_line_cnt = 0;
+									}
+								}
+								new_group[i] = true;
+								to_print[i] = 0;
+								ABC_grp[i] = false;
+							}
+							break;
+						}
+					}
+				}
+
+				/* send data to qnlink */
+				sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
+
+				/* aprs processing */
+				if (bool_send_aprs)
+					//                             streamID               seq                audio+text             size
+					aprs->ProcessText(rptrbuf.vpkt.streamid, rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice, (recvlen == 29)?12:15);
+
+				for (int i=0; i<3; i++) {
+					/* find out if data must go to the remote G2 */
+					if (to_remote_g2[i].streamid == rptrbuf.vpkt.streamid) {
+						memcpy(g2buf.title, "DSVT", 4);
+						g2buf.config = 0x20;
+						g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0;
+						memcpy(&g2buf.id, &rptrbuf.vpkt.icm_id, 7);
+						if (recvlen == 29)
+							memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
+						else
+							memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
+
+						uint32_t address = to_remote_g2[i].toDst4.sin_addr.s_addr;
+						// if the address is in the portmap, we'll use that port instead of the default
+						auto theAddress = portmap.find(address);
+						to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
+						sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+
+						time(&(to_remote_g2[i].last_time));
+
+						/* Is this the end-of-stream */
+						if (rptrbuf.vpkt.ctrl & 0x40) {
+							memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
+							to_remote_g2[i].streamid = 0;
+							to_remote_g2[i].last_time = 0;
+						}
+						break;
+					}
+					else if (recd[i].fd>=0 && recd[i].streamid==rptrbuf.vpkt.streamid) {	// Is the data to be recorded for echotest
+						time(&recd[i].last_time);
+
+						memcpy(recbuf.title, "DSVT", 4);
+						recbuf.config = 0x20;
+						recbuf.id = rptrbuf.vpkt.icm_id;
+						recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[20] = 0;
+						recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+						recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+						recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+						memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
+						if (recvlen == 29)
+							memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
+						else
+							memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
+
+						rec_len = 27;
+						(void)write(recd[i].fd, &rec_len, 2);
+						(void)write(recd[i].fd, &recbuf, rec_len);
+
+						if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
+							recd[i].streamid = 0;
+							recd[i].last_time = 0;
+							close(recd[i].fd);
+							recd[i].fd = -1;
+							// printf("Closed echotest audio file:[%s]\n", recd[i].file);
+
+							/* we are in echotest mode, so play it back */
+							try {
+								std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, recd[i].file);
+							} catch (const std::exception &e) {
+								printf("failed to start PlayFileThread. Exception: %s\n", e.what());
+								//   When the echotest thread runs, it deletes the file,
+								//   Because the echotest thread did NOT start, we delete the file here
+								unlink(recd[i].file);
+							}
+						}
+						break;
+					}
+					else if ((vm[i].fd >= 0) && (vm[i].streamid==rptrbuf.vpkt.streamid)) {	// Is the data to be recorded for voicemail
+						time(&vm[i].last_time);
+
+						memcpy(recbuf.title, "DSVT", 4);
+						recbuf.config = 0x20;
+						recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+						recbuf.id = rptrbuf.vpkt.icm_id;
+						recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+						recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+						recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+						memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
+						if (recvlen == 29)
+							memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
+						else
+							memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
+
+						rec_len = 27;
+						(void)write(vm[i].fd, &rec_len, 2);
+						(void)write(vm[i].fd, &recbuf, rec_len);
+
+						if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
+							vm[i].streamid = 0;
+							vm[i].last_time = 0;
+							close(vm[i].fd);
+							vm[i].fd = -1;
+							// printf("Closed voicemail audio file:[%s]\n", vm[i].file);
+						}
+						break;
+					}
+					else if ((toRptr[i].streamid==rptrbuf.vpkt.streamid) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {	// or maybe this is cross-banding data
+						sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+						/* timeit */
+						time(&toRptr[i].last_time);
+
+						/* bump G2 counter */
+						if (is_icom)
+							G2_COUNTER_OUT++;
+						else
+							toRptr[i].G2_COUNTER ++;
+
+						toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+
+						/* End of stream ? */
+						if (rptrbuf.vpkt.ctrl & 0x40) {
+							toRptr[i].last_time = 0;
+							toRptr[i].streamid = 0;
+							toRptr[i].adr = 0;
+						}
+						break;
+					}
+				}
+
+				if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
+					printf("id=%04x cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
+			}
+		}
+	}
+}
+
+/* run the main loop for QnetGateway */
+void CQnetGateway::Process()
+{
 	dstar_dv_init();
 
+	int max_nfds = 0;
 	if (g2_sock > max_nfds)
 		max_nfds = g2_sock;
 	if (srv_sock > max_nfds)
 		max_nfds = srv_sock;
 	printf("g2=%d, srv=%d, MAX+1=%d\n", g2_sock, srv_sock, max_nfds + 1);
 
-	/* start the beacon thread */
-	if (bool_send_aprs) {
+	std::future<void> aprs_future, irc_data_future;
+	if (bool_send_aprs) {	// start the beacon thread
 		try {
 			aprs_future = std::async(std::launch::async, &CQnetGateway::APRSBeaconThread, this);
 		} catch (const std::exception &e) {
@@ -718,7 +2034,7 @@ void CQnetGateway::process()
 			printf("APRS beacon thread started\n");
 	}
 
-	try {
+	try {	// start the IRC read thread
 		irc_data_future = std::async(std::launch::async, &CQnetGateway::GetIRCDataThread, this);
 	} catch (const std::exception &e) {
 		printf("Failed to start GetIRCDataThread. Exception: %s\n", e.what());
@@ -759,1339 +2075,27 @@ void CQnetGateway::process()
 
 
 	while (keep_running) {
-		for (int i=0; i<3; i++) {
-			/* echotest recording timed out? */
-			if (recd[i].last_time != 0) {
-				time(&t_now);
-				if ((t_now - recd[i].last_time) > echotest_rec_timeout) {
-					printf("Inactivity on echotest recording mod %d, removing stream id=%04x\n",
-						i, recd[i].streamid);
+		ProcessTimeouts();
 
-					recd[i].streamid = 0;
-					recd[i].last_time = 0;
-					close(recd[i].fd);
-					recd[i].fd = -1;
-					// printf("Closed echotest audio file:[%s]\n", recd[i].file);
-
-					/* START: echotest thread setup */
-					try {
-						std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, recd[i].file);
-					} catch (const std::exception &e) {
-						printf("Failed to start echotest thread. Exception: %s\n", e.what());
-						// when the echotest thread runs, it deletes the file,
-						// Because the echotest thread did NOT start, we delete the file here
-						unlink(recd[i].file);
-					}
-					/* END: echotest thread setup */
-				}
-			}
-
-			/* voicemail recording timed out? */
-			if (vm[i].last_time != 0) {
-				time(&t_now);
-				if ((t_now - vm[i].last_time) > voicemail_rec_timeout) {
-					printf("Inactivity on voicemail recording mod %d, removing stream id=%04x\n",
-					        i, vm[i].streamid);
-
-					vm[i].streamid = 0;
-					vm[i].last_time = 0;
-					close(vm[i].fd);
-					vm[i].fd = -1;
-					// printf("Closed voicemail audio file:[%s]\n", vm[i].file);
-				}
-			}
-
-			// any stream going to local repeater timed out?
-			if (toRptr[i].last_time != 0) {
-				time(&t_now);
-				//   The stream can be from a cross-band, or from a remote system,
-				//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
-				//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
-				if ((t_now - toRptr[i].last_time) > from_remote_g2_timeout) {
-					printf("Inactivity to local rptr mod index %d, removing stream id %04x\n", i, toRptr[i].streamid);
-
-					// Send end_of_audio to local repeater.
-					// Let the repeater re-initialize
-					end_of_audio.counter = is_icom ? G2_COUNTER_OUT++ :toRptr[i].G2_COUNTER++;
-					if (i == 0)
-						end_of_audio.vpkt.snd_term_id = 0x03;
-					else if (i == 1)
-						end_of_audio.vpkt.snd_term_id = 0x01;
-					else
-						end_of_audio.vpkt.snd_term_id = 0x02;
-					end_of_audio.vpkt.streamid = toRptr[i].streamid;
-					end_of_audio.vpkt.ctrl = toRptr[i].sequence | 0x40;
-
-					for (int j=0; j<2; j++)
-						sendto(srv_sock, end_of_audio.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-
-					toRptr[i].streamid = 0;
-					toRptr[i].adr = 0;
-					toRptr[i].last_time = 0;
-				}
-			}
-
-			/* any stream coming from local repeater timed out ? */
-			if (band_txt[i].last_time != 0) {
-				time(&t_now);
-				if ((t_now - band_txt[i].last_time) > from_local_rptr_timeout) {
-					/* This local stream never went to a remote system, so trace the timeout */
-					if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0)
-						printf("Inactivity from local rptr band %d, removing stream id %04x\n", i, band_txt[i].streamID);
-
-					band_txt[i].streamID = 0;
-					band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
-					band_txt[i].lh_mycall[0] = '\0';
-					band_txt[i].lh_sfx[0] = '\0';
-					band_txt[i].lh_yrcall[0] = '\0';
-					band_txt[i].lh_rpt1[0] = '\0';
-					band_txt[i].lh_rpt2[0] = '\0';
-
-					band_txt[i].last_time = 0;
-
-					band_txt[i].txt[0] = '\0';
-					band_txt[i].txt_cnt = 0;
-
-					band_txt[i].dest_rptr[0] = '\0';
-
-					band_txt[i].num_dv_frames = 0;
-					band_txt[i].num_dv_silent_frames = 0;
-					band_txt[i].num_bit_errors = 0;
-				}
-			}
-
-			/* any stream from local repeater to a remote gateway timed out ? */
-			if (to_remote_g2[i].toDst4.sin_addr.s_addr != 0) {
-				time(&t_now);
-				if ((t_now - to_remote_g2[i].last_time) > from_local_rptr_timeout) {
-					printf("Inactivity from local rptr mod %d, removing stream id %04x\n", i, to_remote_g2[i].streamid);
-
-					memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
-					to_remote_g2[i].streamid = 0;
-					to_remote_g2[i].last_time = 0;
-				}
-			}
-		}
-
-		/* wait 20 ms max */
+		// wait 20 ms max
+		fd_set fdset;
 		FD_ZERO(&fdset);
 		FD_SET(g2_sock, &fdset);
 		FD_SET(srv_sock, &fdset);
 		struct timeval tv;
 		tv.tv_sec = 0;
-		tv.tv_usec = 20000; /* 20 ms */
+		tv.tv_usec = 20000; // 20 ms
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
-		/* process packets coming from remote G2 */
+		// process packets coming from remote G2
 		if (FD_ISSET(g2_sock, &fdset)) {
-			socklen_t fromlen = sizeof(struct sockaddr_in);
-			int g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
-
-			// save incoming port for mobile systems
-			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
-				printf("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
-				portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
-			} else {
-				if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr]) {
-					printf("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
-					portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
-				}
-			}
-
-
-			if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) &&
-			      (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
-				if (g2buflen == 56) {
-
-					// Find out the local repeater module IP/port to send the data to
-					int i = g2buf.hdr.rpt1[7] - 'A';
-
-					/* valid repeater module? */
-					if (i>=0 && i<3) {
-						// toRptr[i] is active if a remote system is talking to it or
-						// toRptr[i] is receiving data from a cross-band
-						if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0) &&
-						        ((g2buf.hdr.flag[0] == 0x00) ||
-						         (g2buf.hdr.flag[0] == 0x01) || /* allow the announcements from g2_link */
-						         (g2buf.hdr.flag[0] == 0x08) ||
-						         (g2buf.hdr.flag[0] == 0x20) ||
-						         (g2buf.hdr.flag[0] == 0x28) ||
-						         (g2buf.hdr.flag[0] == 0x40))) {
-							if (bool_qso_details)
-								printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n",
-									ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2,
-									g2buf.hdr.mycall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
-
-							memcpy(rptrbuf.pkt_id, "DSTR", 4);
-							rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);	// bump the counter
-							rptrbuf.flag[0] = 0x73;
-							rptrbuf.flag[1] = 0x12;
-							rptrbuf.flag[2] = 0x00;
-							rptrbuf.remaining = 0x30;
-							rptrbuf.vpkt.icm_id = 0x20;
-							//memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 47);
-							rptrbuf.vpkt.dst_rptr_id = g2buf.flagb[0];
-							rptrbuf.vpkt.snd_rptr_id = g2buf.flagb[1];
-							rptrbuf.vpkt.snd_term_id = g2buf.flagb[2];
-							rptrbuf.vpkt.streamid    = g2buf.streamid;
-							rptrbuf.vpkt.ctrl        = g2buf.ctrl;
-							memcpy(rptrbuf.vpkt.hdr.flag, g2buf.hdr.flag,   3);
-							if (is_icom) {
-								memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt2,   8);
-								memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt1,   8);
-							} else {
-								memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt1,   8);
-								memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt2,   8);
-							}
-							memcpy(rptrbuf.vpkt.hdr.ur,   g2buf.hdr.urcall, 8);
-							memcpy(rptrbuf.vpkt.hdr.my,   g2buf.hdr.mycall, 8);
-							memcpy(rptrbuf.vpkt.hdr.nm,   g2buf.hdr.sfx,    4);
-							memcpy(rptrbuf.vpkt.hdr.pfcs, g2buf.hdr.pfcs,   2);
-
-							sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-							/* save the header */
-							memcpy(toRptr[i].saved_hdr, rptrbuf.pkt_id, 58);
-							toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
-
-							/* This is the active streamid */
-							toRptr[i].streamid = g2buf.streamid;
-							toRptr[i].adr = fromDst4.sin_addr.s_addr;
-
-							/* time it, in case stream times out */
-							time(&toRptr[i].last_time);
-
-							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-						}
-					}
-				} else {	// g2buflen == 27
-					if (bool_qso_details && g2buf.ctrl & 0x40)
-						printf("id=%04x END G2\n", ntohs(g2buf.streamid));
-
-					/* find out which repeater module to send the data to */
-					int i;
-					for (i=0; i<3; i++) {
-						/* streamid match ? */
-						if (toRptr[i].streamid==g2buf.streamid && toRptr[i].adr==fromDst4.sin_addr.s_addr) {
-							memcpy(rptrbuf.pkt_id, "DSTR", 4);
-							rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
-							rptrbuf.flag[0] = 0x73;
-							rptrbuf.flag[1] = 0x12;
-							rptrbuf.flag[2] = 0x00;
-							rptrbuf.remaining= 0x13;
-							rptrbuf.vpkt.icm_id = 0x20;
-							memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
-
-							sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-							/* timeit */
-							time(&toRptr[i].last_time);
-
-							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-
-							/* End of stream ? */
-							if (g2buf.ctrl & 0x40) {
-								/* clear the saved header */
-								memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
-								toRptr[i].saved_adr = 0;
-
-								toRptr[i].last_time = 0;
-								toRptr[i].streamid = 0;
-								toRptr[i].adr = 0;
-							}
-							break;
-						}
-					}
-
-					/* no match ? */
-					if ((i == 3) && bool_regen_header) {
-						/* check if this a continuation of audio that timed out */
-
-						if (g2buf.ctrl & 0x40)
-							;  /* we do not care about end-of-QSO */
-						else {
-							/* for which repeater this stream has timed out ?  */
-							for (i = 0; i < 3; i++) {
-								/* match saved stream ? */
-								if (0==memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) && toRptr[i].saved_adr==fromDst4.sin_addr.s_addr) {
-									/* repeater module is inactive ?  */
-									if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
-										printf("Re-generating header for streamID=%04x\n", g2buf.streamid);
-
-										toRptr[i].saved_hdr[4] = (unsigned char)(((is_icom ? G2_COUNTER_OUT : toRptr[i].G2_COUNTER) >> 8) & 0xff);
-										toRptr[i].saved_hdr[5] = (unsigned char)((is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++) & 0xff);
-
-										/* re-generate/send the header */
-										sendto(srv_sock, toRptr[i].saved_hdr, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-										/* send this audio packet to repeater */
-										memcpy(rptrbuf.pkt_id, "DSTR", 4);
-										rptrbuf.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
-										rptrbuf.flag[0] = 0x73;
-										rptrbuf.flag[1] = 0x12;
-										rptrbuf.flag[2] = 0x00;
-										rptrbuf.remaining = 0x13;
-										rptrbuf.vpkt.icm_id = 0x20;
-										memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
-
-										sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-										/* make sure that any more audio arriving will be accepted */
-										toRptr[i].streamid = g2buf.streamid;
-										toRptr[i].adr = fromDst4.sin_addr.s_addr;
-
-										/* time it, in case stream times out */
-										time(&toRptr[i].last_time);
-
-										toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-
-									}
-									break;
-								}
-							}
-						}
-					}
-				}
-			}
+			ProcessRouting();
 			FD_CLR (g2_sock,&fdset);
 		}
 
-		/* process data coming from local repeater modules */
+		// process packets coming from local repeater modules
 		if (FD_ISSET(srv_sock, &fdset)) {
-			socklen_t fromlen = sizeof(struct sockaddr_in);
-			int recvlen = recvfrom(srv_sock, rptrbuf.pkt_id, 58,  0, (struct sockaddr *)&fromRptr, &fromlen);
-
-			if (0 == memcmp(rptrbuf.pkt_id, "DSTR", 4)) {
-				/////////////////////////////////////////////////////////////////////
-				// some ICOM handshaking...
-				if (is_icom && 10==recvlen && 0x72==rptrbuf.flag[0]) {	// ACK from rptr
-					NEW_REPLY_SEQ = ntohs(rptrbuf.counter);
-					if (NEW_REPLY_SEQ == OLD_REPLY_SEQ) {
-						G2_COUNTER_OUT = NEW_REPLY_SEQ;
-						OLD_REPLY_SEQ = NEW_REPLY_SEQ - 1;
-					} else
-						OLD_REPLY_SEQ = NEW_REPLY_SEQ;
-				} else if (is_icom && 0x73U==rptrbuf.flag[0] && (0x21U==rptrbuf.flag[1] || 0x11U==rptrbuf.flag[1] || 0x0U==rptrbuf.flag[1])) {
-					rptrbuf.flag[0] = 0x72U;
-					memset(rptrbuf.flag+1, 0x0U, 3);
-					sendto(srv_sock, rptrbuf.pkt_id, 10, 0, (struct sockaddr *)&toRptr[0].band_addr, sizeof(struct sockaddr_in));
-				// end of ICOM handshaking
-				/////////////////////////////////////////////////////////////////////
-				} else if ( (recvlen==58 || recvlen==29 || recvlen==32) &&
-						rptrbuf.flag[0]==0x73 && rptrbuf.flag[1]==0x12 && rptrbuf.flag[2]==0x0 && rptrbuf.vpkt.icm_id==0x20 &&
-						(rptrbuf.remaining==0x30 || rptrbuf.remaining==0x13 || rptrbuf.remaining==0x16) ) {
-					if (is_icom) {	// acknowledge packet to ICOM
-						SDSTR reply;
-						memcpy(reply.pkt_id, "DSTR", 4);
-						reply.counter = rptrbuf.counter;
-						reply.flag[0] = 0x72U;
-						memset(reply.flag+1, 0, 3);
-						sendto(srv_sock, reply.pkt_id, 10, 0, (struct sockaddr *)&toRptr[0].band_addr, sizeof(struct sockaddr_in));
-					}
-
-					if (recvlen == 58) {
-
-						if (bool_qso_details)
-							printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n",
-								ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1,
-								rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
-
-						if (0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	// rpt1 is this repeater
-								(rptrbuf.vpkt.hdr.flag[0]==0x00 ||				// normal
-								 rptrbuf.vpkt.hdr.flag[0]==0x08 ||				// EMR
-								 rptrbuf.vpkt.hdr.flag[0]==0x20 ||				// BREAK
-								 rptrbuf.vpkt.hdr.flag[0]==0x28)) {				// EMR + BREAK (0x1, announcements are not allowed)
-
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0  && i<3) {
-								if (bool_dtmf_debug)
-									printf("resetting dtmf[%d] (got a header)\n", i);
-								dtmf_last_frame[i] = 0;
-								dtmf_counter[i] = 0;
-								memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
-								dtmf_buf_count[i] = 0;
-
-								/* Initialize the LAST HEARD data for the band */
-
-								band_txt[i].streamID = rptrbuf.vpkt.streamid;
-
-								memcpy(band_txt[i].flags, rptrbuf.vpkt.hdr.flag, 3);
-
-								memcpy(band_txt[i].lh_mycall, rptrbuf.vpkt.hdr.my, 8);
-								band_txt[i].lh_mycall[8] = '\0';
-
-								memcpy(band_txt[i].lh_sfx, rptrbuf.vpkt.hdr.nm, 4);
-								band_txt[i].lh_sfx[4] = '\0';
-
-								memcpy(band_txt[i].lh_yrcall, rptrbuf.vpkt.hdr.ur, 8);
-								band_txt[i].lh_yrcall[8] = '\0';
-
-								memcpy(band_txt[i].lh_rpt1, rptrbuf.vpkt.hdr.r1, 8);
-								band_txt[i].lh_rpt1[8] = '\0';
-
-								memcpy(band_txt[i].lh_rpt2, rptrbuf.vpkt.hdr.r2, 8);
-								band_txt[i].lh_rpt2[8] = '\0';
-
-								time(&band_txt[i].last_time);
-
-								band_txt[i].txt[0] = '\0';
-								band_txt[i].txt_cnt = 0;
-								band_txt[i].txt_stats_sent = false;
-
-								band_txt[i].dest_rptr[0] = '\0';
-
-								/* try to process GPS mode: GPRMC and ID */
-								band_txt[i].temp_line[0] = '\0';
-								band_txt[i].temp_line_cnt = 0;
-								band_txt[i].gprmc[0] = '\0';
-								band_txt[i].gpid[0] = '\0';
-								band_txt[i].is_gps_sent = false;
-								// band_txt[i].gps_last_time = 0; DO NOT reset it
-
-								new_group[i] = true;
-								to_print[i] = 0;
-								ABC_grp[i] = false;
-
-								band_txt[i].num_dv_frames = 0;
-								band_txt[i].num_dv_silent_frames = 0;
-								band_txt[i].num_bit_errors = 0;
-
-								/* select the band for aprs processing, and lock on the stream ID */
-								if (bool_send_aprs)
-									aprs->SelectBand(i, ntohs(rptrbuf.vpkt.streamid));
-							}
-						}
-
-						/* Is MYCALL valid ? */
-						memset(temp_radio_user, ' ', 8);
-						memcpy(temp_radio_user, rptrbuf.vpkt.hdr.my, 8);
-						temp_radio_user[8] = '\0';
-
-						int mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
-
-						if (mycall_valid == REG_NOERROR)
-							; // printf("MYCALL [%s] passed IRC expression validation\n", temp_radio_user);
-						else {
-							if (mycall_valid == REG_NOMATCH)
-								printf("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
-							else
-								printf("Failed to validate MYCALL [%s], regexec error=%d\n", temp_radio_user, mycall_valid);
-						}
-
-						/* send data qnlink */
-						if (mycall_valid == REG_NOERROR)
-							sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
-
-						if (mycall_valid==REG_NOERROR &&
-								memcmp(rptrbuf.vpkt.hdr.ur, "XRF", 3) &&	// not a reflector
-								memcmp(rptrbuf.vpkt.hdr.ur, "REF", 3) &&
-								memcmp(rptrbuf.vpkt.hdr.ur, "DCS", 3) &&
-								rptrbuf.vpkt.hdr.ur[0]!=' ' && 				// must have something
-								memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6)) {	// urcall is NOT CQCQCQ
-							if (rptrbuf.vpkt.hdr.ur[0]=='/' &&										// repeater routing!
-									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 this repeater
-									(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// with a valid module
-									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) && 			// rpt2 is this repeater
-									rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
-									(rptrbuf.vpkt.hdr.flag[0]== 0x00 ||	// normal
-									 rptrbuf.vpkt.hdr.flag[0]== 0x08 ||	// EMR
-									 rptrbuf.vpkt.hdr.flag[0]== 0x20 ||	// BK
-									 rptrbuf.vpkt.hdr.flag[0]== 0x28)) {// EMR + BK
-
-								if (memcmp(rptrbuf.vpkt.hdr.ur+1, OWNER.c_str(), 6)) {	// the value after the slash is NOT this repeater
-									int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-									if (i>=0 && i<3) {
-										/* one radio user on a repeater module at a time */
-										if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
-											/* YRCALL=/repeater + mod */
-											/* YRCALL=/KJ4NHFB */
-
-											memset(temp_radio_user, ' ', 8);
-											memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur+1, 6);
-											temp_radio_user[6] = ' ';
-											temp_radio_user[7] = rptrbuf.vpkt.hdr.ur[7];
-											if (temp_radio_user[7] == ' ')
-												temp_radio_user[7] = 'A';
-											temp_radio_user[CALL_SIZE] = '\0';
-
-											bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
-											if (result) { /* it is a repeater */
-												uint32_t address;
-												/* set the destination */
-												to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
-												memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
-												to_remote_g2[i].toDst4.sin_family = AF_INET;
-												to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
-												// if the address is in the portmap, we'll use that saved port instead of the default port
-												auto theAddress = portmap.find(address);
-												to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end()) ? g2_external.port : theAddress->second);
-
-												memcpy(g2buf.title, "DSVT", 4);
-												g2buf.config = 0x10;
-												g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-												g2buf.id =  rptrbuf.vpkt.icm_id;
-												g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-												g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-												g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-												g2buf.streamid = rptrbuf.vpkt.streamid;
-												g2buf.ctrl = rptrbuf.vpkt.ctrl;
-												memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
-												/* set rpt1 */
-												memset(g2buf.hdr.rpt1, ' ', 8);
-												memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
-												g2buf.hdr.rpt1[7] = temp_mod;
-												/* set rpt2 */
-												memset(g2buf.hdr.rpt2, ' ', 8);
-												memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
-												g2buf.hdr.rpt2[7] = 'G';
-												/* set yrcall, can NOT let it be slash and repeater + module */
-												memcpy(g2buf.hdr.urcall, "CQCQCQ  ", 8);
-												memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
-												memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
-
-												/* set PFCS */
-												calcPFCS(g2buf.title, 56);
-
-												// The remote repeater has been set, lets fill in the dest_rptr
-												// so that later we can send that to the LIVE web site
-												memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
-												band_txt[i].dest_rptr[CALL_SIZE] = '\0';
-
-												// send to remote gateway
-												for (int j=0; j<5; j++)
-													sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-
-												printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
-												ntohs(g2buf.streamid), inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
-												g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
-
-												time(&(to_remote_g2[i].last_time));
-											}
-										}
-									}
-								}
-							} else if (memcmp(rptrbuf.vpkt.hdr.ur, OWNER.c_str(), 7) &&				// urcall is not this repeater
-									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 is this repeater
-									(rptrbuf.vpkt.hdr.r1[7]>='A'&& rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod is A,B,C
-									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&				// rpt2 is this repeater
-									rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
-
-									   (rptrbuf.vpkt.hdr.flag[0]==0x00 ||	// normal
-										rptrbuf.vpkt.hdr.flag[0]==0x08 ||	// EMR
-										rptrbuf.vpkt.hdr.flag[0]==0x20 ||	// BK
-										rptrbuf.vpkt.hdr.flag[0]==0x28)) {	// EMR + BK
-
-
-								memset(temp_radio_user, ' ', 8);
-								memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur, 8);
-								temp_radio_user[8] = '\0';
-								bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
-								if (result) {
-									/* destination is a remote system */
-									if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
-										int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-										if (i>=0 && i<3) {
-											/* one radio user on a repeater module at a time */
-											if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
-												uint32_t address;
-												/* set the destination */
-												to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
-												memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
-												to_remote_g2[i].toDst4.sin_family = AF_INET;
-												to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
-												// if the address is in the portmap, we'll use that port instead of the default
-												auto theAddress = portmap.find(address);
-												to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
-
-												memcpy(g2buf.title, "DSVT", 4);
-												g2buf.config = 0x10;
-												g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-												g2buf.id = rptrbuf.vpkt.icm_id;
-												g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-												g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-												g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-												g2buf.streamid = rptrbuf.vpkt.streamid;
-												g2buf.ctrl = rptrbuf.vpkt.ctrl;
-												memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
-												/* set rpt1 */
-												memset(g2buf.hdr.rpt1, ' ', 8);
-												memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
-												g2buf.hdr.rpt1[7] = temp_mod;
-												/* set rpt2 */
-												memset(g2buf.hdr.rpt2, ' ', 8);
-												memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
-												g2buf.hdr.rpt2[7] = 'G';
-												/* set PFCS */
-												memcpy(g2buf.hdr.urcall, rptrbuf.vpkt.hdr.ur, 8);
-												memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
-												memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
-												calcPFCS(g2buf.title, 56);
-
-
-												// The remote repeater has been set, lets fill in the dest_rptr
-												// so that later we can send that to the LIVE web site
-												memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
-												band_txt[i].dest_rptr[CALL_SIZE] = '\0';
-
-												/* send to remote gateway */
-												for (int j=0; j<5; j++)
-													sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-
-												printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n",
-												inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
-												g2buf.streamid, g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
-
-												time(&(to_remote_g2[i].last_time));
-											}
-										}
-									} else {
-										int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-										if (i>=0 && i<3) {
-											/* the user we are trying to contact is on our gateway */
-											/* make sure they are on a different module */
-											if (temp_mod != rptrbuf.vpkt.hdr.r1[7]) {
-												/*
-												   The remote repeater has been set, lets fill in the dest_rptr
-												   so that later we can send that to the LIVE web site
-												*/
-												memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.r2, 8);
-												band_txt[i].dest_rptr[7] = temp_mod;
-												band_txt[i].dest_rptr[8] = '\0';
-
-												i = temp_mod - 'A';
-
-												/* valid destination repeater module? */
-												if (i>=0 && i<3) {
-													/*
-													   toRptr[i] :    receiving from a remote system or cross-band
-													   band_txt[i] :  local RF is talking.
-													*/
-													if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-														printf("CALLmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.r1[7], temp_mod);
-
-														rptrbuf.vpkt.hdr.r2[7] = temp_mod;
-														rptrbuf.vpkt.hdr.r1[7] = 'G';
-														calcPFCS(rptrbuf.pkt_id, 58);
-
-														sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-														/* This is the active streamid */
-														toRptr[i].streamid = rptrbuf.vpkt.streamid;
-														toRptr[i].adr = fromRptr.sin_addr.s_addr;
-
-														/* time it, in case stream times out */
-														time(&toRptr[i].last_time);
-
-														/* bump the G2 counter */
-														if (is_icom)
-															G2_COUNTER_OUT++;
-														else
-															toRptr[i].G2_COUNTER++;
-
-														toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-													}
-												}
-											} else
-												printf("icom rule: no routing from %.8s to %s%c\n", rptrbuf.vpkt.hdr.r1, arearp_cs, temp_mod);
-										}
-									}
-								}
-							}
-						} else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      C0", 8)) {
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								/* voicemail file is closed */
-								if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
-									unlink(vm[i].file);
-									printf("removed voicemail file: %s\n", vm[i].file);
-									vm[i].file[0] = '\0';
-								} else
-									printf("No voicemail to clear or still recording\n");
-							}
-						} else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      R0", 8)) {
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								/* voicemail file is closed */
-								if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
-									try {
-										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, vm[i].file);
-									} catch (const std::exception &e) {
-										printf("Failed to start voicemail playback. Exception: %s\n", e.what());
-									}
-								} else
-									printf("No voicemail to recall or still recording\n");
-							}
-						} else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      S0", 8)) {
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								if (vm[i].fd >= 0)
-									printf("Already recording for voicemail on mod %d\n", i);
-								else {
-									memset(tempfile, '\0', sizeof(tempfile));
-									snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr. r1[7], "voicemail.dat");
-
-									vm[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-									if (vm[i].fd < 0)
-										printf("Failed to create file %s for voicemail\n", tempfile);
-									else {
-										strcpy(vm[i].file, tempfile);
-										printf("Recording mod %c for voicemail into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], vm[i].file);
-
-										time(&vm[i].last_time);
-										vm[i].streamid = rptrbuf.vpkt.streamid;
-
-										memcpy(recbuf.title, "DSVT", 4);
-										recbuf.config = 0x10;
-										recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-										recbuf.id =  rptrbuf.vpkt.icm_id;
-										recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-										recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-										recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-										memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
-										memset(recbuf.hdr.rpt1, ' ', 8);
-										memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.size());
-										recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
-										memset(recbuf.hdr.rpt2, ' ', 8);
-										memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.size());
-										recbuf.hdr.rpt2[7] = 'G';
-										memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
-
-										calcPFCS(recbuf.title, 56);
-
-										rec_len = 56;
-										(void)write(vm[i].fd, "DVTOOL", 6);
-										(void)write(vm[i].fd, &num_recs, 4);
-										(void)write(vm[i].fd, &rec_len, 2);
-										(void)write(vm[i].fd, &recbuf, rec_len);
-									}
-								}
-							}
-						} else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "       E", 8)) {
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								if (recd[i].fd >= 0)
-									printf("Already recording for echotest on mod %d\n", i);
-								else {
-									memset(tempfile, '\0', sizeof(tempfile));
-									snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr.r1[7], "echotest.dat");
-
-									recd[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-									if (recd[i].fd < 0)
-										printf("Failed to create file %s for echotest\n", tempfile);
-									else {
-										strcpy(recd[i].file, tempfile);
-										printf("Recording mod %c for echotest into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], recd[i].file);
-
-										time(&recd[i].last_time);
-										recd[i].streamid = rptrbuf.vpkt.streamid;
-
-										memcpy(recbuf.title, "DSVT", 4);
-										recbuf.config = 0x10;
-										recbuf.id =  rptrbuf.vpkt.icm_id;
-										recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-										recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-										recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-										recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-										memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
-										memset(recbuf.hdr.rpt1, ' ', 8);
-										memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
-										recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
-										memset(recbuf.hdr.rpt2, ' ', 8);
-										memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
-										recbuf.hdr.rpt2[7] = 'G';
-										memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
-
-										calcPFCS(recbuf.title, 56);
-
-										rec_len = 56;
-										(void)write(recd[i].fd, "DVTOOL", 6);
-										(void)write(recd[i].fd, &num_recs, 4);
-										(void)write(recd[i].fd, &rec_len, 2);
-										(void)write(recd[i].fd, &recbuf, rec_len);
-									}
-								}
-							}
-						/* check for cross-banding */
-						} else if ( 0==memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) &&		// yrcall is CQCQCQ
-									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&	// rpt1 is this repeater
-									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	// rpt2 is this repeater
-								(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod of rpt1 is A,B,C
-								(rptrbuf.vpkt.hdr.r2[7]>='A' && rptrbuf.vpkt.hdr.r2[7]<='C') &&	// !!! usually G on rpt2, but we see A,B,C with
-								rptrbuf.vpkt.hdr.r2[7]!=rptrbuf.vpkt.hdr.r1[7] ) {				// cross-banding? make sure NOT the same
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								// The remote repeater has been set, lets fill in the dest_rptr
-								// so that later we can send that to the LIVE web site
-								memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.r2, 8);
-								band_txt[i].dest_rptr[8] = '\0';
-							}
-
-							i = rptrbuf.vpkt.hdr.r2[7] - 'A';
-
-							// valid destination repeater module?
-							if (i>=0 && i<3) {
-								// toRptr[i] :    receiving from a remote system or cross-band
-								// band_txt[i] :  local RF is talking.
-								if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-									printf("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.r1[7], rptrbuf.vpkt.hdr.r2[7]);
-
-									rptrbuf.vpkt.hdr.r1[7] = 'G';
-									calcPFCS(rptrbuf.pkt_id, 58);
-
-									sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-									/* This is the active streamid */
-									toRptr[i].streamid = rptrbuf.vpkt.streamid;
-									toRptr[i].adr = fromRptr.sin_addr.s_addr;
-
-									/* time it, in case stream times out */
-									time(&toRptr[i].last_time);
-
-									/* bump the G2 counter */
-									if (is_icom)
-										G2_COUNTER_OUT++;
-									else
-										toRptr[i].G2_COUNTER ++;
-
-									toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-								}
-							}
-						}
-					} else {	// recvlen is 29 or 32
-						for (int i=0; i<3; i++) {
-							if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
-								time(&band_txt[i].last_time);
-
-								if (rptrbuf.vpkt.ctrl & 0x40) {	// end of voice data
-									if (dtmf_buf_count[i] > 0) {
-										dtmf_file = dtmf_dir;
-										dtmf_file.push_back('/');
-										dtmf_file.push_back('A'+i);
-										dtmf_file += "_mod_DTMF_NOTIFY";
-										if (bool_dtmf_debug)
-											printf("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
-										FILE *dtmf_fp = fopen(dtmf_file.c_str(), "w");
-										if (dtmf_fp) {
-											fprintf(dtmf_fp, "%s\n%s", dtmf_buf[i], band_txt[i].lh_mycall);
-											fclose(dtmf_fp);
-										} else
-											printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
-
-
-										if (bool_dtmf_debug)
-											printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].lh_mycall);
-										memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
-										dtmf_buf_count[i] = 0;
-										dtmf_counter[i] = 0;
-										dtmf_last_frame[i] = 0;
-									}
-
-									ii->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1,
-										band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames,
-										band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
-
-									band_txt[i].streamID = 0;
-									band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
-									band_txt[i].lh_mycall[0] = '\0';
-									band_txt[i].lh_sfx[0] = '\0';
-									band_txt[i].lh_yrcall[0] = '\0';
-									band_txt[i].lh_rpt1[0] = '\0';
-									band_txt[i].lh_rpt2[0] = '\0';
-
-									band_txt[i].last_time = 0;
-
-									band_txt[i].txt[0] = '\0';
-									band_txt[i].txt_cnt = 0;
-
-									band_txt[i].dest_rptr[0] = '\0';
-
-									band_txt[i].num_dv_frames = 0;
-									band_txt[i].num_dv_silent_frames = 0;
-									band_txt[i].num_bit_errors = 0;
-
-								} else {	// not the end of the voice stream
-									int ber_data[3];
-									int ber_errs = dstar_dv_decode(rptrbuf.vpkt.vasd.voice, ber_data);
-									if (ber_data[0] == 0xf85)
-										band_txt[i].num_dv_silent_frames++;
-									band_txt[i].num_bit_errors += ber_errs;
-									band_txt[i].num_dv_frames++;
-
-									if ((ber_data[0] & 0x0ffc) == 0xfc0) {
-										dtmf_digit = (ber_data[0] & 0x03) | ((ber_data[2] & 0x60) >> 3);
-										if (dtmf_counter[i] > 0) {
-											if (dtmf_last_frame[i] != dtmf_digit)
-												dtmf_counter[i] = 0;
-										}
-										dtmf_last_frame[i] = dtmf_digit;
-										dtmf_counter[i]++;
-
-										if ((dtmf_counter[i] == 5) && (dtmf_digit >= 0) && (dtmf_digit <= 15)) {
-											if (dtmf_buf_count[i] < MAX_DTMF_BUF) {
-												const char *dtmf_chars = "147*2580369#ABCD";
-												dtmf_buf[i][ dtmf_buf_count[i] ] = dtmf_chars[dtmf_digit];
-												dtmf_buf_count[i]++;
-											}
-										}
-										const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
-										memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
-									} else
-										dtmf_counter[i] = 0;
-								}
-								break;
-							}
-						}
-
-						if (recvlen == 29)
-							memcpy(tmp_txt, rptrbuf.vpkt.vasd.text, 3);
-						else
-							memcpy(tmp_txt, rptrbuf.vpkt.vasd1.text, 3);
-
-						// extract 20-byte RADIO ID
-						if ((tmp_txt[0] != 0x55) || (tmp_txt[1] != 0x2d) || (tmp_txt[2] != 0x16)) {
-
-							for (int i=0; i<3; i++) {
-								if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
-									if (new_group[i]) {
-										tmp_txt[0] = tmp_txt[0] ^ 0x70;
-										header_type = tmp_txt[0] & 0xf0;
-
-										if ((header_type == 0x50) ||  /* header  */ (header_type == 0xc0)) {  /* squelch */
-											new_group[i] = false;
-											to_print[i] = 0;
-											ABC_grp[i] = false;
-										} else if (header_type == 0x30) { /* GPS or GPS id or APRS */
-											new_group[i] = false;
-											to_print[i] = tmp_txt[0] & 0x0f;
-											ABC_grp[i] = false;
-											if (to_print[i] > 5)
-												to_print[i] = 5;
-											else if (to_print[i] < 1)
-												to_print[i] = 1;
-
-											if ((to_print[i] > 1) && (to_print[i] <= 5)) {
-												/* something went wrong? all bets are off */
-												if (band_txt[i].temp_line_cnt > 200) {
-													printf("Reached the limit in the OLD gps mode\n");
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												}
-
-												/* fresh GPS string, re-initialize */
-												if ((to_print[i] == 5) && ((tmp_txt[1] ^ 0x4f) == '$')) {
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												}
-
-												/* do not copy CR, NL */
-												if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
-													band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
-													band_txt[i].temp_line_cnt++;
-												}
-												if (((tmp_txt[2] ^ 0x93) != '\r') && ((tmp_txt[2] ^ 0x93) != '\n')) {
-													band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2] ^ 0x93;
-													band_txt[i].temp_line_cnt++;
-												}
-
-												if (((tmp_txt[1] ^ 0x4f) == '\r') || ((tmp_txt[2] ^ 0x93) == '\r')) {
-													if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-														memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-														band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-													} else if (band_txt[i].temp_line[0] != '$') {
-														memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-														band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-														if (bool_send_aprs && !band_txt[i].is_gps_sent)
-															gps_send(i);
-													}
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												} else if (((tmp_txt[1] ^ 0x4f) == '\n') || ((tmp_txt[2] ^ 0x93) == '\n')) {
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												}
-												to_print[i] -= 2;
-											} else {
-												/* something went wrong? all bets are off */
-												if (band_txt[i].temp_line_cnt > 200) {
-													printf("Reached the limit in the OLD gps mode\n");
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												}
-
-												/* do not copy CR, NL */
-												if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
-													band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
-													band_txt[i].temp_line_cnt++;
-												}
-
-												if ((tmp_txt[1] ^ 0x4f) == '\r') {
-													if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-														memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-														band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-													} else if (band_txt[i].temp_line[0] != '$') {
-														memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-														band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-														if (bool_send_aprs && !band_txt[i].is_gps_sent)
-															gps_send(i);
-													}
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												} else if ((tmp_txt[1] ^ 0x4f) == '\n') {
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												}
-												to_print[i] --;
-											}
-										} else if (header_type == 0x40) { /* ABC text */
-											new_group[i] = false;
-											to_print[i] = 3;
-											ABC_grp[i] = true;
-											C_seen[i] = ((tmp_txt[0] & 0x0f) == 0x03)?true:false;
-
-											band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1] ^ 0x4f;
-											band_txt[i].txt_cnt++;
-
-											band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2] ^ 0x93;
-											band_txt[i].txt_cnt++;
-
-											/*
-											   We should NOT see any more text,
-											   if we already processed text,
-											   so blank out the codes.
-											*/
-											if (band_txt[i].txt_stats_sent) {
-												if (recvlen == 29) {
-													rptrbuf.vpkt.vasd.text[0] = 0x70;
-													rptrbuf.vpkt.vasd.text[1] = 0x4f;
-													rptrbuf.vpkt.vasd.text[2] = 0x93;
-												} else {
-													rptrbuf.vpkt.vasd1.text[0] = 0x70;
-													rptrbuf.vpkt.vasd1.text[1] = 0x4f;
-													rptrbuf.vpkt.vasd1.text[2] = 0x93;
-												}
-											}
-
-											if (band_txt[i].txt_cnt >= 20) {
-												band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
-												band_txt[i].txt_cnt = 0;
-											}
-										} else {
-											new_group[i] = false;
-											to_print[i] = 0;
-											ABC_grp[i] = false;
-										}
-									} else {
-										if (to_print[i] == 3) {
-											if (ABC_grp[i]) {
-												band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[0] ^ 0x70;
-												band_txt[i].txt_cnt ++;
-
-												band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1] ^ 0x4f;
-												band_txt[i].txt_cnt ++;
-
-												band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2] ^ 0x93;
-												band_txt[i].txt_cnt ++;
-
-												// We should NOT see any more text,
-												// if we already processed text,
-												// so blank out the codes.
-
-												if (band_txt[i].txt_stats_sent) {
-													if (recvlen == 29) {
-														rptrbuf.vpkt.vasd.text[0] = 0x70;
-														rptrbuf.vpkt.vasd.text[1] = 0x4f;
-														rptrbuf.vpkt.vasd.text[2] = 0x93;
-													} else {
-														rptrbuf.vpkt.vasd1.text[0] = 0x70;
-														rptrbuf.vpkt.vasd1.text[1] = 0x4f;
-														rptrbuf.vpkt.vasd1.text[2] = 0x93;
-													}
-												}
-
-												if ((band_txt[i].txt_cnt >= 20) || C_seen[i]) {
-													band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
-													if (!band_txt[i].txt_stats_sent) {
-														/*** if YRCALL is CQCQCQ, set dest_rptr ***/
-														if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
-															set_dest_rptr(i, band_txt[i].dest_rptr);
-														//	if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
-														//		band_txt[i].dest_rptr[0] = '\0';
-														}
-
-														ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx,band_txt[i].lh_yrcall,
-															band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1],
-															band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
-														band_txt[i].txt_stats_sent = true;
-													}
-													band_txt[i].txt_cnt = 0;
-												}
-												if (C_seen[i])
-													C_seen[i] = false;
-											} else {
-												/* something went wrong? all bets are off */
-												if (band_txt[i].temp_line_cnt > 200) {
-													printf("Reached the limit in the OLD gps mode\n");
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												}
-
-												/* do not copy CR, NL */
-												if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
-													band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
-													band_txt[i].temp_line_cnt++;
-												}
-												if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
-													band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
-													band_txt[i].temp_line_cnt++;
-												}
-												if (((tmp_txt[2] ^ 0x93) != '\r') && ((tmp_txt[2] ^ 0x93) != '\n')) {
-													band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2] ^ 0x93;
-													band_txt[i].temp_line_cnt++;
-												}
-
-												if (
-													((tmp_txt[0] ^ 0x70) == '\r') ||
-													((tmp_txt[1] ^ 0x4f) == '\r') ||
-													((tmp_txt[2] ^ 0x93) == '\r')
-												) {
-													if (0 == memcmp(band_txt[i].temp_line, "$GPRMC", 6)) {
-														memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-														band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-													} else if (band_txt[i].temp_line[0] != '$') {
-														memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-														band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-														if (bool_send_aprs && !band_txt[i].is_gps_sent)
-															gps_send(i);
-													}
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												} else if (((tmp_txt[0] ^ 0x70) == '\n') ||
-														   ((tmp_txt[1] ^ 0x4f) == '\n') ||
-														   ((tmp_txt[2] ^ 0x93) == '\n')) {
-													band_txt[i].temp_line[0] = '\0';
-													band_txt[i].temp_line_cnt = 0;
-												}
-											}
-										} else if (to_print[i] == 2) {
-											/* something went wrong? all bets are off */
-											if (band_txt[i].temp_line_cnt > 200) {
-												printf("Reached the limit in the OLD gps mode\n");
-												band_txt[i].temp_line[0] = '\0';
-												band_txt[i].temp_line_cnt = 0;
-											}
-
-											/* do not copy CR, NL */
-											if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
-												band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
-												band_txt[i].temp_line_cnt++;
-											}
-											if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
-												band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
-												band_txt[i].temp_line_cnt++;
-											}
-
-											if (((tmp_txt[0] ^ 0x70) == '\r') || ((tmp_txt[1] ^ 0x4f) == '\r')) {
-												if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-													memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-													band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-												} else if (band_txt[i].temp_line[0] != '$') {
-													memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-													band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-													if (bool_send_aprs && !band_txt[i].is_gps_sent)
-														gps_send(i);
-												}
-												band_txt[i].temp_line[0] = '\0';
-												band_txt[i].temp_line_cnt = 0;
-											} else if (((tmp_txt[0] ^ 0x70) == '\n') || ((tmp_txt[1] ^ 0x4f)  == '\n')) {
-												band_txt[i].temp_line[0] = '\0';
-												band_txt[i].temp_line_cnt = 0;
-											}
-										} else if (to_print[i] == 1) {
-											/* something went wrong? all bets are off */
-											if (band_txt[i].temp_line_cnt > 200) {
-												printf("Reached the limit in the OLD gps mode\n");
-												band_txt[i].temp_line[0] = '\0';
-												band_txt[i].temp_line_cnt = 0;
-											}
-
-											/* do not copy CR, NL */
-											if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
-												band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
-												band_txt[i].temp_line_cnt++;
-											}
-
-											if ((tmp_txt[0] ^ 0x70) == '\r') {
-												if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-													memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-													band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-												} else if (band_txt[i].temp_line[0] != '$') {
-													memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-													band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-													if (bool_send_aprs && !band_txt[i].is_gps_sent)
-														gps_send(i);
-												}
-												band_txt[i].temp_line[0] = '\0';
-												band_txt[i].temp_line_cnt = 0;
-											} else if ((tmp_txt[0] ^ 0x70) == '\n') {
-												band_txt[i].temp_line[0] = '\0';
-												band_txt[i].temp_line_cnt = 0;
-											}
-										}
-										new_group[i] = true;
-										to_print[i] = 0;
-										ABC_grp[i] = false;
-									}
-									break;
-								}
-							}
-						}
-
-						/* send data to qnlink */
-						sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
-
-						/* aprs processing */
-						if (bool_send_aprs)
-							//                             streamID               seq                audio+text             size
-							aprs->ProcessText(rptrbuf.vpkt.streamid, rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice, (recvlen == 29)?12:15);
-
-						for (int i=0; i<3; i++) {
-							/* find out if data must go to the remote G2 */
-							if (to_remote_g2[i].streamid == rptrbuf.vpkt.streamid) {
-								memcpy(g2buf.title, "DSVT", 4);
-								g2buf.config = 0x20;
-								g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0;
-								memcpy(&g2buf.id, &rptrbuf.vpkt.icm_id, 7);
-								if (recvlen == 29)
-									memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
-								else
-									memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
-
-								uint32_t address = to_remote_g2[i].toDst4.sin_addr.s_addr;
-								// if the address is in the portmap, we'll use that port instead of the default
-								auto theAddress = portmap.find(address);
-								to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
-								sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-
-								time(&(to_remote_g2[i].last_time));
-
-								/* Is this the end-of-stream */
-								if (rptrbuf.vpkt.ctrl & 0x40) {
-									memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
-									to_remote_g2[i].streamid = 0;
-									to_remote_g2[i].last_time = 0;
-								}
-								break;
-							} else
-								/* Is the data to be recorded for echotest */
-								if (recd[i].fd>=0 && recd[i].streamid==rptrbuf.vpkt.streamid) {
-									time(&recd[i].last_time);
-
-									memcpy(recbuf.title, "DSVT", 4);
-									recbuf.config = 0x20;
-									recbuf.id = rptrbuf.vpkt.icm_id;
-									recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[20] = 0;
-									recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-									recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-									recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-									memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
-									if (recvlen == 29)
-										memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
-									else
-										memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
-
-									rec_len = 27;
-									(void)write(recd[i].fd, &rec_len, 2);
-									(void)write(recd[i].fd, &recbuf, rec_len);
-
-									if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
-										recd[i].streamid = 0;
-										recd[i].last_time = 0;
-										close(recd[i].fd);
-										recd[i].fd = -1;
-										// printf("Closed echotest audio file:[%s]\n", recd[i].file);
-
-										/* we are in echotest mode, so play it back */
-										try {
-											std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, recd[i].file);
-										} catch (const std::exception &e) {
-											printf("failed to start PlayFileThread. Exception: %s\n", e.what());
-											//   When the echotest thread runs, it deletes the file,
-											//   Because the echotest thread did NOT start, we delete the file here
-											unlink(recd[i].file);
-										}
-									}
-									break;
-								} else
-									/* Is the data to be recorded for voicemail */
-									if ((vm[i].fd >= 0) && (vm[i].streamid==rptrbuf.vpkt.streamid)) {
-										time(&vm[i].last_time);
-
-										memcpy(recbuf.title, "DSVT", 4);
-										recbuf.config = 0x20;
-										recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-										recbuf.id = rptrbuf.vpkt.icm_id;
-										recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-										recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-										recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-										memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
-										if (recvlen == 29)
-											memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
-										else
-											memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
-
-										rec_len = 27;
-										(void)write(vm[i].fd, &rec_len, 2);
-										(void)write(vm[i].fd, &recbuf, rec_len);
-
-										if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
-											vm[i].streamid = 0;
-											vm[i].last_time = 0;
-											close(vm[i].fd);
-											vm[i].fd = -1;
-											// printf("Closed voicemail audio file:[%s]\n", vm[i].file);
-										}
-										break;
-									} else
-										/* or maybe this is cross-banding data */
-										if ((toRptr[i].streamid==rptrbuf.vpkt.streamid) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {
-											sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-											/* timeit */
-											time(&toRptr[i].last_time);
-
-											/* bump G2 counter */
-											if (is_icom)
-												G2_COUNTER_OUT++;
-											else
-												toRptr[i].G2_COUNTER ++;
-
-											toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-
-											/* End of stream ? */
-											if (rptrbuf.vpkt.ctrl & 0x40) {
-												toRptr[i].last_time = 0;
-												toRptr[i].streamid = 0;
-												toRptr[i].adr = 0;
-											}
-											break;
-										}
-						}
-
-						if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
-							printf("id=%04x cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
-					}
-				}
-			}
+			ProcessRepeater();
 			FD_CLR (srv_sock,&fdset);
 		}
 	}
@@ -2461,7 +2465,7 @@ void CQnetGateway::qrgs_and_maps()
 	return;
 }
 
-int CQnetGateway::init(char *cfgfile)
+int CQnetGateway::Init(char *cfgfile)
 {
 	short int i;
 	struct sigaction act;
@@ -2932,8 +2936,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	CQnetGateway QnetGateway;
-	if (QnetGateway.init(argv[1]))
+	if (QnetGateway.Init(argv[1]))
 		return 1;
-	QnetGateway.process();
+	QnetGateway.Process();
 	printf("Leaving processing loop...\n");
 }

@@ -85,8 +85,8 @@ class CQnetGateway {
 public:
 	CQnetGateway();
 	~CQnetGateway();
-	void process();
-	int init(char *cfgfile);
+	void Process();
+	int Init(char *cfgfile);
 
 private:
 	bool is_icom, is_not_icom;
@@ -157,6 +157,10 @@ private:
 	void PlayFileThread(char *file);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
+	void ProcessTimeouts();
+	void ProcessRouting();
+	void ProcessRepeater();
+	bool Flag_is_ok(unsigned char flag);
 
 	// read configuration file
 	bool read_config(char *);
