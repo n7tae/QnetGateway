@@ -1249,9 +1249,7 @@ void CQnetGateway::ProcessRepeater()
 										for (int j=0; j<5; j++)
 											sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n",
-										inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
-										g2buf.streamid, g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
+										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port), ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
 
 										time(&(to_remote_g2[i].last_time));
 									}
