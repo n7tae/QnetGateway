@@ -832,13 +832,13 @@ void CQnetGateway::ProcessRouting()
 					rptrbuf.vpkt.streamid    = g2buf.streamid;
 					rptrbuf.vpkt.ctrl        = g2buf.ctrl;
 					memcpy(rptrbuf.vpkt.hdr.flag, g2buf.hdr.flag,   3);
-					if (is_icom) {
+					//if (is_icom) {
 						memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt2,   8);
 						memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt1,   8);
-					} else {
-						memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt1,   8);
-						memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt2,   8);
-					}
+					//} else {
+					//	memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt1,   8);
+					//	memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt2,   8);
+					//}
 					memcpy(rptrbuf.vpkt.hdr.ur,   g2buf.hdr.urcall, 8);
 					memcpy(rptrbuf.vpkt.hdr.my,   g2buf.hdr.mycall, 8);
 					memcpy(rptrbuf.vpkt.hdr.nm,   g2buf.hdr.sfx,    4);
