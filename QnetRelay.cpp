@@ -327,15 +327,14 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 				return true;
 			}
 			if (log_qso)
-				printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid),
-				dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+				printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 		} else if (21 == len) {	// ambe
 			dstr.remaining = 0x16;
 			dstr.vpkt.ctrl = dsrp.header.seq;
 			memcpy(dstr.vpkt.vasd.voice, dsrp.voice.ambe, 12);
 			int ret = SendTo(msock, dstr.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
 			if (log_qso && dstr.vpkt.ctrl&0x40)
-				printf("Sent dstr end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+				printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
 
 			if (ret != 29) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");

@@ -401,6 +401,13 @@ static void readFrom20000()
 					continue;
 				}
 
+				if ('G' == net_buf.vpkt.hdr.r1[7]) {
+					unsigned char tmp[8];
+					memcpy(tmp, net_buf.vpkt.hdr.r1, 8);
+					memcpy(net_buf.vpkt.hdr.r1, net_buf.vpkt.hdr.r2, 8);
+					memcpy(net_buf.vpkt.hdr.r2, tmp, 8);
+				}
+
 				/* check the module and gateway */
 				if (net_buf.vpkt.hdr.r1[7] != RPTR_MOD) {
 					FD_CLR(insock, &readfd);
@@ -768,11 +775,11 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	dr.frame.seq = 0;
 	dr.frame.hdr.flag[0] = 0x01;
 	dr.frame.hdr.flag[1] = dr.frame.hdr.flag[2] = 0x00;
-	memcpy(dr.frame.hdr.rpt1, RPTR_and_MOD, 8);
-	memcpy(dr.frame.hdr.rpt2, RPTR_and_G, 8);
+	memcpy(dr.frame.hdr.rpt2, RPTR_and_MOD, 8);
+	memcpy(dr.frame.hdr.rpt1, RPTR_and_G, 8);
 	memcpy(dr.frame.hdr.urcall, mycall, 8);
 	memcpy(dr.frame.hdr.mycall, RPTR_and_MOD, 8);
-	memcpy(dr.frame.hdr.sfx, (unsigned char *)"    ", 4);
+	memcpy(dr.frame.hdr.sfx, (unsigned char *)"DVAP", 4);
 	calcPFCS(dr.frame.hdr.flag, dr.frame.hdr.pfcs);
 	dongle.SendRegister(dr);
 	std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_BETWEEN));
