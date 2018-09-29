@@ -1560,7 +1560,10 @@ void CQnetGateway::ProcessRepeater()
 									}
 								}
 								const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
-								memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
+								if (recvlen == 29)
+									memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
+								else
+									memcpy(rptrbuf.vpkt.vasd1.voice, silence, 9);
 							} else
 								dtmf_counter[i] = 0;
 						}
@@ -1575,10 +1578,15 @@ void CQnetGateway::ProcessRepeater()
 
 				/* extract 20-byte RADIO ID */
 				if ((tmp_txt[0] != 0x55) || (tmp_txt[1] != 0x2d) || (tmp_txt[2] != 0x16)) {
+
+					// first, unscramble
+					tmp_txt[0] ^= 0x70u;
+					tmp_txt[1] ^= 0x4fu;
+					tmp_txt[2] ^= 0x93u;
+
 					for (int i=0; i<3; i++) {
 						if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
 							if (new_group[i]) {
-								tmp_txt[0] = tmp_txt[0] ^ 0x70;
 								header_type = tmp_txt[0] & 0xf0;
 
 								//					header                   squelch
@@ -1605,22 +1613,22 @@ void CQnetGateway::ProcessRepeater()
 										}
 
 										/* fresh GPS string, re-initialize */
-										if ((to_print[i] == 5) && ((tmp_txt[1] ^ 0x4f) == '$')) {
+										if ((to_print[i] == 5) && (tmp_txt[1] == '$')) {
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
 										}
 
 										/* do not copy CR, NL */
-										if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
+										if ((tmp_txt[1] != '\r') && (tmp_txt[1] != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1];
 											band_txt[i].temp_line_cnt++;
 										}
-										if (((tmp_txt[2] ^ 0x93) != '\r') && ((tmp_txt[2] ^ 0x93) != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2] ^ 0x93;
+										if ((tmp_txt[2] != '\r') && (tmp_txt[2] != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2];
 											band_txt[i].temp_line_cnt++;
 										}
 
-										if (((tmp_txt[1] ^ 0x4f) == '\r') || ((tmp_txt[2] ^ 0x93) == '\r')) {
+										if ((tmp_txt[1] == '\r') || (tmp_txt[2] == '\r')) {
 											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
 												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
@@ -1632,7 +1640,7 @@ void CQnetGateway::ProcessRepeater()
 											}
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
-										} else if (((tmp_txt[1] ^ 0x4f) == '\n') || ((tmp_txt[2] ^ 0x93) == '\n')) {
+										} else if ((tmp_txt[1] == '\n') || (tmp_txt[2] == '\n')) {
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
 										}
@@ -1646,12 +1654,12 @@ void CQnetGateway::ProcessRepeater()
 										}
 
 										/* do not copy CR, NL */
-										if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
+										if ((tmp_txt[1] != '\r') && (tmp_txt[1] != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1];
 											band_txt[i].temp_line_cnt++;
 										}
 
-										if ((tmp_txt[1] ^ 0x4f) == '\r') {
+										if (tmp_txt[1] == '\r') {
 											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
 												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
@@ -1663,7 +1671,7 @@ void CQnetGateway::ProcessRepeater()
 											}
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
-										} else if ((tmp_txt[1] ^ 0x4f) == '\n') {
+										} else if (tmp_txt[1] == '\n') {
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
 										}
@@ -1674,12 +1682,12 @@ void CQnetGateway::ProcessRepeater()
 									new_group[i] = false;
 									to_print[i] = 3;
 									ABC_grp[i] = true;
-									C_seen[i] = ((tmp_txt[0] & 0x0f) == 0x03)?true:false;
+									C_seen[i] = ((tmp_txt[0] & 0x0f) == 0x03) ? true : false;
 
-									band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1] ^ 0x4f;
+									band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1];
 									band_txt[i].txt_cnt++;
 
-									band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2] ^ 0x93;
+									band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2];
 									band_txt[i].txt_cnt++;
 
 									/*
@@ -1725,14 +1733,14 @@ void CQnetGateway::ProcessRepeater()
 							} else {
 								if (to_print[i] == 3) {
 									if (ABC_grp[i]) {
-										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[0] ^ 0x70;
-										band_txt[i].txt_cnt ++;
+										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[0];
+										band_txt[i].txt_cnt++;
 
-										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1] ^ 0x4f;
-										band_txt[i].txt_cnt ++;
+										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1];
+										band_txt[i].txt_cnt++;
 
-										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2] ^ 0x93;
-										band_txt[i].txt_cnt ++;
+										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2];
+										band_txt[i].txt_cnt++;
 
 										/* We should NOT see any more text,
 										   if we already processed text,
@@ -1785,24 +1793,20 @@ void CQnetGateway::ProcessRepeater()
 										}
 
 										/* do not copy CR, NL */
-										if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
+										if ((tmp_txt[0] != '\r') && (tmp_txt[0] != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0];
 											band_txt[i].temp_line_cnt++;
 										}
-										if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
+										if ((tmp_txt[1] != '\r') && (tmp_txt[1] != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1];
 											band_txt[i].temp_line_cnt++;
 										}
-										if (((tmp_txt[2] ^ 0x93) != '\r') && ((tmp_txt[2] ^ 0x93) != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2] ^ 0x93;
+										if ((tmp_txt[2] != '\r') && (tmp_txt[2] != '\n')) {
+											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2];
 											band_txt[i].temp_line_cnt++;
 										}
 
-										if (
-										    ((tmp_txt[0] ^ 0x70) == '\r') ||
-										    ((tmp_txt[1] ^ 0x4f) == '\r') ||
-										    ((tmp_txt[2] ^ 0x93) == '\r')
-										) {
+										if ( (tmp_txt[0] == '\r') || (tmp_txt[1] == '\r') || (tmp_txt[2] == '\r') ) {
 											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
 												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
@@ -1814,9 +1818,8 @@ void CQnetGateway::ProcessRepeater()
 											}
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
-										} else if (((tmp_txt[0] ^ 0x70) == '\n') ||
-										           ((tmp_txt[1] ^ 0x4f) == '\n') ||
-										           ((tmp_txt[2] ^ 0x93) == '\n')) {
+										}
+										else if ((tmp_txt[0] == '\n') || (tmp_txt[1] == '\n') ||(tmp_txt[2] == '\n')) {
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
 										}
@@ -1830,16 +1833,16 @@ void CQnetGateway::ProcessRepeater()
 									}
 
 									/* do not copy CR, NL */
-									if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
-										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
+									if ((tmp_txt[0] != '\r') && (tmp_txt[0] != '\n')) {
+										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0];
 										band_txt[i].temp_line_cnt++;
 									}
-									if (((tmp_txt[1] ^ 0x4f) != '\r') && ((tmp_txt[1] ^ 0x4f) != '\n')) {
-										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1] ^ 0x4f;
+									if ((tmp_txt[1] != '\r') && (tmp_txt[1] != '\n')) {
+										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1];
 										band_txt[i].temp_line_cnt++;
 									}
 
-									if (((tmp_txt[0] ^ 0x70) == '\r') || ((tmp_txt[1] ^ 0x4f) == '\r')) {
+									if ((tmp_txt[0] == '\r') || (tmp_txt[1] == '\r')) {
 										if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
 											memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 											band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
@@ -1851,7 +1854,7 @@ void CQnetGateway::ProcessRepeater()
 										}
 										band_txt[i].temp_line[0] = '\0';
 										band_txt[i].temp_line_cnt = 0;
-									} else if (((tmp_txt[0] ^ 0x70) == '\n') || ((tmp_txt[1] ^ 0x4f)  == '\n')) {
+									} else if ((tmp_txt[0] == '\n') || (tmp_txt[1]  == '\n')) {
 										band_txt[i].temp_line[0] = '\0';
 										band_txt[i].temp_line_cnt = 0;
 									}
@@ -1864,12 +1867,12 @@ void CQnetGateway::ProcessRepeater()
 									}
 
 									/* do not copy CR, NL */
-									if (((tmp_txt[0] ^ 0x70) != '\r') && ((tmp_txt[0] ^ 0x70) != '\n')) {
-										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0] ^ 0x70;
+									if ((tmp_txt[0] != '\r') && (tmp_txt[0] != '\n')) {
+										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0];
 										band_txt[i].temp_line_cnt++;
 									}
 
-									if ((tmp_txt[0] ^ 0x70) == '\r') {
+									if (tmp_txt[0] == '\r') {
 										if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
 											memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 											band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
@@ -1881,7 +1884,7 @@ void CQnetGateway::ProcessRepeater()
 										}
 										band_txt[i].temp_line[0] = '\0';
 										band_txt[i].temp_line_cnt = 0;
-									} else if ((tmp_txt[0] ^ 0x70) == '\n') {
+									} else if (tmp_txt[0] == '\n') {
 										band_txt[i].temp_line[0] = '\0';
 										band_txt[i].temp_line_cnt = 0;
 									}
