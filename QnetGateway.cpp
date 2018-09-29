@@ -1573,16 +1573,16 @@ void CQnetGateway::ProcessRepeater()
 				else
 					memcpy(tmp_txt, rptrbuf.vpkt.vasd1.text, 3);
 
-				// extract 20-byte RADIO ID
+				/* extract 20-byte RADIO ID */
 				if ((tmp_txt[0] != 0x55) || (tmp_txt[1] != 0x2d) || (tmp_txt[2] != 0x16)) {
-
 					for (int i=0; i<3; i++) {
 						if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
 							if (new_group[i]) {
 								tmp_txt[0] = tmp_txt[0] ^ 0x70;
 								header_type = tmp_txt[0] & 0xf0;
 
-								if ((header_type == 0x50) ||  /* header  */ (header_type == 0xc0)) {  /* squelch */
+								//					header                   squelch
+								if ((header_type == 0x50) || (header_type == 0xc0)) {
 									new_group[i] = false;
 									to_print[i] = 0;
 									ABC_grp[i] = false;
@@ -1637,9 +1637,7 @@ void CQnetGateway::ProcessRepeater()
 											band_txt[i].temp_line_cnt = 0;
 										}
 										to_print[i] -= 2;
-									}
-									else
-									{
+									} else {
 										/* something went wrong? all bets are off */
 										if (band_txt[i].temp_line_cnt > 200) {
 											printf("Reached the limit in the OLD gps mode\n");
@@ -1703,16 +1701,28 @@ void CQnetGateway::ProcessRepeater()
 
 									if (band_txt[i].txt_cnt >= 20) {
 										band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
+										/***
+										ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
+										                       band_txt[i].lh_sfx,
+										                       (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
+										                       band_txt[i].lh_rpt1,
+										                       band_txt[i].lh_rpt2,
+										                       band_txt[i].flags[0],
+										                       band_txt[i].flags[1],
+										                       band_txt[i].flags[2],
+										                       band_txt[i].dest_rptr,
+										                       band_txt[i].txt);
+										***/
+										// printf("TEXT1=[%s]\n", band_txt[i].txt);
 										band_txt[i].txt_cnt = 0;
 									}
-								} else {
+								}
+								else {
 									new_group[i] = false;
 									to_print[i] = 0;
 									ABC_grp[i] = false;
 								}
-							}
-							else
-							{
+							} else {
 								if (to_print[i] == 3) {
 									if (ABC_grp[i]) {
 										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[0] ^ 0x70;
@@ -1724,10 +1734,9 @@ void CQnetGateway::ProcessRepeater()
 										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2] ^ 0x93;
 										band_txt[i].txt_cnt ++;
 
-										// We should NOT see any more text,
-										// if we already processed text,
-										// so blank out the codes.
-
+										/* We should NOT see any more text,
+										   if we already processed text,
+										   so blank out the codes. */
 										if (band_txt[i].txt_stats_sent) {
 											if (recvlen == 29) {
 												rptrbuf.vpkt.vasd.text[0] = 0x70;
@@ -1746,11 +1755,21 @@ void CQnetGateway::ProcessRepeater()
 												/*** if YRCALL is CQCQCQ, set dest_rptr ***/
 												if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
 													set_dest_rptr(i, band_txt[i].dest_rptr);
-												//	if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
-												//		band_txt[i].dest_rptr[0] = '\0';
+													if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
+														band_txt[i].dest_rptr[0] = '\0';
 												}
 
-												ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx,band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+												ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
+												                       band_txt[i].lh_sfx,
+												                       (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
+												                       band_txt[i].lh_rpt1,
+												                       band_txt[i].lh_rpt2,
+												                       band_txt[i].flags[0],
+												                       band_txt[i].flags[1],
+												                       band_txt[i].flags[2],
+												                       band_txt[i].dest_rptr,
+												                       band_txt[i].txt);
+												// printf("TEXT2=[%s], destination repeater=[%s]\n", band_txt[i].txt, band_txt[i].dest_rptr);
 												band_txt[i].txt_stats_sent = true;
 											}
 											band_txt[i].txt_cnt = 0;
@@ -1780,11 +1799,11 @@ void CQnetGateway::ProcessRepeater()
 										}
 
 										if (
-											((tmp_txt[0] ^ 0x70) == '\r') ||
-											((tmp_txt[1] ^ 0x4f) == '\r') ||
-											((tmp_txt[2] ^ 0x93) == '\r')
+										    ((tmp_txt[0] ^ 0x70) == '\r') ||
+										    ((tmp_txt[1] ^ 0x4f) == '\r') ||
+										    ((tmp_txt[2] ^ 0x93) == '\r')
 										) {
-											if (0 == memcmp(band_txt[i].temp_line, "$GPRMC", 6)) {
+											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
 												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
 											} else if (band_txt[i].temp_line[0] != '$') {
@@ -1795,7 +1814,9 @@ void CQnetGateway::ProcessRepeater()
 											}
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
-										} else if (((tmp_txt[0] ^ 0x70) == '\n') || ((tmp_txt[1] ^ 0x4f) == '\n') || ((tmp_txt[2] ^ 0x93) == '\n')) {
+										} else if (((tmp_txt[0] ^ 0x70) == '\n') ||
+										           ((tmp_txt[1] ^ 0x4f) == '\n') ||
+										           ((tmp_txt[2] ^ 0x93) == '\n')) {
 											band_txt[i].temp_line[0] = '\0';
 											band_txt[i].temp_line_cnt = 0;
 										}
