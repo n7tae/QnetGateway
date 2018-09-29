@@ -160,6 +160,7 @@ private:
 	void ProcessTimeouts();
 	void ProcessRouting();
 	void ProcessRepeater();
+	void ProcessSlowData(unsigned char *data, unsigned short sid, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen);
 	bool Flag_is_ok(unsigned char flag);
 
 	// read configuration file

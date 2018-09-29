@@ -961,11 +961,11 @@ void CQnetGateway::ProcessRepeater()
 
 	// text stuff
 	bool new_group[3] = { true, true, true };
-	int header_type = 0;
+	//int header_type = 0;
 	short to_print[3] = { 0, 0, 0 };
 	bool ABC_grp[3] = { false, false, false };
 	bool C_seen[3] = { false, false, false };
-	unsigned char tmp_txt[3];
+	//unsigned char tmp_txt[3];
 
 	char temp_radio_user[CALL_SIZE + 1];
 	char temp_mod;
@@ -1572,331 +1572,9 @@ void CQnetGateway::ProcessRepeater()
 				}
 
 				if (recvlen == 29)
-					memcpy(tmp_txt, rptrbuf.vpkt.vasd.text, 3);
+					ProcessSlowData(rptrbuf.vpkt.vasd.text,  rptrbuf.vpkt.streamid, new_group, to_print, ABC_grp, C_seen);
 				else
-					memcpy(tmp_txt, rptrbuf.vpkt.vasd1.text, 3);
-
-				/* extract 20-byte RADIO ID */
-				if ((tmp_txt[0] != 0x55) || (tmp_txt[1] != 0x2d) || (tmp_txt[2] != 0x16)) {
-
-					// first, unscramble
-					tmp_txt[0] ^= 0x70u;
-					tmp_txt[1] ^= 0x4fu;
-					tmp_txt[2] ^= 0x93u;
-
-					for (int i=0; i<3; i++) {
-						if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
-							if (new_group[i]) {
-								header_type = tmp_txt[0] & 0xf0;
-
-								//					header                   squelch
-								if ((header_type == 0x50) || (header_type == 0xc0)) {
-									new_group[i] = false;
-									to_print[i] = 0;
-									ABC_grp[i] = false;
-								}
-								else if (header_type == 0x30) { /* GPS or GPS id or APRS */
-									new_group[i] = false;
-									to_print[i] = tmp_txt[0] & 0x0f;
-									ABC_grp[i] = false;
-									if (to_print[i] > 5)
-										to_print[i] = 5;
-									else if (to_print[i] < 1)
-										to_print[i] = 1;
-
-									if ((to_print[i] > 1) && (to_print[i] <= 5)) {
-										/* something went wrong? all bets are off */
-										if (band_txt[i].temp_line_cnt > 200) {
-											printf("Reached the limit in the OLD gps mode\n");
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										}
-
-										/* fresh GPS string, re-initialize */
-										if ((to_print[i] == 5) && (tmp_txt[1] == '$')) {
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										}
-
-										/* do not copy CR, NL */
-										if ((tmp_txt[1] != '\r') && (tmp_txt[1] != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1];
-											band_txt[i].temp_line_cnt++;
-										}
-										if ((tmp_txt[2] != '\r') && (tmp_txt[2] != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2];
-											band_txt[i].temp_line_cnt++;
-										}
-
-										if ((tmp_txt[1] == '\r') || (tmp_txt[2] == '\r')) {
-											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-											} else if (band_txt[i].temp_line[0] != '$') {
-												memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-												band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-												if (bool_send_aprs && !band_txt[i].is_gps_sent)
-													gps_send(i);
-											}
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										} else if ((tmp_txt[1] == '\n') || (tmp_txt[2] == '\n')) {
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										}
-										to_print[i] -= 2;
-									} else {
-										/* something went wrong? all bets are off */
-										if (band_txt[i].temp_line_cnt > 200) {
-											printf("Reached the limit in the OLD gps mode\n");
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										}
-
-										/* do not copy CR, NL */
-										if ((tmp_txt[1] != '\r') && (tmp_txt[1] != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1];
-											band_txt[i].temp_line_cnt++;
-										}
-
-										if (tmp_txt[1] == '\r') {
-											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-											} else if (band_txt[i].temp_line[0] != '$') {
-												memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-												band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-												if (bool_send_aprs && !band_txt[i].is_gps_sent)
-													gps_send(i);
-											}
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										} else if (tmp_txt[1] == '\n') {
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										}
-										to_print[i] --;
-									}
-								}
-								else if (header_type == 0x40) { /* ABC text */
-									new_group[i] = false;
-									to_print[i] = 3;
-									ABC_grp[i] = true;
-									C_seen[i] = ((tmp_txt[0] & 0x0f) == 0x03) ? true : false;
-
-									band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1];
-									band_txt[i].txt_cnt++;
-
-									band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2];
-									band_txt[i].txt_cnt++;
-
-									/*
-									   We should NOT see any more text,
-									   if we already processed text,
-									   so blank out the codes.
-									*/
-									if (band_txt[i].txt_stats_sent) {
-										if (recvlen == 29) {
-											rptrbuf.vpkt.vasd.text[0] = 0x70;
-											rptrbuf.vpkt.vasd.text[1] = 0x4f;
-											rptrbuf.vpkt.vasd.text[2] = 0x93;
-										} else {
-											rptrbuf.vpkt.vasd1.text[0] = 0x70;
-											rptrbuf.vpkt.vasd1.text[1] = 0x4f;
-											rptrbuf.vpkt.vasd1.text[2] = 0x93;
-										}
-									}
-
-									if (band_txt[i].txt_cnt >= 20) {
-										band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
-										/***
-										ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
-										                       band_txt[i].lh_sfx,
-										                       (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
-										                       band_txt[i].lh_rpt1,
-										                       band_txt[i].lh_rpt2,
-										                       band_txt[i].flags[0],
-										                       band_txt[i].flags[1],
-										                       band_txt[i].flags[2],
-										                       band_txt[i].dest_rptr,
-										                       band_txt[i].txt);
-										***/
-										// printf("TEXT1=[%s]\n", band_txt[i].txt);
-										band_txt[i].txt_cnt = 0;
-									}
-								}
-								else {
-									new_group[i] = false;
-									to_print[i] = 0;
-									ABC_grp[i] = false;
-								}
-							} else {
-								if (to_print[i] == 3) {
-									if (ABC_grp[i]) {
-										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[0];
-										band_txt[i].txt_cnt++;
-
-										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[1];
-										band_txt[i].txt_cnt++;
-
-										band_txt[i].txt[band_txt[i].txt_cnt] = tmp_txt[2];
-										band_txt[i].txt_cnt++;
-
-										/* We should NOT see any more text,
-										   if we already processed text,
-										   so blank out the codes. */
-										if (band_txt[i].txt_stats_sent) {
-											if (recvlen == 29) {
-												rptrbuf.vpkt.vasd.text[0] = 0x70;
-												rptrbuf.vpkt.vasd.text[1] = 0x4f;
-												rptrbuf.vpkt.vasd.text[2] = 0x93;
-											} else {
-												rptrbuf.vpkt.vasd1.text[0] = 0x70;
-												rptrbuf.vpkt.vasd1.text[1] = 0x4f;
-												rptrbuf.vpkt.vasd1.text[2] = 0x93;
-											}
-										}
-
-										if ((band_txt[i].txt_cnt >= 20) || C_seen[i]) {
-											band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
-											if (!band_txt[i].txt_stats_sent) {
-												/*** if YRCALL is CQCQCQ, set dest_rptr ***/
-												if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
-													set_dest_rptr(i, band_txt[i].dest_rptr);
-													if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
-														band_txt[i].dest_rptr[0] = '\0';
-												}
-
-												ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
-												                       band_txt[i].lh_sfx,
-												                       (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
-												                       band_txt[i].lh_rpt1,
-												                       band_txt[i].lh_rpt2,
-												                       band_txt[i].flags[0],
-												                       band_txt[i].flags[1],
-												                       band_txt[i].flags[2],
-												                       band_txt[i].dest_rptr,
-												                       band_txt[i].txt);
-												// printf("TEXT2=[%s], destination repeater=[%s]\n", band_txt[i].txt, band_txt[i].dest_rptr);
-												band_txt[i].txt_stats_sent = true;
-											}
-											band_txt[i].txt_cnt = 0;
-										}
-										if (C_seen[i])
-											C_seen[i] = false;
-									} else {
-										/* something went wrong? all bets are off */
-										if (band_txt[i].temp_line_cnt > 200) {
-											printf("Reached the limit in the OLD gps mode\n");
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										}
-
-										/* do not copy CR, NL */
-										if ((tmp_txt[0] != '\r') && (tmp_txt[0] != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0];
-											band_txt[i].temp_line_cnt++;
-										}
-										if ((tmp_txt[1] != '\r') && (tmp_txt[1] != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1];
-											band_txt[i].temp_line_cnt++;
-										}
-										if ((tmp_txt[2] != '\r') && (tmp_txt[2] != '\n')) {
-											band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[2];
-											band_txt[i].temp_line_cnt++;
-										}
-
-										if ( (tmp_txt[0] == '\r') || (tmp_txt[1] == '\r') || (tmp_txt[2] == '\r') ) {
-											if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-												memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-												band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-											} else if (band_txt[i].temp_line[0] != '$') {
-												memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-												band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-												if (bool_send_aprs && !band_txt[i].is_gps_sent)
-													gps_send(i);
-											}
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										}
-										else if ((tmp_txt[0] == '\n') || (tmp_txt[1] == '\n') ||(tmp_txt[2] == '\n')) {
-											band_txt[i].temp_line[0] = '\0';
-											band_txt[i].temp_line_cnt = 0;
-										}
-									}
-								} else if (to_print[i] == 2) {
-									/* something went wrong? all bets are off */
-									if (band_txt[i].temp_line_cnt > 200) {
-										printf("Reached the limit in the OLD gps mode\n");
-										band_txt[i].temp_line[0] = '\0';
-										band_txt[i].temp_line_cnt = 0;
-									}
-
-									/* do not copy CR, NL */
-									if ((tmp_txt[0] != '\r') && (tmp_txt[0] != '\n')) {
-										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0];
-										band_txt[i].temp_line_cnt++;
-									}
-									if ((tmp_txt[1] != '\r') && (tmp_txt[1] != '\n')) {
-										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[1];
-										band_txt[i].temp_line_cnt++;
-									}
-
-									if ((tmp_txt[0] == '\r') || (tmp_txt[1] == '\r')) {
-										if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-											memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-											band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-										} else if (band_txt[i].temp_line[0] != '$') {
-											memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-											band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-											if (bool_send_aprs && !band_txt[i].is_gps_sent)
-												gps_send(i);
-										}
-										band_txt[i].temp_line[0] = '\0';
-										band_txt[i].temp_line_cnt = 0;
-									} else if ((tmp_txt[0] == '\n') || (tmp_txt[1]  == '\n')) {
-										band_txt[i].temp_line[0] = '\0';
-										band_txt[i].temp_line_cnt = 0;
-									}
-								} else if (to_print[i] == 1) {
-									/* something went wrong? all bets are off */
-									if (band_txt[i].temp_line_cnt > 200) {
-										printf("Reached the limit in the OLD gps mode\n");
-										band_txt[i].temp_line[0] = '\0';
-										band_txt[i].temp_line_cnt = 0;
-									}
-
-									/* do not copy CR, NL */
-									if ((tmp_txt[0] != '\r') && (tmp_txt[0] != '\n')) {
-										band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp_txt[0];
-										band_txt[i].temp_line_cnt++;
-									}
-
-									if (tmp_txt[0] == '\r') {
-										if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-											memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-											band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-										} else if (band_txt[i].temp_line[0] != '$') {
-											memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-											band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-											if (bool_send_aprs && !band_txt[i].is_gps_sent)
-												gps_send(i);
-										}
-										band_txt[i].temp_line[0] = '\0';
-										band_txt[i].temp_line_cnt = 0;
-									} else if (tmp_txt[0] == '\n') {
-										band_txt[i].temp_line[0] = '\0';
-										band_txt[i].temp_line_cnt = 0;
-									}
-								}
-								new_group[i] = true;
-								to_print[i] = 0;
-								ABC_grp[i] = false;
-							}
-							break;
-						}
-					}
-				}
+					ProcessSlowData(rptrbuf.vpkt.vasd1.text, rptrbuf.vpkt.streamid, new_group, to_print, ABC_grp, C_seen);
 
 				/* send data to qnlink */
 				sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
@@ -2028,6 +1706,321 @@ void CQnetGateway::ProcessRepeater()
 
 				if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
 					printf("id=%04x cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
+			}
+		}
+	}
+}
+
+void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen)
+{
+	unsigned char header_type;
+
+	/* extract 20-byte RADIO ID */
+	if ((data[0] != 0x55) || (data[1] != 0x2d) || (data[2] != 0x16)) {
+
+		// first, unscramble
+		unsigned char tmp0 = data[0] ^ 0x70u;
+		unsigned char tmp1 = data[1] ^ 0x4fu;
+		unsigned char tmp2 = data[2] ^ 0x93u;
+
+		for (int i=0; i<3; i++) {
+			if (band_txt[i].streamID == sid) {
+				if (new_group[i]) {
+					header_type = tmp0 & 0xf0;
+
+					//					header                   squelch
+					if ((header_type == 0x50) || (header_type == 0xc0)) {
+						new_group[i] = false;
+						to_print[i] = 0;
+						ABC_grp[i] = false;
+					}
+					else if (header_type == 0x30) { /* GPS or GPS id or APRS */
+						new_group[i] = false;
+						to_print[i] = tmp0 & 0x0f;
+						ABC_grp[i] = false;
+						if (to_print[i] > 5)
+							to_print[i] = 5;
+						else if (to_print[i] < 1)
+							to_print[i] = 1;
+
+						if ((to_print[i] > 1) && (to_print[i] <= 5)) {
+							/* something went wrong? all bets are off */
+							if (band_txt[i].temp_line_cnt > 200) {
+								printf("Reached the limit in the OLD gps mode\n");
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							}
+
+							/* fresh GPS string, re-initialize */
+							if ((to_print[i] == 5) && (tmp1 == '$')) {
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							}
+
+							/* do not copy CR, NL */
+							if ((tmp1 != '\r') && (tmp1 != '\n')) {
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp1;
+								band_txt[i].temp_line_cnt++;
+							}
+							if ((tmp2 != '\r') && (tmp2 != '\n')) {
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp2;
+								band_txt[i].temp_line_cnt++;
+							}
+
+							if ((tmp1 == '\r') || (tmp2 == '\r')) {
+								if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+									memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+									band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+								} else if (band_txt[i].temp_line[0] != '$') {
+									memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+									band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+									if (bool_send_aprs && !band_txt[i].is_gps_sent)
+										gps_send(i);
+								}
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							} else if ((tmp1 == '\n') || (tmp2 == '\n')) {
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							}
+							to_print[i] -= 2;
+						} else {
+							/* something went wrong? all bets are off */
+							if (band_txt[i].temp_line_cnt > 200) {
+								printf("Reached the limit in the OLD gps mode\n");
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							}
+
+							/* do not copy CR, NL */
+							if ((tmp1 != '\r') && (tmp1 != '\n')) {
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp1;
+								band_txt[i].temp_line_cnt++;
+							}
+
+							if (tmp1 == '\r') {
+								if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+									memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+									band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+								} else if (band_txt[i].temp_line[0] != '$') {
+									memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+									band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+									if (bool_send_aprs && !band_txt[i].is_gps_sent)
+										gps_send(i);
+								}
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							} else if (tmp1 == '\n') {
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							}
+							to_print[i] --;
+						}
+					}
+					else if (header_type == 0x40) { /* ABC text */
+						new_group[i] = false;
+						to_print[i] = 3;
+						ABC_grp[i] = true;
+						C_seen[i] = ((tmp0 & 0x0f) == 0x03) ? true : false;
+
+						band_txt[i].txt[band_txt[i].txt_cnt] = tmp1;
+						band_txt[i].txt_cnt++;
+
+						band_txt[i].txt[band_txt[i].txt_cnt] = tmp2;
+						band_txt[i].txt_cnt++;
+
+						/*
+						   We should NOT see any more text,
+						   if we already processed text,
+						   so blank out the codes.
+						*/
+						if (band_txt[i].txt_stats_sent) {
+							data[0] = 0x70;
+							data[1] = 0x4f;
+							data[2] = 0x93;
+						}
+
+						if (band_txt[i].txt_cnt >= 20) {
+							band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
+							/***
+							ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
+												   band_txt[i].lh_sfx,
+												   (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
+												   band_txt[i].lh_rpt1,
+												   band_txt[i].lh_rpt2,
+												   band_txt[i].flags[0],
+												   band_txt[i].flags[1],
+												   band_txt[i].flags[2],
+												   band_txt[i].dest_rptr,
+												   band_txt[i].txt);
+							***/
+							// printf("TEXT1=[%s]\n", band_txt[i].txt);
+							band_txt[i].txt_cnt = 0;
+						}
+					}
+					else {
+						new_group[i] = false;
+						to_print[i] = 0;
+						ABC_grp[i] = false;
+					}
+				} else {
+					if (to_print[i] == 3) {
+						if (ABC_grp[i]) {
+							band_txt[i].txt[band_txt[i].txt_cnt] = tmp0;
+							band_txt[i].txt_cnt++;
+
+							band_txt[i].txt[band_txt[i].txt_cnt] = tmp1;
+							band_txt[i].txt_cnt++;
+
+							band_txt[i].txt[band_txt[i].txt_cnt] = tmp2;
+							band_txt[i].txt_cnt++;
+
+							/* We should NOT see any more text,
+							   if we already processed text,
+							   so blank out the codes. */
+							if (band_txt[i].txt_stats_sent) {
+								data[0] = 0x70;
+								data[1] = 0x4f;
+								data[2] = 0x93;
+							}
+
+							if ((band_txt[i].txt_cnt >= 20) || C_seen[i]) {
+								band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
+								if (!band_txt[i].txt_stats_sent) {
+									/*** if YRCALL is CQCQCQ, set dest_rptr ***/
+									if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
+										set_dest_rptr(i, band_txt[i].dest_rptr);
+										if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
+											band_txt[i].dest_rptr[0] = '\0';
+									}
+
+									ii->sendHeardWithTXMsg(band_txt[i].lh_mycall,
+														   band_txt[i].lh_sfx,
+														   (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ",
+														   band_txt[i].lh_rpt1,
+														   band_txt[i].lh_rpt2,
+														   band_txt[i].flags[0],
+														   band_txt[i].flags[1],
+														   band_txt[i].flags[2],
+														   band_txt[i].dest_rptr,
+														   band_txt[i].txt);
+									// printf("TEXT2=[%s], destination repeater=[%s]\n", band_txt[i].txt, band_txt[i].dest_rptr);
+									band_txt[i].txt_stats_sent = true;
+								}
+								band_txt[i].txt_cnt = 0;
+							}
+							if (C_seen[i])
+								C_seen[i] = false;
+						} else {
+							/* something went wrong? all bets are off */
+							if (band_txt[i].temp_line_cnt > 200) {
+								printf("Reached the limit in the OLD gps mode\n");
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							}
+
+							/* do not copy CR, NL */
+							if ((tmp0 != '\r') && (tmp0 != '\n')) {
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp0;
+								band_txt[i].temp_line_cnt++;
+							}
+							if ((tmp1 != '\r') && (tmp1 != '\n')) {
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp1;
+								band_txt[i].temp_line_cnt++;
+							}
+							if ((tmp2 != '\r') && (tmp2 != '\n')) {
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp2;
+								band_txt[i].temp_line_cnt++;
+							}
+
+							if ( (tmp0 == '\r') || (tmp1 == '\r') || (tmp2 == '\r') ) {
+								if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+									memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+									band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+								} else if (band_txt[i].temp_line[0] != '$') {
+									memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+									band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+									if (bool_send_aprs && !band_txt[i].is_gps_sent)
+										gps_send(i);
+								}
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							}
+							else if ((tmp0 == '\n') || (tmp1 == '\n') ||(tmp2 == '\n')) {
+								band_txt[i].temp_line[0] = '\0';
+								band_txt[i].temp_line_cnt = 0;
+							}
+						}
+					} else if (to_print[i] == 2) {
+						/* something went wrong? all bets are off */
+						if (band_txt[i].temp_line_cnt > 200) {
+							printf("Reached the limit in the OLD gps mode\n");
+							band_txt[i].temp_line[0] = '\0';
+							band_txt[i].temp_line_cnt = 0;
+						}
+
+						/* do not copy CR, NL */
+						if ((tmp0 != '\r') && (tmp0 != '\n')) {
+							band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp0;
+							band_txt[i].temp_line_cnt++;
+						}
+						if ((tmp1 != '\r') && (tmp1 != '\n')) {
+							band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp1;
+							band_txt[i].temp_line_cnt++;
+						}
+
+						if ((tmp0 == '\r') || (tmp1 == '\r')) {
+							if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+								memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+								band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+							} else if (band_txt[i].temp_line[0] != '$') {
+								memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+								band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+								if (bool_send_aprs && !band_txt[i].is_gps_sent)
+									gps_send(i);
+							}
+							band_txt[i].temp_line[0] = '\0';
+							band_txt[i].temp_line_cnt = 0;
+						} else if ((tmp0 == '\n') || (tmp1  == '\n')) {
+							band_txt[i].temp_line[0] = '\0';
+							band_txt[i].temp_line_cnt = 0;
+						}
+					} else if (to_print[i] == 1) {
+						/* something went wrong? all bets are off */
+						if (band_txt[i].temp_line_cnt > 200) {
+							printf("Reached the limit in the OLD gps mode\n");
+							band_txt[i].temp_line[0] = '\0';
+							band_txt[i].temp_line_cnt = 0;
+						}
+
+						/* do not copy CR, NL */
+						if ((tmp0 != '\r') && (tmp0 != '\n')) {
+							band_txt[i].temp_line[band_txt[i].temp_line_cnt] = tmp0;
+							band_txt[i].temp_line_cnt++;
+						}
+
+						if (tmp0 == '\r') {
+							if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
+								memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+								band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
+							} else if (band_txt[i].temp_line[0] != '$') {
+								memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
+								band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
+								if (bool_send_aprs && !band_txt[i].is_gps_sent)
+									gps_send(i);
+							}
+							band_txt[i].temp_line[0] = '\0';
+							band_txt[i].temp_line_cnt = 0;
+						} else if (tmp0 == '\n') {
+							band_txt[i].temp_line[0] = '\0';
+							band_txt[i].temp_line_cnt = 0;
+						}
+					}
+					new_group[i] = true;
+					to_print[i] = 0;
+					ABC_grp[i] = false;
+				}
+				break;
 			}
 		}
 	}
