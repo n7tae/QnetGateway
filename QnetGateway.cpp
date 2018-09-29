@@ -954,17 +954,17 @@ void CQnetGateway::ProcessRouting()
 void CQnetGateway::ProcessRepeater()
 {
 	// dtmf stuff
-	int dtmf_buf_count[3] = {0, 0, 0};
-	char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
-	int dtmf_last_frame[3] = { 0, 0, 0 };
-	unsigned int dtmf_counter[3] = { 0, 0, 0 };
+	static int dtmf_buf_count[3] = {0, 0, 0};
+	static char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
+	static int dtmf_last_frame[3] = { 0, 0, 0 };
+	static unsigned int dtmf_counter[3] = { 0, 0, 0 };
 
 	// text stuff
-	bool new_group[3] = { true, true, true };
+	static bool new_group[3] = { true, true, true };
 	//int header_type = 0;
-	short to_print[3] = { 0, 0, 0 };
-	bool ABC_grp[3] = { false, false, false };
-	bool C_seen[3] = { false, false, false };
+	static short to_print[3] = { 0, 0, 0 };
+	static bool ABC_grp[3] = { false, false, false };
+	static bool C_seen[3] = { false, false, false };
 	//unsigned char tmp_txt[3];
 
 	char temp_radio_user[CALL_SIZE + 1];
@@ -1572,9 +1572,9 @@ void CQnetGateway::ProcessRepeater()
 				}
 
 				if (recvlen == 29)
-					ProcessSlowData(rptrbuf.vpkt.vasd.text,  rptrbuf.vpkt.streamid, new_group, to_print, ABC_grp, C_seen);
+					ProcessSlowData(rptrbuf.vpkt.vasd.text,  rptrbuf.vpkt.streamid);
 				else
-					ProcessSlowData(rptrbuf.vpkt.vasd1.text, rptrbuf.vpkt.streamid, new_group, to_print, ABC_grp, C_seen);
+					ProcessSlowData(rptrbuf.vpkt.vasd1.text, rptrbuf.vpkt.streamid);
 
 				/* send data to qnlink */
 				sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
@@ -1711,9 +1711,9 @@ void CQnetGateway::ProcessRepeater()
 	}
 }
 
-void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen)
+void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 {
-	unsigned char header_type;
+	static unsigned char header_type = 0x0u;
 
 	/* extract 20-byte RADIO ID */
 	if ((data[0] != 0x55) || (data[1] != 0x2d) || (data[2] != 0x16)) {
