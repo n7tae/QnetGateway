@@ -421,8 +421,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 				return true;
 			}
 			if (log_qso)
-				printf("Sent ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(),
-						itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
+				printf("Sent ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(), itap.header.ur, itap.header.r2, itap.header.r1, itap.header.my, itap.header.nm);
 		} else {	// write an AMBE packet
 			itap.length = 16U;
 			itap.type = 0x22U;
@@ -509,8 +508,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 			return true;
 		}
 		if (log_qso)
-			printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid),
-					dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+			printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 	} else if (16 == len) {	// ambe
 		dstr.remaining = 0x16;
 		dstr.vpkt.ctrl = itap.voice.sequence;
