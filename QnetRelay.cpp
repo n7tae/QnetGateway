@@ -271,8 +271,7 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 				return true;
 			}
 			if (log_qso)
-				printf("Sent DSRP to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MMDVM_IN_PORT, ntohs(dsrp.header.id),
-				dsrp.header.ur, dsrp.header.r1, dsrp.header.r2, dsrp.header.my, dsrp.header.nm);
+				printf("Sent DSRP to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MMDVM_IN_PORT, ntohs(dsrp.header.id), dsrp.header.ur, dsrp.header.r2, dsrp.header.r1, dsrp.header.my, dsrp.header.nm);
 		}
 
 	} else
