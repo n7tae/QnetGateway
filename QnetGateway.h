@@ -17,6 +17,7 @@
  */
 
 #include <libconfig.h++>
+#include "QnetTypeDefs.h"
 
 #include "aprs.h"
 
@@ -31,6 +32,8 @@ typedef struct echo_tag {
 	time_t last_time;
 	unsigned short streamid;
 	int fd;
+	char message[24];
+	SDSVT header;
 	char file[FILENAME_MAX + 1];
 } SECHO;
 
@@ -154,7 +157,7 @@ private:
 	void GetIRCDataThread();
 	int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
 	bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
-	void PlayFileThread(char *file);
+	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
 	void ProcessTimeouts();

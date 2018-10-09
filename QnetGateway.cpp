@@ -56,7 +56,6 @@
 #include "IRCDDB.h"
 #include "IRCutils.h"
 #include "versions.h"
-#include "QnetTypeDefs.h"
 #include "QnetGateway.h"
 
 
@@ -676,8 +675,7 @@ void CQnetGateway::ProcessTimeouts()
 		if (recd[i].last_time != 0) {
 			time(&t_now);
 			if ((t_now - recd[i].last_time) > echotest_rec_timeout) {
-				printf("Inactivity on echotest recording mod %d, removing stream id=%04x\n",
-					i, recd[i].streamid);
+				printf("Inactivity on echotest recording mod %d, removing stream id=%04x\n", i, recd[i].streamid);
 
 				recd[i].streamid = 0;
 				recd[i].last_time = 0;
@@ -687,7 +685,7 @@ void CQnetGateway::ProcessTimeouts()
 
 				/* START: echotest thread setup */
 				try {
-					std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, recd[i].file);
+					std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i]));
 				} catch (const std::exception &e) {
 					printf("Failed to start echotest thread. Exception: %s\n", e.what());
 					// when the echotest thread runs, it deletes the file,
@@ -702,8 +700,7 @@ void CQnetGateway::ProcessTimeouts()
 		if (vm[i].last_time != 0) {
 			time(&t_now);
 			if ((t_now - vm[i].last_time) > voicemail_rec_timeout) {
-				printf("Inactivity on voicemail recording mod %d, removing stream id=%04x\n",
-						i, vm[i].streamid);
+				printf("Inactivity on voicemail recording mod %d, removing stream id=%04x\n", i, vm[i].streamid);
 
 				vm[i].streamid = 0;
 				vm[i].last_time = 0;
@@ -1334,8 +1331,6 @@ void CQnetGateway::Process()
 			char ip[IP_SIZE + 1];
 
 			char tempfile[FILENAME_MAX + 1];
-			long num_recs = 0L;
-			short int rec_len = 56;
 
 			SDSVT g2buf;
 
@@ -1690,8 +1685,9 @@ void CQnetGateway::Process()
 							if (i>=0 && i<3) {
 								/* voicemail file is closed */
 								if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
+									snprintf(vm[i].message, 21, "VOICEMAIL ON MOD %c  ", 'A'+i);
 									try {
-										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, vm[i].file);
+										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(vm[i]));
 									} catch (const std::exception &e) {
 										printf("Failed to start voicemail playback. Exception: %s\n", e.what());
 									}
@@ -1737,11 +1733,7 @@ void CQnetGateway::Process()
 
 										calcPFCS(recbuf.title, 56);
 
-										rec_len = 56;
-										(void)write(vm[i].fd, "DVTOOL", 6);
-										(void)write(vm[i].fd, &num_recs, 4);
-										(void)write(vm[i].fd, &rec_len, 2);
-										(void)write(vm[i].fd, &recbuf, rec_len);
+										memcpy(vm[i].header.title, recbuf.title, 56);
 									}
 								}
 							}
@@ -1762,7 +1754,7 @@ void CQnetGateway::Process()
 									else {
 										strcpy(recd[i].file, tempfile);
 										printf("Recording mod %c for echotest into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], recd[i].file);
-
+										snprintf(recd[i].message, 21, "ECHO ON MODULE %c    ", 'A' + i);
 										time(&recd[i].last_time);
 										recd[i].streamid = rptrbuf.vpkt.streamid;
 
@@ -1784,11 +1776,7 @@ void CQnetGateway::Process()
 
 										calcPFCS(recbuf.title, 56);
 
-										rec_len = 56;
-										(void)write(recd[i].fd, "DVTOOL", 6);
-										(void)write(recd[i].fd, &num_recs, 4);
-										(void)write(recd[i].fd, &rec_len, 2);
-										(void)write(recd[i].fd, &recbuf, rec_len);
+										memcpy(recd[i].header.title, recbuf.title, 56);
 									}
 								}
 							}
@@ -1974,22 +1962,24 @@ void CQnetGateway::Process()
 							else if (recd[i].fd>=0 && recd[i].streamid==rptrbuf.vpkt.streamid) {	// Is the data to be recorded for echotest
 								time(&recd[i].last_time);
 
-								memcpy(recbuf.title, "DSVT", 4);
-								recbuf.config = 0x20;
-								recbuf.id = rptrbuf.vpkt.icm_id;
-								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[20] = 0;
-								recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-								recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-								recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-								memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
+								//memcpy(recbuf.title, "DSVT", 4);
+								//recbuf.config = 0x20;
+								//recbuf.id = rptrbuf.vpkt.icm_id;
+								//recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[20] = 0;
+								//recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+								//recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+								//recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+								//memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
 								if (recvlen == 29)
-									memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
+									//memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
+									(void)write(recd[i].fd, rptrbuf.vpkt.vasd.voice, 9);
 								else
-									memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
+									//memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
+									(void)write(recd[i].fd, rptrbuf.vpkt.vasd1.voice, 9);
 
-								rec_len = 27;
-								(void)write(recd[i].fd, &rec_len, 2);
-								(void)write(recd[i].fd, &recbuf, rec_len);
+								//rec_len = 27;
+								//(void)write(recd[i].fd, &rec_len, 2);
+								//(void)write(recd[i].fd, &recbuf, rec_len);
 
 								if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
 									recd[i].streamid = 0;
@@ -2000,7 +1990,7 @@ void CQnetGateway::Process()
 
 									/* we are in echotest mode, so play it back */
 									try {
-										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, recd[i].file);
+										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i]));
 									} catch (const std::exception &e) {
 										printf("failed to start PlayFileThread. Exception: %s\n", e.what());
 										//   When the echotest thread runs, it deletes the file,
@@ -2013,22 +2003,24 @@ void CQnetGateway::Process()
 							else if ((vm[i].fd >= 0) && (vm[i].streamid==rptrbuf.vpkt.streamid)) {	// Is the data to be recorded for voicemail
 								time(&vm[i].last_time);
 
-								memcpy(recbuf.title, "DSVT", 4);
-								recbuf.config = 0x20;
-								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-								recbuf.id = rptrbuf.vpkt.icm_id;
-								recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-								recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-								recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-								memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
+								//memcpy(recbuf.title, "DSVT", 4);
+								//recbuf.config = 0x20;
+								//recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+								//recbuf.id = rptrbuf.vpkt.icm_id;
+								//recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+								//recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+								//recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+								//memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
 								if (recvlen == 29)
-									memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
+									//memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
+									(void)write(vm[i].fd, rptrbuf.vpkt.vasd.voice, 9);
 								else
-									memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
+									//memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
+									(void)write(vm[i].fd, rptrbuf.vpkt.vasd1.voice, 9);
 
-								rec_len = 27;
-								(void)write(vm[i].fd, &rec_len, 2);
-								(void)write(vm[i].fd, &recbuf, rec_len);
+								//rec_len = 27;
+								//(void)write(vm[i].fd, &rec_len, 2);
+								//(void)write(vm[i].fd, &recbuf, rec_len);
 
 								if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
 									vm[i].streamid = 0;
@@ -2295,10 +2287,11 @@ void CQnetGateway::APRSBeaconThread()
 	return;
 }
 
-void CQnetGateway::PlayFileThread(char *file)
+void CQnetGateway::PlayFileThread(SECHO &edata)
 {
 	SDSTR dstr;
-	SDSVT dsvt;
+	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
+	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 
 	struct sigaction act;
 	act.sa_handler = sigCatch;
@@ -2317,108 +2310,127 @@ void CQnetGateway::PlayFileThread(char *file)
 		return;
 	}
 
-	printf("File to playback:[%s]\n", file);
+	printf("File to playback:[%s]\n", edata.file);
 
-	FILE *fp = fopen(file, "rb");
+	struct stat sbuf;
+	if (stat(edata.file, &sbuf)) {
+		fprintf(stderr, "Can't stat %s\n", edata.file);
+		return;
+	}
+
+	if (sbuf.st_size % 9)
+		printf("Warning %s file size is %ld (not a multiple of 9)!\n", edata.file, sbuf.st_size);
+	int ambeblocks = (int)sbuf.st_size / 9;
+
+	FILE *fp = fopen(edata.file, "rb");
 	if (!fp) {
-		printf("Failed to open file %s\n", file);
+		fprintf(stderr, "Failed to open file %s\n", edata.file);
 		return;
 	}
 
-	size_t nread = fread(dstr.pkt_id, 10, 1, fp);
-	if (nread != 1) {
-		printf("Cant read first 10 bytes in %s\n", file);
-		fclose(fp);
-		return;
-	}
-
-	if (memcmp(dstr.pkt_id, "DVTOOL", 6) != 0) {
-		printf("DVTOOL keyword not found in %s\n", file);
-		fclose(fp);
+	int i = edata.header.hdr.rpt1[7] - 'A';
+	if (i<0 || i>2) {
+		fprintf(stderr, "unknown module suffix '%s'\n", edata.header.hdr.rpt1);
 		return;
 	}
 
 	sleep(play_wait);
-	while (keep_running) {
-		unsigned short rlen;
-		nread = fread(&rlen, 2, 1, fp);
-		if (nread != 1)
-			break;
 
-		if ((rlen != 56) && (rlen != 27)) {
-			printf("Expected 56 bytes or 27 bytes, found %d\n", rlen);
-			break;
-		}
-		nread = fread(dsvt.title, rlen, 1, fp);
+	// reformat the header and send it
+	memcpy(dstr.pkt_id, "DSTR", 4);
+	dstr.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
+	dstr.flag[0] = 0x73;
+	dstr.flag[1] = 0x12;
+	dstr.flag[2] = 0x00;
+	dstr.remaining = 0x30;
+	dstr.vpkt.icm_id = 0x20;
+	dstr.vpkt.dst_rptr_id = edata.header.flagb[0];
+	dstr.vpkt.snd_rptr_id = edata.header.flagb[1];
+	dstr.vpkt.snd_term_id = edata.header.flagb[2];
+	dstr.vpkt.streamid    = edata.header.streamid;
+	dstr.vpkt.ctrl        = 0x80u;
+	memcpy(dstr.vpkt.hdr.flag, edata.header.hdr.flag,   3);
+	memcpy(dstr.vpkt.hdr.r1,   edata.header.hdr.rpt1,   8);
+	memcpy(dstr.vpkt.hdr.r2,   edata.header.hdr.rpt2,   8);
+	memcpy(dstr.vpkt.hdr.ur,   "CQCQCQ  ",              8);
+	memcpy(dstr.vpkt.hdr.my,   edata.header.hdr.mycall, 8);
+	memcpy(dstr.vpkt.hdr.nm,   edata.header.hdr.sfx,    4);
+	calcPFCS(dstr.pkt_id, 58);
+
+	sendto(srv_sock, dstr.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+
+	dstr.remaining = 0x13U;
+
+	for (i=0; i<ambeblocks; i++) {
+
+		int nread = fread(dstr.vpkt.vasd.voice, 9, 1, fp);
 		if (nread == 1) {
-			if (memcmp(dsvt.title, "DSVT", 4) != 0) {
-				printf("DVST keyword not found in %s\n", file);
-				break;
-			}
-
-			if (dsvt.id != 0x20) {
-				printf("Not Voice type in %s\n", file);
-				break;
-			}
-
-			if ((dsvt.config != 0x10) && (dsvt.config != 0x20)) {
-				printf("Not a valid record type in %s\n",file);
-				break;
-			}
-
-			int i;
-			if (rlen == 56) {
-				/* which module is this recording for? */
-				i = dsvt.hdr.rpt1[7] - 'A';
-				if (i<0 || i>2) {
-					printf("found a bad module destination for this file!\n");
-					fclose(fp);
-					return;
-				}
-
-				memcpy(dstr.pkt_id, "DSTR", 4);
-				dstr.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
-				dstr.flag[0] = 0x73;
-				dstr.flag[1] = 0x12;
-				dstr.flag[2] = 0x00;
-				dstr.remaining = 0x30;
-				dstr.vpkt.icm_id = 0x20;
-				//memcpy(&dstr.vpkt.dst_rptr_id, dsvt.flagb, 47);
-				dstr.vpkt.dst_rptr_id = dsvt.flagb[0];
-				dstr.vpkt.snd_rptr_id = dsvt.flagb[1];
-				dstr.vpkt.snd_term_id = dsvt.flagb[2];
-				dstr.vpkt.streamid    = dsvt.streamid;
-				dstr.vpkt.ctrl        = dsvt.ctrl;
-				memcpy(dstr.vpkt.hdr.flag, dsvt.hdr.flag,   3);
-				if (is_icom) {
-					memcpy(dstr.vpkt.hdr.r1,   dsvt.hdr.rpt2,   8);
-					memcpy(dstr.vpkt.hdr.r2,   dsvt.hdr.rpt1,   8);
-				} else {
-					memcpy(dstr.vpkt.hdr.r1,   dsvt.hdr.rpt1,   8);
-					memcpy(dstr.vpkt.hdr.r2,   dsvt.hdr.rpt2,   8);
-				}
-				memcpy(dstr.vpkt.hdr.ur,   dsvt.hdr.urcall, 8);
-				memcpy(dstr.vpkt.hdr.my,   dsvt.hdr.mycall, 8);
-				memcpy(dstr.vpkt.hdr.nm,   dsvt.hdr.sfx,    4);
-				memcpy(dstr.vpkt.hdr.pfcs, dsvt.hdr.pfcs,   2);
-
-				/* We did not change anything */
-				// calcPFCS(rptr_buf, 58);
+			dstr.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
+			dstr.vpkt.ctrl = (unsigned char)(i % 21);
+			if (0x0U == dstr.vpkt.ctrl) {
+				memcpy(dstr.vpkt.vasd.text, sdsync, 3);
 			} else {
-				dstr.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
-				dstr.remaining = 0x13;
-				memcpy(&dstr.vpkt.dst_rptr_id, dsvt.flagb, 18);
+				switch (i) {
+					case 1:
+						dstr.vpkt.vasd.text[0] = '@' ^ 0x70;
+						dstr.vpkt.vasd.text[1] = edata.message[0] ^ 0x4f;
+						dstr.vpkt.vasd.text[2] = edata.message[1] ^ 0x93;
+						break;
+					case 2:
+						dstr.vpkt.vasd.text[0] = edata.message[2] ^ 0x70;
+						dstr.vpkt.vasd.text[1] = edata.message[3] ^ 0x4f;
+						dstr.vpkt.vasd.text[2] = edata.message[4] ^ 0x93;
+						break;
+					case 3:
+						dstr.vpkt.vasd.text[0] = 'A' ^ 0x70;
+						dstr.vpkt.vasd.text[1] = edata.message[5] ^ 0x4f;
+						dstr.vpkt.vasd.text[2] = edata.message[6] ^ 0x93;
+						break;
+					case 4:
+						dstr.vpkt.vasd.text[0] = edata.message[7] ^ 0x70;
+						dstr.vpkt.vasd.text[1] = edata.message[8] ^ 0x4f;
+						dstr.vpkt.vasd.text[2] = edata.message[9] ^ 0x93;
+						break;
+					case 5:
+						dstr.vpkt.vasd.text[0] = 'B' ^ 0x70;
+						dstr.vpkt.vasd.text[1] = edata.message[10] ^ 0x4f;
+						dstr.vpkt.vasd.text[2] = edata.message[11] ^ 0x93;
+						break;
+					case 6:
+						dstr.vpkt.vasd.text[0] = edata.message[12] ^ 0x70;
+						dstr.vpkt.vasd.text[1] = edata.message[13] ^ 0x4f;
+						dstr.vpkt.vasd.text[2] = edata.message[14] ^ 0x93;
+						break;
+					case 7:
+						dstr.vpkt.vasd.text[0] = 'C' ^ 0x70;
+						dstr.vpkt.vasd.text[1] = edata.message[15] ^ 0x4f;
+						dstr.vpkt.vasd.text[2] = edata.message[16] ^ 0x93;
+						break;
+					case 8:
+						dstr.vpkt.vasd.text[0] = edata.message[17] ^ 0x70;
+						dstr.vpkt.vasd.text[1] = edata.message[18] ^ 0x4f;
+						dstr.vpkt.vasd.text[2] = edata.message[19] ^ 0x93;
+						break;
+					default:
+						memcpy(dstr.vpkt.vasd.text, sdsilence, 3);
+						break;
+				}
 			}
+			if (i+1 == ambeblocks)
+				dstr.vpkt.ctrl |= 0x40U;
 
-			sendto(srv_sock, dstr.pkt_id, rlen+2, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+			sendto(srv_sock, dstr.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(play_delay));
 		}
 	}
 	fclose(fp);
-	if (!strstr(file, "voicemail.dat"))
-		unlink(file);
 	printf("Finished playing\n");
+	// if it's an echo file, delete it!
+	if (strstr(edata.file, "echotest.dat")) {
+		unlink(edata.file);
+		edata.file[0] = edata.message[0] = '\0';
+	}
 	return;
 }
 
@@ -2739,8 +2751,7 @@ void CQnetGateway::gps_send(short int rptr_idx)
 		return;
 	}
 	if (memcmp(band_txt[rptr_idx].gpid, band_txt[rptr_idx].lh_mycall, CALL_SIZE) != 0) {
-		printf("MYCALL [%s] does not match first 8 characters of GPS ID [%.8s]\n",
-		        band_txt[rptr_idx].lh_mycall, band_txt[rptr_idx].gpid);
+		printf("MYCALL [%s] does not match first 8 characters of GPS ID [%.8s]\n", band_txt[rptr_idx].lh_mycall, band_txt[rptr_idx].gpid);
 		band_txt[rptr_idx].gprmc[0] = '\0';
 		band_txt[rptr_idx].gpid[0] = '\0';
 		return;
