@@ -2328,8 +2328,8 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 		return;
 	}
 
-	int i = edata.header.hdr.rpt1[7] - 'A';
-	if (i<0 || i>2) {
+	int mod = edata.header.hdr.rpt1[7] - 'A';
+	if (mod<0 || mod>2) {
 		fprintf(stderr, "unknown module suffix '%s'\n", edata.header.hdr.rpt1);
 		return;
 	}
@@ -2338,7 +2338,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 
 	// reformat the header and send it
 	memcpy(dstr.pkt_id, "DSTR", 4);
-	dstr.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
+	dstr.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[mod].G2_COUNTER++);
 	dstr.flag[0] = 0x73;
 	dstr.flag[1] = 0x12;
 	dstr.flag[2] = 0x00;
@@ -2357,15 +2357,15 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 	memcpy(dstr.vpkt.hdr.nm,   edata.header.hdr.sfx,    4);
 	calcPFCS(dstr.pkt_id, 58);
 
-	sendto(srv_sock, dstr.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+	sendto(srv_sock, dstr.pkt_id, 58, 0, (struct sockaddr *)&toRptr[mod].band_addr, sizeof(struct sockaddr_in));
 
 	dstr.remaining = 0x13U;
 
-	for (i=0; i<ambeblocks; i++) {
+	for (int i=0; i<ambeblocks; i++) {
 
 		int nread = fread(dstr.vpkt.vasd.voice, 9, 1, fp);
 		if (nread == 1) {
-			dstr.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[i].G2_COUNTER++);
+			dstr.counter = htons(is_icom ? G2_COUNTER_OUT++ : toRptr[mod].G2_COUNTER++);
 			dstr.vpkt.ctrl = (unsigned char)(i % 21);
 			if (0x0U == dstr.vpkt.ctrl) {
 				memcpy(dstr.vpkt.vasd.text, sdsync, 3);
@@ -2419,7 +2419,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 			if (i+1 == ambeblocks)
 				dstr.vpkt.ctrl |= 0x40U;
 
-			sendto(srv_sock, dstr.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+			sendto(srv_sock, dstr.pkt_id, 29, 0, (struct sockaddr *)&toRptr[mod].band_addr, sizeof(struct sockaddr_in));
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(play_delay));
 		}
