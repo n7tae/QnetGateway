@@ -71,9 +71,9 @@ private:
 	void print_status_file();
 	void send_heartbeat();
 	bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
-	void audio_notify(char *notify_msg);
+	void audio_notify(char *msg);
 	void rptr_ack(short i);
-	void AudioNotifyThread(char *arg);
+	void AudioNotifyThread(SECHO &edata);
 	void RptrAckThread(char *arg);
 	bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value);
 	bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value);

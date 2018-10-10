@@ -164,7 +164,6 @@ void CQnetLink::RptrAckThread(char *arg)
 	char from_mod = arg[0];
 	char RADIO_ID[21];
 	memcpy(RADIO_ID, arg + 1, 21);
-	time_t tnow = 0;
 	unsigned char silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x16, 0x29, 0xf5 };
 	struct sigaction act;
 
@@ -179,8 +178,6 @@ void CQnetLink::RptrAckThread(char *arg)
 		printf("sigaction-INT failed, error=%d\n", errno);
 		return;
 	}
-
-	time(&tnow);
 
 	short int streamid_raw = Random.NewStreamID();
 
@@ -1348,7 +1345,7 @@ void CQnetLink::Process()
 						} else if (0==memcmp(buf + 10, "NAK", 3) && to_remote_g2[i].from_mod==buf[8]) {
 							printf("Link module %c to [%s] %c is rejected\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_linked.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
+							sprintf(notify_msg, "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
 							audio_notify(notify_msg);
 
 							to_remote_g2[i].to_call[0] = '\0';
@@ -2214,7 +2211,7 @@ void CQnetLink::Process()
 						} else if (buf[4]==70 && buf[5]==65 && buf[6]==73 && buf[7]==76) {
 							printf("Login failed to call %s mod %c\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_linked.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
+							sprintf(notify_msg, "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
 							audio_notify(notify_msg);
 
 							to_remote_g2[i].to_call[0] = '\0';
@@ -2226,7 +2223,7 @@ void CQnetLink::Process()
 						} else if (buf[4]==66 && buf[5]==85 && buf[6]==83 && buf[7]==89) {
 							printf("Busy or unknown status from call %s mod %c\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_linked.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
+							sprintf(notify_msg, "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
 							audio_notify(notify_msg);
 
 							to_remote_g2[i].to_call[0] = '\0';
@@ -2818,7 +2815,7 @@ void CQnetLink::Process()
 									to_remote_g2[i].from_mod, to_remote_g2[i].to_call,
 									to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_linked.dat_UNLINKED",
+							sprintf(notify_msg, "%c_failed_link.dat_UNLINKED",
 									to_remote_g2[i].from_mod);
 							audio_notify(notify_msg);
 
@@ -3360,8 +3357,7 @@ void CQnetLink::audio_notify(char *msg)
 	if (!announce)
 		return;
 
-	short int i = 0;
-	static char notify_msg[3][64];
+	short int i = -1;
 
 	if (*msg == 'A')
 		i = 0;
@@ -3370,202 +3366,161 @@ void CQnetLink::audio_notify(char *msg)
 	else if (*msg == 'C')
 		i = 2;
 
-	strcpy(notify_msg[i], msg);
+	if (i < 0) {
+		fprintf(stderr, "Improper module in msg '%s'\n", msg);
+		return;
+	}
+
+	SECHO edata;
+	char *p = strstr(msg, ".dat");
+	if (NULL == p) {
+		fprintf(stderr, "Improper AMBE data file in msg '%s'\n", msg);
+		return;
+	}
+	if ('_' == p[4]) {
+		std::string message(p+5);
+		message.resize(20, ' ');
+		strcpy(edata.message, message.c_str());
+		for (int i=0; i<20; i++) {
+			if ('_' == edata.message[i])
+				edata.message[i] = ' ';
+		}
+	} else {
+		strcpy(edata.message, "QnetGateway Message ");
+	}
+	p[4] = '\0';
+	snprintf(edata.file, FILENAME_MAX, "%s/%s", announce_dir.c_str(), msg+2);
+
+	memcpy(edata.header.title, "DSVT", 4);
+	edata.header.config = 0x10U;
+	edata.header.flaga[0] = edata.header.flaga[1] = edata.header.flaga[2] = 0x0U;
+	edata.header.id = 0x20;
+	edata.header.streamid = Random.NewStreamID();
+	edata.header.ctrl = 0x80U;
+	edata.header.hdr.flag[0] = edata.header.hdr.flag[1] = edata.header.hdr.flag[2] = 0x0U;
+	memcpy(edata.header.hdr.rpt1, owner.c_str(), CALL_SIZE);
+	edata.header.hdr.rpt1[7] = msg[0];
+	memcpy(edata.header.hdr.rpt2, owner.c_str(), CALL_SIZE);
+	edata.header.hdr.rpt2[7] = 'G';
+	memcpy(edata.header.hdr.urcall, "CQCQCQ  ", CALL_SIZE);
+	memcpy(edata.header.hdr.mycall, owner.c_str(), CALL_SIZE);
+	memcpy(edata.header.hdr.sfx, "RPTR", 4);
+	calcPFCS(edata.header.title, 56);
+
 	try {
-		std::async(std::launch::async, &CQnetLink::AudioNotifyThread, this, notify_msg[i]);
+		std::async(std::launch::async, &CQnetLink::AudioNotifyThread, this, std::ref(edata));
 	} catch (const std::exception &e) {
 		printf ("Failed to start AudioNotifyThread(). Exception: %s\n", e.what());
 	}
 	return;
 }
 
-void CQnetLink::AudioNotifyThread(char *arg)
+void CQnetLink::AudioNotifyThread(SECHO &edata)
 {
-	char notify_msg[64];
-
-	strcpy(notify_msg, (char *)arg);
-
-	unsigned short rlen = 0;
-	size_t nread = 0;
-	bool useTEXT = false;
-	short int TEXT_idx = 0;
-	char RADIO_ID[21];
-	char temp_file[FILENAME_MAX + 1];
-	FILE *fp = NULL;
-	char mod;
-	char *p = NULL;
-	u_int16_t streamid_raw = 0;
-	time_t tnow = 0;
 	struct sigaction act;
-
-	/* example: A_linked.dat_LINKED_TO_XRF005_A */
-	/* example: A_unlinked.dat */
-	/* example: A_failed_linked.dat */
-
 	act.sa_handler = sigCatch;
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
+		fprintf(stderr, "sigaction-TERM failed, error=%d\n", errno);
 		return;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
+		fprintf(stderr, "sigaction-INT failed, error=%d\n", errno);
 		return;
 	}
 
-	memset(RADIO_ID, ' ', 20);
-	RADIO_ID[20] = '\0';
-
-	mod = notify_msg[0];
+	char mod = edata.header.hdr.rpt1[7];
 
 	if ((mod != 'A') && (mod != 'B') && (mod != 'C')) {
-		printf("Invalid module %c in %s\n", mod, notify_msg);
+		fprintf(stderr, "Invalid module %c in %s\n", mod, edata.file);
 		return;
 	}
-
-	p = strstr(notify_msg, ".dat");
-	if (!p) {
-		printf("Incorrect filename in %s\n", notify_msg);
-		return;
-	}
-
-	if (p[4] == '_') {
-		useTEXT = true;
-		memcpy(RADIO_ID, p + 5, (strlen(p + 5) > 20)?20:strlen(p + 5));
-		for (TEXT_idx = 0; TEXT_idx < 20; TEXT_idx++) {
-			RADIO_ID[TEXT_idx] = toupper(RADIO_ID[TEXT_idx]);
-			if (RADIO_ID[TEXT_idx] == '_')
-				RADIO_ID[TEXT_idx] = ' ';
-		}
-		TEXT_idx = 0;
-		p[4] = '\0';
-	} else
-		useTEXT = false;
 
 	sleep(delay_before);
 
-	memset(temp_file, '\0', sizeof(temp_file));
-	snprintf(temp_file, FILENAME_MAX, "%s/%s", announce_dir.c_str(), notify_msg + 2);
-	printf("sending File:[%s], mod:[%c], RADIO_ID=[%s]\n", temp_file, mod, RADIO_ID);
+	printf("sending File:[%s], mod:[%c], RADIO_ID=[%s]\n", edata.file, mod, edata.message);
 
-	fp = fopen(temp_file, "rb");
+	struct stat sbuf;
+	if (stat(edata.file, &sbuf)) {
+		fprintf(stderr, "can't stat %s\n", edata.file);
+		return;
+	}
+
+	if (sbuf.st_size % 9)
+		printf("Warning %s file size is %ld (not a multiple of 9)!\n", edata.file, sbuf.st_size);
+	int ambeblocks = (int)sbuf.st_size / 9;
+
+
+	FILE *fp = fopen(edata.file, "rb");
 	if (!fp) {
-		printf("Failed to open file %s for reading\n", temp_file);
+		fprintf(stderr, "Failed to open file %s for reading\n", edata.file);
 		return;
 	}
 
-	/* stupid DVTOOL + 4 byte num_of_records */
-	unsigned char dstar_buf[10];
-	nread = fread(dstar_buf, 10, 1, fp);
-	if (nread != 1) {
-		printf("Cant read first 10 bytes from %s\n", temp_file);
-		fclose(fp);
-		return;
-	}
-	if (memcmp(dstar_buf, "DVTOOL", 6) != 0) {
-		printf("DVTOOL keyword not found in %s\n", temp_file);
-		fclose(fp);
-		return;
-	}
+	sendto(rptr_sock, edata.header.title, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 
-	time(&tnow);
+	edata.header.config = 0x20U;
 
-	while (keep_running) {
-		/* 2 byte length */
-		nread = fread(&rlen, 2, 1, fp);
-		if (nread != 1)
-			break;
+	for (int i=0; i<ambeblocks && keep_running; i++) {
 
-		if (rlen == 56)
-			streamid_raw = Random.NewStreamID();
-		else if (rlen == 27)
-			;
-		else {
-			printf("Not 56-byte and not 27-byte in %s\n", temp_file);
-			break;
-		}
-
-		SDSVT dsvt;
-		nread = fread(dsvt.title, rlen, 1, fp);
+		int nread = fread(edata.header.vasd.voice, 9, 1, fp);
 		if (nread == 1) {
-			if (memcmp(dsvt.title, "DSVT", 4) != 0) {
-				printf("DVST not found in %s\n", temp_file);
-				break;
-			}
-
-			if (dsvt.id != 0x20) {
-				printf("Not Voice type in %s\n", temp_file);
-				break;
-			}
-
-			if (dsvt.config!=0x10 && dsvt.config!=0x20) {
-				printf("Not a valid record type in %s\n", temp_file);
-				break;
-			}
-
-			dsvt.streamid = htons(streamid_raw);
-
-			if (rlen == 56) {
-				dsvt.hdr.flag[0] = 0x0;
-
-				memcpy(dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
-				dsvt.hdr.rpt1[7] = mod;
-
-				memcpy(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE);
-				dsvt.hdr.rpt2[7] = 'G';
-
-				memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
-
-				memcpy(dsvt.hdr.mycall, owner.c_str(), CALL_SIZE);
-				dsvt.hdr.mycall[6] = dsvt.hdr.mycall[7] = ' ';
-
-				memcpy(dsvt.hdr.sfx, "RPTR", 4);
-				calcPFCS(dsvt.title, 56);
+			edata.header.ctrl = (unsigned char)(i % 21);
+			if (0x0U == edata.header.ctrl) {
+				const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
+				memcpy(edata.header.vasd.text, sdsync, 3);
 			} else {
-				if (useTEXT) {
-					if ((dsvt.vasd.text[0] != 0x55) || (dsvt.vasd.text[1] != 0x2d) || (dsvt.vasd.text[2] != 0x16)) {
-						if (TEXT_idx == 0) {
-							dsvt.vasd.text[0] = '@' ^ 0x70;
-							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
-						} else if (TEXT_idx == 2) {
-							dsvt.vasd.text[0] = RADIO_ID[TEXT_idx++] ^ 0x70;
-							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
-						} else if (TEXT_idx == 5) {
-							dsvt.vasd.text[0] = 'A' ^ 0x70;
-							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
-						} else if (TEXT_idx == 7) {
-							dsvt.vasd.text[0] = RADIO_ID[TEXT_idx++] ^ 0x70;
-							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
-						} else if (TEXT_idx == 10) {
-							dsvt.vasd.text[0] = 'B' ^ 0x70;
-							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
-						} else if (TEXT_idx == 12) {
-							dsvt.vasd.text[0] = RADIO_ID[TEXT_idx++] ^ 0x70;
-							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
-						} else if (TEXT_idx == 15) {
-							dsvt.vasd.text[0] = 'C' ^ 0x70;
-							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
-						} else if (TEXT_idx == 17) {
-							dsvt.vasd.text[0] = RADIO_ID[TEXT_idx++] ^ 0x70;
-							dsvt.vasd.text[1] = RADIO_ID[TEXT_idx++] ^ 0x4f;
-							dsvt.vasd.text[2] = RADIO_ID[TEXT_idx++] ^ 0x93;
-						} else {
-							dsvt.vasd.text[0] = 0x70;
-							dsvt.vasd.text[1] = 0x4f;
-							dsvt.vasd.text[2] = 0x93;
-						}
-					}
+				const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
+				switch (i) {
+					case 1:
+						edata.header.vasd.text[0] = '@' ^ 0x70;
+						edata.header.vasd.text[1] = edata.message[0] ^ 0x4f;
+						edata.header.vasd.text[2] = edata.message[1] ^ 0x93;
+						break;
+					case 2:
+						edata.header.vasd.text[0] = edata.message[2] ^ 0x70;
+						edata.header.vasd.text[1] = edata.message[3] ^ 0x4f;
+						edata.header.vasd.text[2] = edata.message[4] ^ 0x93;
+						break;
+					case 3:
+						edata.header.vasd.text[0] = 'A' ^ 0x70;
+						edata.header.vasd.text[1] = edata.message[5] ^ 0x4f;
+						edata.header.vasd.text[2] = edata.message[6] ^ 0x93;
+						break;
+					case 4:
+						edata.header.vasd.text[0] = edata.message[7] ^ 0x70;
+						edata.header.vasd.text[1] = edata.message[8] ^ 0x4f;
+						edata.header.vasd.text[2] = edata.message[9] ^ 0x93;
+						break;
+					case 5:
+						edata.header.vasd.text[0] = 'B' ^ 0x70;
+						edata.header.vasd.text[1] = edata.message[10] ^ 0x4f;
+						edata.header.vasd.text[2] = edata.message[11] ^ 0x93;
+						break;
+					case 6:
+						edata.header.vasd.text[0] = edata.message[12] ^ 0x70;
+						edata.header.vasd.text[1] = edata.message[13] ^ 0x4f;
+						edata.header.vasd.text[2] = edata.message[14] ^ 0x93;
+						break;
+					case 7:
+						edata.header.vasd.text[0] = 'C' ^ 0x70;
+						edata.header.vasd.text[1] = edata.message[15] ^ 0x4f;
+						edata.header.vasd.text[2] = edata.message[16] ^ 0x93;
+						break;
+					case 8:
+						edata.header.vasd.text[0] = edata.message[17] ^ 0x70;
+						edata.header.vasd.text[1] = edata.message[18] ^ 0x4f;
+						edata.header.vasd.text[2] = edata.message[19] ^ 0x93;
+						break;
+					default:
+						memcpy(edata.header.vasd.text, sdsilence, 3);
+						break;
 				}
 			}
-			sendto(rptr_sock, dsvt.title, rlen, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+			if (i+1 == ambeblocks)
+				edata.header.ctrl |= 0x40U;
+			sendto(rptr_sock, edata.header.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 	}

@@ -28,15 +28,6 @@ using namespace libconfig;
 #define CALL_SIZE 8
 #define MAX_DTMF_BUF 32
 
-typedef struct echo_tag {
-	time_t last_time;
-	unsigned short streamid;
-	int fd;
-	char message[24];
-	SDSVT header;
-	char file[FILENAME_MAX + 1];
-} SECHO;
-
 typedef struct to_remote_g2_tag {
 	unsigned short streamid;
 	struct sockaddr_in toDst4;

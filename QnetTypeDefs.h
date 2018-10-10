@@ -123,3 +123,12 @@ typedef struct dsrp_tag {	//									offset	  size
 	};
 } SDSRP;
 #pragma pack(pop)
+
+typedef struct echo_tag {
+	time_t last_time;
+	unsigned short streamid;
+	int fd;
+	char message[24];
+	SDSVT header;
+	char file[FILENAME_MAX + 1];
+} SECHO;
