@@ -392,7 +392,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 	if (! get_value(cfg, path+"status", status_file, 2, FILENAME_MAX, "/usr/local/etc/RPTR_STATUS.txt"))
 		return true;
 
-	if (! get_value(cfg, path+"qnvoicefile", qnvoicefile, 2, FILENAME_MAX, ".tmp/qnvoice.txt"))
+	if (! get_value(cfg, path+"qnvoicefile", qnvoicefile, 2, FILENAME_MAX, "/tmp/qnvoice.txt"))
 		return true;
 
 	// link
@@ -486,31 +486,32 @@ void CQnetGateway::GetIRCDataThread()
 		not_announced[i] = this->rptr.mod[i].defined;	// announce to all modules that are defined!
 	bool is_quadnet = (0 == ircddb.ip.compare("rr.openquad.net"));
 	while (keep_running) {
-		threshold++;
-		if (threshold >= 100) {
-			int rc = ii->getConnectionState();
-			if (rc > 5 && rc < 8 && is_quadnet) {
-				char ch = '\0';
-				if (not_announced[0])
-					ch = 'A';
-				else if (not_announced[1])
-					ch = 'B';
-				else if (not_announced[2])
-					ch = 'C';
-				if (ch) {
-					// we need to announce, but can we?
-					struct stat sbuf;
-					if (stat(qnvoicefile.c_str(), &sbuf)) {
-						// yes, there is no qnvoicefile, so create it
-						FILE *fp = fopen(qnvoicefile.c_str(), "w");
-						if (fp) {
-							fprintf(fp, "%c_connected2network.dat_WELCOME_TO_QUADNET", ch);
-							fclose(fp);
-							not_announced[ch - 'A'] = false;
-						}
-					}
+		int rc = ii->getConnectionState();
+		if (rc > 5 && rc < 8 && is_quadnet) {
+			char ch = '\0';
+			if (not_announced[0])
+				ch = 'A';
+			else if (not_announced[1])
+				ch = 'B';
+			else if (not_announced[2])
+				ch = 'C';
+			if (ch) {
+				// we need to announce, but can we?
+				struct stat sbuf;
+				if (stat(qnvoicefile.c_str(), &sbuf)) {
+					// yes, there is no qnvoicefile, so create it
+					FILE *fp = fopen(qnvoicefile.c_str(), "w");
+					if (fp) {
+						fprintf(fp, "%c_connected2network.dat_WELCOME_TO_QUADNET", ch);
+						fclose(fp);
+						not_announced[ch - 'A'] = false;
+					} else
+						fprintf(stderr, "could not open %s\n", qnvoicefile.c_str());
 				}
 			}
+		}
+		threshold++;
+		if (threshold >= 100) {
 			if ((rc == 0) || (rc == 10)) {
 				if (last_status != 0) {
 					printf("irc status=%d, probable disconnect...\n", rc);
