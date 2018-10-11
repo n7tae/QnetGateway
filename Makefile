@@ -243,12 +243,7 @@ uninstall :
 	systemctl disable qnlink.service
 	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/already_linked.dat
-	/bin/rm -f $(CFGDIR)/already_unlinked.dat
-	/bin/rm -f $(CFGDIR)/failed_linked.dat
-	/bin/rm -f $(CFGDIR)/id.dat
-	/bin/rm -f $(CFGDIR)/linked.dat
-	/bin/rm -f $(CFGDIR)/unlinked.dat
+	/bin/rm -f $(CFGDIR)/*.dat
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh
@@ -273,12 +268,7 @@ uninstallitap :
 	systemctl disable qnlink.service
 	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/already_linked.dat
-	/bin/rm -f $(CFGDIR)/already_unlinked.dat
-	/bin/rm -f $(CFGDIR)/failed_linked.dat
-	/bin/rm -f $(CFGDIR)/id.dat
-	/bin/rm -f $(CFGDIR)/linked.dat
-	/bin/rm -f $(CFGDIR)/unlinked.dat
+	/bin/rm -f $(CFGDIR)/*.dat
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh
@@ -303,12 +293,7 @@ uninstallicom :
 	systemctl disable qnlink.service
 	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/already_linked.dat
-	/bin/rm -f $(CFGDIR)/already_unlinked.dat
-	/bin/rm -f $(CFGDIR)/failed_linked.dat
-	/bin/rm -f $(CFGDIR)/id.dat
-	/bin/rm -f $(CFGDIR)/linked.dat
-	/bin/rm -f $(CFGDIR)/unlinked.dat
+	/bin/rm -f $(CFGDIR)/*.dat
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh
@@ -327,12 +312,7 @@ uninstalldvap :
 	systemctl disable qnlink.service
 	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/already_linked.dat
-	/bin/rm -f $(CFGDIR)/already_unlinked.dat
-	/bin/rm -f $(CFGDIR)/failed_linked.dat
-	/bin/rm -f $(CFGDIR)/id.dat
-	/bin/rm -f $(CFGDIR)/linked.dat
-	/bin/rm -f $(CFGDIR)/unlinked.dat
+	/bin/rm -f $(CFGDIR)/*.dat
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh
@@ -357,12 +337,7 @@ uninstalldvrptr :
 	systemctl disable qnlink.service
 	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/already_linked.dat
-	/bin/rm -f $(CFGDIR)/already_unlinked.dat
-	/bin/rm -f $(CFGDIR)/failed_linked.dat
-	/bin/rm -f $(CFGDIR)/id.dat
-	/bin/rm -f $(CFGDIR)/linked.dat
-	/bin/rm -f $(CFGDIR)/unlinked.dat
+	/bin/rm -f $(CFGDIR)/*.dat
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh

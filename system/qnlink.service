@@ -1,7 +1,7 @@
 [Unit]
 Description=QnetLink
-Requires=qngateway.service
-After=systemd-user-session.service qngateway.service
+Requires=network.target
+After=systemd-user-session.service network.target
 
 [Service]
 Type=simple
