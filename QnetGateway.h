@@ -58,7 +58,7 @@ typedef struct band_txt_tag {
 	time_t last_time;
 	char txt[64];   // Only 20 are used
 	unsigned short txt_cnt;
-	bool txt_stats_sent;
+	bool sent_key_on_msg;
 
 	char dest_rptr[CALL_SIZE + 1];
 
@@ -92,6 +92,8 @@ private:
 	bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header, bool_qso_details, bool_send_aprs;
 
 	int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
+
+	unsigned int vPacketCount;
 
 	std::map <uint32_t, uint16_t> portmap;
 

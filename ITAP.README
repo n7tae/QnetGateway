@@ -30,6 +30,9 @@ your start. On a Raspberry Pi, you can do all of this with the configuration men
     USB devices on your system the device might end up somewhere else. Do "ls /dev"
     before and after plugging in your cable to figure out where it is. If it's
     not on /dev/ttyUSB0, uncomment the device line and put in the correct device.
+    If you are planning on linking to a Trust DPlus (REF) reflector or repeater,
+    please look over the "dplus" section to enable this. You need to already be
+    registered (www.dstargateway.org) to do this.
 
 6)  You need a gwys.txt file for all the systems to which you may wish to link.
     If you want to be able to link to repeaters: ./get_gwy_list.sh

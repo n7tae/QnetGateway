@@ -54,8 +54,8 @@ itap   : $(TAP_PROGRAMS)
 qngateway : $(IRCOBJS) QnetGateway.o aprs.o
 	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
 
-qnlink : QnetLink.o Random.o
-	g++ $(CPPFLAGS) -o qnlink QnetLink.o Random.o $(LDFLAGS) -pthread
+qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o
+	g++ $(CPPFLAGS) -o qnlink QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o $(LDFLAGS) -pthread
 
 qnrelay : QnetRelay.o
 	g++ $(CPPFLAGS) -o qnrelay QnetRelay.o $(LDFLAGS)

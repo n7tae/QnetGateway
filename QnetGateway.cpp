@@ -814,6 +814,11 @@ void CQnetGateway::ProcessTimeouts()
 	}
 }
 
+// new_group is true if we are processing the first voice packet of a 2-voice packet pair. The high order nibble of the first byte of
+// this first packet specifed the type of slow data that is being sent.
+// the to_print is an integer that counts down how many 2-voice-frame pairs remain to be processed.
+// ABC_grp means that we are processing a 20-character message.
+// C_seen means that we are processing the last 2-voice-frame packet on a 20 character message.
 void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsigned char header_type, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen)
 {
 	/* extract 20-byte RADIO ID */
@@ -829,7 +834,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsi
 				if (new_group[i]) {
 					header_type = c1 & 0xf0;
 
-					//					header                   squelch
+					//                 header                   squelch
 					if ((header_type == 0x50) || (header_type == 0xc0)) {
 						new_group[i] = false;
 						to_print[i] = 0;
@@ -933,7 +938,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsi
 						/* We should NOT see any more text,
 						   if we already processed text,
 						   so blank out the codes. */
-						if (band_txt[i].txt_stats_sent) {
+						if (band_txt[i].sent_key_on_msg) {
 							data[0] = 0x70;
 							data[1] = 0x4f;
 							data[2] = 0x93;
@@ -944,12 +949,26 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsi
 							band_txt[i].txt_cnt = 0;
 						}
 					}
-					else {
+					else {	// header type is not header, squelch, gps or message
 						new_group[i] = false;
 						to_print[i] = 0;
 						ABC_grp[i] = false;
 					}
-				} else {
+				}
+				else { // not a new_group, this is the second of a two-voice-frame pair
+					if (! band_txt[i].sent_key_on_msg && vPacketCount > 100) {
+						// 100 voice packets received and still no 20-char message!
+						/*** if YRCALL is CQCQCQ, set dest_rptr ***/
+						band_txt[i].txt[0] = '\0';
+						if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
+							set_dest_rptr(i, band_txt[i].dest_rptr);
+							if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
+								band_txt[i].dest_rptr[0] = '\0';
+						}
+						// we have the 20-character message, send it to the server...
+						ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+						band_txt[i].sent_key_on_msg = true;
+					}
 					if (to_print[i] == 3) {
 						if (ABC_grp[i]) {
 							band_txt[i].txt[band_txt[i].txt_cnt] = c1;
@@ -964,7 +983,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsi
 							/* We should NOT see any more text,
 							   if we already processed text,
 							   so blank out the codes. */
-							if (band_txt[i].txt_stats_sent) {
+							if (band_txt[i].sent_key_on_msg) {
 								data[0] = 0x70;
 								data[1] = 0x4f;
 								data[2] = 0x93;
@@ -972,16 +991,16 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsi
 
 							if ((band_txt[i].txt_cnt >= 20) || C_seen[i]) {
 								band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
-								if (!band_txt[i].txt_stats_sent) {
+								if ( ! band_txt[i].sent_key_on_msg) {
 									/*** if YRCALL is CQCQCQ, set dest_rptr ***/
 									if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
 										set_dest_rptr(i, band_txt[i].dest_rptr);
 										if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
 											band_txt[i].dest_rptr[0] = '\0';
 									}
-
+									// we have the 20-character message, send it to the server...
 									ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
-									band_txt[i].txt_stats_sent = true;
+									band_txt[i].sent_key_on_msg = true;
 								}
 								band_txt[i].txt_cnt = 0;
 							}
@@ -995,7 +1014,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsi
 								band_txt[i].temp_line_cnt = 0;
 							}
 
-							/* do not copy CR, NL */
+							/* do not copy carrige return or newline */
 							if ((c1 != '\r') && (c1 != '\n')) {
 								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c1;
 								band_txt[i].temp_line_cnt++;
@@ -1394,7 +1413,7 @@ void CQnetGateway::Process()
 					}
 
 					if (recvlen == 58) {
-
+						vPacketCount = 0U;
 						if (bool_qso_details)
 							printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
 
@@ -1435,7 +1454,7 @@ void CQnetGateway::Process()
 
 								band_txt[i].txt[0] = '\0';
 								band_txt[i].txt_cnt = 0;
-								band_txt[i].txt_stats_sent = false;
+								band_txt[i].sent_key_on_msg = false;
 
 								band_txt[i].dest_rptr[0] = '\0';
 
@@ -1896,7 +1915,18 @@ void CQnetGateway::Process()
 										dtmf_counter[i] = 0;
 										dtmf_last_frame[i] = 0;
 									}
-
+									if (! band_txt[i].sent_key_on_msg) {
+										band_txt[i].txt[0] = '\0';
+										if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
+											set_dest_rptr(i, band_txt[i].dest_rptr);
+											if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
+												band_txt[i].dest_rptr[0] = '\0';
+										}
+										// we have the 20-character message, send it to the server...
+										ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+										band_txt[i].sent_key_on_msg = true;
+									}
+									// send the "key off" message, this will end up in the openquad.net Last Heard webpage.
 									ii->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
 
 									band_txt[i].streamID = 0;
@@ -1955,8 +1985,8 @@ void CQnetGateway::Process()
 								break;
 							}
 						}
-
-						if (recvlen == 29)
+						vPacketCount++;
+						if (recvlen == 29)	// process the slow data from every voice packet
 							ProcessSlowData(rptrbuf.vpkt.vasd.text,  rptrbuf.vpkt.streamid, header_type, new_group, to_print, ABC_grp, C_seen);
 						else
 							ProcessSlowData(rptrbuf.vpkt.vasd1.text, rptrbuf.vpkt.streamid, header_type, new_group, to_print, ABC_grp, C_seen);
@@ -2558,7 +2588,7 @@ int CQnetGateway::Init(char *cfgfile)
 
 		band_txt[i].txt[0] = '\0';
 		band_txt[i].txt_cnt = 0;
-		band_txt[i].txt_stats_sent = false;
+		band_txt[i].sent_key_on_msg = false;
 
 		band_txt[i].dest_rptr[0] = '\0';
 

@@ -19,7 +19,11 @@
  */
 
 #include <regex.h>
-
+#include <string>
+#include <map>
+#include <set>
+#include <atomic>
+#include <netinet/in.h>
 #include <libconfig.h++>
 #include "versions.h"
 #include "QnetTypeDefs.h"
@@ -83,6 +87,7 @@ private:
 	/* configuration data */
 	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, status_file, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, bool_rptr_ack, announce;
+	bool dplus_authorize, dplus_reflectors, dplus_repeaters;
 	int rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port, delay_between, delay_before;
 	char link_at_startup[CALL_SIZE+1];
 	unsigned int max_dongles, saved_max_dongles;

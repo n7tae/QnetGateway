@@ -37,7 +37,6 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 
@@ -45,16 +44,13 @@
 #include <fstream>
 #include <future>
 #include <exception>
-#include <atomic>
-#include <string>
-#include <set>
-#include <map>
 #include <utility>
 #include <thread>
 #include <chrono>
 #include <libconfig.h++>
 
 #include "versions.h"
+#include "DPlusAuthenticator.h"
 #include "QnetLink.h"
 
 using namespace libconfig;
@@ -315,6 +311,15 @@ void CQnetLink::print_status_file()
 /* Open text file of repeaters, reflectors */
 bool CQnetLink::load_gwys(const std::string &filename)
 {
+	// DPlus Authenticate
+	if (dplus_authorize) {
+		CDPlusAuthenticator auth(owner, std::string("auth.dstargateway.org"));
+		if (auth.Process(gwy_list, dplus_reflectors, dplus_repeaters))
+			fprintf(stdout, "DPlus Authorization complete.\n");
+		else
+			fprintf(stderr, "DPlus Authorization failed!\n");
+	}
+
 	char inbuf[1024];
 	const char *delim = " ";
 
@@ -397,11 +402,11 @@ bool CQnetLink::load_gwys(const std::string &filename)
 		sprintf(payload, "%s %s", host, port);
 
 		auto gwy_pos = gwy_list.find(call);
-		if (gwy_pos == gwy_list.end()) {
-			gwy_list[call] = payload;
+		if (gwy_pos == gwy_list.end())
 			printf("Added Call=[%s], payload=[%s]\n",call, payload);
-		} else
-			printf("Call [%s] is duplicate\n", call);
+		else
+			printf("%s %s has been redefined!\n", call, payload);
+		gwy_list[call] = payload;
 	}
 	fclose(fp);
 
@@ -713,6 +718,10 @@ bool CQnetLink::read_config(const char *cfgFile)
 		timer *= 60;
 		rf_inactivity_timer[i] = timer;
 	}
+
+	get_value(cfg, "dplus.authorize", dplus_authorize, false);
+	get_value(cfg, "dplus.use_reflectors", dplus_reflectors, true);
+	get_value(cfg, "dplus.use_repeaters", dplus_repeaters, true);
 
 	return false;
 }

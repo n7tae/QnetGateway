@@ -59,6 +59,9 @@ disable the serial0 console in the /boot/cmdline.txt file: Remove the reference 
 
 12) You need a configuration file called qn.cfg for QnetGateway. A good, nearly
     working config file is qn.mmdvm.cfg. Copy it to qn.cfg and edit it.
+    If you are planning on linking to a Trust DPlus (REF) reflector or repeater,
+    please look over the "dplus" section to enable this. You need to already be
+    registered (www.dstargateway.org) to do this.
 
 13) You need a gwys.txt file for all the systems to which you may wish to link.
     If you want to be able to link to repeaters: ./get_gwy_list.sh
