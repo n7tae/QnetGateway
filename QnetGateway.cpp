@@ -1714,12 +1714,8 @@ void CQnetGateway::Process()
 									}
 								}
 								else
-								{	// Not in cache, please try again!
-									FILE *fp = fopen(qnvoicefile.c_str(), "w");
-									if (fp) {
-										fprintf(fp, "%c_notincache.dat_NOT_IN_CACHE\n", rptrbuf.vpkt.hdr.r1[7]);
-										fclose(fp);
-									}
+								{
+									playNotInCache = true; // we need to wait until user's transmission is over
 								}
 							}
 						}
@@ -1929,6 +1925,16 @@ void CQnetGateway::Process()
 									// send the "key off" message, this will end up in the openquad.net Last Heard webpage.
 									ii->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
 
+									if (playNotInCache) {
+										// Not in cache, please try again!
+										FILE *fp = fopen(qnvoicefile.c_str(), "w");
+										if (fp) {
+											fprintf(fp, "%c_notincache.dat_NOT_IN_CACHE\n", band_txt[i].lh_rpt1[7]);
+											fclose(fp);
+										}
+										playNotInCache = false;
+									}
+
 									band_txt[i].streamID = 0;
 									band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
 									band_txt[i].lh_mycall[0] = '\0';
@@ -1947,7 +1953,6 @@ void CQnetGateway::Process()
 									band_txt[i].num_dv_frames = 0;
 									band_txt[i].num_dv_silent_frames = 0;
 									band_txt[i].num_bit_errors = 0;
-
 								}
 								else
 								{	// not the end of the voice stream
@@ -2556,6 +2561,8 @@ int CQnetGateway::Init(char *cfgfile)
 		printf("Failed to process config file %s\n", cfgfile);
 		return 1;
 	}
+
+	playNotInCache = false;
 
 	/* build the repeater callsigns for aprs */
 	rptr.mod[0].call = OWNER;
