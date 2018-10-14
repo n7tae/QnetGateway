@@ -236,6 +236,10 @@ bool CQnetGateway::read_config(char *cfgFile)
 	std::string path("ircddb.");
 	if (! get_value(cfg, path+"login", owner, 3, CALL_SIZE-2, "UNDEFINED"))
 		return true;
+	if (0 == owner.compare("UNDEFINED")) {
+		fprintf(stderr, "You must specify your lisensed callsign in ircddb.login\n");
+		return true;
+	}
 	OWNER = owner;
 	ToLower(owner);
 	ToUpper(OWNER);
