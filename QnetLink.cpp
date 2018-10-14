@@ -402,14 +402,14 @@ bool CQnetLink::load_gwys(const std::string &filename)
 		sprintf(payload, "%s %s", host, port);
 
 		auto gwy_pos = gwy_list.find(call);
-		if (gwy_pos == gwy_list.end())
-			printf("Added Call=[%s], payload=[%s]\n",call, payload);
-		else
+		if (gwy_pos != gwy_list.end())
 			printf("%s %s has been redefined!\n", call, payload);
 		gwy_list[call] = payload;
 	}
 	fclose(fp);
 
+	for (auto it=gwy_list.begin(); it!=gwy_list.end(); it++)
+		printf("%s %s\n", it->first.c_str(), it->second.c_str());
 	printf("Added %d gateways\n", (int)gwy_list.size());
 	return true;
 }

@@ -124,6 +124,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, const std::s
 
 			Trim(address);
 			Trim(name);
+			name.resize(8, ' ');
 
 			// Get the active flag
 			bool active = (buffer[i + 25U] & 0x80U) == 0x80U;
@@ -141,7 +142,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, const std::s
 	}
 
 	printf("Authorized DPlus with %s using callsign %s\n", hostname.c_str(), callsign.c_str());
-	printf("Added %ld DPlus gateways\n", gwy_map.size());
+	printf("Added %d DPlus gateways\n", (int)gwy_map.size());
 	socket.close();
 
 	delete[] buffer;
