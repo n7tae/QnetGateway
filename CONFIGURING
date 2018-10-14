@@ -46,8 +46,11 @@ module = {
 }
 
 link = {
-	link_at_start = "CREF020A"
 	admin = [ "XX0XXX"]
+}
+
+dplus = {
+    authorize = true
 }
 
 -------------------------------------------------------------------
@@ -70,84 +73,7 @@ G2_ircDDB adapted from the OpenG2
    DESCRIPTION
 =================
 
-QnetGateway is a Dstar G2 gateway for the Dstar network with ircDDB routing
-and USroot routing. It runs on Linux(as a Linux service).
-ircddb originated from the OpenG2 with only one change.
-   Instead of using the local Postgres database server,
-       we use the remote IRC database server.(group2 or group1)
-   So, the difference between OpenG2 and ircddb is 0.01%
-This new software QnetGateway has been approved for use on the ircDDB network.
-
-IRC Gateways such as g2_ircdb (other IRC gateways copied from our OpenG2)
-connect to group2 server(USA/Canada) or group1 server(Europe).
-What are these group1, group2 servers? Group1 and group2 servers are really
-the combination of 2 programs running together:
-
-These are:
----- An IRC (Internet Relay Chat) program, in this case it is the inspIRCd
-     program
----- the LDAP (Light Directory Access Protocol) program
-
-So, ircDDB database servers are NOTHING new, they were designed by groups
-of people 20-30 years ago, before even the ICOM Dstar came out.
-The German IRC team, copied the above programs (IRC, LDAP) from those groups,
-and they called it group1 and group2.
-
-The reason for that was that an IRC(Internet Relay Chat) server, sends data
-immediately, while the ICOM dstar network sends data 5 minutes later after a
-user keyed up a Dstar repeater.  So, IRC is faster, but it overloads your
-home-network.
-
-Using a PERSONAL callsign to set up an ircDBB gateway
-=====================================================
-In qn.cfg, set OWNER equal to your personal callsign.
-In QnetLink.cfg, set OWNER equal to your personal callsign.
-In your repeater config file, set OWNER equal to your personal callsign.
-
-Using a REPEATER callsign to set up an ircDBB gateway
-=====================================================
-In QnetGateway.cfg, set OWNER equal to a REPEATER callsign (that you received
-from the ham authority of your Country).
-In QnetLink.cfg, set OWNER equal to a REPEATER callsign (that you received
-from the ham authority of your Country) In your repeater config file, set
-OWNER equal to a REPEATER callsign (that you received from the ham authority
-of your Country).
-
-However, since the IRC database servers(group2 in Canada/USA, group1 in
-Europe) do NOT allow personal callsigns to be used as gateways, then you may
-be asking what is the point?
-
-Here is the logic:
-In some Countries, it is very difficult to receive a GATEWAY (club/group)
-callsign, sometimes it takes years.  In cases such as these, hams only have
-their own personal callsign to use. So, how do we get around the problem when
-the IRC servers group1, group2 require a GATEWAY callsign, but the user only
-has a PERSONAL callsign?
-
-Some groups of hams got together and installed their own IRC database server.
-An IRC database server (like group1, group2) is really these 2 basic programs:
-
----- inspIRCd server software which is an IRC server (Internet Relay Chat)
-     which was designed in 1988. One such IRC program is inspIRCd which was
-     chosen by the German IRC team for use in their group1, group2 installations.
-
----  LDAP server software, which  is the Light Directory Access Protocol server,
-     that was written in 1993.
-
-These 2 programs inspIRCd + LDAP make up the the IRC database servers as we know
-them today and were installed together by the IRC team on group1, group2
-installations.
-
-That is all there is to it.
-
-When LDAP runs, it checks the Gateway password as listed in QnetGateway.cfg:
-IRC_PASS=... When LDAP does NOT run, then the IRC_PASS is NOT checked.
-
-So, some groups of hams, have installed the inspIRCd server, without installing
-the LDAP server. In such an installation, then the IRC_PASS is NOT checked, so
-you can use your personal callsign.
-
-g2_ircDDB supports the following commands in YRCALL
+QnetGateway supports the following commands in YRCALL
 
 Note: In the commands that folow, _ is a SPACE.
 
@@ -200,22 +126,15 @@ system, respectively. Also note that rpt1 is passed to these scripts\
 so you can use this as an input parameter for your scripts.
 Only admins can execute scripts, so set QnetLink.admin to your callsign
 
-7)
-Enabling and disabling INCOMING HotSpotNode connections:
-To Enable:
-YRCALL=_ _ _ _ _ _ D1
-To Disable:
-YRCALL=_ _ _ _ _ _ D0
-
-Required software to run the QnetGateway gateway correctly:
---- QnetGateway: The G2 audio gateway.
+Required software to run QnetGateway correctly:
+--- QnetGateway: The G2 audio gateway. This handle routing using an IRCddb
+          network and also handle echo and voicemail and some audio
+          notifications.
 --- QnetLink: This communicates with QnetGateway to link the local G2 gateway
-             to reflectors. Note: QnetLink is NOT required if you only make
-             routing calls or talk locally on the repeater.
---- rptr: This is our dstar repeater software that uses a GMSK adapter/modem.
-          Instead of rptr, you can use our QnetDVAP dstar repeater software
-          which uses a DVAP device. Intead of rptr, you can use our QnetDVRPTR
-          dstar repeater software which uses the DV-RPTR modem(dg1ht).
+          to reflectors.
+--- QnetDVAP, QnetDVRPTR, QNetITAP (can only be used with a compatible
+          Icom radio that supports Terminal mode) or QnetRelay (used with
+          MMDVMHost-compatible modems like the ZUMspot or DVMega).
 
 ROUTING methods
 ===============
@@ -243,6 +162,14 @@ Example of CALLSIGN routing:
  RPT1=KJ4NHF B
  RPT2=KJ4NHF G
 
+Example of GROUP routing:
+ Lets say you want to connect to the DSTAR1 group from your
+ local repeater module:
+ MYCALL=KI4LKF
+ YRCALL=DSTAR1
+ RPT1=KJ4NHF B
+ RPT2=KJ4NHF G
+
 Example of Cross-Band routing:
  Lets say that your repeater is KJ4NHF, and you are currently on
  your local repeater module B, your callsign is KI4LKF
@@ -257,15 +184,9 @@ DTMF decoding and processing
 =============================
 Prepare the software to decode and process DTMF tones
 -----------------------------------------------------
-Edit the Shell script proc_qnlinktest.sh
-Correct the value for G2 to be the local G2 gateway
-callsign(same value in  qn.cfg  ---->  OWNER)
-Edit G2_INT_IP  as follows:
-      If your QnetGateway.cfg, says "G2_INTERNAL_IP=0.0.0.0" then set
-      G2_INT_IP=127.0.0.1.
-      If your QnetGateway, says G2_INTERNAL_IP=<real local IP address>
-      then set G2_INT_IP equal to the exact value of G2_INTERNAL_IP.
-Edit G2_INT_PORT  to be equal to G2_INTERNAL_PORT in QnetGateway.cfg.
+Copy the Shell script qndtmf.sh to qndtmf and make any
+changes/additions/subtractions to the script then install your
+DTMF script with "sudo make installdtmf"
 
 Note:   When local RF user has entered dtmf tones on the Dstar HT
         and then PTT is released, QnetGateway will print the whole
@@ -273,18 +194,6 @@ Note:   When local RF user has entered dtmf tones on the Dstar HT
         dtmf file under  /tmp.
 
 How to enter DTMF tones correctly on your Dstar HT
---------------------------------------------------
-If you want to have perfect DTMF decoding/processing in QnetGateway,
-follow these suggestions:
-
- 1) Hold down each dtmf key for at least 150 milliseconds.
- 2) Leave at least 250 milliseconds of "silence", when you go from
-    one dtmf key to the next dtmf key.
-
-If you use a DTMF autodialer on your Dstar radio, you can program
-the above numbers easily into the ICOM's radio "auto-dialer".
-
-Note: MAXIMUM dtmf sequence is up to 32 dtmf tones.
 
 What dtmf tones are being decoded and processed
 -----------------------------------------------
@@ -311,7 +220,7 @@ To unlink (from any reflector xrf or ref):    #
 To get the "link status":  0 or 00
 
 Note:
-You can extend the shell script to do more things.  like force
+You can extend your dtmf shell script to do more things.  like force
 your repeater to ID itself. Any YRCALL command that can be executed
 by g2link_test, can be added to the shell script. Basically, the
 Linux shell script proc_QnetGateway_dtmfs.sh converts the decoded
@@ -320,19 +229,21 @@ dtmf tones into YRCALL commands using g2link_test program.
 ===========
 QnetLink is a small program that is used to link a local RF repeater
 band to a remote reflector. QnetLink software is used by our QnetGateway
-(an IRCddb gateway) and by our g2_ccs (a CCS gateway).
+(an IRCddb gateway).
 
-Before we begin, there are some dat files included in the QnetLink
-ZIP package. These dat files are:
+Before we begin, there are some dat files included that are the voice
+prompts used by QnetGateway and QnetLink:
 
+connected2network.dat
+notincache.dat
 already_linked.dat
 already_unlinked.dat
-failed_linked.dat
+failed_link.dat
 linked.dat
 unlinked.dat
 id.dat
 
-All of the above dat files are dvtool format files and they are used
+All of the above dat files are special AMBE format files and they are used
 when certain events take place. For example, when the link between your
 gateway and a reflector is established, then the file "linked.dat" will
 be played over RF, so anyone listening on your repeater, will hear the
@@ -341,14 +252,13 @@ change these files, unless you want to have your own personal voice
 played over RF. These dat files were created using a computer and they
 are NOT anyone's voice.
 
-The only dat file most hams will need to change is id.dat. The file
-id.dat contains the audio "UNLINKED" and nothing else. When the gateway
+The only file most hams will need to change is id.dat. When the gateway
 is not linked and the RF user sets YRCALL=_______I to request the
 status of the link, the file id.dat will be played back over RF. But
 you should create your own id.dat file that should identify your own
 repeater with extra information if you like.
 
-For example, you could create your own dvtool audio file that contains
+For example, you could create your own dat audio file that contains
 the audio:  "This is repeater ...". A simple way to create your own
 recorded "repeater identification file" id.dat is to use your Dstar HT
 and set YRCALL command:   YRCALL=______S0 and key up your repeater.
@@ -357,14 +267,9 @@ x_voicemail.dat where x is one of A.B or C. Now copy that file:
 sudo cp -f /tmp/C_voicemail.dat /usr/local/etc/it.dat
 
 You may be thinking why did we put all this source code inside QnetLink
-instead of putting it all inside the Gateway software QnetGateway (or
-g2_ccs CCS gateway software). Because it is NOT a good design to burden
-the G2 gateway with code that is not DSTAR protocol and reflectors are
-NOT part of Dstar and they are not Dstar protocol.
-
-The only code that should be in a gateway, is G2 protocol code. This way
-we keep the gateway (QnetGateway) clean of any unneccesary source
-code logic and containing only pure G2/D-Star logic.
+instead of putting it all inside the Gateway software QnetGateway.
+Having divided the functionality produces a smaller memory and resource
+requirement for your computer.
 
 QnetDVAP
 
@@ -375,14 +280,10 @@ to maximum level.
 QnetDVRPTR
 
 The serial number required in the qn.cfg file can most easily be obtained
-by examining the /var/log/QnetDVRPTR.log file once the board has been
-powered up by the BBB or RasPi. Once you know the board serial number,
-edit /usr/local/etc/g2.cfg. Please note that once installed, you
-need to edit the configuration files in /usr/local/etc, not where you
-build the software. You need to be root to edit files in /usr/local/etc.
-After editing /usr/local/etc/g2.cfg file you can restart the effected
-program with "sudo service QnetDVRPTR restart". Or you can alway just
-reboot with "sudo reboot".
+by examining the log file once the board has been powered up. Once you
+know the board serial number, edit g2.cfg. After editing g2.cfg file you
+can restart the effected program with "sudo systemctl restart qndvrptr".
+Or you can always just reboot with "sudo reboot" or "sudo shutdown -r now".
 
 Rig specific parameters are in "module.x.rf_rx_level", "module.x.inverse.rx" and
 "module.x.inverse.tx". You need to play with these to work best with your rig.

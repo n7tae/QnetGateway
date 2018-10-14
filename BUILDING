@@ -45,7 +45,7 @@ dvrptr ircddb gateway.
 The first thing to do is change to the build directory with "cd QnetGateway" and then
 choose a target to make. There are targets for each of the supported devices:
 . "make icom"   will build all programs needed for the Icom repeater.
-. "make itap"   will build all programs needed for Icom Terminal and Access mode.
+. "make itap"   will build all programs needed for Icom Terminal mode.
 . "make dvap"   will build all programs needed for the DVAP Dongle.
 . "make dvrptr" will build all programs needed for the DVRPTR_V1.
 . "make mmdvm"  will build all programs needed for MMDVMHost support. (You need
@@ -73,6 +73,27 @@ need a configuration file called "qn.cfg".
 Additional information about the configuration as well as other important and
 useful features are also in the CONFIGURING file.
 
+Authorization to the the Trust DPlus system is first obtained by registering,
+see www.dstargateway.org for instructions. Once registered, make sure to enable
+it in you software, please see the "dplus" section in the example cfg files.
+By default DPlus authorization is off. When you turn it on, the authorizing server
+will provide QnetLink with a list of REF reflectors and repeaters on the DPlus
+system. In the "dplus" section of you qn.cfg file, you have control over which
+systems you want added to your gwy database. Your gwys.txt file is read AFTER
+DPlus authorization so any entries their will over-write REF any downloaded
+from the DPlus authorization server.
+
+The information downloaded from the DPlus server is dynamic and will change
+from hour to hour. You can update QnetLink by sending "       F" to your system.
+This will purge the current table and re-authorize with the DPlus server and
+then reload gwys.txt.
+
+Because of the way DPlus authorization works, QnetLink can't actually confirm
+that the authorization was successful. If your system is unlinked after trying
+to transmit into a DPlus system, it means that your authorization was
+unsuccessful. This might indicate that their may be a problem with your
+DPlus registration.
+
 The gwys.txt file is the internet address and port numbers for any gateway you
 would like your ircddb gateway to be able to connect to. The one delivered with
 this package is special: It has only DCS reflectors, X-reflectors and DStar
@@ -94,9 +115,12 @@ address that may need port-forwarding to your sytem.
 
 There is another script, reflist.sh, that will download REF, XRF and DCS reflectors
 from another source. This is probably the preferred method to getting a gwys.txt
-file. This source is extremely up-to-date.
+file. This source is extremely up-to-date, and it also contains the DPlus REF
+reflectors. If you want to use data from the DPlus authorization server, be sure
+to remove any REF definitions that might over-write DPlus entries.
 
-Based on the above discussion, execute either "./reflist.sh" or "./get_gwy_list.sh".
+Based on the above discussion, execute either "./reflist.sh" or "./get_gwy_list.sh"
+and then edit it to your needs.
 
 If you plan on using DTMF, you need to copy "qndtmf.sh" to "qndtmf". This is the
 file that interprets dtmf command and executes them. As supplied, it parses the
