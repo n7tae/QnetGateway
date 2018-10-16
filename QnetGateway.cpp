@@ -1719,7 +1719,8 @@ void CQnetGateway::Process()
 								}
 								else
 								{
-									playNotInCache = true; // we need to wait until user's transmission is over
+									if ('L' != rptrbuf.vpkt.hdr.ur[7]) // as long as this doesn't look like a linking command
+										playNotInCache = true; // we need to wait until user's transmission is over
 								}
 							}
 						}
