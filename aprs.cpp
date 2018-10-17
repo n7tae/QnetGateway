@@ -70,7 +70,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 	}
 
 	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		// printf("ERROR in aprs_process_text: rptr_idx %d is invalid\n", rptr_idx);
+		printf("ERROR in aprs_process_text: rptr_idx %d is invalid\n", rptr_idx);
 		return;
 	}
 

@@ -823,7 +823,7 @@ void CQnetGateway::ProcessTimeouts()
 // the to_print is an integer that counts down how many 2-voice-frame pairs remain to be processed.
 // ABC_grp means that we are processing a 20-character message.
 // C_seen means that we are processing the last 2-voice-frame packet on a 20 character message.
-void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsigned char header_type, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen)
+void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsigned char &header_type, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen)
 {
 	/* extract 20-byte RADIO ID */
 	if ((data[0] != 0x55) || (data[1] != 0x2d) || (data[2] != 0x16)) {
@@ -2007,7 +2007,7 @@ void CQnetGateway::Process()
 						/* aprs processing */
 						if (bool_send_aprs)
 							//                             streamID               seq                audio+text             size
-							aprs->ProcessText(rptrbuf.vpkt.streamid, rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice, (recvlen == 29)?12:15);
+							aprs->ProcessText(ntohs(rptrbuf.vpkt.streamid), rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice, (recvlen == 29)?12:15);
 
 						for (int i=0; i<3; i++) {
 							/* find out if data must go to the remote G2 */

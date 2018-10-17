@@ -154,7 +154,7 @@ private:
 	void compute_aprs_hash();
 	void APRSBeaconThread();
 	void ProcessTimeouts();
-	void ProcessSlowData(unsigned char *data, unsigned short sid, unsigned char header_type, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen);
+	void ProcessSlowData(unsigned char *data, unsigned short sid, unsigned char &header_type, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen);
 	bool Flag_is_ok(unsigned char flag);
 
 	// read configuration file
