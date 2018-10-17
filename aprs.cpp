@@ -52,15 +52,13 @@ void CAPRS::SelectBand(short int rptr_idx, unsigned short streamID)
 // Parameter len is either 12 or 15, because we took passed over the first 17 bytes
 //           in the repeater data
 // Paramter seq is the byte at pos# 16(counting from zero) in the repeater data
-void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf, unsigned int len)
+void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf)
 {
 	unsigned char aprs_data[200];
 	char aprs_buf[1024];
 	time_t tnow = 0;
 
 	short int rptr_idx = -1;
-
-	len = len;
 
 	for (short int i = 0; i < 3; i++) {
 		if (streamID == aprs_streamID[i].streamID) {

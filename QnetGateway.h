@@ -83,13 +83,19 @@ public:
 	int Init(char *cfgfile);
 
 private:
-	bool is_icom, is_not_icom;
+	// text stuff
+	bool new_group[3] = { true, true, true };
+	unsigned char header_type = 0;
+	short to_print[3] = { 0, 0, 0 };
+	bool ABC_grp[3] = { false, false, false };
+	bool C_seen[3] = { false, false, false };
 
 	SPORTIP g2_internal, g2_external, g2_link, ircddb;
 
 	std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass, qnvoicefile;
 
 	bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header, bool_qso_details, bool_send_aprs, playNotInCache;
+	bool is_icom, is_not_icom;
 
 	int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
 
@@ -154,7 +160,7 @@ private:
 	void compute_aprs_hash();
 	void APRSBeaconThread();
 	void ProcessTimeouts();
-	void ProcessSlowData(unsigned char *data, unsigned short sid, unsigned char &header_type, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen);
+	void ProcessSlowData(unsigned char *data, unsigned short sid);
 	bool Flag_is_ok(unsigned char flag);
 
 	// read configuration file

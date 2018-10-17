@@ -58,7 +58,7 @@ public:
 	~CAPRS();
 	SRPTR *m_rptr;
 	void SelectBand(short int rptr_idx, unsigned short streamID);
-	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf, unsigned int len);
+	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf);
 	ssize_t WriteSock(char *buffer, size_t n);
 	void Open(const std::string OWNER);
 	void Init();

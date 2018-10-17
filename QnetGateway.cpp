@@ -823,7 +823,7 @@ void CQnetGateway::ProcessTimeouts()
 // the to_print is an integer that counts down how many 2-voice-frame pairs remain to be processed.
 // ABC_grp means that we are processing a 20-character message.
 // C_seen means that we are processing the last 2-voice-frame packet on a 20 character message.
-void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid, unsigned char &header_type, bool *new_group, short *to_print, bool *ABC_grp, bool *C_seen)
+void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 {
 	/* extract 20-byte RADIO ID */
 	if ((data[0] != 0x55) || (data[1] != 0x2d) || (data[2] != 0x16)) {
@@ -1133,13 +1133,6 @@ void CQnetGateway::Process()
 	char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
 	int dtmf_last_frame[3] = { 0, 0, 0 };
 	unsigned int dtmf_counter[3] = { 0, 0, 0 };
-
-	// text stuff
-	bool new_group[3] = { true, true, true };
-	unsigned char header_type = 0;
-	short to_print[3] = { 0, 0, 0 };
-	bool ABC_grp[3] = { false, false, false };
-	bool C_seen[3] = { false, false, false };
 
 	dstar_dv_init();
 
@@ -1997,17 +1990,17 @@ void CQnetGateway::Process()
 						}
 						vPacketCount++;
 						if (recvlen == 29)	// process the slow data from every voice packet
-							ProcessSlowData(rptrbuf.vpkt.vasd.text,  rptrbuf.vpkt.streamid, header_type, new_group, to_print, ABC_grp, C_seen);
+							ProcessSlowData(rptrbuf.vpkt.vasd.text,  rptrbuf.vpkt.streamid);
 						else
-							ProcessSlowData(rptrbuf.vpkt.vasd1.text, rptrbuf.vpkt.streamid, header_type, new_group, to_print, ABC_grp, C_seen);
+							ProcessSlowData(rptrbuf.vpkt.vasd1.text, rptrbuf.vpkt.streamid);
 
 						/* send data to qnlink */
 						sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
 
 						/* aprs processing */
 						if (bool_send_aprs)
-							//                             streamID               seq                audio+text             size
-							aprs->ProcessText(ntohs(rptrbuf.vpkt.streamid), rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice, (recvlen == 29)?12:15);
+							//                             streamID               seq                audio+text
+							aprs->ProcessText(ntohs(rptrbuf.vpkt.streamid), rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice);
 
 						for (int i=0; i<3; i++) {
 							/* find out if data must go to the remote G2 */
