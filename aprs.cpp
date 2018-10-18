@@ -49,8 +49,6 @@ void CAPRS::SelectBand(short int rptr_idx, unsigned short streamID)
 // Parameter buf is either:
 //              12 bytes(packet from repeater was 29 bytes) or
 //              15 bytes(packet from repeater was 32 bytes)
-// Parameter len is either 12 or 15, because we took passed over the first 17 bytes
-//           in the repeater data
 // Paramter seq is the byte at pos# 16(counting from zero) in the repeater data
 void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf)
 {
