@@ -22,6 +22,8 @@
 #include <cstdio>
 #include <cctype>
 #include <cstring>
+#include <thread>
+#include <chrono>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -54,8 +56,18 @@ bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, c
 
     int result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
     if (result) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(result));
-        return false;
+        fprintf(stderr, "1st attempt: getaddrinfo: %s\n", gai_strerror(result));
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
+		if (result) {
+			fprintf(stderr, "2nd attempt: getaddrinfo: %s\n", gai_strerror(result));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	        result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
+			if (result) {
+				fprintf(stderr, "3rd attempt: getaddrinfo: %s\n", gai_strerror(result));
+				return false;
+			}
+		}
     }
 
     struct addrinfo *p;
