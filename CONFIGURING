@@ -236,6 +236,7 @@ prompts used by QnetGateway and QnetLink:
 
 connected2network.dat
 notincache.dat
+gatewaynotfound.dat
 already_linked.dat
 already_unlinked.dat
 failed_link.dat
@@ -255,7 +256,7 @@ are NOT anyone's voice.
 The only file most hams will need to change is id.dat. When the gateway
 is not linked and the RF user sets YRCALL=_______I to request the
 status of the link, the file id.dat will be played back over RF. But
-you should create your own id.dat file that should identify your own
+you can create your own id.dat file that should identify your own
 repeater with extra information if you like.
 
 For example, you could create your own dat audio file that contains

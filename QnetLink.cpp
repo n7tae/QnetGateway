@@ -928,6 +928,8 @@ void CQnetLink::g2link(char from_mod, char *call, char to_mod)
 
 	auto gwy_pos = gwy_list.find(call);
 	if (gwy_pos == gwy_list.end()) {
+		sprintf(notify_msg, "%c_gatewaynotfound.dat_GATEWAY_NOT_FOUND", from_mod);
+		audio_notify(notify_msg);
 		printf("%s not found in gwy list\n", call);
 		return;
 	}
