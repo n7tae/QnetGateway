@@ -54,21 +54,18 @@ bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, c
     hints.ai_family = AF_INET; // AF_INET means IPv4 only addresses
     hints.ai_socktype = SOCK_STREAM;
 
-    int result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
-    if (result) {
-        fprintf(stderr, "1st attempt: getaddrinfo: %s\n", gai_strerror(result));
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    int result = EAI_AGAIN;
+    while (EAI_AGAIN == result) {
         result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
-		if (result) {
-			fprintf(stderr, "2nd attempt: getaddrinfo: %s\n", gai_strerror(result));
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-	        result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
-			if (result) {
-				fprintf(stderr, "3rd attempt: getaddrinfo: %s\n", gai_strerror(result));
-				return false;
-			}
+		if (EAI_AGAIN == result) {
+			fprintf(stdout, "getaddrinfo not ready: please wait...");
+			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		}
     }
+	if (result) {
+		fprintf(stderr, "DPlus Authroization failed: %s\n", gai_strerror(result));
+		return false;
+	}
 
     struct addrinfo *p;
     char host[256];
