@@ -10,8 +10,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-IRCClient::IRCClient(IRCApplication *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password,
-                      const std::string &versionInfo, const std::string &localAddr)
+IRCClient::IRCClient(IRCApplication *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, const std::string &localAddr)
 {
 	safeStringCopy(host_name, hostName.c_str(), sizeof host_name);
 

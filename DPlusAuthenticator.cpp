@@ -58,8 +58,8 @@ bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, c
     while (EAI_AGAIN == result) {
         result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
 		if (EAI_AGAIN == result) {
-			fprintf(stdout, "getaddrinfo not ready: please wait...");
-			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+			fprintf(stdout, "getaddrinfo not ready: please wait...\n");
+			std::this_thread::sleep_for(std::chrono::seconds(5));
 		}
     }
 	if (result) {
