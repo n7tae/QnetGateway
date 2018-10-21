@@ -21,6 +21,7 @@
 #include <regex.h>
 #include <string>
 #include <map>
+#include <vector>
 #include <set>
 #include <atomic>
 #include <netinet/in.h>
@@ -173,4 +174,6 @@ private:
 	} old_sid[3];
 
 	CRandom Random;
+
+	std::vector<unsigned long> speak;
 };

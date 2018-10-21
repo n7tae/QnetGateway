@@ -66,6 +66,7 @@ CQnetLink::CQnetLink()
 
 CQnetLink::~CQnetLink()
 {
+	speak.clear();
 }
 
 bool CQnetLink::resolve_rmt(char *name, int type, struct sockaddr_in *addr)
@@ -3595,6 +3596,24 @@ bool CQnetLink::Init(const char *cfgfile)
 	if (!srv_open()) {
 		printf("srv_open() failed\n");
 		return true;
+	}
+
+	speak.resize(62);
+	std::string index(announce_dir);
+	index.append("/speak.index");
+	std::ifstream voicefile(index.c_str(), std::ifstream::in);
+	if (voicefile) {
+		for (int i=0; i<62; i++) {
+			std::string name, offset, size;
+			voicefile >> name >> offset >> size;
+			if (name.size() && offset.size() && size.size()) {
+				unsigned long of = std::stoul(offset);
+				unsigned long sz = std::stoul(size);
+				speak[i] = 1000U * of + sz;
+				printf("%s at %ld, %ld long\n", name.c_str(), of, sz);
+			}
+		}
+		voicefile.close();
 	}
 	return false;
 }

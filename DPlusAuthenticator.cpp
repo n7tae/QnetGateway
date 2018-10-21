@@ -55,11 +55,12 @@ bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, c
     hints.ai_socktype = SOCK_STREAM;
 
     int result = EAI_AGAIN;
-    while (EAI_AGAIN == result) {
+	int count = 0;
+    while (EAI_AGAIN==result && 20>count++) {	// we'll wait up to 60 seconds for this to work
         result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
 		if (EAI_AGAIN == result) {
 			fprintf(stdout, "getaddrinfo not ready: please wait...\n");
-			std::this_thread::sleep_for(std::chrono::seconds(5));
+			std::this_thread::sleep_for(std::chrono::seconds(3));
 		}
     }
 	if (result) {
