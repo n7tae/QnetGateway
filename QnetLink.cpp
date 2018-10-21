@@ -3598,22 +3598,21 @@ bool CQnetLink::Init(const char *cfgfile)
 		return true;
 	}
 
-	speak.resize(62);
 	std::string index(announce_dir);
-	index.append("/speak.index");
-	std::ifstream voicefile(index.c_str(), std::ifstream::in);
-	if (voicefile) {
+	index.append("/index.dat");
+	std::ifstream indexfile(index.c_str(), std::ifstream::in);
+	if (indexfile) {
 		for (int i=0; i<62; i++) {
 			std::string name, offset, size;
-			voicefile >> name >> offset >> size;
+			indexfile >> name >> offset >> size;
 			if (name.size() && offset.size() && size.size()) {
 				unsigned long of = std::stoul(offset);
 				unsigned long sz = std::stoul(size);
-				speak[i] = 1000U * of + sz;
-				printf("%s at %ld, %ld long\n", name.c_str(), of, sz);
+				speak.push_back(1000U * of + sz);
 			}
 		}
-		voicefile.close();
+		printf("read %ld indicies from %s\n", speak.size(), index.c_str());
+		indexfile.close();
 	}
 	return false;
 }
