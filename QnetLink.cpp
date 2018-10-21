@@ -3611,7 +3611,7 @@ bool CQnetLink::Init(const char *cfgfile)
 				speak.push_back(1000U * of + sz);
 			}
 		}
-		printf("read %ld indicies from %s\n", speak.size(), index.c_str());
+		printf("read %d indicies from %s\n", (unsigned int)speak.size(), index.c_str());
 		indexfile.close();
 	}
 	return false;
