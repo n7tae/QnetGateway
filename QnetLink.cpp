@@ -2799,11 +2799,8 @@ void CQnetLink::Process()
 				/* It is one of our valid repeaters */
 				if ((i >= 0) && (memcmp(dcs_buf, owner.c_str(), CALL_SIZE) == 0)) {
 					/* It is from a remote that we contacted */
-					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-							(to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) &&
-							(to_remote_g2[i].from_mod == dcs_buf[8])) {
-						if ((to_remote_g2[i].to_mod == dcs_buf[9]) &&
-								(memcmp(dcs_buf + 10, "ACK", 3) == 0)) {
+					if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) && (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) && (to_remote_g2[i].from_mod == dcs_buf[8])) {
+						if ((to_remote_g2[i].to_mod == dcs_buf[9]) && (memcmp(dcs_buf + 10, "ACK", 3) == 0)) {
 							to_remote_g2[i].countdown = TIMEOUT;
 							if (!to_remote_g2[i].is_connected) {
 								tracing[i].last_time = time(NULL);
@@ -2816,19 +2813,13 @@ void CQnetLink::Process()
 								space_p = strchr(linked_remote_system, ' ');
 								if (space_p)
 									*space_p = '\0';
-								sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c",
-										to_remote_g2[i].from_mod,
-										linked_remote_system,
-										to_remote_g2[i].to_mod);
+								sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 								audio_notify(notify_msg);
 							}
 						} else if (memcmp(dcs_buf + 10, "NAK", 3) == 0) {
-							printf("Link module %c to [%s] %c is unlinked\n",
-									to_remote_g2[i].from_mod, to_remote_g2[i].to_call,
-									to_remote_g2[i].to_mod);
+							printf("Link module %c to [%s] %c is unlinked\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_link.dat_UNLINKED",
-									to_remote_g2[i].from_mod);
+							sprintf(notify_msg, "%c_failed_link.dat_UNLINKED", to_remote_g2[i].from_mod);
 							audio_notify(notify_msg);
 
 							to_remote_g2[i].to_call[0] = '\0';
@@ -2851,15 +2842,11 @@ void CQnetLink::Process()
 			SDSTR dstr;
 			int length = recvfrom(rptr_sock, dstr.pkt_id, 100, 0, (struct sockaddr *)&fromRptr,&fromlen);
 
-			if ((length==58 || length==29 || length==32) && dstr.flag[0]==0x73 && dstr.flag[1] == 0x12 && dstr.flag[2] ==0x0 &&
-			        (0==memcmp(dstr.pkt_id,"DSTR", 4) || 0==memcmp(dstr.pkt_id,"CCS_", 4)) && dstr.vpkt.icm_id==0x20 &&
-			        (dstr.remaining==0x30 || dstr.remaining==0x13 || dstr.remaining==0x16)) {
+			if ((length==58 || length==29 || length==32) && dstr.flag[0]==0x73 && dstr.flag[1] == 0x12 && dstr.flag[2] ==0x0 && (0==memcmp(dstr.pkt_id,"DSTR", 4) || 0==memcmp(dstr.pkt_id,"CCS_", 4)) && dstr.vpkt.icm_id==0x20 && (dstr.remaining==0x30 || dstr.remaining==0x13 || dstr.remaining==0x16)) {
 
 				if (length == 58) {
 					if (qso_details)
-						printf("START from local g2: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n",
-						        ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2],
-						        dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm, dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, length, inet_ntoa(fromRptr.sin_addr));
+						printf("START from local g2: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes fromIP=%s\n", ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm, dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, length, inet_ntoa(fromRptr.sin_addr));
 
 					/* save mycall */
 					memcpy(call, dstr.vpkt.hdr.my, 8);
@@ -2912,12 +2899,7 @@ void CQnetLink::Process()
 					}
 
 					if (memcmp(dstr.vpkt.hdr.ur, "CQCQCQ", 6) && i>=0) {
-						if (memcmp(dstr.vpkt.hdr.ur, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.ur[7] == 'L' &&
-						       0==memcmp(dstr.vpkt.hdr.r2, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.r2[7] == 'G' &&
-						       (dstr.vpkt.hdr.flag[0]==0x00 ||
-						        dstr.vpkt.hdr.flag[0]==0x08 ||
-						        dstr.vpkt.hdr.flag[0]==0x20 ||
-						        dstr.vpkt.hdr.flag[0]==0x28)) {
+						if (memcmp(dstr.vpkt.hdr.ur, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.ur[7] == 'L' && 0==memcmp(dstr.vpkt.hdr.r2, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.r2[7] == 'G' && (dstr.vpkt.hdr.flag[0]==0x00 || dstr.vpkt.hdr.flag[0]==0x08 || dstr.vpkt.hdr.flag[0]==0x20 || dstr.vpkt.hdr.flag[0]==0x28)) {
 							if (
 									// if there is a black list, is he in the blacklist?
 									(link_blacklist.size() && link_blacklist.end()!=link_blacklist.find(call)) ||
@@ -3081,17 +3063,12 @@ void CQnetLink::Process()
 					if (i >= 0) {
 						/* do we have to broadcast ? */
 						/* make sure the source is linked to xrf */
-						if (to_remote_g2[i].is_connected && 0==memcmp(to_remote_g2[i].to_call, "XRF", 3) &&
-						        0==memcmp(dstr.vpkt.hdr.r2, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.r2[7]=='G' &&
-						        0==memcmp(dstr.vpkt.hdr.ur, "CQCQCQ", 6)) {
+						if (to_remote_g2[i].is_connected && 0==memcmp(to_remote_g2[i].to_call, "XRF", 3) && 0==memcmp(dstr.vpkt.hdr.r2, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.r2[7]=='G' && 0==memcmp(dstr.vpkt.hdr.ur, "CQCQCQ", 6)) {
 							brd_from_rptr_idx = 0;
 							streamid_raw = ntohs(dstr.vpkt.streamid);
 
 							for (int j=0; j<3; j++) {
-								if (j!=i && to_remote_g2[j].is_connected &&
-								        0==memcmp(to_remote_g2[j].to_call, to_remote_g2[i].to_call, 8) &&
-								        to_remote_g2[j].to_mod==to_remote_g2[i].to_mod &&
-								        to_remote_g2[j].to_mod!='E') {
+								if (j!=i && to_remote_g2[j].is_connected && 0==memcmp(to_remote_g2[j].to_call, to_remote_g2[i].to_call, 8) && to_remote_g2[j].to_mod==to_remote_g2[i].to_mod && to_remote_g2[j].to_mod!='E') {
 									memcpy(fromrptr_torptr_brd.title, "DSVT", 4);
 									fromrptr_torptr_brd.config = 0x10;
 									fromrptr_torptr_brd.flaga[0] = fromrptr_torptr_brd.flaga[1] = fromrptr_torptr_brd.flaga[2] = 0x0;
@@ -3384,6 +3361,8 @@ void CQnetLink::audio_notify(char *msg)
 	}
 
 	SECHO edata;
+
+	edata.is_linked = (NULL == strstr(msg, "_linked.dat_LINKED_")) ? false : true;
 	char *p = strstr(msg, ".dat");
 	if (NULL == p) {
 		fprintf(stderr, "Improper AMBE data file in msg '%s'\n", msg);
@@ -3474,17 +3453,18 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 
 	edata.header.config = 0x20U;
 
-	for (int i=0; i<ambeblocks && keep_running; i++) {
+	int count;
+	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
+	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
+	for (int count=0; count<ambeblocks && keep_running; count++) {
 
 		int nread = fread(edata.header.vasd.voice, 9, 1, fp);
 		if (nread == 1) {
-			edata.header.ctrl = (unsigned char)(i % 21);
+			edata.header.ctrl = (unsigned char)(count % 21);
 			if (0x0U == edata.header.ctrl) {
-				const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 				memcpy(edata.header.vasd.text, sdsync, 3);
 			} else {
-				const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
-				switch (i) {
+				switch (count) {
 					case 1:
 						edata.header.vasd.text[0] = '@' ^ 0x70;
 						edata.header.vasd.text[1] = edata.message[0] ^ 0x4f;
@@ -3530,11 +3510,60 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 						break;
 				}
 			}
-			if (i+1 == ambeblocks)
+			if (count+1 == ambeblocks && ! edata.is_linked)
 				edata.header.ctrl |= 0x40U;
 			sendto(rptr_sock, edata.header.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
+	}
+	fclose(fp);
+
+	if (! edata.is_linked)
+		return;
+
+	// open the speak file
+	std::string speakfile(announce_dir);
+	speakfile.append("/speak.dat");
+	fp = fopen(speakfile.c_str(), "rb");
+	if (NULL == fp)
+		return;
+
+	// create the speak sentence
+	std::string say("2");
+	say.append(edata.message + 7);
+
+	// play it
+	for (auto it=say.begin(); it!=say.end(); it++) {
+		bool lastch = (it+1 == say.end());
+		unsigned long offset = 0;
+		int size = 0;
+		if ('A' <= *it && *it <= 'Z')
+			offset = speak[*it - 'A' + (lastch ? 26 : 0)];
+		else if ('1' <= *it && *it <= '9')
+			offset = speak[*it - '1'];
+		else if ('0' == *it)
+			offset = speak[61];
+		if (offset) {
+			size = (int)(offset % 1000UL);
+			offset = (offset / 1000UL) * 9UL;
+		}
+		if (0 == size)
+			continue;
+		if (fseek(fp, offset, SEEK_SET)) {
+			fprintf(stderr, "fseek to %ld error!\n", offset);
+			return;
+		}
+		for (int i=0; i<size; i++) {
+			edata.header.ctrl = count++ % 21;
+			int nread = fread(edata.header.vasd.voice, 9, 1, fp);
+			if (nread == 1) {
+				memcpy(edata.header.vasd.text, edata.header.ctrl ? sdsilence : sdsync, 3);
+				if (i+1==size && lastch)
+					edata.header.ctrl |= 0x40U;	// signal the last voiceframe (of the last character)
+				sendto(rptr_sock, edata.header.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
+		}
 	}
 	fclose(fp);
 	return;
@@ -3611,8 +3640,13 @@ bool CQnetLink::Init(const char *cfgfile)
 				speak.push_back(1000U * of + sz);
 			}
 		}
-		printf("read %d indicies from %s\n", (unsigned int)speak.size(), index.c_str());
 		indexfile.close();
+	}
+	if (62 == speak.size()) {
+		printf("read %d indicies from %s\n", (unsigned int)speak.size(), index.c_str());
+	} else {
+		fprintf(stderr, "read unexpected (%d) number of indices from %s\n", (unsigned int)speak.size(), index.c_str());
+		speak.clear();
 	}
 	return false;
 }

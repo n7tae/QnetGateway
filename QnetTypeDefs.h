@@ -125,6 +125,7 @@ typedef struct dsrp_tag {	//									offset	  size
 #pragma pack(pop)
 
 typedef struct echo_tag {
+	bool is_linked;
 	time_t last_time;
 	unsigned short streamid;
 	int fd;
