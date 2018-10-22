@@ -3531,6 +3531,11 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 	// create the speak sentence
 	std::string say("2");
 	say.append(edata.message + 7);
+	auto rit = say.rbegin();
+	while (isspace(*rit)) {
+		say.resize(say.size()-1);
+		rit = say.rbegin();
+	}
 
 	// play it
 	for (auto it=say.begin(); it!=say.end(); it++) {
@@ -3540,7 +3545,7 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 		if ('A' <= *it && *it <= 'Z')
 			offset = speak[*it - 'A' + (lastch ? 26 : 0)];
 		else if ('1' <= *it && *it <= '9')
-			offset = speak[*it - '1'];
+			offset = speak[*it - '1' + 52];
 		else if ('0' == *it)
 			offset = speak[61];
 		if (offset) {
