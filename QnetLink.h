@@ -28,6 +28,7 @@
 #include <libconfig.h++>
 #include "versions.h"
 #include "QnetTypeDefs.h"
+#include "SEcho.h"
 #include "Random.h"
 
 using namespace libconfig;

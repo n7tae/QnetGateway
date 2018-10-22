@@ -18,6 +18,7 @@
 
 #include <libconfig.h++>
 #include "QnetTypeDefs.h"
+#include "SEcho.h"
 
 #include "aprs.h"
 

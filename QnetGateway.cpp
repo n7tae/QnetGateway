@@ -2844,7 +2844,7 @@ void CQnetGateway::gps_send(short int rptr_idx)
 	printf("GPRMC=[%s]\n", band_txt[rptr_idx].gprmc);
 	printf("GPS id=[%s]\n",band_txt[rptr_idx].gpid);
 
-	if (validate_csum(band_txt[rptr_idx], false) || validate_csum(band_txt[rptr_idx], true))
+	if (validate_csum(band_txt[rptr_idx], false))	// || validate_csum(band_txt[rptr_idx], true))
 		return;
 
 	/* now convert GPS into APRS and send it */
@@ -2899,7 +2899,7 @@ void CQnetGateway::build_aprs_from_gps_and_send(short int rptr_idx)
 			printf("Invalid North or South indicator in latitude\n");
 			return;
 		}
-		if (strlen(lat_str) != 9) {
+		if (strlen(lat_str) > 9) {
 			printf("Invalid latitude\n");
 			return;
 		}
@@ -2922,7 +2922,7 @@ void CQnetGateway::build_aprs_from_gps_and_send(short int rptr_idx)
 			printf("Invalid East or West indicator in longitude\n");
 			return;
 		}
-		if (strlen(lon_str) != 10) {
+		if (strlen(lon_str) > 10) {
 			printf("Invalid longitude\n");
 			return;
 		}
