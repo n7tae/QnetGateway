@@ -3456,7 +3456,7 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 	int count;
 	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
-	for (int count=0; count<ambeblocks && keep_running; count++) {
+	for (count=0; count<ambeblocks && keep_running; count++) {
 
 		int nread = fread(edata.header.vasd.voice, 9, 1, fp);
 		if (nread == 1) {
