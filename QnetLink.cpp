@@ -875,7 +875,6 @@ void CQnetLink::g2link(char from_mod, char *call, char to_mod)
 
 	char linked_remote_system[CALL_SIZE + 1];
 	char *space_p = 0;
-	char notify_msg[64];
 
 	char host[MAXHOSTNAMELEN + 1];
 	char port_s[5 + 1];
@@ -929,8 +928,7 @@ void CQnetLink::g2link(char from_mod, char *call, char to_mod)
 
 	auto gwy_pos = gwy_list.find(call);
 	if (gwy_pos == gwy_list.end()) {
-		sprintf(notify_msg, "%c_gatewaynotfound.dat_GATEWAY_NOT_FOUND", from_mod);
-		audio_notify(notify_msg);
+		sprintf(notify_msg[i], "%c_gatewaynotfound.dat_GATEWAY_NOT_FOUND", from_mod);
 		printf("%s not found in gwy list\n", call);
 		return;
 	}
@@ -1018,8 +1016,7 @@ void CQnetLink::g2link(char from_mod, char *call, char to_mod)
 					space_p = strchr(linked_remote_system, ' ');
 					if (space_p)
 						*space_p = '\0';
-					sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-					audio_notify(notify_msg);
+					sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 				} else
 					printf("status from %s %c pending\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 			}
@@ -1043,7 +1040,6 @@ void CQnetLink::Process()
 
 	char *p = NULL;
 
-	char notify_msg[64];
 	char *space_p = 0;
 	char linked_remote_system[CALL_SIZE + 1];
 	char unlink_request[CALL_SIZE + 3];
@@ -1093,7 +1089,6 @@ void CQnetLink::Process()
 
 	char source_stn[9];
 
-	memset(notify_msg, '\0', sizeof(notify_msg));
 	time(&hb);
 
 	if (xrf_g2_sock > max_nfds)
@@ -1133,9 +1128,7 @@ void CQnetLink::Process()
 			if ((to_remote_g2[1].toDst4.sin_port == htons(rmt_xrf_port)) && (strcmp(to_remote_g2[1].to_call, to_remote_g2[0].to_call) != 0))
 				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE+1, 0, (struct sockaddr *)&(to_remote_g2[1].toDst4), sizeof(to_remote_g2[1].toDst4));
 
-			if ((to_remote_g2[2].toDst4.sin_port == htons(rmt_xrf_port)) &&
-			        (strcmp(to_remote_g2[2].to_call, to_remote_g2[0].to_call) != 0) &&
-			        (strcmp(to_remote_g2[2].to_call, to_remote_g2[1].to_call) != 0))
+			if ((to_remote_g2[2].toDst4.sin_port == htons(rmt_xrf_port)) && (strcmp(to_remote_g2[2].to_call, to_remote_g2[0].to_call) != 0) && (strcmp(to_remote_g2[2].to_call, to_remote_g2[1].to_call) != 0))
 				sendto(xrf_g2_sock, owner.c_str(), CALL_SIZE+1, 0, (struct sockaddr *)&(to_remote_g2[2].toDst4), sizeof(to_remote_g2[2].toDst4));
 
 			/* send heartbeat to linked DCS reflectors */
@@ -1165,15 +1158,10 @@ void CQnetLink::Process()
 			if (to_remote_g2[0].is_connected && (to_remote_g2[0].toDst4.sin_port == htons(rmt_ref_port)))
 				sendto(ref_g2_sock, REF_ACK, 3, 0, (struct sockaddr *)&(to_remote_g2[0].toDst4), sizeof(to_remote_g2[0].toDst4));
 
-			if (to_remote_g2[1].is_connected &&
-			        (to_remote_g2[1].toDst4.sin_port == htons(rmt_ref_port)) &&
-			        (strcmp(to_remote_g2[1].to_call, to_remote_g2[0].to_call) != 0))
+			if (to_remote_g2[1].is_connected && (to_remote_g2[1].toDst4.sin_port == htons(rmt_ref_port)) && (strcmp(to_remote_g2[1].to_call, to_remote_g2[0].to_call) != 0))
 				sendto(ref_g2_sock, REF_ACK, 3, 0, (struct sockaddr *)&(to_remote_g2[1].toDst4), sizeof(to_remote_g2[1].toDst4));
 
-			if (to_remote_g2[2].is_connected &&
-			        (to_remote_g2[2].toDst4.sin_port == htons(rmt_ref_port)) &&
-			        (strcmp(to_remote_g2[2].to_call, to_remote_g2[0].to_call) != 0) &&
-			        (strcmp(to_remote_g2[2].to_call, to_remote_g2[1].to_call) != 0))
+			if (to_remote_g2[2].is_connected && (to_remote_g2[2].toDst4.sin_port == htons(rmt_ref_port)) && (strcmp(to_remote_g2[2].to_call, to_remote_g2[0].to_call) != 0) && (strcmp(to_remote_g2[2].to_call, to_remote_g2[1].to_call) != 0))
 				sendto(ref_g2_sock, REF_ACK, 3, 0, (struct sockaddr *)&(to_remote_g2[2].toDst4), sizeof(to_remote_g2[2].toDst4));
 
 			for (int i=0; i<3; i++) {
@@ -1186,8 +1174,7 @@ void CQnetLink::Process()
 						/* maybe remote system has changed IP */
 						printf("Unlinked from [%s] mod %c, TIMEOUT...\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-						sprintf(notify_msg, "%c_unlinked.dat_UNLINKED_TIMEOUT", to_remote_g2[i].from_mod);
-						audio_notify(notify_msg);
+						sprintf(notify_msg[i], "%c_unlinked.dat_UNLINKED_TIMEOUT", to_remote_g2[i].from_mod);
 
 						to_remote_g2[i].to_call[0] = '\0';
 						memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -1250,8 +1237,7 @@ void CQnetLink::Process()
 								sendto(dcs_g2_sock, cmd_2_dcs, 19 ,0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 						}
 
-						sprintf(notify_msg, "%c_unlinked.dat_UNLINKED_TIMEOUT", to_remote_g2[i].from_mod);
-						audio_notify(notify_msg);
+						sprintf(notify_msg[i], "%c_unlinked.dat_UNLINKED_TIMEOUT", to_remote_g2[i].from_mod);
 
 						to_remote_g2[i].to_call[0] = '\0';
 						memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -1268,6 +1254,7 @@ void CQnetLink::Process()
 		}
 
 		// play a qnvoice file if it is specified
+		// this could be coming from qnvoice or qngateway (connected2network or notincache)
 		std::ifstream voicefile(qnvoice_file.c_str(), std::ifstream::in);
 		if (voicefile) {
 			char line[FILENAME_MAX];
@@ -1281,7 +1268,7 @@ void CQnetLink::Process()
 				*end-- = (char)0;
 			// anthing reasonable left?
 			if (strlen(start) > 2)
-				audio_notify(start);
+				PlayAudioNotifyThread(start);
 			//clean-up
 			voicefile.close();
 			remove(qnvoice_file.c_str());
@@ -1326,8 +1313,7 @@ void CQnetLink::Process()
 							space_p = strchr(linked_remote_system, ' ');
 							if (space_p)
 								*space_p = '\0';
-							sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-							audio_notify(notify_msg);
+							sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 
 						}
 						to_remote_g2[i].countdown = TIMEOUT;
@@ -1351,14 +1337,12 @@ void CQnetLink::Process()
 								space_p = strchr(linked_remote_system, ' ');
 								if (space_p)
 									*space_p = '\0';
-								sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-								audio_notify(notify_msg);
+								sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 							}
 						} else if (0==memcmp(buf + 10, "NAK", 3) && to_remote_g2[i].from_mod==buf[8]) {
 							printf("Link module %c to [%s] %c is rejected\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
-							audio_notify(notify_msg);
+							sprintf(notify_msg[i], "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
 
 							to_remote_g2[i].to_call[0] = '\0';
 							memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -1384,8 +1368,7 @@ void CQnetLink::Process()
 								printf("Received: %.*s\n", length - 1, buf);
 								printf("Module %c to [%s] %c is unlinked\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-								sprintf(notify_msg, "%c_unlinked.dat_UNLINKED", to_remote_g2[i].from_mod);
-								audio_notify(notify_msg);
+								sprintf(notify_msg[i], "%c_unlinked.dat_UNLINKED", to_remote_g2[i].from_mod);
 
 								to_remote_g2[i].to_call[0] = '\0';
 								memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -1433,8 +1416,7 @@ void CQnetLink::Process()
 										space_p = strchr(linked_remote_system, ' ');
 										if (space_p)
 											*space_p = '\0';
-										sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-										audio_notify(notify_msg);
+										sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 									}
 								}
 						}
@@ -1497,8 +1479,7 @@ void CQnetLink::Process()
 							space_p = strchr(linked_remote_system, ' ');
 							if (space_p)
 								*space_p = '\0';
-							sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-							audio_notify(notify_msg);
+							sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 
 							/* send back an ACK */
 							memcpy(buf + 10, "ACK", 4);
@@ -2141,7 +2122,8 @@ void CQnetLink::Process()
 
 					sendto(ref_g2_sock, buf, 9, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 				}
-			} else if (length==5 && buf[0]==5 && buf[1]==0 && buf[2]==24 && buf[3]==0 && buf[4]==0) {
+			}
+			else if (length==5 && buf[0]==5 && buf[1]==0 && buf[2]==24 && buf[3]==0 && buf[4]==0) {
 				/* reply with the same DISCONNECT */
 				sendto(ref_g2_sock, buf, 5, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 
@@ -2200,8 +2182,7 @@ void CQnetLink::Process()
 			}
 
 			for (int i=0; i<3; i++) {
-				if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-				        (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))) {
+				if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) && (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))) {
 					found = true;
 					if (length==8 && buf[0]==8 && buf[1]==192 && buf[2]==4 && buf[3]==0) {
 						if (buf[4]== 79 && buf[5]==75 && buf[6]==82) {
@@ -2217,14 +2198,12 @@ void CQnetLink::Process()
 								space_p = strchr(linked_remote_system, ' ');
 								if (space_p)
 									*space_p = '\0';
-								sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-								audio_notify(notify_msg);
+								sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 							}
 						} else if (buf[4]==70 && buf[5]==65 && buf[6]==73 && buf[7]==76) {
 							printf("Login failed to call %s mod %c\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
-							audio_notify(notify_msg);
+							sprintf(notify_msg[i], "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
 
 							to_remote_g2[i].to_call[0] = '\0';
 							memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -2235,8 +2214,7 @@ void CQnetLink::Process()
 						} else if (buf[4]==66 && buf[5]==85 && buf[6]==83 && buf[7]==89) {
 							printf("Busy or unknown status from call %s mod %c\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
-							audio_notify(notify_msg);
+							sprintf(notify_msg[i], "%c_failed_link.dat_FAILED_TO_LINK", to_remote_g2[i].from_mod);
 
 							to_remote_g2[i].to_call[0] = '\0';
 							memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -2250,8 +2228,7 @@ void CQnetLink::Process()
 			}
 
 			for (int i=0; i<3; i++) {
-				if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) &&
-				        (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))) {
+				if ((fromDst4.sin_addr.s_addr == to_remote_g2[i].toDst4.sin_addr.s_addr) && (to_remote_g2[i].toDst4.sin_port == htons(rmt_ref_port))) {
 					found = true;
 					if (length==24 && buf[0]==24 && buf[1]==192 && buf[2]==3 && buf[3]==0) {
 						to_remote_g2[i].countdown = TIMEOUT;
@@ -2781,8 +2758,7 @@ void CQnetLink::Process()
 							space_p = strchr(linked_remote_system, ' ');
 							if (space_p)
 								*space_p = '\0';
-							sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-							audio_notify(notify_msg);
+							sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 						}
 						to_remote_g2[i].countdown = TIMEOUT;
 					}
@@ -2813,14 +2789,12 @@ void CQnetLink::Process()
 								space_p = strchr(linked_remote_system, ' ');
 								if (space_p)
 									*space_p = '\0';
-								sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-								audio_notify(notify_msg);
+								sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 							}
 						} else if (memcmp(dcs_buf + 10, "NAK", 3) == 0) {
 							printf("Link module %c to [%s] %c is unlinked\n", to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
 
-							sprintf(notify_msg, "%c_failed_link.dat_UNLINKED", to_remote_g2[i].from_mod);
-							audio_notify(notify_msg);
+							sprintf(notify_msg[i], "%c_failed_link.dat_UNLINKED", to_remote_g2[i].from_mod);
 
 							to_remote_g2[i].to_call[0] = '\0';
 							memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -2923,8 +2897,7 @@ void CQnetLink::Process()
 									space_p = strchr(linked_remote_system, ' ');
 									if (space_p)
 										*space_p = '\0';
-									sprintf(notify_msg, "%c_already_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-									audio_notify(notify_msg);
+									sprintf(notify_msg[i], "%c_already_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 								}
 							}
 						} else if (0==memcmp(dstr.vpkt.hdr.ur, "       U", CALL_SIZE)) {
@@ -2942,10 +2915,8 @@ void CQnetLink::Process()
 										int j;
 										for (j=0; j<3; j++) {
 											if (j != i) {
-												if (to_remote_g2[j].toDst4.sin_addr.s_addr==to_remote_g2[i].toDst4.sin_addr.s_addr &&
-												        to_remote_g2[j].toDst4.sin_port==htons(rmt_ref_port)) {
-													printf("Info: Local %c is also linked to %s (different module) %c\n", to_remote_g2[j].from_mod,
-													        to_remote_g2[j].to_call, to_remote_g2[j].to_mod);
+												if (to_remote_g2[j].toDst4.sin_addr.s_addr==to_remote_g2[i].toDst4.sin_addr.s_addr && to_remote_g2[j].toDst4.sin_port==htons(rmt_ref_port)) {
+													printf("Info: Local %c is also linked to %s (different module) %c\n", to_remote_g2[j].from_mod, to_remote_g2[j].to_call, to_remote_g2[j].to_mod);
 													break;
 												}
 											}
@@ -2980,8 +2951,7 @@ void CQnetLink::Process()
 									}
 
 									printf("Unlinked from [%s] mod %c\n", to_remote_g2[i].to_call, to_remote_g2[i].to_mod);
-									sprintf(notify_msg, "%c_unlinked.dat_UNLINKED", to_remote_g2[i].from_mod);
-									audio_notify(notify_msg);
+									sprintf(notify_msg[i], "%c_unlinked.dat_UNLINKED", to_remote_g2[i].from_mod);
 
 									/* now zero out this entry */
 									to_remote_g2[i].to_call[0] = '\0';
@@ -2993,30 +2963,30 @@ void CQnetLink::Process()
 
 									print_status_file();
 								} else {
-									sprintf(notify_msg, "%c_already_unlinked.dat_UNLINKED", dstr.vpkt.hdr.r1[7]);
-									audio_notify(notify_msg);
+									sprintf(notify_msg[i], "%c_already_unlinked.dat_UNLINKED", dstr.vpkt.hdr.r1[7]);
 								}
 							}
-						} else if (0 == memcmp(dstr.vpkt.hdr.ur, "       I", CALL_SIZE)) {
+						}
+						else if (0 == memcmp(dstr.vpkt.hdr.ur, "       I", CALL_SIZE)) {
 							if (to_remote_g2[i].is_connected) {
 								strcpy(linked_remote_system, to_remote_g2[i].to_call);
 								space_p = strchr(linked_remote_system, ' ');
 								if (space_p)
 									*space_p = '\0';
-								sprintf(notify_msg, "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
-								audio_notify(notify_msg);
+								sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 							} else {
-								sprintf(notify_msg, "%c_id.dat_%s_NOT_LINKED", dstr.vpkt.hdr.r1[7], owner.c_str());
-								audio_notify(notify_msg);
+								sprintf(notify_msg[i], "%c_id.dat_%s_NOT_LINKED", dstr.vpkt.hdr.r1[7], owner.c_str());
 							}
-						} else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[7]=='X' && admin.find(call)!=admin.end()) { // only ADMIN can execute scripts
+						}
+						else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[7]=='X' && admin.find(call)!=admin.end()) { // only ADMIN can execute scripts
 							if (dstr.vpkt.hdr.ur[6] != ' ') {
 								memset(system_cmd, '\0', sizeof(system_cmd));
 								snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &", announce_dir.c_str(), dstr.vpkt.hdr.ur[6], call, dstr.vpkt.hdr.r1[7]);
 								printf("Executing %s\n", system_cmd);
 								system(system_cmd);
 							}
-						} else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[6]=='D' && admin.find(call)!=admin.end()) { // only ADMIN can block dongle users
+						}
+						else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[6]=='D' && admin.find(call)!=admin.end()) { // only ADMIN can block dongle users
 							if (dstr.vpkt.hdr.ur[7] == '1') {
 								max_dongles = saved_max_dongles;
 								printf("Dongle connections are now allowed\n");
@@ -3025,7 +2995,8 @@ void CQnetLink::Process()
 								max_dongles = 0;
 								printf("Dongle connections are now disallowed\n");
 							}
-						} else if (0==memcmp(dstr.vpkt.hdr.ur, "       F", CALL_SIZE) && admin.find(call)!=admin.end()) { // only ADMIN can reload gwys.txt
+						}
+						else if (0==memcmp(dstr.vpkt.hdr.ur, "       F", CALL_SIZE) && admin.find(call)!=admin.end()) { // only ADMIN can reload gwys.txt
 							gwy_list.clear();
 							load_gwys(gwys);
 						}
@@ -3145,7 +3116,8 @@ void CQnetLink::Process()
 							}
 						}
 					}
-				} else {
+				}
+				else { // length is 29 or 32
 					if (inbound_list.size() > 0) {
 						SREFDSVT rdsvt;
 						rdsvt.head[0] = (unsigned char)(29 & 0xFF);
@@ -3275,8 +3247,10 @@ void CQnetLink::Process()
 								if (qso_details)
 									printf("END from local g2: cntr=%04x, streamID=%04x, %d bytes\n", ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), length);
 
-								if (bool_rptr_ack)
-									rptr_ack(i);
+								if ('\0' == notify_msg[i][0]) {
+									if (bool_rptr_ack)
+										rptr_ack(i);
+								}
 
 								memset(dtmf_mycall[i], 0, sizeof(dtmf_mycall[i]));
 								new_group[i] = true;
@@ -3338,24 +3312,21 @@ void CQnetLink::Process()
 			}
 			FD_CLR (rptr_sock,&fdset);
 		}
+		for (int i=0; i<3; i++) {
+			if (notify_msg[i][0] && 0x0U == tracing[i].streamid) {
+				PlayAudioNotifyThread(notify_msg[i]);
+				notify_msg[i][0] = '\0';
+			}
+		}
 	}
 }
 
-void CQnetLink::audio_notify(char *msg)
+void CQnetLink::PlayAudioNotifyThread(char *msg)
 {
-	if (!announce)
+	if (! announce)
 		return;
 
-	short int i = -1;
-
-	if (*msg == 'A')
-		i = 0;
-	else if (*msg == 'B')
-		i = 1;
-	else if (*msg == 'C')
-		i = 2;
-
-	if (i < 0) {
+	if (msg[0]<'A' || msg[0]>'C') {
 		fprintf(stderr, "Improper module in msg '%s'\n", msg);
 		return;
 	}
@@ -3601,6 +3572,7 @@ bool CQnetLink::Init(const char *cfgfile)
 	}
 
 	for (int i=0; i<3; i++) {
+		notify_msg[i][0] = '\0';
 		to_remote_g2[i].to_call[0] = '\0';
 		memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
 		to_remote_g2[i].to_mod = to_remote_g2[i].from_mod = ' ';

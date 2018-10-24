@@ -39,7 +39,7 @@ do
 				echo
 			elif [[ "$CMD" = "**" ]] ; then
 				echo Load Hosts on local band  $LOCAL_BAND requested by $LUSER
-				qnremote ${LOCAL_BAND} "$LUSER"  L  >/dev/null 2>&1
+				qnremote ${LOCAL_BAND} "$LUSER"  F  >/dev/null 2>&1
 			else
 				LEN=${#CMD}
 				if [[ "$LEN" = "6" ]] ; then
@@ -131,4 +131,3 @@ do
 done
 
 exit 0
-

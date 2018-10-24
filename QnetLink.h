@@ -77,8 +77,8 @@ private:
 	void print_status_file();
 	void send_heartbeat();
 	bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
-	void audio_notify(char *msg);
 	void rptr_ack(short i);
+	void PlayAudioNotifyThread(char *msg);
 	void AudioNotifyThread(SECHO &edata);
 	void RptrAckThread(char *arg);
 	bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value);
@@ -102,6 +102,8 @@ private:
 	std::set<std::string> admin, link_unlink_user, link_blacklist;
 
 	std::map<std::string, std::string> dt_lh_list;
+
+	char notify_msg[3][64];
 
 	struct to_remote_g2_tag {
 		char to_call[CALL_SIZE + 1];
