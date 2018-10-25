@@ -2915,7 +2915,7 @@ void CQnetGateway::build_aprs_from_gps_and_send(short int rptr_idx)
 		return;
 	}
 	/* secondary table */
-	strcat(buf, "\\");
+	strcat(buf, "/");
 
 	if (lon_str && lon_EW) {
 		if ((*lon_EW != 'E') && (*lon_EW != 'W')) {
@@ -2939,7 +2939,7 @@ void CQnetGateway::build_aprs_from_gps_and_send(short int rptr_idx)
 	}
 
 	/* Just this symbolcode only */
-	strcat(buf, "k");
+	strcat(buf, "/");
 	strncat(buf, band_txt[rptr_idx].gpid + 13, 32);
 
 	// printf("Built APRS from old GPS mode=[%s]\n", buf);
