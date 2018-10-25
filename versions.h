@@ -1,5 +1,5 @@
 // version strings must be 55 characters or less!
-#define IRCDDB_VERSION "QnetGateway-7.4.5"
+#define IRCDDB_VERSION "QnetGateway-7.4.6"
 #define LINK_VERSION "QnetLink-6.4.0"
 #define DVAP_VERSION "QnetDVAP-5.1.2"
 #define RELAY_VERSION "QnetRelay-0.2.3"
