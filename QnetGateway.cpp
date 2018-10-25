@@ -2207,6 +2207,7 @@ void CQnetGateway::APRSBeaconThread()
 	time_t last_keepalive_time;
 	time(&last_keepalive_time);
 
+	time_t last_beacon_time = 0;
 	/* This thread is also saying to the APRS_HOST that we are ALIVE */
 	while (keep_running) {
 		if (aprs->GetSock() == -1) {
@@ -2218,7 +2219,6 @@ void CQnetGateway::APRSBeaconThread()
 		}
 
 		time(&tnow);
-		time_t last_beacon_time = 0;
 		if ((tnow - last_beacon_time) > (rptr.aprs_interval * 60)) {
 			for (short int i=0; i<3; i++) {
 				if (rptr.mod[i].desc[0] != '\0') {
