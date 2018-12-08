@@ -96,7 +96,6 @@ private:
 	std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass, qnvoicefile;
 
 	bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header, bool_qso_details, bool_send_aprs, playNotInCache;
-	bool is_icom, is_not_icom;
 
 	int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
 

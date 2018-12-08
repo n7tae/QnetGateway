@@ -37,12 +37,12 @@ SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
-ALL_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr qnitap
+ALL_PROGRAMS=qnigateway qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr qnitap
 MDV_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay
 DVP_PROGRAMS=qngateway qnlink qnremote qnvoice qndvap
 DVR_PROGRAMS=qngateway qnlink qnremote qnvoice qndvrptr
 TAP_PROGRAMS=qngateway qnlink qnremote qnvoice qnitap
-ICM_PROGRAMS=qngateway qnlink qnremote qnvoice
+ICM_PROGRAMS=qnigateway qnlink qnremote qnvoice
 
 all    : $(ALL_PROGRAMS)
 mmdvm  : $(MDV_PROGRAMS)
@@ -50,6 +50,9 @@ dvap   : $(DVP_PROGRAMS)
 dvrptr : $(DVR_PROGRAMS)
 icom   : $(ICM_PROGRAMS)
 itap   : $(TAP_PROGRAMS)
+
+qnigateway : $(IRCOBJS) QnetIcomGateway.o aprs.o
+	g++ $(CPPFLAGS) -o qnigateway QnetIcomGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
 
 qngateway : $(IRCOBJS) QnetGateway.o aprs.o
 	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
@@ -137,13 +140,13 @@ installitap : $(TAP_PROGRAMS) gwys.txt qn.cfg
 
 installicom : $(ICM_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
-	/bin/cp -f qngateway $(BINDIR)
+	/bin/cp -f qnicomgateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
 	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
-	/bin/cp -f system/qngateway.service $(SYSDIR)
-	systemctl enable qngateway.service
+	/bin/cp -f system/qnigateway.service $(SYSDIR)
+	systemctl enable qnigateway.service
 	systemctl daemon-reload
-	systemctl start qngateway.service
+	systemctl start qnigateway.service
 	######### QnetLink #########
 	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
@@ -281,10 +284,10 @@ uninstallitap :
 
 uninstallicom :
 	######### QnetGateway #########
-	systemctl stop qngateway.service
-	systemctl disable qngateway.service
-	/bin/rm -f $(SYSDIR)/qngateway.service
-	/bin/rm -f $(BINDIR)/qngateway
+	systemctl stop qnigateway.service
+	systemctl disable qnigateway.service
+	/bin/rm -f $(SYSDIR)/qnigateway.service
+	/bin/rm -f $(BINDIR)/qnigateway
 	/bin/rm -f $(BINDIR)/qnremote
 	/bin/rm -f $(BINDIR)/qnvoice
 	/bin/rm -f $(CFGDIR)/qn.cfg
