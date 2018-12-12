@@ -56,7 +56,7 @@
 #include "IRCDDB.h"
 #include "IRCutils.h"
 #include "versions.h"
-#include "QnetGateway.h"
+#include "QnetIcomGateway.h"
 
 
 extern void dstar_dv_init();

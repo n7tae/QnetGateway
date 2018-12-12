@@ -252,7 +252,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 		return true;
 
 	// module
-	for (short int m=0; m<3; m++) {
+	for (int m=0; m<3; m++) {
 		std::string path = "module.";
 		path += m + 'a';
 		path += '.';
@@ -276,9 +276,11 @@ bool CQnetGateway::read_config(char *cfgFile)
 				return true;
 			}
 
-			if (! get_value(cfg, std::string(path+"ip").c_str(), rptr.mod[m].portip.ip, 7, IP_SIZE, "127.0.0.1"))
-				return true;
-			get_value(cfg, std::string(path+"port").c_str(), rptr.mod[m].portip.port, 16000, 65535, 19998+m);
+			char unixsockname[16];
+			snprintf(unixsockname, 16, "modem2gate%d", m);
+			get_value(cfg, path+"togateway", modem2gate[m], 1, FILENAME_MAX, unixsockname);
+			snprintf(unixsockname, 16, "gate2modem%d", m);
+			get_value(cfg, path+"fromgateway", gate2modem[m], 1, FILENAME_MAX, unixsockname);
 			get_value(cfg, std::string(path+"frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
 			get_value(cfg, std::string(path+"offset").c_str(), rptr.mod[m].offset, -1.0e12, 1.0e12, 0.0);
 			get_value(cfg, std::string(path+"range").c_str(), rptr.mod[m].range, 0.0, 1609344.0, 0.0);
@@ -318,16 +320,14 @@ bool CQnetGateway::read_config(char *cfgFile)
 
 	get_value(cfg, path+"external.port", g2_external.port, 1024, 65535, 40000);
 
-	if (! get_value(cfg, path+"internal.ip", g2_internal.ip, 7, IP_SIZE, "0.0.0.0"))
-		return true;
-
-	get_value(cfg, path+"internal.port", g2_internal.port, 16000, 65535, 19000);
-
 	get_value(cfg, path+"regen_header", bool_regen_header, true);
 
 	get_value(cfg, path+"aprs_send", bool_send_aprs, true);
 
 	get_value(cfg, path+"send_qrgs_maps", bool_send_qrgs, true);
+
+	get_value(cfg, path+"tolink", gate2link, 1, FILENAME_MAX, "gate2link");
+	get_value(cfg, path+"fromlink", link2gate, 1, FILENAME_MAX, "link2gate");
 
 	// APRS
 	path = "aprs.";
@@ -348,8 +348,6 @@ bool CQnetGateway::read_config(char *cfgFile)
 	get_value(cfg, path+"irc", bool_irc_debug, false);
 
 	get_value(cfg, path+"dtmf", bool_dtmf_debug, false);
-	if (! get_value(cfg, "link.outgoing_ip", g2_link.ip, 7, IP_SIZE, "127.0.0.1"))
-		return true;
 
 	// file
 	path = "file.";
@@ -363,13 +361,6 @@ bool CQnetGateway::read_config(char *cfgFile)
 		return true;
 
 	if (! get_value(cfg, path+"qnvoicefile", qnvoicefile, 2, FILENAME_MAX, "/tmp/qnvoice.txt"))
-		return true;
-
-	// link
-	path = "link.";
-	get_value(cfg, path+"port", g2_link.port, 16000, 65535, 18997);
-
-	if (! get_value(cfg, path+"ip", g2_link.ip, 7, 15, "127.0.0.1"))
 		return true;
 
 	// timing
@@ -732,7 +723,7 @@ void CQnetGateway::ProcessTimeouts()
 				end_of_audio.vpkt.ctrl = toRptr[i].sequence | 0x40;
 
 				for (int j=0; j<2; j++)
-					sendto(srv_sock, end_of_audio.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
+					Gate2Modem[i].Write(end_of_audio.pkt_id, 29);
 
 
 				toRptr[i].streamid = 0;
@@ -1091,23 +1082,871 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 	}
 }
 
+void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf)
+{
+	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
+		if (g2buflen == 56) {
+			// Find out the local repeater module IP/port to send the data to
+			int i = g2buf.hdr.rpt1[7] - 'A';
+
+			/* valid repeater module? */
+			if (i>=0 && i<3) {
+				// toRptr[i] is active if a remote system is talking to it or
+				// toRptr[i] is receiving data from a cross-band
+				if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
+					if (bool_qso_details)
+						printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n", ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+
+					memcpy(rptrbuf.pkt_id, "DSTR", 4);
+					rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);	// bump the counter
+					rptrbuf.flag[0] = 0x73;
+					rptrbuf.flag[1] = 0x12;
+					rptrbuf.flag[2] = 0x00;
+					rptrbuf.remaining = 0x30;
+					rptrbuf.vpkt.icm_id = 0x20;
+					//memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 47);
+					rptrbuf.vpkt.dst_rptr_id = g2buf.flagb[0];
+					rptrbuf.vpkt.snd_rptr_id = g2buf.flagb[1];
+					rptrbuf.vpkt.snd_term_id = g2buf.flagb[2];
+					rptrbuf.vpkt.streamid    = g2buf.streamid;
+					rptrbuf.vpkt.ctrl        = g2buf.ctrl;
+					memcpy(rptrbuf.vpkt.hdr.flag, g2buf.hdr.flag,   3);
+					memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt2,   8);
+					memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt1,   8);
+					memcpy(rptrbuf.vpkt.hdr.ur,   g2buf.hdr.urcall, 8);
+					memcpy(rptrbuf.vpkt.hdr.my,   g2buf.hdr.mycall, 8);
+					memcpy(rptrbuf.vpkt.hdr.nm,   g2buf.hdr.sfx,    4);
+					memcpy(rptrbuf.vpkt.hdr.pfcs, g2buf.hdr.pfcs,   2);
+
+					Gate2Modem[i].Write(rptrbuf.pkt_id, 58);
+
+					/* save the header */
+					memcpy(toRptr[i].saved_hdr, rptrbuf.pkt_id, 58);
+					toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
+
+					/* This is the active streamid */
+					toRptr[i].streamid = g2buf.streamid;
+					toRptr[i].adr = fromDst4.sin_addr.s_addr;
+
+					/* time it, in case stream times out */
+					time(&toRptr[i].last_time);
+
+					toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+				}
+			}
+		} else {	// g2buflen == 27
+			if (bool_qso_details && g2buf.ctrl & 0x40)
+				printf("id=%04x END G2\n", ntohs(g2buf.streamid));
+
+			/* find out which repeater module to send the data to */
+			int i;
+			for (i=0; i<3; i++) {
+				/* streamid match ? */
+				if (toRptr[i].streamid==g2buf.streamid && toRptr[i].adr==fromDst4.sin_addr.s_addr) {
+					memcpy(rptrbuf.pkt_id, "DSTR", 4);
+					rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);
+					rptrbuf.flag[0] = 0x73;
+					rptrbuf.flag[1] = 0x12;
+					rptrbuf.flag[2] = 0x00;
+					rptrbuf.remaining= 0x13;
+					rptrbuf.vpkt.icm_id = 0x20;
+					memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
+
+					Gate2Modem[i].Write(rptrbuf.pkt_id, 29);
+
+					/* timeit */
+					time(&toRptr[i].last_time);
+
+					toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+
+					/* End of stream ? */
+					if (g2buf.ctrl & 0x40) {
+						/* clear the saved header */
+						memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
+						toRptr[i].saved_adr = 0;
+
+						toRptr[i].last_time = 0;
+						toRptr[i].streamid = 0;
+						toRptr[i].adr = 0;
+					}
+					break;
+				}
+			}
+
+			/* no match ? */
+			if ((i == 3) && bool_regen_header) {
+				/* check if this a continuation of audio that timed out */
+
+				if (g2buf.ctrl & 0x40)
+					;  /* we do not care about end-of-QSO */
+				else {
+					/* for which repeater this stream has timed out ?  */
+					for (i = 0; i < 3; i++) {
+						/* match saved stream ? */
+						if (0==memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) && toRptr[i].saved_adr==fromDst4.sin_addr.s_addr) {
+							/* repeater module is inactive ?  */
+							if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
+								printf("Re-generating header for streamID=%04x\n", g2buf.streamid);
+
+								toRptr[i].saved_hdr[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
+								toRptr[i].saved_hdr[5] = (unsigned char)((toRptr[i].G2_COUNTER++) & 0xff);
+
+								/* re-generate/send the header */
+								Gate2Modem[i].Write(toRptr[i].saved_hdr, 58);
+
+								/* send this audio packet to repeater */
+								memcpy(rptrbuf.pkt_id, "DSTR", 4);
+								rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);
+								rptrbuf.flag[0] = 0x73;
+								rptrbuf.flag[1] = 0x12;
+								rptrbuf.flag[2] = 0x00;
+								rptrbuf.remaining = 0x13;
+								rptrbuf.vpkt.icm_id = 0x20;
+								memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
+
+								Gate2Modem[i].Write(rptrbuf.pkt_id, 29);
+
+								/* make sure that any more audio arriving will be accepted */
+								toRptr[i].streamid = g2buf.streamid;
+								toRptr[i].adr = fromDst4.sin_addr.s_addr;
+
+								/* time it, in case stream times out */
+								time(&toRptr[i].last_time);
+
+								toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void CQnetGateway::ProcessModem(int mod)
+{
+	char temp_radio_user[CALL_SIZE + 1];
+	char temp_mod;
+
+	char arearp_cs[CALL_SIZE + 1];
+	char zonerp_cs[CALL_SIZE + 1];
+	char ip[IP_SIZE + 1];
+	char tempfile[FILENAME_MAX + 1];
+	SDSVT g2buf;
+
+	int recvlen = Modem2Gate[mod].Read(rptrbuf.pkt_id, 58);
+
+	if (0 == memcmp(rptrbuf.pkt_id, "DSTR", 4)) {
+		if ( (recvlen==58 || recvlen==29 || recvlen==32) && rptrbuf.flag[0]==0x73 && rptrbuf.flag[1]==0x12 && rptrbuf.flag[2]==0x0 && rptrbuf.vpkt.icm_id==0x20 && (rptrbuf.remaining==0x30 || rptrbuf.remaining==0x13 || rptrbuf.remaining==0x16) ) {
+
+			if (recvlen == 58) {
+				vPacketCount = 0U;
+				if (bool_qso_details)
+					printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
+
+				if (0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	Flag_is_ok(rptrbuf.vpkt.hdr.flag[0])) {
+
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0  && i<3) {
+						if (bool_dtmf_debug)
+							printf("resetting dtmf[%d] (got a header)\n", i);
+						dtmf_last_frame[i] = 0;
+						dtmf_counter[i] = 0;
+						memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
+						dtmf_buf_count[i] = 0;
+
+						/* Initialize the LAST HEARD data for the band */
+
+						band_txt[i].streamID = rptrbuf.vpkt.streamid;
+
+						memcpy(band_txt[i].flags, rptrbuf.vpkt.hdr.flag, 3);
+
+						memcpy(band_txt[i].lh_mycall, rptrbuf.vpkt.hdr.my, 8);
+						band_txt[i].lh_mycall[8] = '\0';
+
+						memcpy(band_txt[i].lh_sfx, rptrbuf.vpkt.hdr.nm, 4);
+						band_txt[i].lh_sfx[4] = '\0';
+
+						memcpy(band_txt[i].lh_yrcall, rptrbuf.vpkt.hdr.ur, 8);
+						band_txt[i].lh_yrcall[8] = '\0';
+
+						memcpy(band_txt[i].lh_rpt1, rptrbuf.vpkt.hdr.r1, 8);
+						band_txt[i].lh_rpt1[8] = '\0';
+
+						memcpy(band_txt[i].lh_rpt2, rptrbuf.vpkt.hdr.r2, 8);
+						band_txt[i].lh_rpt2[8] = '\0';
+
+						time(&band_txt[i].last_time);
+
+						band_txt[i].txt[0] = '\0';
+						band_txt[i].txt_cnt = 0;
+						band_txt[i].sent_key_on_msg = false;
+
+						band_txt[i].dest_rptr[0] = '\0';
+
+						/* try to process GPS mode: GPRMC and ID */
+						band_txt[i].temp_line[0] = '\0';
+						band_txt[i].temp_line_cnt = 0;
+						band_txt[i].gprmc[0] = '\0';
+						band_txt[i].gpid[0] = '\0';
+						band_txt[i].is_gps_sent = false;
+						// band_txt[i].gps_last_time = 0; DO NOT reset it
+
+						new_group[i] = true;
+						to_print[i] = 0;
+						ABC_grp[i] = false;
+
+						band_txt[i].num_dv_frames = 0;
+						band_txt[i].num_dv_silent_frames = 0;
+						band_txt[i].num_bit_errors = 0;
+
+						/* select the band for aprs processing, and lock on the stream ID */
+						if (bool_send_aprs)
+							aprs->SelectBand(i, ntohs(rptrbuf.vpkt.streamid));
+					}
+				}
+
+				/* Is MYCALL valid ? */
+				memset(temp_radio_user, ' ', 8);
+				memcpy(temp_radio_user, rptrbuf.vpkt.hdr.my, 8);
+				temp_radio_user[8] = '\0';
+
+				int mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
+
+				if (mycall_valid == REG_NOERROR)
+					; // printf("MYCALL [%s] passed IRC expression validation\n", temp_radio_user);
+				else {
+					if (mycall_valid == REG_NOMATCH)
+						printf("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
+					else
+						printf("Failed to validate MYCALL [%s], regexec error=%d\n", temp_radio_user, mycall_valid);
+				}
+
+				/* send data qnlink */
+				if (mycall_valid == REG_NOERROR)
+					Gate2Link.Write(rptrbuf.pkt_id, recvlen);
+
+				if ( mycall_valid==REG_NOERROR &&
+						memcmp(rptrbuf.vpkt.hdr.ur, "XRF", 3) &&	// not a reflector
+						memcmp(rptrbuf.vpkt.hdr.ur, "REF", 3) &&
+						memcmp(rptrbuf.vpkt.hdr.ur, "DCS", 3) &&
+						rptrbuf.vpkt.hdr.ur[0]!=' ' && 				// must have something
+						memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) )	// urcall is NOT CQCQCQ
+				{
+					if ( rptrbuf.vpkt.hdr.ur[0]=='/' &&										// repeater routing!
+							0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 this repeater
+							(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// with a valid module
+							0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) && 			// rpt2 is this repeater
+							rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
+							Flag_is_ok(rptrbuf.vpkt.hdr.flag[0]) )
+					{
+						if (memcmp(rptrbuf.vpkt.hdr.ur+1, OWNER.c_str(), 6)) {	// the value after the slash is NOT this repeater
+							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+							if (i>=0 && i<3) {
+								/* one radio user on a repeater module at a time */
+								if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
+									/* YRCALL=/repeater + mod */
+									/* YRCALL=/KJ4NHFB */
+
+									memset(temp_radio_user, ' ', 8);
+									memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur+1, 6);
+									temp_radio_user[6] = ' ';
+									temp_radio_user[7] = rptrbuf.vpkt.hdr.ur[7];
+									if (temp_radio_user[7] == ' ')
+										temp_radio_user[7] = 'A';
+									temp_radio_user[CALL_SIZE] = '\0';
+
+									bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
+									if (result) { /* it is a repeater */
+										uint32_t address;
+										/* set the destination */
+										to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
+										memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
+										to_remote_g2[i].toDst4.sin_family = AF_INET;
+										to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
+										// if the address is in the portmap, we'll use that saved port instead of the default port
+										auto theAddress = portmap.find(address);
+										to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end()) ? g2_external.port : theAddress->second);
+
+										memcpy(g2buf.title, "DSVT", 4);
+										g2buf.config = 0x10;
+										g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
+										g2buf.id =  rptrbuf.vpkt.icm_id;
+										g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+										g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+										g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+										g2buf.streamid = rptrbuf.vpkt.streamid;
+										g2buf.ctrl = rptrbuf.vpkt.ctrl;
+										memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
+										/* set rpt1 */
+										memset(g2buf.hdr.rpt1, ' ', 8);
+										memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+										g2buf.hdr.rpt1[7] = temp_mod;
+										/* set rpt2 */
+										memset(g2buf.hdr.rpt2, ' ', 8);
+										memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+										g2buf.hdr.rpt2[7] = 'G';
+										/* set yrcall, can NOT let it be slash and repeater + module */
+										memcpy(g2buf.hdr.urcall, "CQCQCQ  ", 8);
+										memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
+										memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
+
+										/* set PFCS */
+										calcPFCS(g2buf.title, 56);
+
+										// The remote repeater has been set, lets fill in the dest_rptr
+										// so that later we can send that to the LIVE web site
+										memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
+										band_txt[i].dest_rptr[CALL_SIZE] = '\0';
+
+										// send to remote gateway
+										for (int j=0; j<5; j++)
+											sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+
+										printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
+										ntohs(g2buf.streamid), inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
+										g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
+
+										time(&(to_remote_g2[i].last_time));
+									}
+								}
+							}
+						}
+					}
+					else if (memcmp(rptrbuf.vpkt.hdr.ur, OWNER.c_str(), 7) &&				// urcall is not this repeater
+							0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 is this repeater
+							(rptrbuf.vpkt.hdr.r1[7]>='A'&& rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod is A,B,C
+							0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&				// rpt2 is this repeater
+							rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
+							Flag_is_ok(rptrbuf.vpkt.hdr.flag[0])) {
+
+
+						memset(temp_radio_user, ' ', 8);
+						memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur, 8);
+						temp_radio_user[8] = '\0';
+						bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
+						if (result) {
+							/* destination is a remote system */
+							if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
+								int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+								if (i>=0 && i<3) {
+									/* one radio user on a repeater module at a time */
+									if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
+										uint32_t address;
+										/* set the destination */
+										to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
+										memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
+										to_remote_g2[i].toDst4.sin_family = AF_INET;
+										to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
+										// if the address is in the portmap, we'll use that port instead of the default
+										auto theAddress = portmap.find(address);
+										to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
+
+										memcpy(g2buf.title, "DSVT", 4);
+										g2buf.config = 0x10;
+										g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
+										g2buf.id = rptrbuf.vpkt.icm_id;
+										g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+										g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+										g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+										g2buf.streamid = rptrbuf.vpkt.streamid;
+										g2buf.ctrl = rptrbuf.vpkt.ctrl;
+										memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
+										/* set rpt1 */
+										memset(g2buf.hdr.rpt1, ' ', 8);
+										memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+										g2buf.hdr.rpt1[7] = temp_mod;
+										/* set rpt2 */
+										memset(g2buf.hdr.rpt2, ' ', 8);
+										memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+										g2buf.hdr.rpt2[7] = 'G';
+										/* set PFCS */
+										memcpy(g2buf.hdr.urcall, rptrbuf.vpkt.hdr.ur, 8);
+										memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
+										memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
+										calcPFCS(g2buf.title, 56);
+
+
+										// The remote repeater has been set, lets fill in the dest_rptr
+										// so that later we can send that to the LIVE web site
+										memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
+										band_txt[i].dest_rptr[CALL_SIZE] = '\0';
+
+										/* send to remote gateway */
+										for (int j=0; j<5; j++)
+											sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+
+										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port), ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
+
+										time(&(to_remote_g2[i].last_time));
+									}
+								}
+							}
+							else
+							{
+								int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+								if (i>=0 && i<3) {
+									/* the user we are trying to contact is on our gateway */
+									/* make sure they are on a different module */
+									if (temp_mod != rptrbuf.vpkt.hdr.r1[7]) {
+										/*
+										   The remote repeater has been set, lets fill in the dest_rptr
+										   so that later we can send that to the LIVE web site
+										*/
+										memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.r2, 8);
+										band_txt[i].dest_rptr[7] = temp_mod;
+										band_txt[i].dest_rptr[8] = '\0';
+
+										i = temp_mod - 'A';
+
+										/* valid destination repeater module? */
+										if (i>=0 && i<3) {
+											/*
+											   toRptr[i] :    receiving from a remote system or cross-band
+											   band_txt[i] :  local RF is talking.
+											*/
+											if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
+												printf("CALLmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.r1[7], temp_mod);
+
+												rptrbuf.vpkt.hdr.r2[7] = temp_mod;
+												rptrbuf.vpkt.hdr.r1[7] = 'G';
+												calcPFCS(rptrbuf.pkt_id, 58);
+
+												Gate2Modem[i].Write(rptrbuf.pkt_id, 58);
+
+												/* This is the active streamid */
+												toRptr[i].streamid = rptrbuf.vpkt.streamid;
+												toRptr[i].adr = fromRptr.sin_addr.s_addr;
+
+												/* time it, in case stream times out */
+												time(&toRptr[i].last_time);
+
+												/* bump the G2 counter */
+												toRptr[i].G2_COUNTER++;
+
+												toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+											}
+										}
+									}
+									else
+										printf("icom rule: no routing from %.8s to %s%c\n", rptrbuf.vpkt.hdr.r1, arearp_cs, temp_mod);
+								}
+							}
+						}
+						else
+						{
+							if ('L' != rptrbuf.vpkt.hdr.ur[7]) // as long as this doesn't look like a linking command
+								playNotInCache = true; // we need to wait until user's transmission is over
+						}
+					}
+				}
+				else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      C0", 8)) {
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						/* voicemail file is closed */
+						if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
+							unlink(vm[i].file);
+							printf("removed voicemail file: %s\n", vm[i].file);
+							vm[i].file[0] = '\0';
+						} else
+							printf("No voicemail to clear or still recording\n");
+					}
+				}
+				else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      R0", 8)) {
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						/* voicemail file is closed */
+						if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
+							snprintf(vm[i].message, 21, "VOICEMAIL ON MOD %c  ", 'A'+i);
+							try {
+								std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(vm[i]));
+							} catch (const std::exception &e) {
+								printf("Failed to start voicemail playback. Exception: %s\n", e.what());
+							}
+						} else
+							printf("No voicemail to recall or still recording\n");
+					}
+				}
+				else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      S0", 8)) {
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						if (vm[i].fd >= 0)
+							printf("Already recording for voicemail on mod %d\n", i);
+						else {
+							memset(tempfile, '\0', sizeof(tempfile));
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr. r1[7], "voicemail.dat");
+
+							vm[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+							if (vm[i].fd < 0)
+								printf("Failed to create file %s for voicemail\n", tempfile);
+							else {
+								strcpy(vm[i].file, tempfile);
+								printf("Recording mod %c for voicemail into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], vm[i].file);
+
+								time(&vm[i].last_time);
+								vm[i].streamid = rptrbuf.vpkt.streamid;
+
+								memcpy(recbuf.title, "DSVT", 4);
+								recbuf.config = 0x10;
+								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+								recbuf.id =  rptrbuf.vpkt.icm_id;
+								recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+								recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+								recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+								memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
+								memset(recbuf.hdr.rpt1, ' ', 8);
+								memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.size());
+								recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
+								memset(recbuf.hdr.rpt2, ' ', 8);
+								memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.size());
+								recbuf.hdr.rpt2[7] = 'G';
+								memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
+
+								calcPFCS(recbuf.title, 56);
+
+								memcpy(vm[i].header.title, recbuf.title, 56);
+							}
+						}
+					}
+				}
+				else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "       E", 8)) {
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						if (recd[i].fd >= 0)
+							printf("Already recording for echotest on mod %d\n", i);
+						else {
+							memset(tempfile, '\0', sizeof(tempfile));
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr.r1[7], "echotest.dat");
+
+							recd[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+							if (recd[i].fd < 0)
+								printf("Failed to create file %s for echotest\n", tempfile);
+							else {
+								strcpy(recd[i].file, tempfile);
+								printf("Recording mod %c for echotest into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], recd[i].file);
+								snprintf(recd[i].message, 21, "ECHO ON MODULE %c    ", 'A' + i);
+								time(&recd[i].last_time);
+								recd[i].streamid = rptrbuf.vpkt.streamid;
+
+								memcpy(recbuf.title, "DSVT", 4);
+								recbuf.config = 0x10;
+								recbuf.id =  rptrbuf.vpkt.icm_id;
+								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
+								recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
+								recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
+								recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
+								memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
+								memset(recbuf.hdr.rpt1, ' ', 8);
+								memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
+								recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
+								memset(recbuf.hdr.rpt2, ' ', 8);
+								memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
+								recbuf.hdr.rpt2[7] = 'G';
+								memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
+
+								calcPFCS(recbuf.title, 56);
+
+								memcpy(recd[i].header.title, recbuf.title, 56);
+							}
+						}
+					}
+				/* check for cross-banding */
+				}
+				else if ( 0==memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) &&		// yrcall is CQCQCQ
+							0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&	// rpt1 is this repeater
+							0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	// rpt2 is this repeater
+						(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod of rpt1 is A,B,C
+						(rptrbuf.vpkt.hdr.r2[7]>='A' && rptrbuf.vpkt.hdr.r2[7]<='C') &&	// !!! usually G on rpt2, but we see A,B,C with
+						rptrbuf.vpkt.hdr.r2[7]!=rptrbuf.vpkt.hdr.r1[7] ) {				// cross-banding? make sure NOT the same
+					int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
+
+					if (i>=0 && i<3) {
+						// The remote repeater has been set, lets fill in the dest_rptr
+						// so that later we can send that to the LIVE web site
+						memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.r2, 8);
+						band_txt[i].dest_rptr[8] = '\0';
+					}
+
+					i = rptrbuf.vpkt.hdr.r2[7] - 'A';
+
+					// valid destination repeater module?
+					if (i>=0 && i<3) {
+						// toRptr[i] :    receiving from a remote system or cross-band
+						// band_txt[i] :  local RF is talking.
+						if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
+							printf("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.r1[7], rptrbuf.vpkt.hdr.r2[7]);
+
+							rptrbuf.vpkt.hdr.r1[7] = 'G';
+							calcPFCS(rptrbuf.pkt_id, 58);
+
+							Gate2Modem[i].Write(rptrbuf.pkt_id, 58);
+
+							/* This is the active streamid */
+							toRptr[i].streamid = rptrbuf.vpkt.streamid;
+							toRptr[i].adr = fromRptr.sin_addr.s_addr;
+
+							/* time it, in case stream times out */
+							time(&toRptr[i].last_time);
+
+							/* bump the G2 counter */
+							toRptr[i].G2_COUNTER ++;
+
+							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+						}
+					}
+				}
+			}
+			else
+			{	// recvlen is 29 or 32
+				for (int i=0; i<3; i++) {
+					if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
+						time(&band_txt[i].last_time);
+
+						if (rptrbuf.vpkt.ctrl & 0x40) {	// end of voice data
+							if (dtmf_buf_count[i] > 0) {
+								dtmf_file = dtmf_dir;
+								dtmf_file.push_back('/');
+								dtmf_file.push_back('A'+i);
+								dtmf_file += "_mod_DTMF_NOTIFY";
+								if (bool_dtmf_debug)
+									printf("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
+								FILE *dtmf_fp = fopen(dtmf_file.c_str(), "w");
+								if (dtmf_fp) {
+									fprintf(dtmf_fp, "%s\n%s", dtmf_buf[i], band_txt[i].lh_mycall);
+									fclose(dtmf_fp);
+								} else
+									printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
+
+
+								if (bool_dtmf_debug)
+									printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].lh_mycall);
+								memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
+								dtmf_buf_count[i] = 0;
+								dtmf_counter[i] = 0;
+								dtmf_last_frame[i] = 0;
+							}
+							if (! band_txt[i].sent_key_on_msg) {
+								band_txt[i].txt[0] = '\0';
+								if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
+									set_dest_rptr(i, band_txt[i].dest_rptr);
+									if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
+										band_txt[i].dest_rptr[0] = '\0';
+								}
+								// we have the 20-character message, send it to the server...
+								ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+								band_txt[i].sent_key_on_msg = true;
+							}
+							// send the "key off" message, this will end up in the openquad.net Last Heard webpage.
+							ii->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
+
+							if (playNotInCache) {
+								// Not in cache, please try again!
+								FILE *fp = fopen(qnvoicefile.c_str(), "w");
+								if (fp) {
+									fprintf(fp, "%c_notincache.dat_NOT_IN_CACHE\n", band_txt[i].lh_rpt1[7]);
+									fclose(fp);
+								}
+								playNotInCache = false;
+							}
+
+							band_txt[i].streamID = 0;
+							band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
+							band_txt[i].lh_mycall[0] = '\0';
+							band_txt[i].lh_sfx[0] = '\0';
+							band_txt[i].lh_yrcall[0] = '\0';
+							band_txt[i].lh_rpt1[0] = '\0';
+							band_txt[i].lh_rpt2[0] = '\0';
+
+							band_txt[i].last_time = 0;
+
+							band_txt[i].txt[0] = '\0';
+							band_txt[i].txt_cnt = 0;
+
+							band_txt[i].dest_rptr[0] = '\0';
+
+							band_txt[i].num_dv_frames = 0;
+							band_txt[i].num_dv_silent_frames = 0;
+							band_txt[i].num_bit_errors = 0;
+						}
+						else
+						{	// not the end of the voice stream
+							int ber_data[3];
+							int ber_errs = dstar_dv_decode(rptrbuf.vpkt.vasd.voice, ber_data);
+							if (ber_data[0] == 0xf85)
+								band_txt[i].num_dv_silent_frames++;
+							band_txt[i].num_bit_errors += ber_errs;
+							band_txt[i].num_dv_frames++;
+
+							if ((ber_data[0] & 0x0ffc) == 0xfc0) {
+								dtmf_digit = (ber_data[0] & 0x03) | ((ber_data[2] & 0x60) >> 3);
+								if (dtmf_counter[i] > 0) {
+									if (dtmf_last_frame[i] != dtmf_digit)
+										dtmf_counter[i] = 0;
+								}
+								dtmf_last_frame[i] = dtmf_digit;
+								dtmf_counter[i]++;
+
+								if ((dtmf_counter[i] == 5) && (dtmf_digit >= 0) && (dtmf_digit <= 15)) {
+									if (dtmf_buf_count[i] < MAX_DTMF_BUF) {
+										const char *dtmf_chars = "147*2580369#ABCD";
+										dtmf_buf[i][ dtmf_buf_count[i] ] = dtmf_chars[dtmf_digit];
+										dtmf_buf_count[i]++;
+									}
+								}
+								const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
+								if (recvlen == 29)
+									memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
+								else
+									memcpy(rptrbuf.vpkt.vasd1.voice, silence, 9);
+							} else
+								dtmf_counter[i] = 0;
+						}
+						break;
+					}
+				}
+				vPacketCount++;
+				if (recvlen == 29)	// process the slow data from every voice packet
+					ProcessSlowData(rptrbuf.vpkt.vasd.text,  rptrbuf.vpkt.streamid);
+				else
+					ProcessSlowData(rptrbuf.vpkt.vasd1.text, rptrbuf.vpkt.streamid);
+
+				/* send data to qnlink */
+				Gate2Link.Write(rptrbuf.pkt_id, recvlen);
+
+				/* aprs processing */
+				if (bool_send_aprs)
+					//                             streamID               seq                audio+text
+					aprs->ProcessText(ntohs(rptrbuf.vpkt.streamid), rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice);
+
+				for (int i=0; i<3; i++) {
+					/* find out if data must go to the remote G2 */
+					if (to_remote_g2[i].streamid == rptrbuf.vpkt.streamid) {
+						memcpy(g2buf.title, "DSVT", 4);
+						g2buf.config = 0x20;
+						g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0;
+						memcpy(&g2buf.id, &rptrbuf.vpkt.icm_id, 7);
+						if (recvlen == 29)
+							memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
+						else
+							memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
+
+						uint32_t address = to_remote_g2[i].toDst4.sin_addr.s_addr;
+						// if the address is in the portmap, we'll use that port instead of the default
+						auto theAddress = portmap.find(address);
+						to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
+						sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+
+						time(&(to_remote_g2[i].last_time));
+
+						/* Is this the end-of-stream */
+						if (rptrbuf.vpkt.ctrl & 0x40) {
+							memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
+							to_remote_g2[i].streamid = 0;
+							to_remote_g2[i].last_time = 0;
+						}
+						break;
+					}
+					else if (recd[i].fd>=0 && recd[i].streamid==rptrbuf.vpkt.streamid) {	// Is the data to be recorded for echotest
+						time(&recd[i].last_time);
+
+						if (recvlen == 29)
+							(void)write(recd[i].fd, rptrbuf.vpkt.vasd.voice, 9);
+						else
+							(void)write(recd[i].fd, rptrbuf.vpkt.vasd1.voice, 9);
+
+						if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
+							recd[i].streamid = 0;
+							recd[i].last_time = 0;
+							close(recd[i].fd);
+							recd[i].fd = -1;
+							// printf("Closed echotest audio file:[%s]\n", recd[i].file);
+
+							/* we are in echotest mode, so play it back */
+							try {
+								std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i]));
+							} catch (const std::exception &e) {
+								printf("failed to start PlayFileThread. Exception: %s\n", e.what());
+								//   When the echotest thread runs, it deletes the file,
+								//   Because the echotest thread did NOT start, we delete the file here
+								unlink(recd[i].file);
+							}
+						}
+						break;
+					}
+					else if ((vm[i].fd >= 0) && (vm[i].streamid==rptrbuf.vpkt.streamid)) {	// Is the data to be recorded for voicemail
+						time(&vm[i].last_time);
+
+						if (recvlen == 29)
+							(void)write(vm[i].fd, rptrbuf.vpkt.vasd.voice, 9);
+						else
+							(void)write(vm[i].fd, rptrbuf.vpkt.vasd1.voice, 9);
+
+						if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
+							vm[i].streamid = 0;
+							vm[i].last_time = 0;
+							close(vm[i].fd);
+							vm[i].fd = -1;
+							// printf("Closed voicemail audio file:[%s]\n", vm[i].file);
+						}
+						break;
+					}
+					else if ((toRptr[i].streamid==rptrbuf.vpkt.streamid) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {	// or maybe this is cross-banding data
+						Gate2Modem[i].Write(rptrbuf.pkt_id, 29);
+
+						/* timeit */
+						time(&toRptr[i].last_time);
+
+						/* bump G2 counter */
+						toRptr[i].G2_COUNTER ++;
+
+						toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+
+						/* End of stream ? */
+						if (rptrbuf.vpkt.ctrl & 0x40) {
+							toRptr[i].last_time = 0;
+							toRptr[i].streamid = 0;
+							toRptr[i].adr = 0;
+						}
+						break;
+					}
+				}
+
+				if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
+					printf("id=%04x cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
+			}
+		}
+	}
+}
+
+void CQnetGateway::AddFDSet(int &max, int newfd, fd_set *set)
+{
+	if (newfd > max)
+		max = newfd;
+	FD_SET(newfd, set);
+}
+
 /* run the main loop for QnetGateway */
 void CQnetGateway::Process()
 {
-	// dtmf stuff
-	int dtmf_buf_count[3] = {0, 0, 0};
-	char dtmf_buf[3][MAX_DTMF_BUF + 1] = { {""}, {""}, {""} };
-	int dtmf_last_frame[3] = { 0, 0, 0 };
-	unsigned int dtmf_counter[3] = { 0, 0, 0 };
+	// dtmf stuff initialize
+	for (int i=0; i<3; i++) {
+		dtmf_buf_count[i] = 0;
+		dtmf_buf[i][0] = '\0';
+		dtmf_last_frame[i] = 0;
+		dtmf_counter[i] = 0U;
+	}
 
 	dstar_dv_init();
-
-	int max_nfds = 0;
-	if (g2_sock > max_nfds)
-		max_nfds = g2_sock;
-	if (srv_sock > max_nfds)
-		max_nfds = srv_sock;
-	printf("g2=%d, srv=%d, MAX+1=%d\n", g2_sock, srv_sock, max_nfds + 1);
 
 	std::future<void> aprs_future, irc_data_future;
 	if (bool_send_aprs) {	// start the beacon thread
@@ -1135,20 +1974,24 @@ void CQnetGateway::Process()
 		ProcessTimeouts();
 
 		// wait 20 ms max
+		int max_nfds = 0;
 		fd_set fdset;
 		FD_ZERO(&fdset);
-		FD_SET(g2_sock, &fdset);
-		FD_SET(srv_sock, &fdset);
+		AddFDSet(max_nfds, g2_sock, &fdset);
+		AddFDSet(max_nfds, Link2Gate.GetFD(), &fdset);
+		for (int i=0; i<3; i++)
+			if (rptr.mod[i].defined)
+				AddFDSet(max_nfds, Modem2Gate[i].GetFD(), &fdset);
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000; // 20 ms
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
-		// process packets coming from remote G2
+		// process packets coming from remote G2 or g2_link
 		if (FD_ISSET(g2_sock, &fdset)) {
 			SDSVT g2buf;
 			socklen_t fromlen = sizeof(struct sockaddr_in);
-			int g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
+			ssize_t g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
 			// save incoming port for mobile systems
 			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
@@ -1160,883 +2003,23 @@ void CQnetGateway::Process()
 					portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
 				}
 			}
+			ProcessG2(g2buflen, g2buf);
+			FD_CLR(g2_sock, &fdset);
+		}
 
-			if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
-				if (g2buflen == 56) {
-
-					// Find out the local repeater module IP/port to send the data to
-					int i = g2buf.hdr.rpt1[7] - 'A';
-
-					/* valid repeater module? */
-					if (i>=0 && i<3) {
-						// toRptr[i] is active if a remote system is talking to it or
-						// toRptr[i] is receiving data from a cross-band
-						if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
-							if (bool_qso_details)
-								printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n", ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
-
-							memcpy(rptrbuf.pkt_id, "DSTR", 4);
-							rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);	// bump the counter
-							rptrbuf.flag[0] = 0x73;
-							rptrbuf.flag[1] = 0x12;
-							rptrbuf.flag[2] = 0x00;
-							rptrbuf.remaining = 0x30;
-							rptrbuf.vpkt.icm_id = 0x20;
-							//memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 47);
-							rptrbuf.vpkt.dst_rptr_id = g2buf.flagb[0];
-							rptrbuf.vpkt.snd_rptr_id = g2buf.flagb[1];
-							rptrbuf.vpkt.snd_term_id = g2buf.flagb[2];
-							rptrbuf.vpkt.streamid    = g2buf.streamid;
-							rptrbuf.vpkt.ctrl        = g2buf.ctrl;
-							memcpy(rptrbuf.vpkt.hdr.flag, g2buf.hdr.flag,   3);
-							memcpy(rptrbuf.vpkt.hdr.r1,   g2buf.hdr.rpt2,   8);
-							memcpy(rptrbuf.vpkt.hdr.r2,   g2buf.hdr.rpt1,   8);
-							memcpy(rptrbuf.vpkt.hdr.ur,   g2buf.hdr.urcall, 8);
-							memcpy(rptrbuf.vpkt.hdr.my,   g2buf.hdr.mycall, 8);
-							memcpy(rptrbuf.vpkt.hdr.nm,   g2buf.hdr.sfx,    4);
-							memcpy(rptrbuf.vpkt.hdr.pfcs, g2buf.hdr.pfcs,   2);
-
-							sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-							/* save the header */
-							memcpy(toRptr[i].saved_hdr, rptrbuf.pkt_id, 58);
-							toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
-
-							/* This is the active streamid */
-							toRptr[i].streamid = g2buf.streamid;
-							toRptr[i].adr = fromDst4.sin_addr.s_addr;
-
-							/* time it, in case stream times out */
-							time(&toRptr[i].last_time);
-
-							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-						}
-					}
-				} else {	// g2buflen == 27
-					if (bool_qso_details && g2buf.ctrl & 0x40)
-						printf("id=%04x END G2\n", ntohs(g2buf.streamid));
-
-					/* find out which repeater module to send the data to */
-					int i;
-					for (i=0; i<3; i++) {
-						/* streamid match ? */
-						if (toRptr[i].streamid==g2buf.streamid && toRptr[i].adr==fromDst4.sin_addr.s_addr) {
-							memcpy(rptrbuf.pkt_id, "DSTR", 4);
-							rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);
-							rptrbuf.flag[0] = 0x73;
-							rptrbuf.flag[1] = 0x12;
-							rptrbuf.flag[2] = 0x00;
-							rptrbuf.remaining= 0x13;
-							rptrbuf.vpkt.icm_id = 0x20;
-							memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
-
-							sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-							/* timeit */
-							time(&toRptr[i].last_time);
-
-							toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-
-							/* End of stream ? */
-							if (g2buf.ctrl & 0x40) {
-								/* clear the saved header */
-								memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
-								toRptr[i].saved_adr = 0;
-
-								toRptr[i].last_time = 0;
-								toRptr[i].streamid = 0;
-								toRptr[i].adr = 0;
-							}
-							break;
-						}
-					}
-
-					/* no match ? */
-					if ((i == 3) && bool_regen_header) {
-						/* check if this a continuation of audio that timed out */
-
-						if (g2buf.ctrl & 0x40)
-							;  /* we do not care about end-of-QSO */
-						else {
-							/* for which repeater this stream has timed out ?  */
-							for (i = 0; i < 3; i++) {
-								/* match saved stream ? */
-								if (0==memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) && toRptr[i].saved_adr==fromDst4.sin_addr.s_addr) {
-									/* repeater module is inactive ?  */
-									if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
-										printf("Re-generating header for streamID=%04x\n", g2buf.streamid);
-
-										toRptr[i].saved_hdr[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
-										toRptr[i].saved_hdr[5] = (unsigned char)((toRptr[i].G2_COUNTER++) & 0xff);
-
-										/* re-generate/send the header */
-										sendto(srv_sock, toRptr[i].saved_hdr, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-										/* send this audio packet to repeater */
-										memcpy(rptrbuf.pkt_id, "DSTR", 4);
-										rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);
-										rptrbuf.flag[0] = 0x73;
-										rptrbuf.flag[1] = 0x12;
-										rptrbuf.flag[2] = 0x00;
-										rptrbuf.remaining = 0x13;
-										rptrbuf.vpkt.icm_id = 0x20;
-										memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
-
-										sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-										/* make sure that any more audio arriving will be accepted */
-										toRptr[i].streamid = g2buf.streamid;
-										toRptr[i].adr = fromDst4.sin_addr.s_addr;
-
-										/* time it, in case stream times out */
-										time(&toRptr[i].last_time);
-
-										toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-
-									}
-									break;
-								}
-							}
-						}
-					}
-				}
-			}
-			FD_CLR (g2_sock,&fdset);
+		if (FD_ISSET(Link2Gate.GetFD(), &fdset)) {
+			SDSVT g2buf;
+			ssize_t g2buflen = Link2Gate.Read(g2buf.title, 56);
+			ProcessG2(g2buflen, g2buf);
+			FD_CLR(Link2Gate.GetFD(), &fdset);
 		}
 
 		// process packets coming from local repeater modules
-		if (FD_ISSET(srv_sock, &fdset)) {
-			char temp_radio_user[CALL_SIZE + 1];
-			char temp_mod;
-
-			char arearp_cs[CALL_SIZE + 1];
-			char zonerp_cs[CALL_SIZE + 1];
-			char ip[IP_SIZE + 1];
-
-			char tempfile[FILENAME_MAX + 1];
-
-			SDSVT g2buf;
-
-			socklen_t fromlen = sizeof(struct sockaddr_in);
-			int recvlen = recvfrom(srv_sock, rptrbuf.pkt_id, 58,  0, (struct sockaddr *)&fromRptr, &fromlen);
-
-			if (0 == memcmp(rptrbuf.pkt_id, "DSTR", 4)) {
-				if ( (recvlen==58 || recvlen==29 || recvlen==32) && rptrbuf.flag[0]==0x73 && rptrbuf.flag[1]==0x12 && rptrbuf.flag[2]==0x0 && rptrbuf.vpkt.icm_id==0x20 && (rptrbuf.remaining==0x30 || rptrbuf.remaining==0x13 || rptrbuf.remaining==0x16) ) {
-
-					if (recvlen == 58) {
-						vPacketCount = 0U;
-						if (bool_qso_details)
-							printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
-
-						if (0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	Flag_is_ok(rptrbuf.vpkt.hdr.flag[0])) {
-
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0  && i<3) {
-								if (bool_dtmf_debug)
-									printf("resetting dtmf[%d] (got a header)\n", i);
-								dtmf_last_frame[i] = 0;
-								dtmf_counter[i] = 0;
-								memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
-								dtmf_buf_count[i] = 0;
-
-								/* Initialize the LAST HEARD data for the band */
-
-								band_txt[i].streamID = rptrbuf.vpkt.streamid;
-
-								memcpy(band_txt[i].flags, rptrbuf.vpkt.hdr.flag, 3);
-
-								memcpy(band_txt[i].lh_mycall, rptrbuf.vpkt.hdr.my, 8);
-								band_txt[i].lh_mycall[8] = '\0';
-
-								memcpy(band_txt[i].lh_sfx, rptrbuf.vpkt.hdr.nm, 4);
-								band_txt[i].lh_sfx[4] = '\0';
-
-								memcpy(band_txt[i].lh_yrcall, rptrbuf.vpkt.hdr.ur, 8);
-								band_txt[i].lh_yrcall[8] = '\0';
-
-								memcpy(band_txt[i].lh_rpt1, rptrbuf.vpkt.hdr.r1, 8);
-								band_txt[i].lh_rpt1[8] = '\0';
-
-								memcpy(band_txt[i].lh_rpt2, rptrbuf.vpkt.hdr.r2, 8);
-								band_txt[i].lh_rpt2[8] = '\0';
-
-								time(&band_txt[i].last_time);
-
-								band_txt[i].txt[0] = '\0';
-								band_txt[i].txt_cnt = 0;
-								band_txt[i].sent_key_on_msg = false;
-
-								band_txt[i].dest_rptr[0] = '\0';
-
-								/* try to process GPS mode: GPRMC and ID */
-								band_txt[i].temp_line[0] = '\0';
-								band_txt[i].temp_line_cnt = 0;
-								band_txt[i].gprmc[0] = '\0';
-								band_txt[i].gpid[0] = '\0';
-								band_txt[i].is_gps_sent = false;
-								// band_txt[i].gps_last_time = 0; DO NOT reset it
-
-								new_group[i] = true;
-								to_print[i] = 0;
-								ABC_grp[i] = false;
-
-								band_txt[i].num_dv_frames = 0;
-								band_txt[i].num_dv_silent_frames = 0;
-								band_txt[i].num_bit_errors = 0;
-
-								/* select the band for aprs processing, and lock on the stream ID */
-								if (bool_send_aprs)
-									aprs->SelectBand(i, ntohs(rptrbuf.vpkt.streamid));
-							}
-						}
-
-						/* Is MYCALL valid ? */
-						memset(temp_radio_user, ' ', 8);
-						memcpy(temp_radio_user, rptrbuf.vpkt.hdr.my, 8);
-						temp_radio_user[8] = '\0';
-
-						int mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
-
-						if (mycall_valid == REG_NOERROR)
-							; // printf("MYCALL [%s] passed IRC expression validation\n", temp_radio_user);
-						else {
-							if (mycall_valid == REG_NOMATCH)
-								printf("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
-							else
-								printf("Failed to validate MYCALL [%s], regexec error=%d\n", temp_radio_user, mycall_valid);
-						}
-
-						/* send data qnlink */
-						if (mycall_valid == REG_NOERROR)
-							sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
-
-						if ( mycall_valid==REG_NOERROR &&
-								memcmp(rptrbuf.vpkt.hdr.ur, "XRF", 3) &&	// not a reflector
-								memcmp(rptrbuf.vpkt.hdr.ur, "REF", 3) &&
-								memcmp(rptrbuf.vpkt.hdr.ur, "DCS", 3) &&
-								rptrbuf.vpkt.hdr.ur[0]!=' ' && 				// must have something
-								memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) )	// urcall is NOT CQCQCQ
-						{
-							if ( rptrbuf.vpkt.hdr.ur[0]=='/' &&										// repeater routing!
-									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 this repeater
-									(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// with a valid module
-									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) && 			// rpt2 is this repeater
-									rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
-									Flag_is_ok(rptrbuf.vpkt.hdr.flag[0]) )
-							{
-								if (memcmp(rptrbuf.vpkt.hdr.ur+1, OWNER.c_str(), 6)) {	// the value after the slash is NOT this repeater
-									int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-									if (i>=0 && i<3) {
-										/* one radio user on a repeater module at a time */
-										if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
-											/* YRCALL=/repeater + mod */
-											/* YRCALL=/KJ4NHFB */
-
-											memset(temp_radio_user, ' ', 8);
-											memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur+1, 6);
-											temp_radio_user[6] = ' ';
-											temp_radio_user[7] = rptrbuf.vpkt.hdr.ur[7];
-											if (temp_radio_user[7] == ' ')
-												temp_radio_user[7] = 'A';
-											temp_radio_user[CALL_SIZE] = '\0';
-
-											bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
-											if (result) { /* it is a repeater */
-												uint32_t address;
-												/* set the destination */
-												to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
-												memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
-												to_remote_g2[i].toDst4.sin_family = AF_INET;
-												to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
-												// if the address is in the portmap, we'll use that saved port instead of the default port
-												auto theAddress = portmap.find(address);
-												to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end()) ? g2_external.port : theAddress->second);
-
-												memcpy(g2buf.title, "DSVT", 4);
-												g2buf.config = 0x10;
-												g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-												g2buf.id =  rptrbuf.vpkt.icm_id;
-												g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-												g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-												g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-												g2buf.streamid = rptrbuf.vpkt.streamid;
-												g2buf.ctrl = rptrbuf.vpkt.ctrl;
-												memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
-												/* set rpt1 */
-												memset(g2buf.hdr.rpt1, ' ', 8);
-												memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
-												g2buf.hdr.rpt1[7] = temp_mod;
-												/* set rpt2 */
-												memset(g2buf.hdr.rpt2, ' ', 8);
-												memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
-												g2buf.hdr.rpt2[7] = 'G';
-												/* set yrcall, can NOT let it be slash and repeater + module */
-												memcpy(g2buf.hdr.urcall, "CQCQCQ  ", 8);
-												memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
-												memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
-
-												/* set PFCS */
-												calcPFCS(g2buf.title, 56);
-
-												// The remote repeater has been set, lets fill in the dest_rptr
-												// so that later we can send that to the LIVE web site
-												memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
-												band_txt[i].dest_rptr[CALL_SIZE] = '\0';
-
-												// send to remote gateway
-												for (int j=0; j<5; j++)
-													sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-
-												printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
-												ntohs(g2buf.streamid), inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
-												g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
-
-												time(&(to_remote_g2[i].last_time));
-											}
-										}
-									}
-								}
-							}
-							else if (memcmp(rptrbuf.vpkt.hdr.ur, OWNER.c_str(), 7) &&				// urcall is not this repeater
-									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 is this repeater
-									(rptrbuf.vpkt.hdr.r1[7]>='A'&& rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod is A,B,C
-									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&				// rpt2 is this repeater
-									rptrbuf.vpkt.hdr.r2[7]=='G' &&									// local Gateway
-									Flag_is_ok(rptrbuf.vpkt.hdr.flag[0])) {
-
-
-								memset(temp_radio_user, ' ', 8);
-								memcpy(temp_radio_user, rptrbuf.vpkt.hdr.ur, 8);
-								temp_radio_user[8] = '\0';
-								bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
-								if (result) {
-									/* destination is a remote system */
-									if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
-										int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-										if (i>=0 && i<3) {
-											/* one radio user on a repeater module at a time */
-											if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
-												uint32_t address;
-												/* set the destination */
-												to_remote_g2[i].streamid = rptrbuf.vpkt.streamid;
-												memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
-												to_remote_g2[i].toDst4.sin_family = AF_INET;
-												to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
-												// if the address is in the portmap, we'll use that port instead of the default
-												auto theAddress = portmap.find(address);
-												to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
-
-												memcpy(g2buf.title, "DSVT", 4);
-												g2buf.config = 0x10;
-												g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-												g2buf.id = rptrbuf.vpkt.icm_id;
-												g2buf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-												g2buf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-												g2buf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-												g2buf.streamid = rptrbuf.vpkt.streamid;
-												g2buf.ctrl = rptrbuf.vpkt.ctrl;
-												memcpy(g2buf.hdr.flag, rptrbuf.vpkt.hdr.flag, 3);
-												/* set rpt1 */
-												memset(g2buf.hdr.rpt1, ' ', 8);
-												memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
-												g2buf.hdr.rpt1[7] = temp_mod;
-												/* set rpt2 */
-												memset(g2buf.hdr.rpt2, ' ', 8);
-												memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
-												g2buf.hdr.rpt2[7] = 'G';
-												/* set PFCS */
-												memcpy(g2buf.hdr.urcall, rptrbuf.vpkt.hdr.ur, 8);
-												memcpy(g2buf.hdr.mycall, rptrbuf.vpkt.hdr.my, 8);
-												memcpy(g2buf.hdr.sfx, rptrbuf.vpkt.hdr.nm, 4);
-												calcPFCS(g2buf.title, 56);
-
-
-												// The remote repeater has been set, lets fill in the dest_rptr
-												// so that later we can send that to the LIVE web site
-												memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
-												band_txt[i].dest_rptr[CALL_SIZE] = '\0';
-
-												/* send to remote gateway */
-												for (int j=0; j<5; j++)
-													sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-
-												printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port), ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
-
-												time(&(to_remote_g2[i].last_time));
-											}
-										}
-									}
-									else
-									{
-										int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-										if (i>=0 && i<3) {
-											/* the user we are trying to contact is on our gateway */
-											/* make sure they are on a different module */
-											if (temp_mod != rptrbuf.vpkt.hdr.r1[7]) {
-												/*
-												   The remote repeater has been set, lets fill in the dest_rptr
-												   so that later we can send that to the LIVE web site
-												*/
-												memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.r2, 8);
-												band_txt[i].dest_rptr[7] = temp_mod;
-												band_txt[i].dest_rptr[8] = '\0';
-
-												i = temp_mod - 'A';
-
-												/* valid destination repeater module? */
-												if (i>=0 && i<3) {
-													/*
-													   toRptr[i] :    receiving from a remote system or cross-band
-													   band_txt[i] :  local RF is talking.
-													*/
-													if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-														printf("CALLmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.r1[7], temp_mod);
-
-														rptrbuf.vpkt.hdr.r2[7] = temp_mod;
-														rptrbuf.vpkt.hdr.r1[7] = 'G';
-														calcPFCS(rptrbuf.pkt_id, 58);
-
-														sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-														/* This is the active streamid */
-														toRptr[i].streamid = rptrbuf.vpkt.streamid;
-														toRptr[i].adr = fromRptr.sin_addr.s_addr;
-
-														/* time it, in case stream times out */
-														time(&toRptr[i].last_time);
-
-														/* bump the G2 counter */
-														toRptr[i].G2_COUNTER++;
-
-														toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-													}
-												}
-											}
-											else
-												printf("icom rule: no routing from %.8s to %s%c\n", rptrbuf.vpkt.hdr.r1, arearp_cs, temp_mod);
-										}
-									}
-								}
-								else
-								{
-									if ('L' != rptrbuf.vpkt.hdr.ur[7]) // as long as this doesn't look like a linking command
-										playNotInCache = true; // we need to wait until user's transmission is over
-								}
-							}
-						}
-						else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      C0", 8)) {
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								/* voicemail file is closed */
-								if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
-									unlink(vm[i].file);
-									printf("removed voicemail file: %s\n", vm[i].file);
-									vm[i].file[0] = '\0';
-								} else
-									printf("No voicemail to clear or still recording\n");
-							}
-						}
-						else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      R0", 8)) {
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								/* voicemail file is closed */
-								if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
-									snprintf(vm[i].message, 21, "VOICEMAIL ON MOD %c  ", 'A'+i);
-									try {
-										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(vm[i]));
-									} catch (const std::exception &e) {
-										printf("Failed to start voicemail playback. Exception: %s\n", e.what());
-									}
-								} else
-									printf("No voicemail to recall or still recording\n");
-							}
-						}
-						else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "      S0", 8)) {
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								if (vm[i].fd >= 0)
-									printf("Already recording for voicemail on mod %d\n", i);
-								else {
-									memset(tempfile, '\0', sizeof(tempfile));
-									snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr. r1[7], "voicemail.dat");
-
-									vm[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-									if (vm[i].fd < 0)
-										printf("Failed to create file %s for voicemail\n", tempfile);
-									else {
-										strcpy(vm[i].file, tempfile);
-										printf("Recording mod %c for voicemail into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], vm[i].file);
-
-										time(&vm[i].last_time);
-										vm[i].streamid = rptrbuf.vpkt.streamid;
-
-										memcpy(recbuf.title, "DSVT", 4);
-										recbuf.config = 0x10;
-										recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-										recbuf.id =  rptrbuf.vpkt.icm_id;
-										recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-										recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-										recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-										memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
-										memset(recbuf.hdr.rpt1, ' ', 8);
-										memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.size());
-										recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
-										memset(recbuf.hdr.rpt2, ' ', 8);
-										memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.size());
-										recbuf.hdr.rpt2[7] = 'G';
-										memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
-
-										calcPFCS(recbuf.title, 56);
-
-										memcpy(vm[i].header.title, recbuf.title, 56);
-									}
-								}
-							}
-						}
-						else if (0 == memcmp(rptrbuf.vpkt.hdr.ur, "       E", 8)) {
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								if (recd[i].fd >= 0)
-									printf("Already recording for echotest on mod %d\n", i);
-								else {
-									memset(tempfile, '\0', sizeof(tempfile));
-									snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), rptrbuf.vpkt.hdr.r1[7], "echotest.dat");
-
-									recd[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-									if (recd[i].fd < 0)
-										printf("Failed to create file %s for echotest\n", tempfile);
-									else {
-										strcpy(recd[i].file, tempfile);
-										printf("Recording mod %c for echotest into file:[%s]\n", rptrbuf.vpkt.hdr.r1[7], recd[i].file);
-										snprintf(recd[i].message, 21, "ECHO ON MODULE %c    ", 'A' + i);
-										time(&recd[i].last_time);
-										recd[i].streamid = rptrbuf.vpkt.streamid;
-
-										memcpy(recbuf.title, "DSVT", 4);
-										recbuf.config = 0x10;
-										recbuf.id =  rptrbuf.vpkt.icm_id;
-										recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-										recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-										recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-										recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-										memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 44);
-										memset(recbuf.hdr.rpt1, ' ', 8);
-										memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
-										recbuf.hdr.rpt1[7] = rptrbuf.vpkt.hdr.r1[7];
-										memset(recbuf.hdr.rpt2, ' ', 8);
-										memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
-										recbuf.hdr.rpt2[7] = 'G';
-										memcpy(recbuf.hdr.urcall, "CQCQCQ  ", 8);
-
-										calcPFCS(recbuf.title, 56);
-
-										memcpy(recd[i].header.title, recbuf.title, 56);
-									}
-								}
-							}
-						/* check for cross-banding */
-						}
-						else if ( 0==memcmp(rptrbuf.vpkt.hdr.ur, "CQCQCQ", 6) &&		// yrcall is CQCQCQ
-									0==memcmp(rptrbuf.vpkt.hdr.r2, OWNER.c_str(), 7) &&	// rpt1 is this repeater
-									0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	// rpt2 is this repeater
-								(rptrbuf.vpkt.hdr.r1[7]>='A' && rptrbuf.vpkt.hdr.r1[7]<='C') &&	// mod of rpt1 is A,B,C
-								(rptrbuf.vpkt.hdr.r2[7]>='A' && rptrbuf.vpkt.hdr.r2[7]<='C') &&	// !!! usually G on rpt2, but we see A,B,C with
-								rptrbuf.vpkt.hdr.r2[7]!=rptrbuf.vpkt.hdr.r1[7] ) {				// cross-banding? make sure NOT the same
-							int i = rptrbuf.vpkt.hdr.r1[7] - 'A';
-
-							if (i>=0 && i<3) {
-								// The remote repeater has been set, lets fill in the dest_rptr
-								// so that later we can send that to the LIVE web site
-								memcpy(band_txt[i].dest_rptr, rptrbuf.vpkt.hdr.r2, 8);
-								band_txt[i].dest_rptr[8] = '\0';
-							}
-
-							i = rptrbuf.vpkt.hdr.r2[7] - 'A';
-
-							// valid destination repeater module?
-							if (i>=0 && i<3) {
-								// toRptr[i] :    receiving from a remote system or cross-band
-								// band_txt[i] :  local RF is talking.
-								if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-									printf("ZONEmode cross-banding from mod %c to %c\n",  rptrbuf.vpkt.hdr.r1[7], rptrbuf.vpkt.hdr.r2[7]);
-
-									rptrbuf.vpkt.hdr.r1[7] = 'G';
-									calcPFCS(rptrbuf.pkt_id, 58);
-
-									sendto(srv_sock, rptrbuf.pkt_id, 58, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-									/* This is the active streamid */
-									toRptr[i].streamid = rptrbuf.vpkt.streamid;
-									toRptr[i].adr = fromRptr.sin_addr.s_addr;
-
-									/* time it, in case stream times out */
-									time(&toRptr[i].last_time);
-
-									/* bump the G2 counter */
-									toRptr[i].G2_COUNTER ++;
-
-									toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-								}
-							}
-						}
-					}
-					else
-					{	// recvlen is 29 or 32
-						for (int i=0; i<3; i++) {
-							if (band_txt[i].streamID == rptrbuf.vpkt.streamid) {
-								time(&band_txt[i].last_time);
-
-								if (rptrbuf.vpkt.ctrl & 0x40) {	// end of voice data
-									if (dtmf_buf_count[i] > 0) {
-										dtmf_file = dtmf_dir;
-										dtmf_file.push_back('/');
-										dtmf_file.push_back('A'+i);
-										dtmf_file += "_mod_DTMF_NOTIFY";
-										if (bool_dtmf_debug)
-											printf("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
-										FILE *dtmf_fp = fopen(dtmf_file.c_str(), "w");
-										if (dtmf_fp) {
-											fprintf(dtmf_fp, "%s\n%s", dtmf_buf[i], band_txt[i].lh_mycall);
-											fclose(dtmf_fp);
-										} else
-											printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
-
-
-										if (bool_dtmf_debug)
-											printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].lh_mycall);
-										memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
-										dtmf_buf_count[i] = 0;
-										dtmf_counter[i] = 0;
-										dtmf_last_frame[i] = 0;
-									}
-									if (! band_txt[i].sent_key_on_msg) {
-										band_txt[i].txt[0] = '\0';
-										if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
-											set_dest_rptr(i, band_txt[i].dest_rptr);
-											if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
-												band_txt[i].dest_rptr[0] = '\0';
-										}
-										// we have the 20-character message, send it to the server...
-										ii->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
-										band_txt[i].sent_key_on_msg = true;
-									}
-									// send the "key off" message, this will end up in the openquad.net Last Heard webpage.
-									ii->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
-
-									if (playNotInCache) {
-										// Not in cache, please try again!
-										FILE *fp = fopen(qnvoicefile.c_str(), "w");
-										if (fp) {
-											fprintf(fp, "%c_notincache.dat_NOT_IN_CACHE\n", band_txt[i].lh_rpt1[7]);
-											fclose(fp);
-										}
-										playNotInCache = false;
-									}
-
-									band_txt[i].streamID = 0;
-									band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
-									band_txt[i].lh_mycall[0] = '\0';
-									band_txt[i].lh_sfx[0] = '\0';
-									band_txt[i].lh_yrcall[0] = '\0';
-									band_txt[i].lh_rpt1[0] = '\0';
-									band_txt[i].lh_rpt2[0] = '\0';
-
-									band_txt[i].last_time = 0;
-
-									band_txt[i].txt[0] = '\0';
-									band_txt[i].txt_cnt = 0;
-
-									band_txt[i].dest_rptr[0] = '\0';
-
-									band_txt[i].num_dv_frames = 0;
-									band_txt[i].num_dv_silent_frames = 0;
-									band_txt[i].num_bit_errors = 0;
-								}
-								else
-								{	// not the end of the voice stream
-									int ber_data[3];
-									int ber_errs = dstar_dv_decode(rptrbuf.vpkt.vasd.voice, ber_data);
-									if (ber_data[0] == 0xf85)
-										band_txt[i].num_dv_silent_frames++;
-									band_txt[i].num_bit_errors += ber_errs;
-									band_txt[i].num_dv_frames++;
-
-									if ((ber_data[0] & 0x0ffc) == 0xfc0) {
-										dtmf_digit = (ber_data[0] & 0x03) | ((ber_data[2] & 0x60) >> 3);
-										if (dtmf_counter[i] > 0) {
-											if (dtmf_last_frame[i] != dtmf_digit)
-												dtmf_counter[i] = 0;
-										}
-										dtmf_last_frame[i] = dtmf_digit;
-										dtmf_counter[i]++;
-
-										if ((dtmf_counter[i] == 5) && (dtmf_digit >= 0) && (dtmf_digit <= 15)) {
-											if (dtmf_buf_count[i] < MAX_DTMF_BUF) {
-												const char *dtmf_chars = "147*2580369#ABCD";
-												dtmf_buf[i][ dtmf_buf_count[i] ] = dtmf_chars[dtmf_digit];
-												dtmf_buf_count[i]++;
-											}
-										}
-										const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
-										if (recvlen == 29)
-											memcpy(rptrbuf.vpkt.vasd.voice, silence, 9);
-										else
-											memcpy(rptrbuf.vpkt.vasd1.voice, silence, 9);
-									} else
-										dtmf_counter[i] = 0;
-								}
-								break;
-							}
-						}
-						vPacketCount++;
-						if (recvlen == 29)	// process the slow data from every voice packet
-							ProcessSlowData(rptrbuf.vpkt.vasd.text,  rptrbuf.vpkt.streamid);
-						else
-							ProcessSlowData(rptrbuf.vpkt.vasd1.text, rptrbuf.vpkt.streamid);
-
-						/* send data to qnlink */
-						sendto(srv_sock, rptrbuf.pkt_id, recvlen, 0, (struct sockaddr *)&plug, sizeof(struct sockaddr_in));
-
-						/* aprs processing */
-						if (bool_send_aprs)
-							//                             streamID               seq                audio+text
-							aprs->ProcessText(ntohs(rptrbuf.vpkt.streamid), rptrbuf.vpkt.ctrl, rptrbuf.vpkt.vasd.voice);
-
-						for (int i=0; i<3; i++) {
-							/* find out if data must go to the remote G2 */
-							if (to_remote_g2[i].streamid == rptrbuf.vpkt.streamid) {
-								memcpy(g2buf.title, "DSVT", 4);
-								g2buf.config = 0x20;
-								g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0;
-								memcpy(&g2buf.id, &rptrbuf.vpkt.icm_id, 7);
-								if (recvlen == 29)
-									memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
-								else
-									memcpy(g2buf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
-
-								uint32_t address = to_remote_g2[i].toDst4.sin_addr.s_addr;
-								// if the address is in the portmap, we'll use that port instead of the default
-								auto theAddress = portmap.find(address);
-								to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
-								sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
-
-								time(&(to_remote_g2[i].last_time));
-
-								/* Is this the end-of-stream */
-								if (rptrbuf.vpkt.ctrl & 0x40) {
-									memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
-									to_remote_g2[i].streamid = 0;
-									to_remote_g2[i].last_time = 0;
-								}
-								break;
-							}
-							else if (recd[i].fd>=0 && recd[i].streamid==rptrbuf.vpkt.streamid) {	// Is the data to be recorded for echotest
-								time(&recd[i].last_time);
-
-								//memcpy(recbuf.title, "DSVT", 4);
-								//recbuf.config = 0x20;
-								//recbuf.id = rptrbuf.vpkt.icm_id;
-								//recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[20] = 0;
-								//recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-								//recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-								//recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-								//memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
-								if (recvlen == 29)
-									//memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
-									(void)write(recd[i].fd, rptrbuf.vpkt.vasd.voice, 9);
-								else
-									//memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
-									(void)write(recd[i].fd, rptrbuf.vpkt.vasd1.voice, 9);
-
-								//rec_len = 27;
-								//(void)write(recd[i].fd, &rec_len, 2);
-								//(void)write(recd[i].fd, &recbuf, rec_len);
-
-								if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
-									recd[i].streamid = 0;
-									recd[i].last_time = 0;
-									close(recd[i].fd);
-									recd[i].fd = -1;
-									// printf("Closed echotest audio file:[%s]\n", recd[i].file);
-
-									/* we are in echotest mode, so play it back */
-									try {
-										std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i]));
-									} catch (const std::exception &e) {
-										printf("failed to start PlayFileThread. Exception: %s\n", e.what());
-										//   When the echotest thread runs, it deletes the file,
-										//   Because the echotest thread did NOT start, we delete the file here
-										unlink(recd[i].file);
-									}
-								}
-								break;
-							}
-							else if ((vm[i].fd >= 0) && (vm[i].streamid==rptrbuf.vpkt.streamid)) {	// Is the data to be recorded for voicemail
-								time(&vm[i].last_time);
-
-								//memcpy(recbuf.title, "DSVT", 4);
-								//recbuf.config = 0x20;
-								//recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-								//recbuf.id = rptrbuf.vpkt.icm_id;
-								//recbuf.flagb[0] = rptrbuf.vpkt.dst_rptr_id;
-								//recbuf.flagb[1] = rptrbuf.vpkt.snd_rptr_id;
-								//recbuf.flagb[2] = rptrbuf.vpkt.snd_term_id;
-								//memcpy(&recbuf.streamid, &rptrbuf.vpkt.streamid, 3);
-								if (recvlen == 29)
-									//memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd.voice, 12);
-									(void)write(vm[i].fd, rptrbuf.vpkt.vasd.voice, 9);
-								else
-									//memcpy(recbuf.vasd.voice, rptrbuf.vpkt.vasd1.voice, 12);
-									(void)write(vm[i].fd, rptrbuf.vpkt.vasd1.voice, 9);
-
-								//rec_len = 27;
-								//(void)write(vm[i].fd, &rec_len, 2);
-								//(void)write(vm[i].fd, &recbuf, rec_len);
-
-								if ((rptrbuf.vpkt.ctrl & 0x40) != 0) {
-									vm[i].streamid = 0;
-									vm[i].last_time = 0;
-									close(vm[i].fd);
-									vm[i].fd = -1;
-									// printf("Closed voicemail audio file:[%s]\n", vm[i].file);
-								}
-								break;
-							}
-							else if ((toRptr[i].streamid==rptrbuf.vpkt.streamid) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {	// or maybe this is cross-banding data
-								sendto(srv_sock, rptrbuf.pkt_id, 29, 0, (struct sockaddr *)&toRptr[i].band_addr, sizeof(struct sockaddr_in));
-
-								/* timeit */
-								time(&toRptr[i].last_time);
-
-								/* bump G2 counter */
-								toRptr[i].G2_COUNTER ++;
-
-								toRptr[i].sequence = rptrbuf.vpkt.ctrl;
-
-								/* End of stream ? */
-								if (rptrbuf.vpkt.ctrl & 0x40) {
-									toRptr[i].last_time = 0;
-									toRptr[i].streamid = 0;
-									toRptr[i].adr = 0;
-								}
-								break;
-							}
-						}
-
-						if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
-							printf("id=%04x cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
-					}
-				}
+		for (int mod=0; mod<3; mod++) {
+			if (rptr.mod[mod].defined && FD_ISSET(Modem2Gate[mod].GetFD(), &fdset)) {
+				ProcessModem(mod);
+				FD_CLR (Modem2Gate[mod].GetFD(), &fdset);
 			}
-			FD_CLR (srv_sock,&fdset);
 		}
 	}
 
@@ -2333,7 +2316,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 	memcpy(dstr.vpkt.hdr.nm,   edata.header.hdr.sfx,    4);
 	calcPFCS(dstr.pkt_id, 58);
 
-	sendto(srv_sock, dstr.pkt_id, 58, 0, (struct sockaddr *)&toRptr[mod].band_addr, sizeof(struct sockaddr_in));
+	Gate2Modem[mod].Write(dstr.pkt_id, 58);
 
 	dstr.remaining = 0x13U;
 
@@ -2395,7 +2378,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 			if (i+1 == ambeblocks)
 				dstr.vpkt.ctrl |= 0x40U;
 
-			sendto(srv_sock, dstr.pkt_id, 29, 0, (struct sockaddr *)&toRptr[mod].band_addr, sizeof(struct sockaddr_in));
+			Gate2Modem[mod].Write(dstr.pkt_id, 29);
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(play_delay));
 		}
@@ -2561,16 +2544,17 @@ int CQnetGateway::Init(char *cfgfile)
 		return 1;
 	}
 
-	// Open G2 INTERNAL:
-	// default non-icom 127.0.0.1:19000
-	// default icom     172.16.0.20:20000
-	srv_sock = open_port(g2_internal);
-	if (0 > srv_sock) {
-		printf("Can't open %s:%d\n", g2_internal.ip.c_str(), g2_internal.port);
+	// Open unix sockets between qngateway and qnlink
+	if (Gate2Link.Open(gate2link.c_str()))
 		return 1;
-	}
+	if (Link2Gate.Open(link2gate.c_str()))
+		return 1;
 
-	for (i = 0; i < 3; i++) {
+	for (i=0; i<3; i++) {
+		if (rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
+			if (Gate2Modem[i].Open(gate2modem[i].c_str()) || Modem2Gate[i].Open(modem2gate[i].c_str()))
+				return 1;
+		}
 		// recording for echotest on local repeater modules
 		recd[i].last_time = 0;
 		recd[i].streamid = 0;
@@ -2633,12 +2617,6 @@ int CQnetGateway::Init(char *cfgfile)
 		to_remote_g2[i].last_time = 0;
 	}
 
-	/* where to send packets to qnlink */
-	memset(&plug, 0, sizeof(struct sockaddr_in));
-	plug.sin_family = AF_INET;
-	plug.sin_port = htons(g2_link.port);
-	plug.sin_addr.s_addr = inet_addr(g2_link.ip.c_str());
-
 	printf("QnetGateway...entering processing loop\n");
 
 	if (bool_send_qrgs)
@@ -2652,9 +2630,11 @@ CQnetGateway::CQnetGateway()
 
 CQnetGateway::~CQnetGateway()
 {
-	if (srv_sock != -1) {
-		close(srv_sock);
-		printf("Closed G2_INTERNAL_PORT\n");
+	Gate2Link.Close();
+	Link2Gate.Close();
+	for (int i=0; i<3; i++) {
+		Gate2Modem[i].Close();
+		Modem2Gate[i].Close();
 	}
 
 	if (g2_sock != -1) {

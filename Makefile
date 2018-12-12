@@ -54,22 +54,22 @@ itap   : $(TAP_PROGRAMS)
 qnigateway : $(IRCOBJS) QnetIcomGateway.o aprs.o
 	g++ $(CPPFLAGS) -o qnigateway QnetIcomGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
 
-qngateway : $(IRCOBJS) QnetGateway.o aprs.o
-	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
+qngateway : $(IRCOBJS) QnetGateway.o aprs.o UnixDgramSocket.o
+	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o UnixDgramSocket.o $(IRCOBJS) $(LDFLAGS) -pthread
 
-qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o
+qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qnlink QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o $(LDFLAGS) -pthread
 
-qnrelay : QnetRelay.o
+qnrelay : QnetRelay.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qnrelay QnetRelay.o $(LDFLAGS)
 
-qnitap : QnetITAP.o Random.o
+qnitap : QnetITAP.o Random.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qnitap QnetITAP.o Random.o $(LDFLAGS)
 
-qndvap : QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS)
+qndvap : QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) $(LDFLAGS) -pthread
 
-qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o
+qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o Random.o $(DSTROBJS) $(LDFLAGS)
 
 qnremote : QnetRemote.o Random.o

@@ -19,7 +19,7 @@
 #include <libconfig.h++>
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
-#include "UnixDgramSocket.h"
+
 #include "aprs.h"
 
 using namespace libconfig;
@@ -91,12 +91,7 @@ private:
 	bool ABC_grp[3] = { false, false, false };
 	bool C_seen[3] = { false, false, false };
 
-	SPORTIP g2_external, ircddb;
-
-	CUnixDgramReader Link2Gate, Modem2Gate[3];
-	CUnixDgramWriter Gate2Link, Gate2Modem[3];
-
-	std::string gate2link, link2gate, gate2modem[3], modem2gate[3];
+	SPORTIP g2_internal, g2_external, g2_link, ircddb;
 
 	std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass, qnvoicefile;
 
@@ -129,6 +124,7 @@ private:
 	STOREPEATER toRptr[3]; // 0=A, 1=B, 2=C
 
 	// input from our own local repeater modules
+	int srv_sock = -1;
 	SDSTR rptrbuf; // 58 or 29 or 32, max is 58
 	struct sockaddr_in fromRptr;
 
@@ -155,13 +151,6 @@ private:
 
 	pthread_mutex_t irc_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-	// dtmf stuff
-	int dtmf_buf_count[3];
-	char dtmf_buf[3][MAX_DTMF_BUF + 1];
-	int dtmf_last_frame[3];
-	unsigned int dtmf_counter[3];
-
-	void AddFDSet(int &max, int newfd, fd_set *set);
 	int open_port(const SPORTIP &pip);
 	void calcPFCS(unsigned char *packet, int len);
 	void GetIRCDataThread();
@@ -172,8 +161,6 @@ private:
 	void APRSBeaconThread();
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, unsigned short sid);
-	void ProcessG2(ssize_t g2buflen, SDSVT &g2buf);
-	void ProcessModem(int mod);
 	bool Flag_is_ok(unsigned char flag);
 
 	// read configuration file
