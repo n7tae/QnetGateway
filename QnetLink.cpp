@@ -210,7 +210,7 @@ void CQnetLink::RptrAckThread(char *arg)
 
 	memcpy(dsvt.hdr.sfx, "RPTR", 4);
 	calcPFCS(dsvt.title,56);
-	sendto(rptr_sock, dsvt.title, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
+	Link2Gate.Write(dsvt.title, 56);
 	std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 
 	dsvt.config = 0x20;
@@ -273,7 +273,7 @@ void CQnetLink::RptrAckThread(char *arg)
 				dsvt.vasd.text[2] = 0xf5;
 				break;
 		}
-		sendto(rptr_sock, dsvt.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(toLocalg2));
+		Link2Gate.Write(dsvt.title, 27);
 		if (i < 9)
 			std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 	}
@@ -671,13 +671,8 @@ bool CQnetLink::read_config(const char *cfgFile)
 	get_value(cfg, "link.xrf_port", rmt_xrf_port, 10000, 65535, 30001);
 	get_value(cfg, "link.dcs_port", rmt_dcs_port, 10000, 65535, 30051);
 
-	if (! get_value(cfg, "link.incoming_ip", my_g2_link_ip, 7, IP_SIZE, "0.0.0.0"))
-		return true;
-	get_value(cfg, "link.port", my_g2_link_port, 10000, 65535, 18997);
-
-	if (! get_value(cfg, "gateway.internal.ip", to_g2_external_ip, 7, IP_SIZE, "0.0.0.0"))
-		return true;
-	get_value(cfg, "gateway.external.port", to_g2_external_port, 1024, 65535, 40000);
+	get_value(cfg, "gateway.tolink", gate2link, 1, FILENAME_MAX, "gate2link");
+	get_value(cfg, "gateway.fromlink", link2gate, 1, FILENAME_MAX, "link2gate");
 
 	get_value(cfg, "log.qso", qso_details, true);
 
@@ -746,8 +741,7 @@ bool CQnetLink::srv_open()
 	sin.sin_addr.s_addr = inet_addr(my_g2_link_ip.c_str());
 	sin.sin_port = htons(rmt_xrf_port);
 	if (bind(xrf_g2_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		printf("Failed to bind gateway socket on port %d for XRF, errno=%d\n",
-		        rmt_xrf_port ,errno);
+		printf("Failed to bind gateway socket on port %d for XRF, errno=%d\n", rmt_xrf_port ,errno);
 		close(xrf_g2_sock);
 		xrf_g2_sock = -1;
 		return false;
@@ -790,43 +784,18 @@ bool CQnetLink::srv_open()
 		return false;
 	}
 
-	/* create our repeater socket */
-	rptr_sock = socket(PF_INET,SOCK_DGRAM,0);
-	if (rptr_sock == -1) {
-		printf("Failed to create repeater socket,errno=%d\n",errno);
+	/* create our gateway unix sockets */
+	if (Gate2Link.Open(gate2link.c_str()) || Link2Gate.Open(link2gate.c_str())) {
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
 		close(xrf_g2_sock);
 		xrf_g2_sock = -1;
 		close(ref_g2_sock);
 		ref_g2_sock = -1;
+		Gate2Link.Close();
+		Link2Gate.Close();
 		return false;
 	}
-	fcntl(rptr_sock,F_SETFL,O_NONBLOCK);
-
-	memset(&sin,0,sizeof(struct sockaddr_in));
-	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = inet_addr(my_g2_link_ip.c_str());
-	sin.sin_port = htons(my_g2_link_port);
-	if (bind(rptr_sock,(struct sockaddr *)&sin,sizeof(struct sockaddr_in)) != 0) {
-		printf("Failed to bind repeater socket on port %d, errno=%d\n",
-		        my_g2_link_port,errno);
-		close(dcs_g2_sock);
-		dcs_g2_sock = -1;
-		close(rptr_sock);
-		rptr_sock = -1;
-		close(xrf_g2_sock);
-		xrf_g2_sock = -1;
-		close(ref_g2_sock);
-		ref_g2_sock = -1;
-		return false;
-	}
-
-	/* the local G2 external runs on this IP and port */
-	memset(&toLocalg2,0,sizeof(struct sockaddr_in));
-	toLocalg2.sin_family = AF_INET;
-	toLocalg2.sin_addr.s_addr = inet_addr(to_g2_external_ip.c_str());
-	toLocalg2.sin_port = htons(to_g2_external_port);
 
 	/* initialize all remote links */
 	for (i = 0; i < 3; i++) {
@@ -855,10 +824,8 @@ void CQnetLink::srv_close()
 		printf("Closed rmt_dcs_port\n");
 	}
 
-	if (rptr_sock != -1) {
-		close(rptr_sock);
-		printf("Closed my_g2_link_port\n");
-	}
+	Gate2Link.Close();
+	Link2Gate.Close();
 
 	if (ref_g2_sock != -1) {
 		close(ref_g2_sock);
@@ -1095,12 +1062,12 @@ void CQnetLink::Process()
 		max_nfds = xrf_g2_sock;
 	if (ref_g2_sock > max_nfds)
 		max_nfds = ref_g2_sock;
-	if (rptr_sock > max_nfds)
-		max_nfds = rptr_sock;
 	if (dcs_g2_sock > max_nfds)
 		max_nfds = dcs_g2_sock;
+	if (Gate2Link.GetFD() > max_nfds)
+		max_nfds = Gate2Link.GetFD();
 
-	printf("xrf=%d, dcs=%d, ref=%d, rptr=%d, MAX+1=%d\n", xrf_g2_sock, dcs_g2_sock, ref_g2_sock, rptr_sock, max_nfds + 1);
+	printf("xrf=%d, dcs=%d, ref=%d, gateway=%d, MAX+1=%d\n", xrf_g2_sock, dcs_g2_sock, ref_g2_sock, Gate2Link.GetFD(), max_nfds + 1);
 
 	if (strlen(link_at_startup) >= 8) {
 		if ((link_at_startup[0] == 'A') || (link_at_startup[0] == 'B') || (link_at_startup[0] == 'C')) {
@@ -1275,13 +1242,13 @@ void CQnetLink::Process()
 		}
 
 		FD_ZERO(&fdset);
-		FD_SET(xrf_g2_sock,&fdset);
-		FD_SET(dcs_g2_sock,&fdset);
-		FD_SET(ref_g2_sock,&fdset);
-		FD_SET(rptr_sock,&fdset);
+		FD_SET(xrf_g2_sock, &fdset);
+		FD_SET(dcs_g2_sock, &fdset);
+		FD_SET(ref_g2_sock, &fdset);
+		FD_SET(Gate2Link.GetFD(), &fdset);
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000;
-		(void)select(max_nfds + 1,&fdset,0,0,&tv);
+		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
 		if (FD_ISSET(xrf_g2_sock, &fdset)) {
 			socklen_t fromlen = sizeof(struct sockaddr_in);
@@ -1588,7 +1555,7 @@ void CQnetLink::Process()
 						}
 
 						/* relay data to our local G2 */
-						sendto(rptr_sock, dsvt.title, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+						Link2Gate.Write(dsvt.title, 56);
 
 						/* send data to donglers */
 						/* no changes here */
@@ -1643,13 +1610,13 @@ void CQnetLink::Process()
 									calcPFCS(from_xrf_torptr_brd.title, 56);
 
 									/* send the data to the local gateway/repeater */
-									sendto(rptr_sock, from_xrf_torptr_brd.title, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+									Link2Gate.Write(from_xrf_torptr_brd.title, 56);
 
 									/* save streamid for use with the audio packets that will arrive after this header */
 
 									brd_from_xrf.xrf_streamid = dsvt.streamid;
 									brd_from_xrf.rptr_streamid[brd_from_xrf_idx] = from_xrf_torptr_brd.streamid;
-									brd_from_xrf_idx ++;
+									brd_from_xrf_idx++;
 								}
 							}
 						}
@@ -1739,7 +1706,7 @@ void CQnetLink::Process()
 					}
 
 					/* relay data to our local G2 */
-					sendto(rptr_sock, dsvt.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+					Link2Gate.Write(dsvt.title, 27);
 
 					/* send data to donglers */
 					/* no changes here */
@@ -1763,12 +1730,12 @@ void CQnetLink::Process()
 
 						if (brd_from_xrf.rptr_streamid[0] != 0x0) {
 							from_xrf_torptr_brd.streamid = brd_from_xrf.rptr_streamid[0];
-							sendto(rptr_sock, from_xrf_torptr_brd.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+							Link2Gate.Write(from_xrf_torptr_brd.title, 27);
 						}
 
 						if (brd_from_xrf.rptr_streamid[1] != 0x0) {
 							from_xrf_torptr_brd.streamid = brd_from_xrf.rptr_streamid[1];
-							sendto(rptr_sock, from_xrf_torptr_brd.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+							Link2Gate.Write(from_xrf_torptr_brd.title, 27);
 						}
 
 						if (dsvt.ctrl & 0x40) {
@@ -2463,7 +2430,7 @@ void CQnetLink::Process()
 						}
 
 						/* send the data to the local gateway/repeater */
-						sendto(rptr_sock, rdsvt.dsvt.title, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+						Link2Gate.Write(rdsvt.dsvt.title, 56);
 
 						/* send the data to the donglers */
 						for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
@@ -2521,7 +2488,7 @@ void CQnetLink::Process()
 					}
 
 					/* send the data to the local gateway/repeater */
-					sendto(rptr_sock, rdsvt.dsvt.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+					Link2Gate.Write(rdsvt.dsvt.title, 27);
 
 					/* send the data to the donglers */
 					for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
@@ -2674,7 +2641,7 @@ void CQnetLink::Process()
 
 							/* send the header to the local gateway/repeater */
 							for (int j=0; j<5; j++)
-								sendto(rptr_sock, rdsvt.dsvt.title, 56, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+								Link2Gate.Write(rdsvt.dsvt.title, 56);
 
 							/* send the data to the donglers */
 							for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
@@ -2707,7 +2674,7 @@ void CQnetLink::Process()
 							memcpy(rdsvt.dsvt.vasd.voice, dcs_buf+46, 12);
 
 							/* send the data to the local gateway/repeater */
-							sendto(rptr_sock, rdsvt.dsvt.title, 27, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+							Link2Gate.Write(rdsvt.dsvt.title, 27);
 
 							/* send the data to the donglers */
 							for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
@@ -2811,10 +2778,9 @@ void CQnetLink::Process()
 			FD_CLR (dcs_g2_sock,&fdset);
 		}
 
-		if (FD_ISSET(rptr_sock, &fdset)) {
-			socklen_t fromlen = sizeof(struct sockaddr_in);
+		if (FD_ISSET(Gate2Link.GetFD(), &fdset)) {
 			SDSTR dstr;
-			int length = recvfrom(rptr_sock, dstr.pkt_id, 100, 0, (struct sockaddr *)&fromRptr,&fromlen);
+			int length = Gate2Link.Read(dstr.pkt_id, 100);
 
 			if ((length==58 || length==29 || length==32) && dstr.flag[0]==0x73 && dstr.flag[1] == 0x12 && dstr.flag[2] ==0x0 && (0==memcmp(dstr.pkt_id,"DSTR", 4) || 0==memcmp(dstr.pkt_id,"CCS_", 4)) && dstr.vpkt.icm_id==0x20 && (dstr.remaining==0x30 || dstr.remaining==0x13 || dstr.remaining==0x16)) {
 
@@ -3062,7 +3028,7 @@ void CQnetLink::Process()
 
 									calcPFCS(fromrptr_torptr_brd.title, 56);
 
-									sendto(xrf_g2_sock, fromrptr_torptr_brd.title, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+									Link2Gate.Write(fromrptr_torptr_brd.title, 56);
 
 									brd_from_rptr.from_rptr_streamid = dstr.vpkt.streamid;
 									brd_from_rptr.to_rptr_streamid[brd_from_rptr_idx] = fromrptr_torptr_brd.streamid;
@@ -3163,12 +3129,12 @@ void CQnetLink::Process()
 
 								if (brd_from_rptr.to_rptr_streamid[0]) {
 									fromrptr_torptr_brd.streamid = brd_from_rptr.to_rptr_streamid[0];
-									sendto(xrf_g2_sock, fromrptr_torptr_brd.title, 27, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+									Link2Gate.Write(fromrptr_torptr_brd.title, 27);
 								}
 
 								if (brd_from_rptr.to_rptr_streamid[1]) {
 									fromrptr_torptr_brd.streamid = brd_from_rptr.to_rptr_streamid[1];
-									sendto(xrf_g2_sock, fromrptr_torptr_brd.title, 27, 0, (struct sockaddr *)&toLocalg2,sizeof(struct sockaddr_in));
+									Link2Gate.Write(fromrptr_torptr_brd.title, 27);
 								}
 
 								if (dstr.vpkt.ctrl & 0x40U) {
@@ -3310,7 +3276,7 @@ void CQnetLink::Process()
 					}
 				}
 			}
-			FD_CLR (rptr_sock,&fdset);
+			FD_CLR (Gate2Link.GetFD(), &fdset);
 		}
 		for (int i=0; i<3; i++) {
 			if (notify_msg[i][0] && 0x0U == tracing[i].streamid) {
@@ -3420,7 +3386,7 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 		return;
 	}
 
-	sendto(rptr_sock, edata.header.title, 56, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+	Link2Gate.Write(edata.header.title, 56);
 
 	edata.header.config = 0x20U;
 
@@ -3483,7 +3449,7 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 			}
 			if (count+1 == ambeblocks && ! edata.is_linked)
 				edata.header.ctrl |= 0x40U;
-			sendto(rptr_sock, edata.header.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+			Link2Gate.Write(edata.header.title, 27);
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 	}
@@ -3536,7 +3502,7 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 				memcpy(edata.header.vasd.text, edata.header.ctrl ? sdsilence : sdsync, 3);
 				if (i+1==size && lastch)
 					edata.header.ctrl |= 0x40U;	// signal the last voiceframe (of the last character)
-				sendto(rptr_sock, edata.header.title, 27, 0, (struct sockaddr *)&toLocalg2, sizeof(struct sockaddr_in));
+				Link2Gate.Write(edata.header.title, 27);
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 		}

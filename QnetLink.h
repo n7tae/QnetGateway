@@ -30,6 +30,7 @@
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "Random.h"
+#include "UnixDgramSocket.h"
 
 using namespace libconfig;
 
@@ -138,12 +139,13 @@ private:
 	} tracing[3];
 
 	// input from remote
-	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock, rptr_sock;
+	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
 	struct sockaddr_in fromDst4;
 
-	// After we receive it from remote g2,
-	// we must feed it to our local repeater.
-	struct sockaddr_in toLocalg2;
+	// unix sockets to gateway
+	std::string link2gate, gate2link;
+	CUnixDgramReader Gate2Link;
+	CUnixDgramWriter Link2Gate;
 
 	// input from our own local repeater
 	struct sockaddr_in fromRptr;

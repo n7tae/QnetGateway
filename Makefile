@@ -58,7 +58,7 @@ qngateway : $(IRCOBJS) QnetGateway.o aprs.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o UnixDgramSocket.o $(IRCOBJS) $(LDFLAGS) -pthread
 
 qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o
-	g++ $(CPPFLAGS) -o qnlink QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o $(LDFLAGS) -pthread
+	g++ $(CPPFLAGS) -o qnlink QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o $(LDFLAGS) -pthread
 
 qnrelay : QnetRelay.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qnrelay QnetRelay.o $(LDFLAGS)
