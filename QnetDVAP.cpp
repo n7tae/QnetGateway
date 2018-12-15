@@ -67,7 +67,7 @@ typedef struct dvap_ack_arg_tag {
 static int assigned_module;
 
 // unix sockets
-static std::string modem2gate("modem2gate"), gate2modem("gate2modem");
+static std::string modem2gate, gate2modem;
 static CUnixDgramReader Gate2Modem;
 static CUnixDgramWriter Modem2Gate;
 /* Default configuration data */
@@ -616,7 +616,7 @@ int main(int argc, const char **argv)
 
 	rc = read_config(argv[2]);
 	if (rc != 0) {
-		printf("Failed to process config file %s\n", argv[1]);
+		printf("Failed to process config file %s\n", argv[2]);
 		return 1;
 	}
 
