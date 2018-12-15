@@ -51,6 +51,7 @@ using namespace libconfig;
 #include "DVAPDongle.h"
 #include "QnetTypeDefs.h"
 #include "Random.h"
+#include "UnixDgramSocket.h"
 
 #define VERSION DVAP_VERSION
 #define CALL_SIZE 8
@@ -62,15 +63,17 @@ typedef struct dvap_ack_arg_tag {
 	float ber;
 } SDVAP_ACK_ARG;
 
+// assigned module, must be A, B or C
+static int assigned_module;
 
+// unix sockets
+static std::string modem2gate("modem2gate"), gate2modem("gate2modem");
+static CUnixDgramReader Gate2Modem;
+static CUnixDgramWriter Modem2Gate;
 /* Default configuration data */
 static char RPTR[RPTR_SIZE + 1];
 static char OWNER[RPTR_SIZE + 1];
 static char RPTR_MOD;
-static char RPTR_VIRTUAL_IP[IP_SIZE + 1];
-static int RPTR_PORT;
-static char G2_INTERNAL_IP[IP_SIZE + 1];
-static int G2_PORT;
 static char DVP_SERIAL[64]; /* APxxxxxx */
 static int DVP_FREQ; /* between 144000000 and 148000000 */
 static int DVP_PWR; /* between  -12 and 10 */
@@ -81,15 +84,12 @@ static int REMOTE_TIMEOUT;  /* 1 second */
 static int DELAY_BETWEEN;
 static int DELAY_BEFORE;
 static bool RPTR_ACK;
-static char INVALID_YRCALL_KEY[CALL_SIZE + 1];
 static int inactiveMax = 25;
 
 /* helper data */
 static unsigned char SND_TERM_ID;
 static char RPTR_and_G[9];
 static char RPTR_and_MOD[9];
-static int insock = -1;
-static struct sockaddr_in outaddr;
 static int serfd = -1;
 static bool busy20000 = false;
 std::atomic<bool> keep_running(true);
@@ -157,7 +157,7 @@ static void sig_catch(int signum)
 	exit(0);
 }
 
-bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
+static bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
@@ -168,7 +168,7 @@ bool get_value(const Config &cfg, const char *path, int &value, int min, int max
 	return true;
 }
 
-bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
+static bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		if (value < min || value > max)
@@ -179,7 +179,7 @@ bool get_value(const Config &cfg, const char *path, double &value, double min, d
 	return true;
 }
 
-bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
+static bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
 {
 	if (! cfg.lookupValue(path, value))
 		value = default_value;
@@ -187,7 +187,7 @@ bool get_value(const Config &cfg, const char *path, bool &value, bool default_va
 	return true;
 }
 
-bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
+static bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
 {
 	if (cfg.lookupValue(path, value)) {
 		int l = value.length();
@@ -204,7 +204,6 @@ bool get_value(const Config &cfg, const char *path, std::string &value, int min,
 /* process configuration file */
 static int read_config(const char *cfgFile)
 {
-	int i;
 	Config cfg;
 
 	printf("Reading file %s\n", cfgFile);
@@ -213,28 +212,32 @@ static int read_config(const char *cfgFile)
 		cfg.readFile(cfgFile);
 	}
 	catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
+		fprintf(stderr, "Can't read %s\n", cfgFile);
 		return 1;
 	}
 	catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
+		fprintf(stderr, "Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
 		return 1;
 	}
 
-	std::string dvap_path, value;
-	for (i=0; i<3; i++) {
-		dvap_path = "module.";
-		dvap_path += ('a' + i);
-		if (cfg.lookupValue(dvap_path + ".type", value)) {
-			if (0 == strcasecmp(value.c_str(), "dvap"))
-				break;
+	std::string value;
+	std::string dvap_path("module.");
+	dvap_path.append(1, 'a' + assigned_module);
+	if (cfg.lookupValue(dvap_path + ".type", value)) {
+		if (value.compare("dvap")) {
+			fprintf(stderr, "assigned module '%c' type is not 'dvap'\n", 'a' + assigned_module);
+			return 1;
 		}
-	}
-	if (i >= 3) {
-		printf("dvap not defined in any module!\n");
+	} else {
+		fprintf(stderr, "%s is not defined!\n", dvap_path.c_str());
 		return 1;
 	}
-	RPTR_MOD = 'A' + i;
+	RPTR_MOD = 'A' + assigned_module;
+	char unixsockname[16];
+	snprintf(unixsockname, 16, "gate2modem%d", assigned_module);
+	get_value(cfg, std::string(dvap_path+".fromgateway").c_str(), gate2modem, 1, FILENAME_MAX, unixsockname);
+	snprintf(unixsockname, 16, "modem2gate%d", assigned_module);
+	get_value(cfg, std::string(dvap_path+".togateway").c_str(), modem2gate, 1, FILENAME_MAX, unixsockname);
 
 	if (cfg.lookupValue(std::string(dvap_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
@@ -242,7 +245,7 @@ static int read_config(const char *cfgFile)
 			printf("Call '%s' is invalid length!\n", value.c_str());
 			return 1;
 		} else {
-			for (i=0; i<l; i++) {
+			for (int i=0; i<l; i++) {
 				if (islower(value[i]))
 					value[i] = toupper(value[i]);
 			}
@@ -261,7 +264,7 @@ static int read_config(const char *cfgFile)
 			printf("Call '%s' is invalid length!\n", value.c_str());
 			return 1;
 		} else {
-			for (i=0; i<l; i++) {
+			for (int i=0; i<l; i++) {
 				if (islower(value[i]))
 					value[i] = toupper(value[i]);
 			}
@@ -273,31 +276,6 @@ static int read_config(const char *cfgFile)
 		printf("ircddb.login is not defined!\n");
 		return 1;
 	}
-
-	if (get_value(cfg, std::string(dvap_path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
-		if (islower(value[i]))
-			value[i] = toupper(value[i]);
-		value.resize(CALL_SIZE, ' ');
-		strcpy(INVALID_YRCALL_KEY, value.c_str());
-	} else
-		return 1;
-
-	if (get_value(cfg, std::string(dvap_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
-		strcpy(RPTR_VIRTUAL_IP, value.c_str());
-	else
-		return 1;
-
-	i = 19998 + (RPTR_MOD - 'A');
-	get_value(cfg, std::string(dvap_path+".port").c_str(), RPTR_PORT, 10000, 65535, i);
-
-	if (get_value(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
-		strcpy(G2_INTERNAL_IP, value.c_str());
-	else {
-		printf("gateway.ip '%s' is invalid!\\n", value.c_str());
-		return 1;
-	}
-
-	get_value(cfg, "gateway.internal.port", G2_PORT, 10000, 65535, 19000);
 
 	if (get_value(cfg, std::string(dvap_path+".serial_number").c_str(), value, 8, 10, "APXXXXXX"))
 		strcpy(DVP_SERIAL, value.c_str());
@@ -337,40 +315,16 @@ static int read_config(const char *cfgFile)
 
 static int open_sock()
 {
-	struct  sockaddr_in inaddr;
-
-	insock = socket(PF_INET, SOCK_DGRAM, 0);
-	if (insock == -1) {
-		printf("Failed to create insock, error=%d, message=%s\n",errno, strerror(errno));
-		return -1;
-	}
-
-	memset(&inaddr, 0, sizeof(inaddr));
-	inaddr.sin_family = AF_INET;
-	inaddr.sin_port = htons(RPTR_PORT);
-	inaddr.sin_addr.s_addr = inet_addr(RPTR_VIRTUAL_IP);
-	int rc = bind(insock, (struct sockaddr *)&inaddr, sizeof(inaddr));
-	if (rc == -1) {
-		printf("Failed to bind server socket, error=%d, message=%s\n", errno, strerror(errno));
-		close(insock);
-		insock = -1;
-		return -1;
-	}
-	fcntl(insock, F_SETFL, O_NONBLOCK);
-
-	memset(&outaddr, 0, sizeof(outaddr));
-	outaddr.sin_family = AF_INET;
-	outaddr.sin_port = htons(G2_PORT);
-	outaddr.sin_addr.s_addr = inet_addr(G2_INTERNAL_IP);
-
+	if (Gate2Modem.Open(gate2modem.c_str()) || Modem2Gate.Open(modem2gate.c_str()))
+		return 1;
 	return 0;
 }
 
 static void readFrom20000()
 {
 	int len;
-	fd_set  readfd;
-	struct  timeval tv;
+	fd_set readfd;
+	struct timeval tv;
 	int inactive = 0;
 	short seq_no = 0;
 	uint16_t streamid;
@@ -390,14 +344,15 @@ static void readFrom20000()
 		tv.tv_sec = 0;
 		tv.tv_usec = WAIT_FOR_PACKETS;
 		FD_ZERO (&readfd);
-		FD_SET (insock, &readfd);
-		select(insock + 1, &readfd, NULL, NULL, &tv);
+		int fd = Gate2Modem.GetFD();
+		FD_SET (fd, &readfd);
+		select(fd + 1, &readfd, NULL, NULL, &tv);
 
-		if (FD_ISSET(insock, &readfd)) {
-			len = recv(insock, (char *)&net_buf, 58, 0);
+		if (FD_ISSET(fd, &readfd)) {
+			len = Gate2Modem.Read(net_buf.pkt_id, 58);
 			if (len == 58) {
 				if (busy20000) {
-					FD_CLR (insock, &readfd);
+					FD_CLR (fd, &readfd);
 					continue;
 				}
 
@@ -410,7 +365,7 @@ static void readFrom20000()
 
 				/* check the module and gateway */
 				if (net_buf.vpkt.hdr.r1[7] != RPTR_MOD) {
-					FD_CLR(insock, &readfd);
+					FD_CLR(fd, &readfd);
 					break;
 				}
 				memcpy(net_buf.vpkt.hdr.r2, OWNER, 7);
@@ -433,7 +388,7 @@ static void readFrom20000()
 				        (net_buf.vpkt.hdr.flag[0] != 0x20) &&
 				        (net_buf.vpkt.hdr.flag[0] != 0x28) &&
 				        (net_buf.vpkt.hdr.flag[0] != 0x40)) {
-					FD_CLR(insock, &readfd);
+					FD_CLR(fd, &readfd);
 					break;
 				}
 
@@ -441,7 +396,7 @@ static void readFrom20000()
 				        (net_buf.flag[0] != 0x73) ||
 				        (net_buf.flag[1] != 0x12) ||
 				        (net_buf.vpkt.icm_id != 0x20)) { /* voice type */
-					FD_CLR(insock, &readfd);
+					FD_CLR(fd, &readfd);
 					break;
 				}
 
@@ -551,7 +506,7 @@ static void readFrom20000()
 								streamid = 0;
 
 								inactive = 0;
-								FD_CLR (insock, &readfd);
+								FD_CLR (fd, &readfd);
 								// maybe put a sleep here to prevent fast voice-overs
 
 								busy20000 = false;
@@ -560,16 +515,16 @@ static void readFrom20000()
 						}
 					}
 				} else { // net_buf.vpkt.sreamid != streamid
-					FD_CLR (insock, &readfd);
+					FD_CLR (fd, &readfd);
 					break;
 				}
 			} else {	// len is not 58 or 29
 				if (!busy20000) {
-					FD_CLR (insock, &readfd);
+					FD_CLR (fd, &readfd);
 					break;
 				}
 			}
-			FD_CLR (insock, &readfd);
+			FD_CLR (fd, &readfd);
 		}
 
 		// If we received a dup or select() timed out or streamids dont match,
@@ -633,12 +588,33 @@ int main(int argc, const char **argv)
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	printf("dvap_rptr VERSION %s\n", VERSION);
 
-	if (argc != 2) {
-		printf("Usage:  dvap_rptr dvap_rptr.cfg\n");
+	if (argc != 3) {
+		fprintf(stderr, "Usage: %s assigned_module dvap_rptr.cfg\n", argv[0]);
 		return 1;
 	}
 
-	rc = read_config(argv[1]);
+	switch (argv[1][0]) {
+		case '0':
+		case 'a':
+		case 'A':
+			assigned_module = 0;
+			break;
+		case '1':
+		case 'b':
+		case 'B':
+			assigned_module = 1;
+			break;
+		case '2':
+		case 'c':
+		case 'C':
+			assigned_module = 2;
+			break;
+		default:
+			fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be 0, a, A, 1, b, B, 2, c or C\n", argv[1]);
+			return 1;
+	}
+
+	rc = read_config(argv[2]);
 	if (rc != 0) {
 		printf("Failed to process config file %s\n", argv[1]);
 		return 1;
@@ -724,7 +700,8 @@ int main(int argc, const char **argv)
 	}
 
 	readthread.get();
-	close(insock);
+	Gate2Modem.Close();
+	Modem2Gate.Close();
 	printf("dvap_rptr exiting\n");
 	return 0;
 }
@@ -875,8 +852,6 @@ static void ReadDVAPThread()
 	short int sequence = 0;
 	char mycall[8];
 	short int status_cntr = 3000;
-	char temp_yrcall[CALL_SIZE + 1];
-	char *temp_ptr = NULL;
 
 	int num_dv_frames = 0;
 	int num_bit_errors = 0;
@@ -917,7 +892,7 @@ static void ReadDVAPThread()
 			spack.spkt.mycall[7] = 'S';
 			memcpy(spack.spkt.rpt, OWNER, 7);
 			spack.spkt.rpt[7] = 'S';
-			sendto(insock, spack.pkt_id, 26, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
+			Modem2Gate.Write(spack.pkt_id, 26);
 			S_ctrl_msg_time = tnow;
 		}
 
@@ -964,18 +939,6 @@ static void ReadDVAPThread()
 					(dr.frame.hdr.flag[0] != 0x40) && (dr.frame.hdr.flag[0] != 0x48) &&	// rptr
 					(dr.frame.hdr.flag[0] != 0x60) && (dr.frame.hdr.flag[0] != 0x68))	// flags
 					ok = false;
-			}
-
-			/* Reject those stupid STN stations */
-			if (ok) {
-				memcpy(temp_yrcall, dr.frame.hdr.urcall, CALL_SIZE);
-				temp_yrcall[CALL_SIZE] = '\0';
-				temp_ptr = strstr(temp_yrcall, INVALID_YRCALL_KEY);
-				if (temp_ptr == temp_yrcall) { // found it at first position
-					printf("YRCALL value [%s] starts with the INVALID_YRCALL_KEY [%s], resetting to CQCQCQ\n",
-					        temp_yrcall, INVALID_YRCALL_KEY);
-					memcpy(dr.frame.hdr.urcall, "CQCQCQ  ", 8);
-				}
 			}
 
 			memcpy(&net_buf.vpkt.hdr, dr.frame.hdr.flag, 41);	// copy the header, but...
@@ -1073,7 +1036,7 @@ static void ReadDVAPThread()
 				memcpy(spack.spkt.mycall, net_buf.vpkt.hdr.my, 8);
 				memcpy(spack.spkt.rpt, OWNER, 7);
 				spack.spkt.rpt[7] = RPTR_MOD;
-				sendto(insock, spack.pkt_id, 26, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
+				Modem2Gate.Write(spack.pkt_id, 26);
 
 				// Before we send the data to the local gateway,
 				// set RPT1, RPT2 to be the local gateway
@@ -1096,7 +1059,7 @@ static void ReadDVAPThread()
 				net_buf.vpkt.ctrl = 0x80;
 				sequence = 0;
 				calcPFCS((unsigned char *)&(net_buf.vpkt.hdr), net_buf.vpkt.hdr.pfcs);
-				sendto(insock, &net_buf, 58, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
+				Modem2Gate.Write(net_buf.pkt_id, 58);
 
 				// local RF user keying up, start timer
 				dvap_busy = true;
@@ -1117,7 +1080,7 @@ static void ReadDVAPThread()
 				if (the_end)
 					net_buf.vpkt.ctrl = sequence | 0x40;
 				memcpy(&net_buf.vpkt.vasd, &dr.frame.vad.voice, 12);
-				sendto(insock, &net_buf, 29, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
+				Modem2Gate.Write(net_buf.pkt_id, 29);
 
 				int ber_data[3];
 				int ber_errs = dstar_dv_decode(net_buf.vpkt.vasd.voice, ber_data);

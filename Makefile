@@ -67,7 +67,7 @@ qnitap : QnetITAP.o Random.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qnitap QnetITAP.o Random.o $(LDFLAGS)
 
 qndvap : QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) UnixDgramSocket.o
-	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) $(LDFLAGS) -pthread
+	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o Random.o UnixDgramSocket.o $(DSTROBJS) $(LDFLAGS) -pthread
 
 qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o Random.o $(DSTROBJS) $(LDFLAGS)
