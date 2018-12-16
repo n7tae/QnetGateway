@@ -24,6 +24,7 @@
 
 #include <netinet/in.h>
 #include "Random.h"	// for streamid generation
+#include "UnixDgramSocket.h"
 
 using namespace libconfig;
 
@@ -81,7 +82,7 @@ class CQnetITAP
 {
 public:
 	// functions
-	CQnetITAP();
+	CQnetITAP(int mod);
 	~CQnetITAP();
 	void Run(const char *cfgfile);
 
@@ -89,14 +90,14 @@ public:
 	static std::atomic<bool> keep_running;
 
 private:
+	int assigned_module;
+	unsigned short COUNTER;
 	// functions
 	bool Initialize(const char *cfgfile);
 	static void SignalCatch(const int signum);
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessITAP(const unsigned char *raw);
-	int OpenSocket(const std::string &address, const unsigned short port);
 	int OpenITAP();
-	int SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port);
 	int SendTo(const unsigned char length, const unsigned char *buf);
 	REPLY_TYPE GetITAPData(unsigned char *buf);
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
@@ -112,15 +113,18 @@ private:
 	char RPTR_MOD;
 	char RPTR[CALL_SIZE + 1];
 	char OWNER[CALL_SIZE + 1];
-	std::string ITAP_DEVICE, G2_INTERNAL_IP;
-	unsigned short MMDVM_IN_PORT, MMDVM_OUT_PORT, G2_IN_PORT, G2_OUT_PORT;
+	std::string ITAP_DEVICE;
 	bool log_qso;
 
 	// parameters
-	int serfd, gsock, vsock;
+	int serfd;
 	unsigned char tapcounter;
-	unsigned short COUNTER;
 
 	// helpers
 	CRandom random;
+
+	// unix sockets
+	std::string modem2gate, gate2modem;
+	CUnixDgramWriter Modem2Gate;
+	CUnixDgramReader Gate2Modem;
 };

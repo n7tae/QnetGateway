@@ -38,7 +38,8 @@
 
 std::atomic<bool> CQnetRelay::keep_running(true);
 
-CQnetRelay::CQnetRelay() :
+CQnetRelay::CQnetRelay(int mod) :
+assigned_module(mod),
 seed(time(NULL)),
 COUNTER(0)
 {
@@ -116,22 +117,21 @@ int CQnetRelay::OpenSocket(const std::string &address, unsigned short port)
 	return fd;
 }
 
-void CQnetRelay::Run(const char *cfgfile)
+bool CQnetRelay::Run(const char *cfgfile)
 {
 	if (Initialize(cfgfile))
-		return;
+		return true;
 
 	msock = OpenSocket(MMDVM_IP, MMDVM_OUT_PORT);
 	if (msock < 0)
-		return;
+		return true;
 
-	gsock = OpenSocket(G2_INTERNAL_IP, G2_OUT_PORT);
-	if (gsock < 0) {
-		::close(msock);
-		return;
-	}
+	if (Gate2Modem.Open(gate2modem.c_str()) || Modem2Gate.Open(modem2gate.c_str()))
+		return true;
 
-	printf("msock=%d, gsock=%d\n", msock, gsock);
+	int fd = Gate2Modem.GetFD();
+
+	printf("msock=%d, gateway=%d\n", msock, fd);
 
 	keep_running = true;
 
@@ -139,8 +139,8 @@ void CQnetRelay::Run(const char *cfgfile)
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(msock, &readfds);
-		FD_SET(gsock, &readfds);
-		int maxfs = (msock > gsock) ? msock : gsock;
+		FD_SET(fd, &readfds);
+		int maxfs = (msock > fd) ? msock : fd;
 
 		// don't care about writefds and exceptfds:
 		// and we'll wait as long as needed
@@ -163,30 +163,26 @@ void CQnetRelay::Run(const char *cfgfile)
 			len = ::recvfrom(msock, buf, 100, 0, (sockaddr *)&addr, &size);
 
 			if (len < 0) {
-				printf("ERROR: Run: recvfrom(mmdvm) return error %d, %s\n", errno, strerror(errno));
+				fprintf(stderr, "ERROR: Run: recvfrom(mmdvm) return error %d: %s\n", errno, strerror(errno));
 				break;
 			}
 
 			if (ntohs(addr.sin_port) != MMDVM_IN_PORT)
-				printf("DEBUG: Run: read from msock but port was %u, expected %u.\n", ntohs(addr.sin_port), MMDVM_IN_PORT);
+				fprintf(stderr, "DEBUG: Run: read from msock but port was %u, expected %u.\n", ntohs(addr.sin_port), MMDVM_IN_PORT);
 
 		}
 
-		if (FD_ISSET(gsock, &readfds)) {
-			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
+		if (FD_ISSET(fd, &readfds)) {
+			len = Gate2Modem.Read(buf, 100);
 
 			if (len < 0) {
-				printf("ERROR: Run: recvfrom(gsock) returned error %d, %s\n", errno, strerror(errno));
+				fprintf(stderr, "ERROR: Run: Gate2Modem.Read() returned error %d: %s\n", errno, strerror(errno));
 				break;
 			}
-
-			if (ntohs(addr.sin_port) != G2_IN_PORT)
-				printf("DEBUG: Run: read from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_IN_PORT);
-
 		}
 
 		if (len == 0) {
-			printf("DEBUG: Run: read zero bytes from %u\n", ntohs(addr.sin_port));
+			fprintf(stderr, "DEBUG: Run: read zero bytes from %u\n", ntohs(addr.sin_port));
 			continue;
 		}
 
@@ -203,12 +199,14 @@ void CQnetRelay::Run(const char *cfgfile)
 			for (int i=0; i<4; i++)
 				title[i] = (buf[i]>=0x20u && buf[i]<0x7fu) ? buf[i] : '.';
 			title[4] = '\0';
-			printf("DEBUG: Run: received unknow packet '%s' len=%d\n", title, (int)len);
+			fprintf(stderr, "DEBUG: Run: received unknow packet '%s' len=%d\n", title, (int)len);
 		}
 	}
 
 	::close(msock);
-	::close(gsock);
+	Gate2Modem.Close();
+	Modem2Gate.Close();
+	return false;
 }
 
 int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
@@ -320,18 +318,18 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			memcpy(dstr.vpkt.hdr.my,   dsrp.header.my,   8);
 			memcpy(dstr.vpkt.hdr.nm,   dsrp.header.nm,   4);
 			memcpy(dstr.vpkt.hdr.pfcs, dsrp.header.pfcs, 2);
-			int ret = SendTo(msock, dstr.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
+			int ret = Modem2Gate.Write(dstr.pkt_id, 58);
 			if (ret != 58) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
 			if (log_qso)
-				printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+				printf("Sent DSTR streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 		} else if (21 == len) {	// ambe
 			dstr.remaining = 0x16;
 			dstr.vpkt.ctrl = dsrp.header.seq;
 			memcpy(dstr.vpkt.vasd.voice, dsrp.voice.ambe, 12);
-			int ret = SendTo(msock, dstr.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
+			int ret = Modem2Gate.Write(dstr.pkt_id, 29);
 			if (log_qso && dstr.vpkt.ctrl&0x40)
 				printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
 
@@ -410,30 +408,32 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 		return true;
 	}
 
-	std::string mmdvm_path, value;
-	int i;
-	for (i=0; i<3; i++) {
-		mmdvm_path = "module.";
-		mmdvm_path += ('a' + i);
-		if (cfg.lookupValue(mmdvm_path + ".type", value)) {
-			if (0 == strcasecmp(value.c_str(), "mmdvm"))
-				break;
+	std::string value;
+	std::string mmdvm_path("module.");
+	mmdvm_path.append(1, 'a' + assigned_module);
+	if (cfg.lookupValue(mmdvm_path + ".type", value)) {
+		if (value.compare("mmdvm")) {
+			fprintf(stderr, "assigned module is not 'mmdvm' type!\n");
+			return true;
 		}
-	}
-	if (i >= 3) {
-		printf("mmdvm not defined in any module!\n");
+	} else {
+		fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
 		return true;
 	}
-	RPTR_MOD = 'A' + i;
-	int repeater_module = i;
+	RPTR_MOD = 'A' + assigned_module;
+	char unixsockname[16];
+	snprintf(unixsockname, 16, "gate2module%d", assigned_module);
+	GetValue(cfg, std::string(mmdvm_path+".fromgateway").c_str(), gate2modem, 1, FILENAME_MAX, unixsockname);
+	snprintf(unixsockname, 16, "module2gate%d", assigned_module);
+	GetValue(cfg, std::string(mmdvm_path+",togateway").c_str(), modem2gate, 1, FILENAME_MAX, unixsockname);
 
 	if (cfg.lookupValue(std::string(mmdvm_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
+			fprintf(stderr, "Call '%s' is invalid length!\n", value.c_str());
 			return true;
 		} else {
-			for (i=0; i<l; i++) {
+			for (int i=0; i<l; i++) {
 				if (islower(value[i]))
 					value[i] = toupper(value[i]);
 			}
@@ -441,17 +441,17 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 		}
 		strcpy(RPTR, value.c_str());
 	} else {
-		printf("%s.login is not defined!\n", mmdvm_path.c_str());
+		fprintf(stderr, "%s.login is not defined!\n", mmdvm_path.c_str());
 		return true;
 	}
 
 	if (cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
 		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
+			fprintf(stderr, "Call '%s' is invalid length!\n", value.c_str());
 			return true;
 		} else {
-			for (i=0; i<l; i++) {
+			for (int i=0; i<l; i++) {
 				if (islower(value[i]))
 					value[i] = toupper(value[i]);
 			}
@@ -469,22 +469,13 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	} else
 		return true;
 
-	GetValue(cfg, "gateway.internal.port", i, 10000, 65535, 19000);
-	G2_IN_PORT = (unsigned short)i;
-
-	GetValue(cfg, std::string(mmdvm_path+".port").c_str(), i, 10000, 65535, 19998+repeater_module);
-	G2_OUT_PORT = (unsigned short)i;
+	int i;
 
 	GetValue(cfg, "mmdvm.local_port", i, 10000, 65535, 20011);
 	MMDVM_IN_PORT = (unsigned short)i;
 
 	GetValue(cfg, "mmdvm.gateway_port", i, 10000, 65535, 20010);
 	MMDVM_OUT_PORT = (unsigned short)i;
-
-	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1")) {
-		G2_INTERNAL_IP = value;
-	} else
-		return true;
 
 	GetValue(cfg, "log.qso", log_qso, false);
 
@@ -501,24 +492,43 @@ void CQnetRelay::SignalCatch(const int signum)
 int main(int argc, const char **argv)
 {
 	setbuf(stdout, NULL);
-	if (2 != argc) {
-		printf("usage: %s path_to_config_file\n", argv[0]);
-		printf("       %s --version\n", argv[0]);
+	if (3 != argc) {
+		fprintf(stderr, "usage: %s assigned_module path_to_config_file\n", argv[0]);
 		return 1;
-	}
-
-	if ('-' == argv[1][0]) {
+	} else {
 		printf("\nQnetRelay Version #%s Copyright (C) 2018 by Thomas A. Early N7TAE\n", RELAY_VERSION);
 		printf("QnetRelay comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
 		return 0;
 	}
 
-	CQnetRelay qnmmdvm;
+	int module;
+	switch (argv[1][0]) {
+		case '0':
+		case 'a':
+		case 'A':
+			module = 0;
+			break;
+		case '1':
+		case 'b':
+		case 'B':
+			module = 1;
+			break;
+		case '2':
+		case 'c':
+		case 'C':
+			module = 2;
+			break;
+		default:
+			fprintf(stderr, "assigned module must be 0, a, A, 1, b, B, 2, c or C\n");
+			return 1;
+	}
 
-	qnmmdvm.Run(argv[1]);
+	CQnetRelay qnmmdvm(module);
+
+	bool trouble = qnmmdvm.Run(argv[2]);
 
 	printf("%s is closing.\n", argv[0]);
 
-	return 0;
+	return trouble ? 1 : 0;
 }

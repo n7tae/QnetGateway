@@ -46,8 +46,9 @@
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
-CQnetITAP::CQnetITAP() :
-COUNTER(0)
+CQnetITAP::CQnetITAP(int mod)
+: assigned_module(mod)
+, COUNTER(0)
 {
 }
 
@@ -75,6 +76,9 @@ bool CQnetITAP::Initialize(const char *cfgfile)
 		printf("sigaction-INT failed, error=%d\n", errno);
 		return true;
 	}
+
+	if (Gate2Modem.Open(gate2modem.c_str()) || Modem2Gate.Open(modem2gate.c_str()))
+		return true;
 
 	return false;
 }
@@ -113,50 +117,6 @@ int CQnetITAP::OpenITAP()
 
 	if (tcsetattr(fd, TCSANOW, &t) < 0) {
 		printf("tcsetattr failed for %s, error=%dm message=%s\n", ITAP_DEVICE.c_str(), errno, strerror(errno));
-		close(fd);
-		return -1;
-	}
-
-	return fd;
-}
-
-int CQnetITAP::OpenSocket(const std::string &address, const unsigned short port)
-{
-	if (! port) {
-		printf("ERROR: OpenSocket: non-zero port must be specified.\n");
-		return -1;
-	}
-
-	int fd = ::socket(PF_INET, SOCK_DGRAM, 0);
-	if (fd < 0) {
-		printf("Cannot create the UDP socket, err: %d, %s\n", errno, strerror(errno));
-		return -1;
-	}
-
-	sockaddr_in addr;
-	::memset(&addr, 0, sizeof(sockaddr_in));
-	addr.sin_family      = AF_INET;
-	addr.sin_port        = htons(port);
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	if (! address.empty()) {
-		addr.sin_addr.s_addr = ::inet_addr(address.c_str());
-		if (addr.sin_addr.s_addr == INADDR_NONE) {
-			printf("The local address is invalid - %s\n", address.c_str());
-			close(fd);
-			return -1;
-		}
-	}
-
-	int reuse = 1;
-	if (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-		printf("Cannot set the UDP socket %s:%u option, err: %d, %s\n", address.c_str(), port, errno, strerror(errno));
-		close(fd);
-		return -1;
-	}
-
-	if (::bind(fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == -1) {
-		printf("Cannot bind the UDP socket %s:%u address, err: %d, %s\n", address.c_str(), port, errno, strerror(errno));
 		close(fd);
 		return -1;
 	}
@@ -235,20 +195,9 @@ void CQnetITAP::Run(const char *cfgfile)
 	if (serfd < 0)
 		return;
 
-	gsock = OpenSocket(G2_INTERNAL_IP, G2_OUT_PORT);
-	if (gsock < 0) {
-		::close(serfd);
-		return;
-	}
-
-	vsock = OpenSocket(std::string("0.0.0.0"), MMDVM_OUT_PORT);
-	if (vsock < 0) {
-		::close(serfd);
-		::close(gsock);
-		return;
-	}
-
-	printf("vsock=%d, gsock=%d serfd=%d\n", vsock, gsock, serfd);
+	int ug2m = Gate2Modem.GetFD();
+	int um2g = Modem2Gate.GetFD();
+	printf("gate2modem=%d, modem2gate=%d seral=%d\n", ug2m, um2g, serfd);
 
 	keep_running = true;
 	unsigned poll_counter = 0;
@@ -259,8 +208,8 @@ void CQnetITAP::Run(const char *cfgfile)
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(serfd, &readfds);
-		FD_SET(gsock, &readfds);
-		int maxfs = (serfd > gsock) ? serfd : gsock;
+		FD_SET(ug2m, &readfds);
+		int maxfs = (serfd > ug2m) ? serfd : ug2m;
 
 		struct timeval tv;
 		tv.tv_sec = (poll_counter >= 18) ? 1 : 0;
@@ -308,20 +257,13 @@ void CQnetITAP::Run(const char *cfgfile)
 			if (rt == RT_TIMEOUT)
 				continue;
 
-		} else if (FD_ISSET(gsock, &readfds)) {
-			sockaddr_in addr;
-			memset(&addr, 0, sizeof(sockaddr_in));
-			socklen_t size = sizeof(sockaddr);
-			len = ::recvfrom(gsock, buf, 100, 0, (sockaddr *)&addr, &size);
+		} else if (FD_ISSET(ug2m, &readfds)) {
+			len = Gate2Modem.Read(buf, 100);
 
 			if (len < 0) {
 				printf("ERROR: Run: recvfrom(gsock) returned error %d, %s\n", errno, strerror(errno));
 				break;
 			}
-
-			if (ntohs(addr.sin_port) != G2_IN_PORT)
-				printf("DEBUG: Run: read from gsock but the port was %u, expected %u\n", ntohs(addr.sin_port), G2_IN_PORT);
-
 		}
 
 		if (rt != RT_NOTHING) {
@@ -356,8 +298,8 @@ void CQnetITAP::Run(const char *cfgfile)
 	}
 
 	::close(serfd);
-	::close(gsock);
-	::close(vsock);
+	Gate2Modem.Close();
+	Modem2Gate.Close();
 }
 
 int CQnetITAP::SendTo(const unsigned char length, const unsigned char *buf)
@@ -378,22 +320,6 @@ int CQnetITAP::SendTo(const unsigned char length, const unsigned char *buf)
 			ptr += n;
 	}
 
-	return len;
-}
-
-int CQnetITAP::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
-{
-	sockaddr_in addr;
-	::memset(&addr, 0, sizeof(sockaddr_in));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = ::inet_addr(address.c_str());
-	addr.sin_port = htons(port);
-
-	int len = ::sendto(fd, buf, size, 0, (sockaddr *)&addr, sizeof(sockaddr_in));
-	if (len < 0)
-		printf("ERROR: SendTo: fd=%d failed sendto %s:%u err: %d, %s\n", fd, address.c_str(), port, errno, strerror(errno));
-	else if (len != size)
-		printf("ERROR: SendTo: fd=%d tried to sendto %s:%u %d bytes, actually sent %d.\n", fd, address.c_str(), port, size, len);
 	return len;
 }
 
@@ -502,18 +428,18 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 		memcpy(dstr.vpkt.hdr.my,   itap.header.my,   8);
 		memcpy(dstr.vpkt.hdr.nm,   itap.header.nm,   4);
 		calcPFCS(dstr.vpkt.hdr.flag, dstr.vpkt.hdr.pfcs);
-		int ret = SendTo(vsock, dstr.pkt_id, 58, G2_INTERNAL_IP, G2_IN_PORT);
+		int ret = Modem2Gate.Write(dstr.pkt_id, 58);
 		if (ret != 58) {
 			printf("ERROR: ProcessITAP: Could not write gateway header packet\n");
 			return true;
 		}
 		if (log_qso)
-			printf("Sent DSTR to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", G2_IN_PORT, ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+			printf("Sent DSTR to gateway, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 	} else if (16 == len) {	// ambe
 		dstr.remaining = 0x16;
 		dstr.vpkt.ctrl = itap.voice.sequence;
 		memcpy(dstr.vpkt.vasd.voice, itap.voice.ambe, 12);
-		int ret = SendTo(vsock, dstr.pkt_id, 29, G2_INTERNAL_IP, G2_IN_PORT);
+		int ret = Modem2Gate.Write(dstr.pkt_id, 29);
 		if (ret != 29) {
 			printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 			return true;
@@ -581,31 +507,33 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 		cfg.readFile(cfgFile);
 	}
 	catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
+		fprintf(stderr, "Can't read %s\n", cfgFile);
 		return true;
 	}
 	catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
+		fprintf(stderr, "Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
 		return true;
 	}
 
-	std::string itap_path, value;
-	int i;
-	for (i=0; i<3; i++) {
-		itap_path = "module.";
-		itap_path += ('a' + i);
-		if (cfg.lookupValue(itap_path + ".type", value)) {
-			if (0 == strcasecmp(value.c_str(), "itap"))
-				break;
+	std::string value;
+	std::string itap_path("module.");
+	itap_path.append(1, 'a' + assigned_module);
+	if (cfg.lookupValue(itap_path + ".type", value)) {
+		if (value.compare("itap")) {
+			fprintf(stderr, "assigned module %c is not 'itap'\n", 'a' + assigned_module);
+			return true;
 		}
-	}
-	if (i >= 3) {
-		printf("itap not defined in any module!\n");
+	} else {
+		fprintf(stderr, "assigned module %c not defined\n", 'a' + assigned_module);
 		return true;
 	}
-	RPTR_MOD = 'A' + i;
-	int repeater_module = i;
-	MMDVM_OUT_PORT = (unsigned short int)(i + 19998);
+	RPTR_MOD = 'A' + assigned_module;
+
+	char unixsockname[16];
+	snprintf(unixsockname, 16, "gate2modem%d", assigned_module);
+	GetValue(cfg, std::string(itap_path+".togateway").c_str(), modem2gate, 1, FILENAME_MAX, unixsockname);
+	snprintf(unixsockname, 16, "modem2gate%d", assigned_module);
+	GetValue(cfg, std::string(itap_path+".fromgateway").c_str(), gate2modem, 1, FILENAME_MAX, unixsockname);
 
 	if (cfg.lookupValue(std::string(itap_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
 		int l = value.length();
@@ -613,7 +541,7 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 			printf("Call '%s' is invalid length!\n", value.c_str());
 			return true;
 		} else {
-			for (i=0; i<l; i++) {
+			for (int i=0; i<l; i++) {
 				if (islower(value[i]))
 					value[i] = toupper(value[i]);
 			}
@@ -631,7 +559,7 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 			printf("Call '%s' is invalid length!\n", value.c_str());
 			return true;
 		} else {
-			for (i=0; i<l; i++) {
+			for (int i=0; i<l; i++) {
 				if (islower(value[i]))
 					value[i] = toupper(value[i]);
 			}
@@ -646,17 +574,6 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 
 	if (GetValue(cfg, std::string(itap_path+".device").c_str(), value, 7, 25, "/dev/ttyUSB0")) {
 		ITAP_DEVICE = value;
-	} else
-		return true;
-
-	GetValue(cfg, "gateway.internal.port", i, 10000, 65535, 19000);
-	G2_IN_PORT = (unsigned short)i;
-
-	GetValue(cfg, std::string(itap_path+".port").c_str(), i, 10000, 65535, 19998+repeater_module);
-	G2_OUT_PORT = (unsigned short)i;
-
-	if (GetValue(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1")) {
-		G2_INTERNAL_IP = value;
 	} else
 		return true;
 
@@ -712,22 +629,41 @@ void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 int main(int argc, const char **argv)
 {
 	setbuf(stdout, NULL);
-	if (2 != argc) {
-		printf("usage: %s path_to_config_file\n", argv[0]);
-		printf("       %s --version\n", argv[0]);
+	if (3 != argc) {
+		fprintf(stderr, "usage: %s assigned_module path_to_config_file\n", argv[0]);
 		return 1;
-	}
-
-	if ('-' == argv[1][0]) {
+	} else {
 		printf("\nQnetITAP Version #%s Copyright (C) 2018 by Thomas A. Early N7TAE\n", ITAP_VERSION);
 		printf("QnetITAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
 		return 0;
 	}
 
-	CQnetITAP qnitap;
+	int assigned_module;
+	switch (argv[1][0]) {
+		case '0':
+		case 'a':
+		case 'A':
+			assigned_module = 0;
+			break;
+		case '1':
+		case 'b':
+		case 'B':
+			assigned_module = 1;
+			break;
+		case '2':
+		case 'c':
+		case 'C':
+			assigned_module = 2;
+			break;
+		default:
+			fprintf(stderr, "assigned module must be 0, a, A, 1, b, B, 2, c or C\n");
+			return 1;
+	}
 
-	qnitap.Run(argv[1]);
+	CQnetITAP qnitap(assigned_module);
+
+	qnitap.Run(argv[2]);
 
 	printf("%s is closing.\n", argv[0]);
 
