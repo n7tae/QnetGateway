@@ -36,7 +36,7 @@
 
 #include "QnetTypeDefs.h"
 #include "Random.h"
-#include "ConfigureBase.h"
+#include "QnetConfigure.h"
 #include "UnixDgramSocket.h"
 
 #define VERSION "v2.0"
@@ -69,34 +69,32 @@ unsigned short crc_tabccitt[256] = {
 	0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 };
 
-class CConfigure : public CConfigureBase
+CQnetConfigure cfg;
+
+bool ReadCfgFile()
 {
-public:
-	bool ReadCfgFile()
-	{
-		const std::string estr;
-		std::string type;
-		std::string path = "module_";
-		path.append(1, module);
-		if (GetValue(path, estr, type, 1, 16)) {
-			fprintf(stderr, "%s not found!\n", path.c_str());
-			return true;
-		}
-		if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("itap")) {
-			fprintf(stderr, "module type '%s is invalid!\n", type.c_str());
-			return true;
-		}
-		if (GetValue(path+"_callsign", type, REPEATER, 3, 6)) {
-			if (GetValue("ircddb.login", estr, REPEATER, 3, 6)) {
-				fprintf(stderr, "no Callsign for the repeater was found!\n");
-				return true;
-			}
-		}
-		GetValue("timing_play_wait", estr, PLAY_WAIT, 1,10);
-		GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
-		return false;
+	const std::string estr;
+	std::string type;
+	std::string path = "module_";
+	path.append(1, module);
+	if (cfg.GetValue(path, estr, type, 1, 16)) {
+		fprintf(stderr, "%s not found!\n", path.c_str());
+		return true;
 	}
-};
+	if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("itap")) {
+		fprintf(stderr, "module type '%s is invalid!\n", type.c_str());
+		return true;
+	}
+	if (cfg.GetValue(path+"_callsign", type, REPEATER, 3, 6)) {
+		if (cfg.GetValue("ircddb.login", estr, REPEATER, 3, 6)) {
+			fprintf(stderr, "no Callsign for the repeater was found!\n");
+			return true;
+		}
+	}
+	cfg.GetValue("timing_play_wait", estr, PLAY_WAIT, 1,10);
+	cfg.GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
+	return false;
+}
 
 void calcPFCS(unsigned char rawbytes[58])
 {
@@ -161,11 +159,10 @@ int main(int argc, char *argv[])
 
 	std::string cfgfile(CFG_DIR);
 	cfgfile += "/qn.cfg";
-	CConfigure config;
-	if (config.Initialize(cfgfile.c_str()))
+	if (cfg.Initialize(cfgfile.c_str()))
 		return 1;
 
-	if (config.ReadCfgFile())
+	if (ReadCfgFile())
 		return 1;
 
 	if (REPEATER.size() > 6) {

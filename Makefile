@@ -49,26 +49,26 @@ dvap   : $(DVP_PROGRAMS)
 dvrptr : $(DVR_PROGRAMS)
 itap   : $(TAP_PROGRAMS)
 
-qngateway : $(IRCOBJS) QnetGateway.o aprs.o UnixDgramSocket.o
-	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o UnixDgramSocket.o $(IRCOBJS) $(LDFLAGS) -pthread
+qngateway : $(IRCOBJS) QnetGateway.o aprs.o UnixDgramSocket.o QnetConfigure.o
+	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o UnixDgramSocket.o QnetConfigure.o $(IRCOBJS) $(LDFLAGS) -pthread
 
-qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o
-	g++ $(CPPFLAGS) -o qnlink QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o $(LDFLAGS) -pthread
+qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o QnetConfigure.o
+	g++ $(CPPFLAGS) -o qnlink QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS) -pthread
 
-qnrelay : QnetRelay.o UnixDgramSocket.o
-	g++ $(CPPFLAGS) -o qnrelay QnetRelay.o UnixDgramSocket.o $(LDFLAGS)
+qnrelay : QnetRelay.o UnixDgramSocket.o QnetConfigure.o
+	g++ $(CPPFLAGS) -o qnrelay QnetRelay.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS)
 
-qnitap : QnetITAP.o Random.o UnixDgramSocket.o
-	g++ $(CPPFLAGS) -o qnitap QnetITAP.o Random.o UnixDgramSocket.o $(LDFLAGS)
+qnitap : QnetITAP.o Random.o UnixDgramSocket.o QnetConfigure.o
+	g++ $(CPPFLAGS) -o qnitap QnetITAP.o Random.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS)
 
-qndvap : QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) UnixDgramSocket.o
-	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o Random.o UnixDgramSocket.o $(DSTROBJS) $(LDFLAGS) -pthread
+qndvap : QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) UnixDgramSocket.o QnetConfigure.o
+	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS) $(LDFLAGS) -pthread
 
-qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o UnixDgramSocket.o
-	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o Random.o UnixDgramSocket.o $(DSTROBJS) $(LDFLAGS)
+qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o UnixDgramSocket.o QnetConfigure.o
+	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS) $(LDFLAGS)
 
-qnremote : QnetRemote.o Random.o UnixDgramSocket.o ConfigureBase.o
-	g++ $(CPPFLAGS) -o qnremote QnetRemote.o Random.o UnixDgramSocket.o ConfigureBase.o $(LDFLAGS)
+qnremote : QnetRemote.o Random.o UnixDgramSocket.o QnetConfigure.o
+	g++ $(CPPFLAGS) -o qnremote QnetRemote.o Random.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS)
 
 qnvoice : QnetVoice.o Random.o
 	g++ $(CPPFLAGS) -o qnvoice QnetVoice.o Random.o $(LDFLAGS)

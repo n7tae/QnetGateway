@@ -43,6 +43,8 @@ gateway_regen_header_d=true       # regenerate headers from incoming data
 gateway_send_qrgs_maps_d=true     # send frequency, offset, coordinates and url to irc-server
 gateway_external_ip_d='0.0.0.0'   # this means accept a connection from any source
 gateway_external_port_d=40000     # don't change
+gateway_tolink_d='gate2link'      # Unix sockets between qngateway and QnetLink
+gateway_fromlink_d='link2gate'    # all Unix sockets are on the file system, but hidden from view
 
 ##########################################################################################################################
 #
@@ -88,6 +90,12 @@ module_x_latitude=0        # you can leave this unspecified for a mobile rig
 module_x_longitude=0       # like the latitude
 module_x_desc1=''          # maximum of 20 characters, most special symbols are not allowed
 module_x_desc2=''          # just like desc1
+module_x_gate2modem0='gate2modem0'         # Unix Sockets between a modem and the gateway
+module_x_gate2modem1='gate2modem1'         # 0 is for A, 1 is for B and 2 is for C
+module_x_gate2modem2='gate2modem2'
+module_x_modem2gate0='modem2gate0'
+module_x_modem2gate1='modem2gate1'
+module_x_modem2gate2='modem2gate2'
 module_x_url='github.com/n7tae/g2_ircddb'  # 80 characters max
 
 ##########################################################################################################################

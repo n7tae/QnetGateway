@@ -18,18 +18,19 @@
 
 #include <cstdio>
 #include <cstring>
-#include "ConfigureBase.h"
+#include "QnetConfigure.h"
 
-CConfigureBase::CConfigureBase()
+CQnetConfigure::CQnetConfigure()
 {
 }
 
-CConfigureBase::~CConfigureBase()
+CQnetConfigure::~CQnetConfigure()
 {
 	defaults.empty();
+	cfg.empty();
 }
 
-char *CConfigureBase::Trim(char *s)
+char *CQnetConfigure::Trim(char *s)
 {
 	size_t len = strlen(s);
 	while (len && isspace(s[len-1]))
@@ -39,7 +40,7 @@ char *CConfigureBase::Trim(char *s)
 	return s;
 }
 
-bool CConfigureBase::ReadConfigFile(const char *configfile, std::map<std::string, std::string> &amap)
+bool CQnetConfigure::ReadConfigFile(const char *configfile, std::map<std::string, std::string> &amap)
 {
 	FILE *fp = fopen(configfile, "r");
 	if (fp) {
@@ -64,7 +65,7 @@ bool CConfigureBase::ReadConfigFile(const char *configfile, std::map<std::string
 	return true;
 }
 
-bool CConfigureBase::Initialize(const char *file)
+bool CQnetConfigure::Initialize(const char *file)
 {
 	std::string filename(CFG_DIR);
 	filename.append("/qndefaults");
@@ -73,7 +74,7 @@ bool CConfigureBase::Initialize(const char *file)
 	return ReadConfigFile(file, cfg);
 }
 
-bool CConfigureBase::GetDefaultBool(const std::string &path, const std::string &mod, bool &dvalue)
+bool CQnetConfigure::GetDefaultBool(const std::string &path, const std::string &mod, bool &dvalue)
 {
 	std::string value;
 	if (GetDefaultString(path, mod, value))
@@ -89,7 +90,7 @@ bool CConfigureBase::GetDefaultBool(const std::string &path, const std::string &
 	return false;
 }
 
-bool CConfigureBase::GetDefaultDouble(const std::string &path, const std::string &mod, double &dvalue)
+bool CQnetConfigure::GetDefaultDouble(const std::string &path, const std::string &mod, double &dvalue)
 {
 	std::string value;
 	if (GetDefaultString(path, mod, value))
@@ -98,7 +99,7 @@ bool CConfigureBase::GetDefaultDouble(const std::string &path, const std::string
 	return false;
 }
 
-bool CConfigureBase::GetDefaultInt(const std::string &path, const std::string &mod, int &dvalue)
+bool CQnetConfigure::GetDefaultInt(const std::string &path, const std::string &mod, int &dvalue)
 {
 	std::string value;
 	if (GetDefaultString(path, mod, value))
@@ -107,7 +108,7 @@ bool CConfigureBase::GetDefaultInt(const std::string &path, const std::string &m
 	return false;
 }
 
-bool CConfigureBase::GetDefaultString(const std::string &path, const std::string &mod, std::string &dvalue)
+bool CQnetConfigure::GetDefaultString(const std::string &path, const std::string &mod, std::string &dvalue)
 {
 	std::string search, search_again;
 	if (mod.empty()) {
@@ -142,7 +143,7 @@ bool CConfigureBase::GetDefaultString(const std::string &path, const std::string
 	return false;
 }
 
-bool CConfigureBase::GetValue(const std::string &path, const std::string &mod, bool &value)
+bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, bool &value)
 {
 	auto it = cfg.find(path);
 	if (cfg.end() == it) {
@@ -167,7 +168,7 @@ bool CConfigureBase::GetValue(const std::string &path, const std::string &mod, b
 	return false;
 }
 
-bool CConfigureBase::GetValue(const std::string &path, const std::string &mod, double &value, const double min, const double max)
+bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, double &value, const double min, const double max)
 {
 	auto it = cfg.find(path);
 	if (cfg.end() == it) {
@@ -192,7 +193,7 @@ bool CConfigureBase::GetValue(const std::string &path, const std::string &mod, d
 	return false;
 }
 
-bool CConfigureBase::GetValue(const std::string &path, const std::string &mod, int &value, const int min, const int max)
+bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, int &value, const int min, const int max)
 {
 	auto it = cfg.find(path);
 	if (cfg.end() == it) {
@@ -217,7 +218,7 @@ bool CConfigureBase::GetValue(const std::string &path, const std::string &mod, i
 	return false;
 }
 
-bool CConfigureBase::GetValue(const std::string &path, const std::string &mod, std::string &value, int min, int max)
+bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, std::string &value, int min, int max)
 {
 	auto it = cfg.find(path);
 	if (cfg.end() != it) {

@@ -21,25 +21,23 @@
 #include <string>
 #include <map>
 
-class CConfigureBase {
+class CQnetConfigure {
 public:
-	CConfigureBase();
-	virtual ~CConfigureBase();
-	virtual bool ReadCfgFile() = 0;
+	CQnetConfigure();
+	virtual ~CQnetConfigure();
+	//virtual bool ReadCfgFile() = 0;
 	bool Initialize(const char *configfile);
-
-protected:
-	std::map<std::string, std::string> cfg;
-
-	char *Trim(char *s);
-	bool ReadConfigFile(const char *file, std::map<std::string, std::string> &amap);
     bool GetValue(const std::string &path, const std::string &mod, bool        &value);
     bool GetValue(const std::string &path, const std::string &mod, double      &value, const double min, const double max);
 	bool GetValue(const std::string &path, const std::string &mod, int         &value, const int    min, const int    max);
 	bool GetValue(const std::string &path, const std::string &mod, std::string &value, const int    min, const int    max);
+
 private:
 	std::map<std::string, std::string> defaults;
+	std::map<std::string, std::string> cfg;
 
+	char *Trim(char *s);
+	bool ReadConfigFile(const char *file, std::map<std::string, std::string> &amap);
 	bool GetDefaultBool  (const std::string &key, const std::string &mod, bool        &dval);
     bool GetDefaultDouble(const std::string &key, const std::string &mod, double      &dval);
     bool GetDefaultInt   (const std::string &key, const std::string &mod, int         &dval);
