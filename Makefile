@@ -1,4 +1,4 @@
-# Copyright (c) 2018 by Thomas A. Early N7TAE
+# Copyright (c) 2018-2019 by Thomas A. Early N7TAE
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,17 +42,12 @@ MDV_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay
 DVP_PROGRAMS=qngateway qnlink qnremote qnvoice qndvap
 DVR_PROGRAMS=qngateway qnlink qnremote qnvoice qndvrptr
 TAP_PROGRAMS=qngateway qnlink qnremote qnvoice qnitap
-ICM_PROGRAMS=qnigateway qnlink qnremote qnvoice
 
 all    : $(ALL_PROGRAMS)
 mmdvm  : $(MDV_PROGRAMS)
 dvap   : $(DVP_PROGRAMS)
 dvrptr : $(DVR_PROGRAMS)
-icom   : $(ICM_PROGRAMS)
 itap   : $(TAP_PROGRAMS)
-
-qnigateway : $(IRCOBJS) QnetIcomGateway.o aprs.o
-	g++ $(CPPFLAGS) -o qnigateway QnetIcomGateway.o aprs.o $(IRCOBJS) $(LDFLAGS) -pthread
 
 qngateway : $(IRCOBJS) QnetGateway.o aprs.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o UnixDgramSocket.o $(IRCOBJS) $(LDFLAGS) -pthread
@@ -72,8 +67,8 @@ qndvap : QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) UnixDgramSocket.o
 qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o UnixDgramSocket.o
 	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o Random.o UnixDgramSocket.o $(DSTROBJS) $(LDFLAGS)
 
-qnremote : QnetRemote.o Random.o
-	g++ $(CPPFLAGS) -o qnremote QnetRemote.o Random.o $(LDFLAGS)
+qnremote : QnetRemote.o Random.o UnixDgramSocket.o ConfigureBase.o
+	g++ $(CPPFLAGS) -o qnremote QnetRemote.o Random.o UnixDgramSocket.o ConfigureBase.o $(LDFLAGS)
 
 qnvoice : QnetVoice.o Random.o
 	g++ $(CPPFLAGS) -o qnvoice QnetVoice.o Random.o $(LDFLAGS)

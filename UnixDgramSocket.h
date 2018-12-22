@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright (C) 2018 by Thomas Early N7TAE
+ *   Copyright (C) 2019 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by

@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -32,25 +32,20 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <time.h>
-#include <libconfig.h++>
 #include <string>
 
 #include "QnetTypeDefs.h"
 #include "Random.h"
+#include "ConfigureBase.h"
+#include "UnixDgramSocket.h"
 
-using namespace libconfig;
+#define VERSION "v2.0"
 
-#define VERSION "v1.0"
-
-int sockDst = -1;
-struct sockaddr_in toDst;
-
+char module;
 time_t tNow = 0;
 short streamid_raw = 0;
-bool isdefined[3] = { false, false, false };
-std::string REPEATER, IP_ADDRESS;
-int PORT, PLAY_WAIT, PLAY_DELAY;
-bool is_icom = false;
+std::string REPEATER;
+int PLAY_WAIT, PLAY_DELAY;
 
 unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 
@@ -74,9 +69,37 @@ unsigned short crc_tabccitt[256] = {
 	0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 };
 
+class CConfigure : public CConfigureBase
+{
+public:
+	bool ReadCfgFile()
+	{
+		const std::string estr;
+		std::string type;
+		std::string path = "module_";
+		path.append(1, module);
+		if (GetValue(path, estr, type, 1, 16)) {
+			fprintf(stderr, "%s not found!\n", path.c_str());
+			return true;
+		}
+		if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("itap")) {
+			fprintf(stderr, "module type '%s is invalid!\n", type.c_str());
+			return true;
+		}
+		if (GetValue(path+"_callsign", type, REPEATER, 3, 6)) {
+			if (GetValue("ircddb.login", estr, REPEATER, 3, 6)) {
+				fprintf(stderr, "no Callsign for the repeater was found!\n");
+				return true;
+			}
+		}
+		GetValue("timing_play_wait", estr, PLAY_WAIT, 1,10);
+		GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
+		return false;
+	}
+};
+
 void calcPFCS(unsigned char rawbytes[58])
 {
-
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
 	short int i;
@@ -94,135 +117,6 @@ void calcPFCS(unsigned char rawbytes[58])
 	return;
 }
 
-bool dst_open(const char *ip, const int port)
-{
-	int reuse = 1;
-
-	sockDst = socket(PF_INET,SOCK_DGRAM,0);
-	if (sockDst == -1) {
-		printf("Failed to create DSTAR socket\n");
-		return true;
-	}
-	if (setsockopt(sockDst,SOL_SOCKET,SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-		close(sockDst);
-		sockDst = -1;
-		printf("setsockopt DSTAR REUSE failed\n");
-		return true;
-	}
-	memset(&toDst,0,sizeof(struct sockaddr_in));
-	toDst.sin_family = AF_INET;
-	toDst.sin_port = htons(port);
-	toDst.sin_addr.s_addr = inet_addr(ip);
-
-	fcntl(sockDst,F_SETFL,O_NONBLOCK);
-	return false;
-}
-
-void dst_close()
-{
-	if (sockDst != -1) {
-		close(sockDst);
-		sockDst = -1;
-	}
-	return;
-}
-
-bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path, value);
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path, value);
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s is invalid\n", path);
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
-}
-
-/* process configuration file */
-bool read_config(const char *cfgFile)
-{
-	Config cfg;
-
-	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	} catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
-		return true;
-	} catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return true;
-	}
-
-	if (! get_value(cfg, "ircddb.login", REPEATER, 3, 6, "UNDEFINED"))
-		return true;
-	REPEATER.resize(6, ' ');
-	printf("REPEATER=[%s]\n", REPEATER.c_str());
-
-	for (short int m=0; m<3; m++) {
-		std::string path = "module.";
-		path += m + 'a';
-		std::string type;
-		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("icom") && type.compare("itap")) {
-				printf("module type '%s' is invalid\n", type.c_str());
-				return true;
-			}
-			is_icom = type.compare("icom") ? false : true;
-			isdefined[m] = true;
-		}
-	}
-	if (false==isdefined[0] && false==isdefined[1] && false==isdefined[2]) {
-		printf("No repeaters defined!\n");
-		return true;
-	}
-
-	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, is_icom ? "172.16.0.20" : "127.0.0.1"))
-		return true;
-
-	get_value(cfg, "gateway.internal.port", PORT, 16000, 65535, is_icom ? 20000 : 19000);
-
-	get_value(cfg, "timing.play.wait", PLAY_WAIT, 1, 10, 1);
-
-	get_value(cfg, "timing.play.delay", PLAY_DELAY, 9, 25, 19);
-
-	return false;
-}
-
 void ToUpper(std::string &str)
 {
 	for (unsigned int i=0; i<str.size(); i++)
@@ -235,18 +129,43 @@ int main(int argc, char *argv[])
 	unsigned short G2_COUNTER = 0;
 
 	if (argc != 4) {
-		printf("Usage: %s <module> <mycall> <yourcall>\n", argv[0]);
-		printf("Example: %s c n7tae xrf757al\n", argv[0]);
-		printf("Where...\n");
-		printf("        c is the local repeater module\n");
-		printf("        n7tae is the value of mycall\n");
-		printf("        xrf757al is the value of yourcall, in this case this is a Link command\n\n");
+		fprintf(stderr, "Usage: %s <module> <mycall> <yourcall>\n", argv[0]);
+		fprintf(stderr, "Example: %s c n7tae xrf757al\n", argv[0]);
+		fprintf(stderr, "Where...\n");
+		fprintf(stderr, "        c is the local repeater module\n");
+		fprintf(stderr, "        n7tae is the value of mycall\n");
+		fprintf(stderr, "        xrf757al is the value of yourcall, in this case this is a Link command\n\n");
 		return 0;
+	}
+
+	switch (argv[1][0]) {
+		case '0':
+		case 'a':
+		case 'A':
+			module = 'A';
+			break;
+		case '1':
+		case 'b':
+		case 'B':
+			module = 'B';
+			break;
+		case '2':
+		case 'c':
+		case 'C':
+			module = 'C';
+			break;
+		default:
+			fprintf(stderr, "module must be 0, a, A, 1, b, B, 2, c or C, not %s\n", argv[1]);
+			return 1;
 	}
 
 	std::string cfgfile(CFG_DIR);
 	cfgfile += "/qn.cfg";
-	if (read_config(cfgfile.c_str()))
+	CConfigure config;
+	if (config.Initialize(cfgfile.c_str()))
+		return 1;
+
+	if (config.ReadCfgFile())
 		return 1;
 
 	if (REPEATER.size() > 6) {
@@ -254,14 +173,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	ToUpper(REPEATER);
-
-	char module = argv[1][0];
-	if (islower(module))
-		module = toupper(module);
-	if ((module != 'A') && (module != 'B') && (module != 'C')) {
-		printf("module must be one of A B C\n");
-		return 1;
-	}
 
 	if (strlen(argv[2]) > 8) {
 		printf("MYCALL can not be more than 8 characters, %s is invalid\n", argv[2]);
@@ -287,8 +198,10 @@ int main(int argc, char *argv[])
 
 	time(&tNow);
 	CRandom Random;
-
-	if (dst_open(IP_ADDRESS.c_str(), PORT))
+	CUnixDgramWriter ToGateway;
+	std::string togateway("modem2gate");
+	togateway.append(1, module-'A'+'0');
+	if (ToGateway.Open(togateway.c_str()))
 		return 1;
 
 	SDSTR pkt;
@@ -328,10 +241,10 @@ int main(int argc, char *argv[])
 
 	calcPFCS(pkt.pkt_id);
 	// send the header
-	int sent = sendto(sockDst, pkt.pkt_id, 58, 0, (struct sockaddr *)&toDst, sizeof(toDst));
+	int sent = ToGateway.Write(pkt.pkt_id, 58);
 	if (sent != 58) {
 		printf("%s: ERROR: Couldn't send header!\n", argv[0]);
-		dst_close();
+		ToGateway.Close();
 		return 1;
 	}
 
@@ -400,13 +313,13 @@ int main(int argc, char *argv[])
 				break;
 		}
 
-		sent = sendto(sockDst,pkt.pkt_id, 29, 0, (struct sockaddr *)&toDst, sizeof(toDst));
+		sent = ToGateway.Write(pkt.pkt_id, 29);
 		if (sent != 29) {
 			printf("%s: ERROR: could not send voice packet %d\n", argv[0], i);
-			dst_close();
+			ToGateway.Close();
 			return 1;
 		}
 	}
-	dst_close();
+	ToGateway.Close();
 	return 0;
 }
