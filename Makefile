@@ -29,7 +29,7 @@ IRC=ircddb
 # or, you can choose this for a much smaller executable without debugging help
 CPPFLAGS=-W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\"
 
-LDFLAGS=-L/usr/lib -lconfig++ -lrt
+LDFLAGS=-L/usr/lib -lrt
 
 DSTROBJS = $(IRC)/dstar_dv.o $(IRC)/golay23.o
 IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMessageQueue.o $(IRC)/IRCProtocol.o $(IRC)/IRCMessage.o $(IRC)/IRCDDBApp.o $(IRC)/IRCutils.o $(DSTROBJS)

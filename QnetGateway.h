@@ -16,13 +16,10 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libconfig.h++>
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "UnixDgramSocket.h"
 #include "aprs.h"
-
-using namespace libconfig;
 
 #define IP_SIZE 15
 #define MAXHOSTNAMELEN 64
@@ -178,10 +175,6 @@ private:
 
 	// read configuration file
 	bool read_config(char *);
-	bool get_value(const Config &cfg, const std::string path, int &value, int min, int max, int default_value);
-	bool get_value(const Config &cfg, const std::string path, double &value, double min, double max, double default_value);
-	bool get_value(const Config &cfg, const std::string path, bool &value, bool default_value);
-	bool get_value(const Config &cfg, const std::string path, std::string &value, int min, int max, const char *default_value);
 
 /* aprs functions, borrowed from my retired IRLP node 4201 */
 	void gps_send(short int rptr_idx);

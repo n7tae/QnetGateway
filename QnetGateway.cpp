@@ -56,8 +56,8 @@
 #include "IRCDDB.h"
 #include "IRCutils.h"
 #include "versions.h"
+#include "QnetConfigure.h"
 #include "QnetGateway.h"
-
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -169,141 +169,74 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 	return;
 }
 
-bool CQnetGateway::get_value(const Config &cfg, const std::string path, int &value, int min, int max, int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path.c_str(), value);
-	return true;
-}
-
-bool CQnetGateway::get_value(const Config &cfg, const std::string path, double &value, double min, double max, double default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path.c_str(), value);
-	return true;
-}
-
-bool CQnetGateway::get_value(const Config &cfg, const std::string path, bool &value, bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path.c_str(), value ? "true" : "false");
-	return true;
-}
-
-bool CQnetGateway::get_value(const Config &cfg, const std::string path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s is invalid\n", path.c_str());
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path.c_str(), value.c_str());
-	return true;
-}
-
 /* process configuration file */
 bool CQnetGateway::read_config(char *cfgFile)
 {
-	Config cfg;
+	const std::string estr;	// an empty string
+	CQnetConfigure cfg;
+	if (cfg.Initialize(cfgFile))
+		return true;
 
-	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	} catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
-		return true;
-	} catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return true;
-	}
 	// ircddb
-	std::string path("ircddb.");
-	if (! get_value(cfg, path+"login", owner, 3, CALL_SIZE-2, "UNDEFINED"))
+	std::string path("ircddb_");
+	if (cfg.GetValue(path+"login", estr, owner, 3, CALL_SIZE-2))
 		return true;
-	if (0 == owner.compare("UNDEFINED")) {
-		fprintf(stderr, "You must specify your lisensed callsign in ircddb.login\n");
-		return true;
-	}
 	OWNER = owner;
 	ToLower(owner);
 	ToUpper(OWNER);
-	printf("OWNER=[%s]\n", OWNER.c_str());
+	printf("OWNER='%s'\n", OWNER.c_str());
 	OWNER.resize(CALL_SIZE, ' ');
 
-	if (! get_value(cfg, path+"host", ircddb.ip, 3, MAXHOSTNAMELEN, "rr.openquad.net"))
+	if (cfg.GetValue(path+"host", estr, ircddb.ip, 3, MAXHOSTNAMELEN))
 		return true;
 
-	get_value(cfg, path+"port", ircddb.port, 1000, 65535, 9007);
+	if (cfg.GetValue(path+"port", estr, ircddb.port, 1000, 65535))
+		return true;
 
-	if(! get_value(cfg, path+"password", irc_pass, 0, 512, "1111111111111111"))
+	if (cfg.GetValue(path+"password", estr, irc_pass, 0, 512))
 		return true;
 
 	// module
 	for (int m=0; m<3; m++) {
-		std::string path = "module.";
-		path += m + 'a';
-		path += '.';
+		path.assign("module_");
+		path.append(1, 'a' + m);
 		std::string type;
-		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			printf("%s = [%s]\n", std::string(path+"type").c_str(), type.c_str());
+		if (cfg.GetValue(path, estr, type, 1, 8)) {
+			rptr.mod[m].defined = false;
+		} else {
+			printf("Found Module: %s = '%s'\n", path.c_str(), type.c_str());
 			if (0 == type.compare("dvap")) {
 				rptr.mod[m].package_version = DVAP_VERSION;
-				rptr.mod[m].defined = true;
 			} else if (0 == type.compare("dvrptr")) {
 				rptr.mod[m].package_version = DVRPTR_VERSION;
-				rptr.mod[m].defined = true;
 			} else if (0 == type.compare("mmdvm")) {
 				rptr.mod[m].package_version = MMDVM_VERSION;
-				rptr.mod[m].defined = true;
 			} else if (0 == type.compare("itap")) {
 				rptr.mod[m].package_version = ITAP_VERSION;
-				rptr.mod[m].defined = true;
 			} else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
+			rptr.mod[m].defined = true;
 
-			char unixsockname[16];
-			snprintf(unixsockname, 16, "modem2gate%d", m);
-			get_value(cfg, path+"togateway", modem2gate[m], 1, FILENAME_MAX, unixsockname);
-			snprintf(unixsockname, 16, "gate2modem%d", m);
-			get_value(cfg, path+"fromgateway", gate2modem[m], 1, FILENAME_MAX, unixsockname);
-			get_value(cfg, std::string(path+"frequency").c_str(), rptr.mod[m].frequency, 0.0, 1.0e12, 0.0);
-			get_value(cfg, std::string(path+"offset").c_str(), rptr.mod[m].offset, -1.0e12, 1.0e12, 0.0);
-			get_value(cfg, std::string(path+"range").c_str(), rptr.mod[m].range, 0.0, 1609344.0, 0.0);
-			get_value(cfg, std::string(path+"agl").c_str(), rptr.mod[m].agl, 0.0, 1000.0, 0.0);
-			get_value(cfg, std::string(path+"latitude").c_str(), rptr.mod[m].latitude, -90.0, 90.0, 0.0);
-			get_value(cfg, std::string(path+"longitude").c_str(), rptr.mod[m].longitude, -180.0, 180.0, 0.0);
-			if (! cfg.lookupValue(path+"desc1", rptr.mod[m].desc1))
-				rptr.mod[m].desc1 = "";
-			if (! cfg.lookupValue(path+"desc2", rptr.mod[m].desc2))
-				rptr.mod[m].desc2 = "";
-			if (! get_value(cfg, std::string(path+"url").c_str(), rptr.mod[m].url, 0, 80, "github.com/n7tae/QnetGateway"))
-				return true;
-			// truncate strings
-			if (rptr.mod[m].desc1.length() > 20)
-				rptr.mod[m].desc1.resize(20);
-			if (rptr.mod[m].desc2.length() > 20)
-				rptr.mod[m].desc2.resize(20);
+			path.append(1, '_');
+			cfg.GetValue(path+"togateway", type, modem2gate[m], 1, FILENAME_MAX);
+			cfg.GetValue(path+"fromgateway", type, gate2modem[m], 1, FILENAME_MAX);
+			cfg.GetValue(path+"frequency", type, rptr.mod[m].frequency, 0.0, 1.0e12);
+			cfg.GetValue(path+"offset", type, rptr.mod[m].offset, -1.0e12, 1.0e12);
+			cfg.GetValue(path+"range", type, rptr.mod[m].range, 0.0, 1609344.0);
+			cfg.GetValue(path+"agl", type, rptr.mod[m].agl, 0.0, 1000.0);
+			cfg.GetValue(path+"latitude", type, rptr.mod[m].latitude, -90.0, 90.0);
+			cfg.GetValue(path+"longitude", type, rptr.mod[m].longitude, -180.0, 180.0);
+			cfg.GetValue(path+"desc1", type, rptr.mod[m].desc1, 0, 20);
+			cfg.GetValue(path+"desc2", type, rptr.mod[m].desc2, 0, 20);
+			cfg.GetValue(path+"url", type, rptr.mod[m].url, 0, 80);
+
 			// make the long description for the log
 			if (rptr.mod[m].desc1.length())
 				rptr.mod[m].desc = rptr.mod[m].desc1 + ' ';
 			rptr.mod[m].desc += rptr.mod[m].desc2;
-		} else
-			rptr.mod[m].defined = false;
+		}
 	}
 	if (! (rptr.mod[0].defined || rptr.mod[1].defined || rptr.mod[2].defined)) {
 		printf("No modules defined!\n");
@@ -311,72 +244,45 @@ bool CQnetGateway::read_config(char *cfgFile)
 	}
 
 	// gateway
-	path = "gateway.";
-	if (! get_value(cfg, path+"local_irc_ip", local_irc_ip, 7, IP_SIZE, "0.0.0.0"))
-		return true;
-
-	if (! get_value(cfg, path+"external.ip", g2_external.ip, 7, IP_SIZE, "0.0.0.0"))
-		return true;
-
-	get_value(cfg, path+"external.port", g2_external.port, 1024, 65535, 40000);
-
-	get_value(cfg, path+"regen_header", bool_regen_header, true);
-
-	get_value(cfg, path+"aprs_send", bool_send_aprs, true);
-
-	get_value(cfg, path+"send_qrgs_maps", bool_send_qrgs, true);
-
-	get_value(cfg, path+"tolink", gate2link, 1, FILENAME_MAX, "gate2link");
-	get_value(cfg, path+"fromlink", link2gate, 1, FILENAME_MAX, "link2gate");
+	path.assign("gateway_");
+	cfg.GetValue(path+"local_irc_ip", estr, local_irc_ip, 7, IP_SIZE);
+	cfg.GetValue(path+"external.ip", estr, g2_external.ip, 7, IP_SIZE);
+	cfg.GetValue(path+"external.port", estr, g2_external.port, 1024, 65535);
+	cfg.GetValue(path+"regen_header", estr, bool_regen_header);
+	cfg.GetValue(path+"send_qrgs_maps", estr, bool_send_qrgs);
+	cfg.GetValue(path+"tolink", estr, gate2link, 1, FILENAME_MAX);
+	cfg.GetValue(path+"fromlink", estr, link2gate, 1, FILENAME_MAX);
 
 	// APRS
-	path = "aprs.";
-	if (! get_value(cfg, path+"host", rptr.aprs.ip, 7, MAXHOSTNAMELEN, "rotate.aprs.net"))
-		return true;
-
-	get_value(cfg, path+"port", rptr.aprs.port, 10000, 65535, 14580);
-
-	get_value(cfg, path+"interval", rptr.aprs_interval, 40, 1000, 40);
-
-	if (! get_value(cfg, path+"filter", rptr.aprs_filter, 0, 512, ""))
-		return true;
+	path.assign("aprs_");
+	cfg.GetValue(path+"enable", estr, bool_send_aprs);
+	cfg.GetValue(path+"host", estr, rptr.aprs.ip, 7, MAXHOSTNAMELEN);
+	cfg.GetValue(path+"port", estr, rptr.aprs.port, 10000, 65535);
+	cfg.GetValue(path+"interval", estr, rptr.aprs_interval, 40, 1000);
+	cfg.GetValue(path+"filter", estr, rptr.aprs_filter, 0, 512);
 
 	// log
-	path = "log.";
-	get_value(cfg, path+"qso", bool_qso_details, false);
-
-	get_value(cfg, path+"irc", bool_irc_debug, false);
-
-	get_value(cfg, path+"dtmf", bool_dtmf_debug, false);
+	path.assign("log_");
+	cfg.GetValue(path+"qso", estr, bool_qso_details);
+	cfg.GetValue(path+"irc", estr, bool_irc_debug);
+	cfg.GetValue(path+"dtmf", estr, bool_dtmf_debug);
 
 	// file
-	path = "file.";
-	if (! get_value(cfg, path+"echotest", echotest_dir, 2, FILENAME_MAX, "/tmp"))
-		return true;
-
-	if (! get_value(cfg, path+"dtmf",  dtmf_dir, 2,FILENAME_MAX, "/tmp"))
-		return true;
-
-	if (! get_value(cfg, path+"status", status_file, 2, FILENAME_MAX, "/usr/local/etc/RPTR_STATUS.txt"))
-		return true;
-
-	if (! get_value(cfg, path+"qnvoicefile", qnvoicefile, 2, FILENAME_MAX, "/tmp/qnvoice.txt"))
-		return true;
+	path.assign("file_");
+	cfg.GetValue(path+"echotest", estr, echotest_dir, 2, FILENAME_MAX);
+	cfg.GetValue(path+"dtmf", estr, dtmf_dir, 2, FILENAME_MAX);
+	cfg.GetValue(path+"status", estr, status_file, 2, FILENAME_MAX);
+	cfg.GetValue(path+"qnvoicefile", estr, qnvoicefile, 2, FILENAME_MAX);
 
 	// timing
-	path = "timing.play.";
-	get_value(cfg, path+"wait", play_wait, 1, 10, 1);
-
-	get_value(cfg, path+"delay", play_delay, 9, 25, 19);
-
-	path = "timing.timeout.";
-	get_value(cfg, path+"echo", echotest_rec_timeout, 1, 10, 1);
-
-	get_value(cfg, path+"voicemail", voicemail_rec_timeout, 1, 10, 1);
-
-	get_value(cfg, path+"remote_g2", from_remote_g2_timeout, 1, 10, 2);
-
-	get_value(cfg, path+"local_rptr", from_local_rptr_timeout, 1, 10, 1);
+	path.assign("timing_play_");
+	cfg.GetValue(path+"wait", estr, play_wait, 1, 10);
+	cfg.GetValue(path+"delay", estr, play_delay, 9, 25);
+	path.assign("timing_timeout_");
+	cfg.GetValue(path+"echo", estr, echotest_rec_timeout, 1, 10);
+	cfg.GetValue(path+"voicemail", estr, voicemail_rec_timeout, 1, 10);
+	cfg.GetValue(path+"remote_g2", estr, from_remote_g2_timeout, 1, 10);
+	cfg.GetValue(path+"local_rptr", estr, from_local_rptr_timeout, 1, 10);
 
 	return false;
 }
