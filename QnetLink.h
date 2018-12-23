@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,14 +25,11 @@
 #include <set>
 #include <atomic>
 #include <netinet/in.h>
-#include <libconfig.h++>
 #include "versions.h"
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "Random.h"
 #include "UnixDgramSocket.h"
-
-using namespace libconfig;
 
 /*** version number must be x.xx ***/
 #define VERSION LINK_VERSION
@@ -68,13 +65,16 @@ public:
 	void Shutdown();
 private:
 	// functions
+	void ToUpper(std::string &s);
+	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
+	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
 	bool load_gwys(const std::string &filename);
 	void calcPFCS(unsigned char *packet, int len);
 	bool read_config(const char *);
 	bool srv_open();
 	void srv_close();
 	static void sigCatch(int signum);
-	void g2link(char from_mod, char *call, char to_mod);
+	void g2link(const char from_mod, const char *call, const char to_mod);
 	void print_status_file();
 	void send_heartbeat();
 	bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
@@ -82,19 +82,15 @@ private:
 	void PlayAudioNotifyThread(char *msg);
 	void AudioNotifyThread(SECHO &edata);
 	void RptrAckThread(char *arg);
-	bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value);
-	bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value);
-	bool get_value(const Config &cfg, const char *path, bool &value, bool default_value);
-	bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value);
 
 	/* configuration data */
 	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, status_file, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, bool_rptr_ack, announce;
 	bool dplus_authorize, dplus_reflectors, dplus_repeaters;
 	int rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port, delay_between, delay_before;
-	char link_at_startup[CALL_SIZE+1];
+	std::string link_at_startup[3];
 	unsigned int max_dongles, saved_max_dongles;
-	long rf_inactivity_timer[3];
+	int rf_inactivity_timer[3];
 	const unsigned char REF_ACK[3] = { 3, 96, 0 };
 
 	// the Key in this inbound_list map is the unique IP address of the remote

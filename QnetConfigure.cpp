@@ -74,6 +74,11 @@ bool CQnetConfigure::Initialize(const char *file)
 	return ReadConfigFile(file, cfg);
 }
 
+bool CQnetConfigure::KeyExists(const std::string &key)
+{
+	return (cfg.end() != cfg.find(key));
+}
+
 bool CQnetConfigure::GetDefaultBool(const std::string &path, const std::string &mod, bool &dvalue)
 {
 	std::string value;
@@ -134,10 +139,8 @@ bool CQnetConfigure::GetDefaultString(const std::string &path, const std::string
 	auto it = defaults.find(search);
 	if (defaults.end() == it) {
 		it = defaults.find(search_again);
-		if (defaults.end() == it) {
-			fprintf(stderr, "%s has no default value!\n", path.c_str());
+		if (defaults.end() == it)
 			return true;
-		}
 	}
 	dvalue = it->second;
 	return false;
@@ -221,7 +224,7 @@ bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, i
 bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, std::string &value, int min, int max)
 {
 	auto it = cfg.find(path);
-	if (cfg.end() != it) {
+	if (cfg.end() == it) {
 		std::string dvalue;
 		if (GetDefaultString(path, mod, dvalue)) {
 			fprintf(stderr, "%s not found in either the cfg file for the defaults file\n", path.c_str());
@@ -232,8 +235,9 @@ bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, s
 			printf("Default value %s='%s' is wrong size\n", path.c_str(), value.c_str());
 			return true;
 		}
+		value.assign(dvalue);
 	} else {
-		value = it->second;
+		value.assign(it->second);
 		int l = value.length();
 		if (l<min || l>max) {
 			printf("%s='%s' is wrong size\n", path.c_str(), value.c_str());

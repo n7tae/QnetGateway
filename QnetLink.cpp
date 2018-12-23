@@ -1,7 +1,7 @@
 
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *   Copyright (C) 2015,2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2015,2018,2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@
 
 #include "versions.h"
 #include "DPlusAuthenticator.h"
+#include "QnetConfigure.h"
 #include "QnetLink.h"
 
 using namespace libconfig;
@@ -468,256 +469,137 @@ void CQnetLink::calcPFCS(unsigned char *packet, int len)
 	return;
 }
 
-bool CQnetLink::get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
+void CQnetLink::ToUpper(std::string &s)
 {
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%u]\n", path, value);
-	return true;
+	for (auto it=s.begin(); it!=s.end(); it++)
+		if (islower(*it))
+			*it = toupper(*it);
 }
 
-bool CQnetLink::get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
+void CQnetLink::UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters)
 {
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path, value);
-	return true;
+	std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);	// Skip delimiters at beginning.
+	std::string::size_type pos = str.find_first_of(delimiters, lastPos);	// Find first non-delimiter.
+
+	while (std::string::npos != pos || std::string::npos != lastPos) {
+		std::string element = str.substr(lastPos, pos-lastPos);
+		if (element.length()>=3 && element.length()<=6) {
+			ToUpper(element);
+			element.resize(CALL_SIZE, ' ');
+			set.insert(element);	// Found a token, add it to the list.
+		} else
+			fprintf(stderr, "found bad callsign in list: %s\n", str.c_str());
+		lastPos = str.find_first_not_of(delimiters, pos);	// Skip delimiters.
+		pos = str.find_first_of(delimiters, lastPos);	// Find next non-delimiter.
+	}
 }
 
-bool CQnetLink::get_value(const Config &cfg, const char *path, bool &value, bool default_value)
+void CQnetLink::PrintCallsigns(const std::string &key, const std::set<std::string> &set)
 {
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-bool CQnetLink::get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s='%s' is has to be between %d and %d characters\n", path, value.c_str(), min, max);
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
+	printf("%s = [ ", key.c_str());
+	for (auto it=set.begin(); it!=set.end(); it++) {
+		if (it != set.begin())
+			printf(", ");
+		printf("%s", (*it).c_str());
+	}
+	printf(" ]");
 }
 
 /* process configuration file */
 bool CQnetLink::read_config(const char *cfgFile)
 {
-	unsigned short i;
-	Config cfg;
+	CQnetConfigure cfg;
+	const std::string estr;	// an empty string
 
 	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	}
-	catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
+	if (cfg.Initialize(cfgFile))
 		return true;
+
+	std::string key("ircddb_login");
+	if (cfg.GetValue(key, estr, owner, 3, 6))
+		return true;
+	ToUpper(owner);
+	owner.resize(CALL_SIZE, ' ');
+
+	if (cfg.GetValue("dplus_ref_login", estr, login_call, 3, 6))
+		login_call.assign(owner);
+	else {
+		ToUpper(login_call);
+		login_call.resize(CALL_SIZE, ' ');
 	}
-	catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
+
+	int modules = 0;
+	key.assign("module_");
+	for (int i=0; i<3; i++) {
+		key.append(1, 'a'+i);
+		if (cfg.KeyExists(key)) {
+			std::string modem_type;
+			cfg.GetValue(key, estr, modem_type, 1, 16);
+			modules++;
+			cfg.GetValue(key+"_inactivity", modem_type, rf_inactivity_timer[i], 0, 300);
+			rf_inactivity_timer[i] *= 60;
+			cfg.GetValue(key+"_link_at_start", modem_type, link_at_startup[i], 8, 8);
+		}
+	}
+	if (0 == modules) {
+		fprintf(stderr, "no rf modules defined!\n");
 		return true;
 	}
 
-	std::string value;
-	std::string key = "link.ref_login";
-	if (cfg.lookupValue(key, login_call) || cfg.lookupValue("ircddb.login", login_call)) {
-		int l = login_call.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", login_call.c_str());
-			return true;
-		} else {
-			for (i=0; i<l; i++) {
-				if (islower(login_call[i]))
-					login_call[i] = toupper(login_call[i]);
-			}
-			login_call.resize(CALL_SIZE, ' ');
-			printf("%s = [\"%s\"]\n", key.c_str(), login_call.c_str());
-		}
+	std::string csv;
+	key.assign("link_admin");
+	if (cfg.KeyExists(key)) {
+		cfg.GetValue(key, estr, csv, 0, 10240);
+		UnpackCallsigns(csv, admin);
+		PrintCallsigns(key, admin);
+	}
+
+	csv.clear();
+	key.assign("link_no_link_unlink");
+	if (cfg.KeyExists(key)) {
+		cfg.GetValue(key, estr, csv, 0, 10250);
+		UnpackCallsigns(csv, link_blacklist);
+		PrintCallsigns(key, link_blacklist);
 	} else {
-		printf("%s is not defined.\n", key.c_str());
-		return true;
-	}
-
-	key = "link.admin";
-	if (cfg.exists(key)) {
-		Setting &userlist = cfg.lookup(key);
-		if (userlist.isArray()) {
-			for (i=0; i<userlist.getLength(); i++) {
-				value = (const char *)userlist[i];
-				int l = value.length();
-				if (l>2 && l<=CALL_SIZE-2) {
-					for (unsigned int j=0; j<value.length(); j++) {
-						if (islower(value[j]))
-							value[j] = toupper(value[j]);
-					}
-					value.resize(CALL_SIZE, ' ');
-					if (admin.end() == admin.find(value)) {
-						admin.insert(value).second;
-					} else
-						printf("aready added '%s' as user.\n", value.c_str());
-				} else
-					printf("'%s' is the wrong length!\n", value.c_str());
-			}
-		} else {
-			printf("%s is not an array!\n", key.c_str());
-			return true;
-		}
-		printf("%s = [ ", key.c_str());
-		for (auto pos=admin.begin(); pos!=admin.end(); pos++) {
-			if (pos != admin.begin())
-				printf(", ");
-			printf("\"%s\"", (*pos).c_str());
-		}
-		printf(" ]\n");
-	}
-
-	key = "link.no_link_unlink";
-	if (cfg.exists(key)) {
-		Setting &linkblacklist = cfg.lookup(key);
-		if (linkblacklist.isArray()) {
-			for (i=0; i<linkblacklist.getLength(); i++) {
-				value = (const char *)linkblacklist[i];
-				int l = value.length();
-				if (l>2 && l<CALL_SIZE-2) {
-					for (unsigned int j=0; j<value.length(); j++) {
-						if (islower(value[j]))
-							value[j] = toupper(value[j]);
-					}
-					value.resize(CALL_SIZE, ' ');
-					if (link_blacklist.end() == link_blacklist.find(value)) {
-						link_blacklist.insert(value).second;
-					} else
-						printf("already added '%s' to link-blacklist.\n", value.c_str());
-				} else
-					printf("'%s' is the wrong length!\n", value.c_str());
-			}
-		} else {
-			printf("%s is not an array!\n", key.c_str());
-			return true;
-		}
-		printf("%s = [ ", key.c_str());
-		for (auto pos=link_blacklist.begin(); pos!=link_blacklist.end(); pos++) {
-			if (pos != link_blacklist.begin())
-				printf(", ");
-			printf("\"%s\"", (*pos).c_str());
-		}
-		printf(" ]\n");
-	} else {
-		key = "link.link_unlink";
-		if (cfg.exists(key)) {
-			Setting &unlinklist = cfg.lookup(key);
-			if (unlinklist.isArray()) {
-				for (i=0; i<unlinklist.getLength(); i++) {
-					value = (const char *)unlinklist[i];
-					int l = value.length();
-					if (l>2 && l<CALL_SIZE-2) {
-						for (unsigned int j=0; j<value.length(); j++) {
-							if (islower(value[j]))
-								value[j] = toupper(value[j]);
-						}
-						value.resize(CALL_SIZE, ' ');
-						if (link_unlink_user.end() == link_unlink_user.find(value)) {
-							link_unlink_user.insert(value).second;
-						} else
-							printf("already added '%s' to link-unlink.\n", value.c_str());
-					} else
-						printf("'%s' is the wrong length!\n", value.c_str());
-				}
-			} else {
-				printf("%s is not an array!\n", key.c_str());
-				return true;
-			}
-			printf("%s = [ ", key.c_str());
-			for (auto pos=link_unlink_user.begin(); pos!=link_unlink_user.end(); pos++) {
-				if (pos != link_unlink_user.begin())
-					printf(", ");
-				printf("\"%s\"", (*pos).c_str());
-			}
-			printf(" ]\n");
+		csv.clear();
+		key.assign("link_link_unlink");
+		if (cfg.KeyExists(key)) {
+			cfg.GetValue(key, estr, csv, 0, 10240);
+			UnpackCallsigns(csv, link_unlink_user);
+			PrintCallsigns(key, link_unlink_user);
 		}
 	}
 
-	key = "ircddb.login";
-	if (cfg.lookupValue(key, owner)) {
-		int l = owner.length();
-		if (l>2 && l<=CALL_SIZE-2) {
-			for (i=0; i<l; i++) {
-				if (islower(owner[i]))
-					owner[i] = toupper(owner[i]);
-			}
-			owner.resize(CALL_SIZE, ' ');
-			printf("%s = [%s]\n", key.c_str(), owner.c_str());
-		} else {
-			printf("%s '%s' is wrong size.\n", key.c_str(), owner.c_str());
-			return true;
-		}
-	}
-
-	get_value(cfg, "link.ref_port", rmt_ref_port, 10000, 65535, 20001);
-	get_value(cfg, "link.xrf_port", rmt_xrf_port, 10000, 65535, 30001);
-	get_value(cfg, "link.dcs_port", rmt_dcs_port, 10000, 65535, 30051);
-
-	get_value(cfg, "gateway.tolink", gate2link, 1, FILENAME_MAX, "gate2link");
-	get_value(cfg, "gateway.fromlink", link2gate, 1, FILENAME_MAX, "link2gate");
-
-	get_value(cfg, "log.qso", qso_details, true);
-
-	if (! get_value(cfg, "file.gwys", gwys, 2, FILENAME_MAX, "/usr/local/etc/gwys.txt"))
-		return true;
-
-	if (! get_value(cfg, "file.status", status_file, 2, FILENAME_MAX, "/usr/local/etc/RPTR_STATUS.txt"))
-		return true;
-
-	get_value(cfg, "file.qnvoicefile", qnvoice_file, 2, FILENAME_MAX, "/tmp/qnvoice.txt");
-
-	get_value(cfg, "timing.play.delay", delay_between, 9, 25, 19);
-
-	get_value(cfg, "link.acknowledge", bool_rptr_ack, true);
-
-	get_value(cfg, "link.announce", announce, true);
-
-	if (! get_value(cfg, "file.announce_dir", announce_dir, 2, FILENAME_MAX, "/usr/local/etc"))
-		return true;
-
-	get_value(cfg, "timing.play.wait", delay_before, 1, 10, 1);
-
-	memset(link_at_startup, 0, CALL_SIZE+1);
-	if (get_value(cfg, "link.link_at_start", value, 5, CALL_SIZE, "NONE")) {
-		if (strcasecmp(value.c_str(), "none"))
-			strcpy(link_at_startup, value.c_str());
-	} else
-		return true;
-
+	key.assign("link_");
+	cfg.GetValue(key+"ref_port", estr, rmt_ref_port, 10000, 65535);
+	cfg.GetValue(key+"xrf_port", estr, rmt_xrf_port, 10000, 65535);
+	cfg.GetValue(key+"dcs_port", estr, rmt_dcs_port, 10000, 65535);
+	cfg.GetValue(key+"acknowledge", estr, bool_rptr_ack);
+	cfg.GetValue(key+"announce", estr, announce);
 	int maxdongle;
-	get_value(cfg, "link.max_dongles", maxdongle, 0, 10, 5);
+	cfg.GetValue(key+"max_dongles", estr, maxdongle, 0, 10);
 	saved_max_dongles = max_dongles = (unsigned int)maxdongle;
 
-	for (i=0; i<3; i++) {
-		int timer;
-		key = "timing.inactivity.";
-		key += ('a' + i);
-		get_value(cfg, key.c_str(), timer, 0, 300, 0);
-		timer *= 60;
-		rf_inactivity_timer[i] = timer;
-	}
+	key.assign("gateway_");
+	cfg.GetValue(key+"tolink", estr, gate2link, 1, FILENAME_MAX);
+	cfg.GetValue(key+"fromlink", estr, link2gate, 1, FILENAME_MAX);
 
-	get_value(cfg, "dplus.authorize", dplus_authorize, false);
-	get_value(cfg, "dplus.use_reflectors", dplus_reflectors, true);
-	get_value(cfg, "dplus.use_repeaters", dplus_repeaters, true);
+	cfg.GetValue("log.qso", estr, qso_details);
+
+	key.assign("file_");
+	cfg.GetValue(key+"gwys", estr, gwys, 2, FILENAME_MAX);
+	cfg.GetValue(key+"status", estr, status_file, 2, FILENAME_MAX);
+	cfg.GetValue(key+"qnvoicefile", estr, qnvoice_file, 2, FILENAME_MAX);
+	cfg.GetValue(key+"announce_dir", estr, announce_dir, 2, FILENAME_MAX);
+
+	key.assign("timing_play_");
+	cfg.GetValue(key+"wait", estr, delay_before, 1, 10);
+	cfg.GetValue(key+"delay", estr, delay_between, 9, 25);
+
+	key.assign("dplus_");
+	cfg.GetValue(key+"authorize", estr, dplus_authorize);
+	cfg.GetValue(key+"use_reflectors", estr, dplus_reflectors);
+	cfg.GetValue(key+"use_repeaters", estr, dplus_repeaters);
 
 	return false;
 }
@@ -836,7 +718,7 @@ void CQnetLink::srv_close()
 }
 
 /* find the repeater IP by callsign and link to it */
-void CQnetLink::g2link(char from_mod, char *call, char to_mod)
+void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 {
 	short i,j, counter;
 
@@ -1069,17 +951,17 @@ void CQnetLink::Process()
 
 	printf("xrf=%d, dcs=%d, ref=%d, gateway=%d, MAX+1=%d\n", xrf_g2_sock, dcs_g2_sock, ref_g2_sock, Gate2Link.GetFD(), max_nfds + 1);
 
-	if (strlen(link_at_startup) >= 8) {
-		if ((link_at_startup[0] == 'A') || (link_at_startup[0] == 'B') || (link_at_startup[0] == 'C')) {
-			char temp_repeater[CALL_SIZE + 1];
-			memset(temp_repeater, ' ', CALL_SIZE);
-			memcpy(temp_repeater, link_at_startup + 1, 6);
-			temp_repeater[CALL_SIZE] = '\0';
-			printf("sleep for 15 before link at startup\n");
-			sleep(15);
-			g2link(link_at_startup[0], temp_repeater, link_at_startup[7]);
+	// initialize all request links
+	bool first = true;
+	for (int i=0; i<3; i++) {
+		if (8 == link_at_startup[i].length()) {
+			if (first) {
+				printf("sleep for 15 sec before link at startup\n");
+				sleep(15);
+				first = false;
+			}
+			g2link('A'+i, link_at_startup[i].substr(0, 6).c_str(), link_at_startup[i].at(7));
 		}
-		memset(link_at_startup, '\0', sizeof(link_at_startup));
 	}
 
 	while (keep_running) {
@@ -2944,12 +2826,19 @@ void CQnetLink::Process()
 								sprintf(notify_msg[i], "%c_id.dat_%s_NOT_LINKED", dstr.vpkt.hdr.r1[7], owner.c_str());
 							}
 						}
-						else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[7]=='X' && admin.find(call)!=admin.end()) { // only ADMIN can execute scripts
-							if (dstr.vpkt.hdr.ur[6] != ' ') {
-								memset(system_cmd, '\0', sizeof(system_cmd));
-								snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &", announce_dir.c_str(), dstr.vpkt.hdr.ur[6], call, dstr.vpkt.hdr.r1[7]);
-								printf("Executing %s\n", system_cmd);
-								system(system_cmd);
+						else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[7]=='X') {	// execute a script
+							if (dstr.vpkt.hdr.ur[6] != ' ') {	// there has to be a char here
+								bool user_ok = true;
+								if (admin.size()>0 && admin.end()==admin.find(call)) { // only admins (if defined) can execute scripts
+									printf("%s not found in the link_admin list!\n", call);
+									user_ok = false;
+								}
+								if (user_ok) {
+									memset(system_cmd, '\0', sizeof(system_cmd));
+									snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &", announce_dir.c_str(), dstr.vpkt.hdr.ur[6], call, dstr.vpkt.hdr.r1[7]);
+									printf("Executing %s\n", system_cmd);
+									system(system_cmd);
+								}
 							}
 						}
 						else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[6]=='D' && admin.find(call)!=admin.end()) { // only ADMIN can block dongle users

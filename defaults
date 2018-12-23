@@ -25,12 +25,15 @@
 #     If a string value is a simple word, it doesn't need to be quoted
 #     Use the single quote (') for quoting strings, not the double quote(")
 #     Comments can come after a key=value definition, introduced by a pound-sign (#)
+#
+# if a definition is commented out, it means that key has no default value. And it is
+# include here just as a reference.
 
 ##########################################################################################################################
 #
 # IRCDDB - You MUST use a legal callsign for logging into any IRC network
 #
-ircddb_login_d=''                 # login callsign for the ircDDB network
+#ircddb_login_d=''                # login callsign for the ircDDB network
 ircddb_host_d='rr.openquad.net'   # other irc networks include group1-irc.ircddb.net
 ircddb_port_d=9007                # not a good idea to change!
 ircddb_password_d='1111111111111' # not needed for rr.openquad.net
@@ -61,8 +64,8 @@ aprs_filter_d=''              # advanced feature
 #
 # LINK - controls the behaviour of QnetLink (qnlink)
 #
-link_admin_d=''              # these comma-separated list of users can execute scripts, block dongles, reload the gwys.txt
-link_link_unlink_d=''        # if defined, comma-separated list of users that can link and unlink a repeater
+#link_admin_d=''             # these comma-separated list of users can execute scripts, block dongles, reload the gwys.txt
+#link_link_unlink_d=''       # if defined, comma-separated list of users that can link and unlink a repeater
 #link_no_link_unlink_d=''    # if defined, comma-separated list of users that cannot link or unlink, it's a blacklist
                              # if the blacklist is defined (even if it's empty), the link_unlink will not be read
 link_incoming_ip_d='0.0.0.0' # incoming ip address of qnlink, '0.0.0.0' means accepts any connection.
@@ -77,7 +80,7 @@ link_max_dongles_d=5         # maximum number of linked hot-spots
 #
 # GENERIC MODULE - These will be defined for any and all defined modules
 #
-module_x_link_at_start=''  # For example, set to 'REF001CL' to link module to 1-charlie when the module starts.
+#module_x_link_at_start='' # For example, set to 'REF001 C' to link module to 1-charlie when the module starts.
 module_x_inactivity=0      # if no activity for this many minutes unlink reflector. Zero means no timer.
 module_x_callsign=''       # if you operate in a 'restriction mode', use your personal callsign. Usually leave this empty.
 module_x_packet_wait=25    # how many milliseconds to wait on packets in a voicestream
@@ -145,7 +148,7 @@ log_dtmf_d=false  # DTMF debug info
 # The following settings do not affect your ability to use dplus linking to XRF or XLX reflectors!
 # You must be registered on the DPlus system, see www.dstargateway.org, otherwise authorization will fail,
 # even if QnetLink reports a successful authorization.
-dplus_ref_login_d=''        # for logging into REF reflectors, if undefined or empty, ircddb_login will be used
+dplus_ref_login_d=''        # for logging into REF reflectors, if empty, ircddb_login will be used
 dplus_authorize_d=false     # set to true if you want to use the closed-source DPlus reflectors and/or repeaters
 dplus_use_reflectors_d=true # set to false if you are not going to link to DPlus reflectors
 dplus_use_repeaters_d=true  # set to false if you are not going to link to DPlus repeaters

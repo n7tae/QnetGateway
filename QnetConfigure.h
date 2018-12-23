@@ -31,6 +31,7 @@ public:
     bool GetValue(const std::string &path, const std::string &mod, double      &value, const double min, const double max);
 	bool GetValue(const std::string &path, const std::string &mod, int         &value, const int    min, const int    max);
 	bool GetValue(const std::string &path, const std::string &mod, std::string &value, const int    min, const int    max);
+	bool KeyExists(const std::string &key);
 
 private:
 	std::map<std::string, std::string> defaults;
