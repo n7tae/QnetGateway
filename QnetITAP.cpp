@@ -43,6 +43,7 @@
 #include "versions.h"
 #include "QnetITAP.h"
 #include "QnetTypeDefs.h"
+#include "QnetConfigure.h"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -403,9 +404,9 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 		////////////////// Terminal or Access /////////////////////////
 		if (0 == memcmp(itap.header.r1, "DIRECT", 6)) {
 			// Terminal Mode!
-			memcpy(dstr.vpkt.hdr.r1, RPTR, 7);	// build r1
+			memcpy(dstr.vpkt.hdr.r1, RPTR.c_str(), 7);	// build r1
 			dstr.vpkt.hdr.r1[7] = RPTR_MOD;		// with module
-			memcpy(dstr.vpkt.hdr.r2, RPTR, 7);	// build r2
+			memcpy(dstr.vpkt.hdr.r2, RPTR.c_str(), 7);	// build r2
 			dstr.vpkt.hdr.r2[7] = 'G';			// with gateway
 			if (' '==itap.header.ur[2] && ' '!=itap.header.ur[0]) {
 				// it's a command because it has as space in the 3rd position, we have to right-justify it!
@@ -452,74 +453,21 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 	return false;
 }
 
-bool CQnetITAP::GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path, value);
-	return true;
-}
-
-bool CQnetITAP::GetValue(const Config &cfg, const char *path, double &value, const double min, const double max, const double default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path, value);
-	return true;
-}
-
-bool CQnetITAP::GetValue(const Config &cfg, const char *path, bool &value, const bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-bool CQnetITAP::GetValue(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s value '%s' is wrong size\n", path, value.c_str());
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
-}
-
 // process configuration file and return true if there was a problem
 bool CQnetITAP::ReadConfig(const char *cfgFile)
 {
-	Config cfg;
-
+	CQnetConfigure cfg;
 	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	}
-	catch(const FileIOException &fioex) {
-		fprintf(stderr, "Can't read %s\n", cfgFile);
+	if (cfg.Initialize(cfgFile))
 		return true;
-	}
-	catch(const ParseException &pex) {
-		fprintf(stderr, "Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return true;
-	}
 
-	std::string value;
-	std::string itap_path("module.");
+	const std::string estr;	// an empty string
+	std::string type;
+	std::string itap_path("module_");
 	itap_path.append(1, 'a' + assigned_module);
-	if (cfg.lookupValue(itap_path + ".type", value)) {
-		if (value.compare("itap")) {
+	if (cfg.KeyExists(itap_path)) {
+		cfg.GetValue(itap_path, estr, type, 1, 16);
+		if (type.compare("itap")) {
 			fprintf(stderr, "assigned module %c is not 'itap'\n", 'a' + assigned_module);
 			return true;
 		}
@@ -529,55 +477,34 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	}
 	RPTR_MOD = 'A' + assigned_module;
 
-	char unixsockname[16];
-	snprintf(unixsockname, 16, "gate2modem%d", assigned_module);
-	GetValue(cfg, std::string(itap_path+".togateway").c_str(), modem2gate, 1, FILENAME_MAX, unixsockname);
-	snprintf(unixsockname, 16, "modem2gate%d", assigned_module);
-	GetValue(cfg, std::string(itap_path+".fromgateway").c_str(), gate2modem, 1, FILENAME_MAX, unixsockname);
+	cfg.GetValue(itap_path+"_device", type, ITAP_DEVICE, 7, FILENAME_MAX);
+	cfg.GetValue(itap_path+"_gate2modem"+std::to_string(assigned_module), type, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue(itap_path+"_modem2gate"+std::to_string(assigned_module), type, modem2gate, 1, FILENAME_MAX);
 
-	if (cfg.lookupValue(std::string(itap_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
+	itap_path.append("_callsign");
+	if (cfg.KeyExists(itap_path)) {
+		if (cfg.GetValue(itap_path, type, RPTR, 3, 6))
 			return true;
-		} else {
-			for (int i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
-			}
-			value.resize(CALL_SIZE, ' ');
-		}
-		strcpy(RPTR, value.c_str());
 	} else {
-		printf("%s.login is not defined!\n", itap_path.c_str());
+		itap_path.assign("ircddb_login");
+		if (cfg.KeyExists(itap_path)) {
+			if (cfg.GetValue(itap_path, estr, RPTR, 3, 6))
+				return true;
+		}
+	}
+	int l = RPTR.length();
+	if (l<3 || l>6) {
+		printf("Call '%s' is invalid length!\n", RPTR.c_str());
 		return true;
+	} else {
+		for (int i=0; i<l; i++) {
+			if (islower(RPTR[i]))
+				RPTR[i] = toupper(RPTR[i]);
+		}
+		RPTR.resize(CALL_SIZE, ' ');
 	}
 
-	if (cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
-			return true;
-		} else {
-			for (int i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
-			}
-			value.resize(CALL_SIZE, ' ');
-		}
-		strcpy(OWNER, value.c_str());
-		printf("ircddb.login = [%s]\n", OWNER);
-	} else {
-		printf("ircddb.login is not defined!\n");
-		return true;
-	}
-
-	if (GetValue(cfg, std::string(itap_path+".device").c_str(), value, 7, 25, "/dev/ttyUSB0")) {
-		ITAP_DEVICE = value;
-	} else
-		return true;
-
-	GetValue(cfg, "log.qso", log_qso, false);
+	cfg.GetValue("log_qso", estr, log_qso);
 
 	return false;
 }

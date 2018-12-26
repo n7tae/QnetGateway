@@ -379,7 +379,7 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	cfg.GetValue(mmdvm_path+"+gateway_port", type, i, 10000, 65535);
 	MMDVM_OUT_PORT = (unsigned short)i;
 
-	cfg.GetValue("log.qso", estr, log_qso);
+	cfg.GetValue("log_qso", estr, log_qso);
 
 	return false;
 }
