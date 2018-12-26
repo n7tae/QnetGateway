@@ -25,7 +25,6 @@ class CQnetConfigure {
 public:
 	CQnetConfigure();
 	virtual ~CQnetConfigure();
-	//virtual bool ReadCfgFile() = 0;
 	bool Initialize(const char *configfile);
     bool GetValue(const std::string &path, const std::string &mod, bool        &value);
     bool GetValue(const std::string &path, const std::string &mod, double      &value, const double min, const double max);

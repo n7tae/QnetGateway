@@ -35,6 +35,7 @@
 #include "versions.h"
 #include "QnetRelay.h"
 #include "QnetTypeDefs.h"
+#include "QnetConfigure.h"
 
 std::atomic<bool> CQnetRelay::keep_running(true);
 
@@ -345,75 +346,22 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 	return false;
 }
 
-bool CQnetRelay::GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path, value);
-	return true;
-}
-
-bool CQnetRelay::GetValue(const Config &cfg, const char *path, double &value, const double min, const double max, const double default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path, value);
-	return true;
-}
-
-bool CQnetRelay::GetValue(const Config &cfg, const char *path, bool &value, const bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-bool CQnetRelay::GetValue(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s value '%s' is wrong size\n", path, value.c_str());
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
-}
-
 // process configuration file and return true if there was a problem
 bool CQnetRelay::ReadConfig(const char *cfgFile)
 {
-	Config cfg;
-
+	CQnetConfigure cfg;
 	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	}
-	catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
+	if (cfg.Initialize(cfgFile))
 		return true;
-	}
-	catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return true;
-	}
 
-	std::string value;
-	std::string mmdvm_path("module.");
+	const std::string estr;	// an empty GetDefaultString
+	std::string type;
+	std::string mmdvm_path("module_");
 	mmdvm_path.append(1, 'a' + assigned_module);
-	if (cfg.lookupValue(mmdvm_path + ".type", value)) {
-		if (value.compare("mmdvm")) {
-			fprintf(stderr, "assigned module is not 'mmdvm' type!\n");
+	if (cfg.KeyExists(mmdvm_path)) {
+		cfg.GetValue(mmdvm_path, estr, type, 1, 16);
+		if (type.compare("mmdvm")) {
+			fprintf(stderr, "%s = %s is not 'mmdvm' type!\n", mmdvm_path.c_str(), type.c_str());
 			return true;
 		}
 	} else {
@@ -421,63 +369,17 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 		return true;
 	}
 	RPTR_MOD = 'A' + assigned_module;
-	char unixsockname[16];
-	snprintf(unixsockname, 16, "gate2module%d", assigned_module);
-	GetValue(cfg, std::string(mmdvm_path+".fromgateway").c_str(), gate2modem, 1, FILENAME_MAX, unixsockname);
-	snprintf(unixsockname, 16, "module2gate%d", assigned_module);
-	GetValue(cfg, std::string(mmdvm_path+",togateway").c_str(), modem2gate, 1, FILENAME_MAX, unixsockname);
 
-	if (cfg.lookupValue(std::string(mmdvm_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			fprintf(stderr, "Call '%s' is invalid length!\n", value.c_str());
-			return true;
-		} else {
-			for (int i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
-			}
-			value.resize(CALL_SIZE, ' ');
-		}
-		strcpy(RPTR, value.c_str());
-	} else {
-		fprintf(stderr, "%s.login is not defined!\n", mmdvm_path.c_str());
-		return true;
-	}
-
-	if (cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			fprintf(stderr, "Call '%s' is invalid length!\n", value.c_str());
-			return true;
-		} else {
-			for (int i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
-			}
-			value.resize(CALL_SIZE, ' ');
-		}
-		strcpy(OWNER, value.c_str());
-		printf("ircddb.login = [%s]\n", OWNER);
-	} else {
-		printf("ircddb.login is not defined!\n");
-		return true;
-	}
-
-	if (GetValue(cfg, std::string(mmdvm_path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0")) {
-		MMDVM_IP = value;
-	} else
-		return true;
-
+	cfg.GetValue(mmdvm_path+"_gate2modem"+std::to_string(assigned_module), type, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue(mmdvm_path+"_modem2gate"+std::to_string(assigned_module), type, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue(mmdvm_path+"_internal_ip", type, MMDVM_IP, 7, IP_SIZE);
 	int i;
-
-	GetValue(cfg, "mmdvm.local_port", i, 10000, 65535, 20011);
+	cfg.GetValue(mmdvm_path+"_local_port", type, i, 10000, 65535);
 	MMDVM_IN_PORT = (unsigned short)i;
-
-	GetValue(cfg, "mmdvm.gateway_port", i, 10000, 65535, 20010);
+	cfg.GetValue(mmdvm_path+"+gateway_port", type, i, 10000, 65535);
 	MMDVM_OUT_PORT = (unsigned short)i;
 
-	GetValue(cfg, "log.qso", log_qso, false);
+	cfg.GetValue("log.qso", estr, log_qso);
 
 	return false;
 }

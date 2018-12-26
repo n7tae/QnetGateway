@@ -20,12 +20,9 @@
 
 #include <atomic>
 #include <string>
-#include <libconfig.h++>
 #include <netinet/in.h>
 
 #include "UnixDgramSocket.h"
-
-using namespace libconfig;
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -52,10 +49,6 @@ private:
 
 	// read configuration file
 	bool ReadConfig(const char *);
-	bool GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value);
-	bool GetValue(const Config &cfg, const char *path, double &value, const double min, const double max, const double default_value);
-	bool GetValue(const Config &cfg, const char *path, bool &value, const bool default_value);
-	bool GetValue(const Config &cfg, const char *path, std::string &value, const int min, const int max, const char *default_value);
 
 	// Unix sockets
 	int assigned_module;
@@ -65,8 +58,6 @@ private:
 
 	// config data
 	char RPTR_MOD;
-	char RPTR[CALL_SIZE + 1];
-	char OWNER[CALL_SIZE + 1];
 	std::string MMDVM_IP;
 	unsigned short MMDVM_IN_PORT, MMDVM_OUT_PORT;
 	bool log_qso;
