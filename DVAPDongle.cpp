@@ -36,7 +36,7 @@ CDVAPDongle::~CDVAPDongle()
 {
 }
 
-bool CDVAPDongle::Initialize(char *serialno, int frequency, int offset, int power, int squelch)
+bool CDVAPDongle::Initialize(const char *serialno, const int frequency, const int offset, int const power, const int squelch)
 {
 	bool ok = false;
 	char device[128];
@@ -276,7 +276,7 @@ bool CDVAPDongle::syncit()
 	return false;
 }
 
-bool CDVAPDongle::get_ser(char *dvp, char *dvap_serial_number)
+bool CDVAPDongle::get_ser(const char *dvp, const char *dvap_serial_number)
 {
 	unsigned cnt = 0;
 	REPLY_TYPE reply;

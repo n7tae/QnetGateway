@@ -45,17 +45,15 @@
 #include <thread>
 #include <chrono>
 #include <string>
-#include <libconfig.h++>
-using namespace libconfig;
 
 #include "DVAPDongle.h"
 #include "QnetTypeDefs.h"
 #include "Random.h"
 #include "UnixDgramSocket.h"
+#include "QnetConfigure.h"
 
 #define VERSION DVAP_VERSION
 #define CALL_SIZE 8
-#define RPTR_SIZE 8
 #define IP_SIZE 15
 
 typedef struct dvap_ack_arg_tag {
@@ -71,10 +69,10 @@ static std::string modem2gate, gate2modem;
 static CUnixDgramReader Gate2Modem;
 static CUnixDgramWriter Modem2Gate;
 /* Default configuration data */
-static char RPTR[RPTR_SIZE + 1];
-static char OWNER[RPTR_SIZE + 1];
+static std::string RPTR;
+static std::string OWNER;
 static char RPTR_MOD;
-static char DVP_SERIAL[64]; /* APxxxxxx */
+static std::string DVP_SERIAL; /* APxxxxxx */
 static int DVP_FREQ; /* between 144000000 and 148000000 */
 static int DVP_PWR; /* between  -12 and 10 */
 static int DVP_SQL; /* between  -128 and -45 */
@@ -98,7 +96,7 @@ static unsigned int space = 0;
 static unsigned int aseed = 0;
 
 /* helper routines */
-static int read_config(const char *cfgFile);
+static bool read_config(const char *cfgFile);
 static void sig_catch(int signum);
 static int open_sock();
 static void readFrom20000();
@@ -157,152 +155,68 @@ static void sig_catch(int signum)
 	exit(0);
 }
 
-static bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path, value);
-	return true;
-}
-
-static bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path, value);
-	return true;
-}
-
-static bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-static bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s is invalid\n", path);
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
-}
-
 /* process configuration file */
-static int read_config(const char *cfgFile)
+static bool read_config(const char *cfgFile)
 {
-	Config cfg;
+	CQnetConfigure cfg;
 
 	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	}
-	catch(const FileIOException &fioex) {
-		fprintf(stderr, "Can't read %s\n", cfgFile);
-		return 1;
-	}
-	catch(const ParseException &pex) {
-		fprintf(stderr, "Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return 1;
-	}
+	if (cfg.Initialize(cfgFile))
+		return true;
 
-	std::string value;
-	std::string dvap_path("module.");
+	const std::string estr; // an empty string
+	std::string type;
+	std::string dvap_path("module_");
 	dvap_path.append(1, 'a' + assigned_module);
-	if (cfg.lookupValue(dvap_path + ".type", value)) {
-		if (value.compare("dvap")) {
+	if (cfg.KeyExists(dvap_path)) {
+		cfg.GetValue(dvap_path, estr, type, 1, 16);
+		if (type.compare("dvap")) {
 			fprintf(stderr, "assigned module '%c' type is not 'dvap'\n", 'a' + assigned_module);
-			return 1;
+			return true;
 		}
 	} else {
 		fprintf(stderr, "%s is not defined!\n", dvap_path.c_str());
-		return 1;
+		return true;
 	}
 	RPTR_MOD = 'A' + assigned_module;
-	char unixsockname[16];
-	snprintf(unixsockname, 16, "gate2modem%d", assigned_module);
-	get_value(cfg, std::string(dvap_path+".fromgateway").c_str(), gate2modem, 1, FILENAME_MAX, unixsockname);
-	snprintf(unixsockname, 16, "modem2gate%d", assigned_module);
-	get_value(cfg, std::string(dvap_path+".togateway").c_str(), modem2gate, 1, FILENAME_MAX, unixsockname);
-
-	if (cfg.lookupValue(std::string(dvap_path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
-			return 1;
-		} else {
-			for (int i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
-			}
-			value.resize(CALL_SIZE, ' ');
-		}
-		strcpy(RPTR, value.c_str());
-		printf("%s.login = [%s]\n", dvap_path.c_str(), RPTR);
-	} else {
-		printf("%s.login is not defined!\n", dvap_path.c_str());
-		return 1;
+	cfg.GetValue(dvap_path+"_gate2modem"+std::to_string(assigned_module), type, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue(dvap_path+"_modem2gate"+std::to_string(assigned_module), type, modem2gate, 1, FILENAME_MAX);
+	if (cfg.KeyExists(dvap_path+"_callsign")) {
+		if (cfg.GetValue(dvap_path+"_callsign", type, RPTR, 3, 6))
+			return true;
 	}
+	if (cfg.GetValue("ircddb_login", estr, OWNER, 3, 6))
+		return true;
+	if (RPTR.empty())
+		RPTR.assign(OWNER);
 
-	if (cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
-			return 1;
-		} else {
-			for (int i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
-			}
-			value.resize(CALL_SIZE, ' ');
-		}
-		strcpy(OWNER, value.c_str());
-		printf("ircddb.login = [%s]\n", OWNER);
-	} else {
-		printf("ircddb.login is not defined!\n");
-		return 1;
+	for (unsigned long i=0; i<RPTR.length(); i++) {
+		if (islower(RPTR.at(i)))
+			RPTR.at(i) = toupper(RPTR.at(i));
 	}
-
-	if (get_value(cfg, std::string(dvap_path+".serial_number").c_str(), value, 8, 10, "APXXXXXX"))
-		strcpy(DVP_SERIAL, value.c_str());
-	else {
-		printf("%s.serial_number '%s' is invalid!\n", dvap_path.c_str(), value.c_str());
-		return 1;
+	for (unsigned long i=0; i<OWNER.length(); i++) {
+		if (islower(OWNER.at(i)))
+			OWNER.at(i) = toupper(OWNER.at(i));
 	}
+	RPTR.resize(CALL_SIZE, ' ');
+	OWNER.resize(CALL_SIZE, ' ');
 
+	cfg.GetValue(dvap_path+"_serial_number", type, DVP_SERIAL, 8, 10);
 	double f;
-	get_value(cfg, std::string(dvap_path+".frequency").c_str(), f, 100.0, 1400.0, 145.5);
+	cfg.GetValue(dvap_path+"_frequency", type, f, 100.0, 1400.0);
 	DVP_FREQ = (int)(1.0e6*f);
+	cfg.GetValue(dvap_path+"_power", type, DVP_PWR, -12, 10);
+	cfg.GetValue(dvap_path+"_squelch", type, DVP_SQL, -128, -45);
+	cfg.GetValue(dvap_path+"_offset", type, DVP_OFF, -2000, 2000);
+	cfg.GetValue(dvap_path+"_packet_wait", type, WAIT_FOR_PACKETS, 6, 100);
+	cfg.GetValue(dvap_path+"_acknowledge", type, RPTR_ACK);
 
-	get_value(cfg, std::string(dvap_path+".power").c_str(), DVP_PWR, -12, 10, 10);
+	dvap_path.assign("timing_");
+	cfg.GetValue(dvap_path+"timeout_remote_g2", estr, REMOTE_TIMEOUT, 1, 10);
+	dvap_path.append("play_");
+	cfg.GetValue(dvap_path+"delay", estr, DELAY_BETWEEN, 9, 25);
+	cfg.GetValue(dvap_path+"wait", estr, DELAY_BEFORE, 1, 10);
 
-	get_value(cfg, std::string(dvap_path+".squelch").c_str(), DVP_SQL, -128, -45, -100);
-
-	get_value(cfg, std::string(dvap_path+".offset").c_str(), DVP_OFF, -2000, 2000, 0.0);
-
-	get_value(cfg, std::string(dvap_path+".packet_wait").c_str(), WAIT_FOR_PACKETS, 6, 100, 25);
-
-	get_value(cfg, "timing.timeout.remote_g2", REMOTE_TIMEOUT, 1, 10, 2);
-
-	get_value(cfg, "timing.play.delay", DELAY_BETWEEN, 9, 25, 19);
-
-	get_value(cfg, "timing.play.wait", DELAY_BEFORE, 1, 10, 2);
-
-	get_value(cfg, std::string(dvap_path+".acknowledge").c_str(), RPTR_ACK, false);
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000) / WAIT_FOR_PACKETS;
 	printf("Max loops = %d\n", inactiveMax);
@@ -310,7 +224,7 @@ static int read_config(const char *cfgFile)
 	/* convert to Microseconds */
 	WAIT_FOR_PACKETS *= 1000;
 
-	return 0;
+	return false;
 }
 
 static int open_sock()
@@ -368,17 +282,17 @@ static void readFrom20000()
 					FD_CLR(fd, &readfd);
 					break;
 				}
-				memcpy(net_buf.vpkt.hdr.r2, OWNER, 7);
+				memcpy(net_buf.vpkt.hdr.r2, OWNER.c_str(), 7);
 				net_buf.vpkt.hdr.r2[7] = 'G';
 
-				if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
+				if (RPTR.compare(OWNER)) {
 					// restriction mode
-					memcpy(net_buf.vpkt.hdr.r1, RPTR, 7);
-					memcpy(net_buf.vpkt.hdr.r2, RPTR, 7);
+					memcpy(net_buf.vpkt.hdr.r1, RPTR.c_str(), 7);
+					memcpy(net_buf.vpkt.hdr.r2, RPTR.c_str(), 7);
 
-					if (memcmp(net_buf.vpkt.hdr.my, OWNER, 7) == 0) {
+					if (memcmp(net_buf.vpkt.hdr.my, OWNER.c_str(), 7) == 0) {
 						/* this is an ACK back */
-						memcpy(net_buf.vpkt.hdr.my, RPTR, 7);
+						memcpy(net_buf.vpkt.hdr.my, RPTR.c_str(), 7);
 					}
 				}
 
@@ -614,13 +528,12 @@ int main(int argc, const char **argv)
 			return 1;
 	}
 
-	rc = read_config(argv[2]);
-	if (rc != 0) {
+	if (read_config(argv[2])) {
 		printf("Failed to process config file %s\n", argv[2]);
 		return 1;
 	}
 
-	if (strlen(RPTR) != 8) {
+	if (RPTR.length() != 8) {
 		printf("Bad RPTR value, length must be exactly 8 bytes\n");
 		return 1;
 	}
@@ -636,10 +549,10 @@ int main(int argc, const char **argv)
 	else if (RPTR_MOD == 'C')
 		SND_TERM_ID = 0x02;
 
-	strcpy(RPTR_and_G, RPTR);
+	strcpy(RPTR_and_G, RPTR.c_str());
 	RPTR_and_G[7] = 'G';
 
-	strcpy(RPTR_and_MOD, RPTR);
+	strcpy(RPTR_and_MOD, RPTR.c_str());
 	RPTR_and_MOD[7] = RPTR_MOD;
 
 	time(&tnow);
@@ -661,7 +574,7 @@ int main(int argc, const char **argv)
 	}
 
 	/* open dvp */
-	if (!dongle.Initialize(DVP_SERIAL, DVP_FREQ, DVP_OFF, DVP_PWR, DVP_SQL))
+	if (!dongle.Initialize(DVP_SERIAL.c_str(), DVP_FREQ, DVP_OFF, DVP_PWR, DVP_SQL))
 		return 1;
 
 	rc = open_sock();
@@ -888,9 +801,9 @@ static void ReadDVAPThread()
 		/* send the S packet if needed */
 		if ((tnow - S_ctrl_msg_time) > 60) {
 			spack.counter = C_COUNTER++;
-			memcpy(spack.spkt.mycall, OWNER, 7);
+			memcpy(spack.spkt.mycall, OWNER.c_str(), 7);
 			spack.spkt.mycall[7] = 'S';
-			memcpy(spack.spkt.rpt, OWNER, 7);
+			memcpy(spack.spkt.rpt, OWNER.c_str(), 7);
 			spack.spkt.rpt[7] = 'S';
 			Modem2Gate.Write(spack.pkt_id, 26);
 			S_ctrl_msg_time = tnow;
@@ -955,7 +868,7 @@ static void ReadDVAPThread()
 				(net_buf.vpkt.hdr.r2[7] == 'B') ||
 				(net_buf.vpkt.hdr.r2[7] == 'C') ||
 				(net_buf.vpkt.hdr.r2[7] == 'G'))
-				memcpy(net_buf.vpkt.hdr.r2, RPTR, 7);
+				memcpy(net_buf.vpkt.hdr.r2, RPTR.c_str(), 7);
 			else
 				memset(net_buf.vpkt.hdr.r2, ' ', 8);
 
@@ -973,9 +886,9 @@ static void ReadDVAPThread()
 			   that means that mycall, rpt1, rpt2 must be equal to RPTR
 			     otherwise we drop the rf data
 			*/
-			if (memcmp(RPTR, OWNER, RPTR_SIZE) != 0) {
-				if (memcmp(net_buf.vpkt.hdr.my, RPTR, RPTR_SIZE) != 0) {
-					printf("mycall=[%.8s], not equal to %s\n", net_buf.vpkt.hdr.my, RPTR);
+			if (RPTR.compare(OWNER)) {
+				if (memcmp(net_buf.vpkt.hdr.my, RPTR.c_str(), CALL_SIZE) != 0) {
+					printf("mycall=[%.8s], not equal to %s\n", net_buf.vpkt.hdr.my, RPTR.c_str());
 					ok = false;
 				}
 			} else if (memcmp(net_buf.vpkt.hdr.my, "        ", 8) == 0) {
@@ -1034,15 +947,15 @@ static void ReadDVAPThread()
 				/* for icom g2 */
 				spack.counter = C_COUNTER++;
 				memcpy(spack.spkt.mycall, net_buf.vpkt.hdr.my, 8);
-				memcpy(spack.spkt.rpt, OWNER, 7);
+				memcpy(spack.spkt.rpt, OWNER.c_str(), 7);
 				spack.spkt.rpt[7] = RPTR_MOD;
 				Modem2Gate.Write(spack.pkt_id, 26);
 
 				// Before we send the data to the local gateway,
 				// set RPT1, RPT2 to be the local gateway
-				memcpy(net_buf.vpkt.hdr.r1, OWNER, 7);
+				memcpy(net_buf.vpkt.hdr.r1, OWNER.c_str(), 7);
 				if (net_buf.vpkt.hdr.r2[7] != ' ')
-					memcpy(net_buf.vpkt.hdr.r2, OWNER, 7);
+					memcpy(net_buf.vpkt.hdr.r2, OWNER.c_str(), 7);
 
 				memcpy(net_buf.pkt_id, "DSTR", 4);
 				net_buf.counter = C_COUNTER++;
