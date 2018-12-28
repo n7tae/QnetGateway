@@ -22,84 +22,28 @@
 #include <stdlib.h>
 
 #include <string>
-#include <libconfig.h++>
-
-
-using namespace libconfig;
+#include "QnetConfigure.h"
 
 bool isamod[3] = { false, false, false };
 std::string announce_dir;
 std::string qnvoice_file;
 
-
-bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path, value);
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path, value);
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s is invalid\n", path);
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
-}
-
 /* process configuration file */
 bool read_config(const char *cfgFile)
 {
-	Config cfg;
+	CQnetConfigure cfg;
 
 	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	} catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
+	if (cfg.Initialize(cfgFile))
 		return true;
-	} catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return true;
-	}
 
-	for (short int m=0; m<3; m++) {
-		std::string path = "module.";
-		path += m + 'a';
+	for (int m=0; m<3; m++) {
+		std::string path("module_");
+		path.append(std::to_string(m));
 		std::string type;
-		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm") &&
-				strcasecmp(type.c_str(), "icom") && strcasecmp(type.c_str(), "itap")) {
+		if (cfg.KeyExists(path)) {
+			cfg.GetValue(path, "", type, 1, 16);
+			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm") && strcasecmp(type.c_str(), "itap")) {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
@@ -107,9 +51,9 @@ bool read_config(const char *cfgFile)
 		}
 	}
 
-	get_value(cfg, "file.announce_dir", announce_dir, 2, FILENAME_MAX, "/usr/local/etc");
-
-	get_value(cfg, "file.qnvoice_file", qnvoice_file, 2, FILENAME_MAX, "/tmp/qnvoice.txt");
+	std::string path("file_");
+	cfg.GetValue(path+"announce_dir", "", announce_dir, 2, FILENAME_MAX);
+	cfg.GetValue(path+"qnvoice_file", "", qnvoice_file, 2, FILENAME_MAX);
 
 	return false;
 }
@@ -134,13 +78,13 @@ int main(int argc, char *argv[])
 		printf("        <txtMsg>     is an up to 20-character text message\n");
 		return 0;
 	}
+	char module = argv[1][0];
 
 	std::string cfgfile(CFG_DIR);
 	cfgfile += "/qn.cfg";
 	if (read_config(cfgfile.c_str()))
 		return 1;
 
-	char module = argv[1][0];
 	if (islower(module))
 		module = toupper(module);
 	if ((module != 'A') && (module != 'B') && (module != 'C')) {

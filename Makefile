@@ -37,7 +37,7 @@ SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
-ALL_PROGRAMS=qnigateway qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr qnitap
+ALL_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr qnitap
 MDV_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay
 DVP_PROGRAMS=qngateway qnlink qnremote qnvoice qndvap
 DVR_PROGRAMS=qngateway qnlink qnremote qnvoice qndvrptr
@@ -70,8 +70,8 @@ qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o UnixDgramSocket.o QnetConfigure.o
 qnremote : QnetRemote.o Random.o UnixDgramSocket.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o qnremote QnetRemote.o Random.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS)
 
-qnvoice : QnetVoice.o Random.o
-	g++ $(CPPFLAGS) -o qnvoice QnetVoice.o Random.o $(LDFLAGS)
+qnvoice : QnetVoice.o Random.o QnetConfigure.o
+	g++ $(CPPFLAGS) -o qnvoice QnetVoice.o Random.o QnetConfigure.o $(LDFLAGS)
 
 %.o : %.cpp
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
