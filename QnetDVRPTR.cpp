@@ -23,17 +23,14 @@
 #include <sys/file.h>
 #include "versions.h"
 #include <string>
-#include <libconfig.h++>
 
 #include "Random.h"
 #include "UnixDgramSocket.h"
-
-using namespace libconfig;
+#include "QnetConfigure.h"
 
 #define VERSION DVRPTR_VERSION
 #define BAUD B115200
 #define CALL_SIZE 8
-#define RPTR_SIZE 8
 #define IP_SIZE 15
 
 /*** BER stuff ***/
@@ -60,7 +57,7 @@ static unsigned streamid[2] = {0x00, 0x00};
 static unsigned char start_Header[8]= {0xD0,0x03,0x00,0x16,0x01,0x00,0x00,0x00};
 static unsigned char ptt_off[8]= {0xD0,0x03,0x00,0x1A,0x01,0xff,0x00,0x00};
 
-static int read_config(const char *cfgFile);
+static bool read_config(const char *cfgFile);
 static void readFrom20000();
 static bool check_serial();
 
@@ -87,22 +84,22 @@ static std::string gate2modem, modem2gate;
 CUnixDgramWriter Modem2Gate;
 CUnixDgramReader Gate2Modem;
 
-static char DVRPTR_SERIAL[16];
-static char DVCALL[RPTR_SIZE + 1] = {"ABCDEF"};
-static char RPTR[RPTR_SIZE + 1] = {"ABCDEF"};
+static std::string DVRPTR_SERIAL;
+static char DVCALL[CALL_SIZE + 1];
+static char RPTR[CALL_SIZE + 1];
 static char DVRPTR_MOD = 'B';
 static int RF_AUDIO_Level = 10;
 static bool DUPLEX = true;
-static long ACK_DELAY = 200000;
+static int ACK_DELAY = 200000;
 static int DELAY_BETWEEN = 20000;
 static bool RPTR_ACK = true;
-static char ENABLE_RF[RPTR_SIZE + 1]  = {"        "};
-static char DISABLE_RF[RPTR_SIZE + 1] = {"        "};
+static char ENABLE_RF[CALL_SIZE + 1];
+static char DISABLE_RF[CALL_SIZE + 1];
 static bool IS_ENABLED = true;
 static bool ok = false;
 static bool RX_Inverse = 0;
 static bool TX_Inverse = 0;
-static int TX_DELAY = 250;  /* in milliseconds */
+static int TX_DELAY;  /* in milliseconds */
 static unsigned char SND_TERM_ID = 0x00;
 static char DVCALL_and_G[9];
 static char DVCALL_and_MOD[9];
@@ -1784,6 +1781,13 @@ static unsigned short crc_tabccitt[256] = {
 	0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 };
 
+static void CleanCall(std::string &callsign) {
+	for (auto it=callsign.begin(); it!=callsign.end(); it++)
+		if (islower(*it))
+			*it = toupper(*it);
+	callsign.resize(CALL_SIZE, ' ');
+}
+
 static void calcPFCS(unsigned char packet[58])//Netzwerk CRC
 {
 	unsigned short crc_dstar_ffff = 0xffff;
@@ -1804,172 +1808,80 @@ static void calcPFCS(unsigned char packet[58])//Netzwerk CRC
 	return;
 }
 
-static bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path, value);
-	return true;
-}
-
-//static bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
-//{
-//	if (cfg.lookupValue(path, value)) {
-//		if (value < min || value > max)
-//			value = default_value;
-//	} else
-//		value = default_value;
-//	printf("%s = [%lg]\n", path, value);
-//	return true;
-//}
-
-static bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-static bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s='%s' is wrong size, must be between %d and %d\n", path, value.c_str(), min, max);
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
-}
-
 /* process configuration file */
-static int read_config(const char *cfgFile)
+static bool read_config(const char *cfgFile)
 {
-	int i;
-	Config cfg;
+	CQnetConfigure cfg;
 
 	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	}
-	catch(const FileIOException &fioex) {
-		fprintf(stderr, "Can't read %s\n", cfgFile);
-		return 1;
-	}
-	catch(const ParseException &pex) {
-		fprintf(stderr, "Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return 1;
-	}
+	if (cfg.Initialize(cfgFile))
+		return true;
 
-	std::string value;
-	std::string path("module.");
+	const std::string estr;	// an empty string
+	std::string type;
+	std::string path("module_");
 	path += ('a' + assigned_module);
-	if (cfg.lookupValue(path + ".type", value)) {
-		if (value.compare("dvrptr")) {
-			fprintf(stderr, "module %c is not type 'dvrptr'\n", 'a' + assigned_module);
-			return 1;
+	if (cfg.KeyExists(path)) {
+		if (cfg.GetValue(path, estr, type, 1, 16) || type.compare("dvrptr")) {
+			fprintf(stderr, "%s = %s is not 'dvrptr'!\n", path.c_str(), type.c_str());
+			return true;
 		}
 	} else {
 		fprintf(stderr, "module %c is not defined\n", 'a' + assigned_module);
 		return 1;
 	}
-	DVRPTR_MOD = 'A' + i;
-	char unixsockname[16];
-	snprintf(unixsockname, 16, "gate2modem%d", assigned_module);
-	get_value(cfg, std::string(path+".fromgateway").c_str(), gate2modem, 1, FILENAME_MAX, unixsockname);
-	snprintf(unixsockname, 16, "modem2gate%d", assigned_module);
-	get_value(cfg, std::string(path+".togateway").c_str(), modem2gate, 1, FILENAME_MAX, unixsockname);
+	DVRPTR_MOD = 'A' + assigned_module;
+	cfg.GetValue(path+"_gate2modem"+std::to_string(assigned_module), type, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue(path+"_modem2gate"+std::to_string(assigned_module), type, modem2gate, 1, FILENAME_MAX);
 
-	if (cfg.lookupValue(std::string(path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
-			return 1;
-		} else {
-			for (i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
-			}
-			value.resize(CALL_SIZE, ' ');
-		}
-		strcpy(RPTR, value.c_str());
-		printf("%s.callsign = [%s]\n", path.c_str(), RPTR);
+	std::string call;
+	if (cfg.GetValue("ircddb_login", type, call, 3, 6))
+		return true;
+
+	CleanCall(call);
+	strncpy(DVCALL, call.c_str(), CALL_SIZE+1);
+
+	if (cfg.KeyExists(path+"_callsign")) {
+		if (cfg.GetValue(path+"_callsign", type, call, 3, 6))
+			return true;
+		CleanCall(call);
+		strncpy(RPTR, call.c_str(), CALL_SIZE+1);
 	} else {
-		printf("%s.callsign is not defined!\n", path.c_str());
-		return 1;
+		strncpy(RPTR, DVCALL, CALL_SIZE+1);
 	}
 
-	if (cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
-			return 1;
-		} else {
-			for (i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
-			}
-			value.resize(CALL_SIZE, ' ');
-		}
-		strcpy(DVCALL, value.c_str());
-		printf("ircddb.login = [%s]\n", DVCALL);
-	} else {
-		printf("ircddb.login is not defined!\n");
-		return 1;
-	}
+	cfg.GetValue(path+"_rf_on", type, call, 0, CALL_SIZE);
+	CleanCall(call);
+	strncpy(ENABLE_RF, call.c_str(), CALL_SIZE+1);
 
-	if (get_value(cfg, std::string(path+".rf_control.on").c_str(), value, 0, CALL_SIZE, "        "))
-		strcpy(ENABLE_RF, value.c_str());
-	else
-		printf("%s.rf_control.on '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
+	cfg.GetValue(path+"_rf_off", type, call, 0, CALL_SIZE);
+	CleanCall(call);
+	strncpy(DISABLE_RF, call.c_str(), CALL_SIZE+1);
 
-	if (get_value(cfg, std::string(path+".rf_control.off").c_str(), value, 0, CALL_SIZE, "        "))
-		strcpy(DISABLE_RF, value.c_str());
-	else
-		printf("%s.rf_control.off '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
+	cfg.GetValue(path+"_serial_number", type, DVRPTR_SERIAL, 11, 11);
 
-	if (cfg.lookupValue("timing.timeout.remote_g2", REMOTE_TIMEOUT)) {
-		REMOTE_TIMEOUT++;
-		if (REMOTE_TIMEOUT < 1)
-			REMOTE_TIMEOUT = 2;
-	} else
-		REMOTE_TIMEOUT = 3;
-	printf("timing.timeout.remote_g2 = [%d]\n", REMOTE_TIMEOUT);
+	cfg.GetValue(path+"_rf_rx_level", type, RF_AUDIO_Level, 1, 100);
 
-	if (get_value(cfg, std::string(path+".serial_number").c_str(), value, 11, 11, "00.00.00.00"))
-		strcpy(DVRPTR_SERIAL, value.c_str());
-	else {
-		printf("%s.serial_number '%s' is invalid!\n", path.c_str(), value.c_str());
-		return 1;
-	}
+	cfg.GetValue(path+"_duplex", type, DUPLEX);
 
-	get_value(cfg, std::string(path+".rf_tx_level").c_str(), RF_AUDIO_Level, 1, 100, 80);
+	cfg.GetValue(path+"_acknowledge", type, RPTR_ACK);
 
-	get_value(cfg, std::string(path+".duplex").c_str(), DUPLEX, false);
+	cfg.GetValue(path+".ack_delay", type, ACK_DELAY, 1, 999);
 
-	get_value(cfg, std::string(path+".acknowledge").c_str(), RPTR_ACK, false);
-
-	get_value(cfg, std::string(path+".ack_delay").c_str(), i, 1, 999, 300);
-	ACK_DELAY = (long)i;
-
-	get_value(cfg, "timing.play.delay", DELAY_BETWEEN, 10, 25, 19);
-	DELAY_BETWEEN *= 1000;
-
-	get_value(cfg, std::string(path+".tx_delay").c_str(), TX_DELAY, 0, 6000, 250);
+	cfg.GetValue(path+"_tx_delay", type, TX_DELAY, 0, 6000);
 	Modem_Init2[8] = TX_DELAY & 0xFF;
 	Modem_Init2[9] = TX_DELAY >> 8;
 
-	get_value(cfg, std::string(path+".rqst_count").c_str(), RQST_COUNT, 6, 20, 10);
+	cfg.GetValue(path+"_rqst_count", type, RQST_COUNT, 6, 20);
 
-	get_value(cfg, std::string(path+".inverse.rx").c_str(), RX_Inverse, true);
-	get_value(cfg, std::string(path+".inverse.tx").c_str(), TX_Inverse, true);
+	cfg.GetValue(path+"_inverse_rx", type, RX_Inverse);
+	cfg.GetValue(path+"_inverse_tx", type, TX_Inverse);
+
+	path.assign("timing_");
+	cfg.GetValue(path+"timeout_remote_g2", estr, REMOTE_TIMEOUT, 1, 10);
+
+	cfg.GetValue(path+"_play_delay", estr, DELAY_BETWEEN, 10, 25);
+	DELAY_BETWEEN *= 1000;
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000000) / 400;
 	printf("... computed max number of loops %d, each loop is 400 microseconds\n", inactiveMax);
@@ -2079,7 +1991,7 @@ static void send_ack(char *a_call, float ber)
 	memcpy(Send_Modem_Header + 35, DVCALL_and_MOD, 8);
 	memcpy(Send_Modem_Header + 43, "RPTR", 4);
 
-	if (memcmp(RPTR, DVCALL, RPTR_SIZE) != 0) {
+	if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
 		memcpy(Send_Modem_Header + 11, RPTR, 7);
 		memcpy(Send_Modem_Header + 19, RPTR, 7);
 
@@ -2248,7 +2160,7 @@ static void readFrom20000()
 				}
 				memcpy(recv_buf.rf_hdr.rpt1, DVCALL_and_G, 8);
 
-				if (memcmp(RPTR, DVCALL, RPTR_SIZE) != 0) {
+				if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
 					memcpy(recv_buf.rf_hdr.rpt1, RPTR, 7);
 					memcpy(recv_buf.rf_hdr.rpt2, RPTR, 7);
 
@@ -2515,7 +2427,7 @@ bool check_serial()
 				puffer[1] = 0x00;
 				sprintf(temp_dvrptr_serial, "%02X.%02X.%02X.%02X", puffer[4], puffer[5], puffer[6], puffer[7]);
 				printf("Device %s has serial=[%s]\n", dvrptr_device, temp_dvrptr_serial);
-				if (strcmp(temp_dvrptr_serial, DVRPTR_SERIAL) == 0) {
+				if (strcmp(temp_dvrptr_serial, DVRPTR_SERIAL.c_str()) == 0) {
 					printf("Device %s serial number matches DVRPTR_SERIAL in dvrptr.cfg\n", dvrptr_device);
 					match = true;
 				}
@@ -2550,7 +2462,6 @@ int main(int argc, const char **argv)
 	int InitCount = 1;
 	short seq_no = 0;
 	unsigned char puffer[200];
-	int rc;
 	char Temp_Text[200];
 	time_t last_RF_time = 0;
 	time_t tNow = 0;
@@ -2588,8 +2499,7 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
-	rc = read_config(argv[2]);
-	if (rc != 0) {
+	if (read_config(argv[2])) {
 		fprintf(stderr, "Failed to process config file %s\n", argv[2]);
 		return 1;
 	}
@@ -2806,8 +2716,8 @@ int main(int argc, const char **argv)
 					   that means that mycall, rpt1, rpt2 must be equal to RPTR
 					   otherwise we drop the rf data
 					*/
-					if (memcmp(RPTR, DVCALL, RPTR_SIZE) != 0) {
-						if (memcmp(myCall, RPTR, RPTR_SIZE) != 0) {
+					if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
+						if (memcmp(myCall, RPTR, CALL_SIZE) != 0) {
 							printf("mycall=[%.8s], not equal to %s\n", myCall, RPTR);
 							ok = false;
 						}
