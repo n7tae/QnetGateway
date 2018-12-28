@@ -114,7 +114,7 @@ mmdvm_local_port=20011      # which port will MMDVMHost be sending on
 #
 # ITAP - Special parameters when: module_x='itap'
 #
-device='/dev/ttyUSB0' # where the serial-to-USB cable show up
+itap_device='/dev/ttyUSB0' # where the serial-to-USB cable show up
 
 ##########################################################################################################################
 #
