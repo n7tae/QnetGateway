@@ -38,40 +38,37 @@ OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
 ALL_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr qnitap
-MDV_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay
-DVP_PROGRAMS=qngateway qnlink qnremote qnvoice qndvap
-DVR_PROGRAMS=qngateway qnlink qnremote qnvoice qndvrptr
-TAP_PROGRAMS=qngateway qnlink qnremote qnvoice qnitap
+BASE_PROGRAMS=qngateway qnlink qnremote qnvoice
 
 all    : $(ALL_PROGRAMS)
-mmdvm  : $(MDV_PROGRAMS)
-dvap   : $(DVP_PROGRAMS)
-dvrptr : $(DVR_PROGRAMS)
-itap   : $(TAP_PROGRAMS)
+relay  : qnrelay
+dvap   : qndvap
+dvrptr : qndvrptr
+itap   : qnitap
 
-qngateway : $(IRCOBJS) QnetGateway.o aprs.o UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o qngateway QnetGateway.o aprs.o UnixDgramSocket.o QnetConfigure.o $(IRCOBJS) $(LDFLAGS) -pthread
+qngateway : QnetGateway.o aprs.o UnixDgramSocket.o QnetConfigure.o $(IRCOBJS)
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
 qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o qnlink QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS) -pthread
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
 qnrelay : QnetRelay.o UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o qnrelay QnetRelay.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS)
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
 qnitap : QnetITAP.o Random.o UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o qnitap QnetITAP.o Random.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS)
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qndvap : QnetDVAP.o DVAPDongle.o Random.o $(DSTROBJS) UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o qndvap QnetDVAP.o DVAPDongle.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS) $(LDFLAGS) -pthread
+qndvap : QnetDVAP.o DVAPDongle.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
-qndvrptr : QnetDVRPTR.o $(DSTROBJS) Random.o UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o qndvrptr QnetDVRPTR.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS) $(LDFLAGS)
+qndvrptr : QnetDVRPTR.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
 qnremote : QnetRemote.o Random.o UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o qnremote QnetRemote.o Random.o UnixDgramSocket.o QnetConfigure.o $(LDFLAGS)
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
 qnvoice : QnetVoice.o Random.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o qnvoice QnetVoice.o Random.o QnetConfigure.o $(LDFLAGS)
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.o : %.cpp
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
@@ -83,11 +80,12 @@ clean:
 
 -include $(DEPS)
 
-install : $(MDV_PROGRAMS) gwys.txt qn.cfg
+installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
 	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
+	/bin/cp -f defaults $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
@@ -101,106 +99,39 @@ install : $(MDV_PROGRAMS) gwys.txt qn.cfg
 	systemctl enable qnlink.service
 	systemctl daemon-reload
 	systemctl start qnlink.service
+
+installrelay : qnrelay
 	######### QnetRelay #########
-	/bin/cp -f qnrelay $(BINDIR)
-	/bin/cp -f system/qnrelay.service $(SYSDIR)
-	systemctl enable qnrelay.service
+	/bin/ln -f qnrelay $(BINDIR)/qnrelay$(MODULE)
+	/bin/cp -f system/qnrelay$(MODULE).service $(SYSDIR)
+	systemctl enable qnrelay$(MODULE).service
 	systemctl daemon-reload
-	systemctl start qnrelay.service
+	systemctl start qnrelay$(MODULE).service
+	######### MMDVMHost #########
 
-installitap : $(TAP_PROGRAMS) gwys.txt qn.cfg
-	######### QnetGateway #########
-	/bin/cp -f qngateway $(BINDIR)
-	/bin/cp -f qnremote qnvoice $(BINDIR)
-	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
-	/bin/cp -f system/qngateway.service $(SYSDIR)
-	systemctl enable qngateway.service
-	systemctl daemon-reload
-	systemctl start qngateway.service
-	######### QnetLink #########
-	/bin/cp -f qnlink $(BINDIR)
-	/bin/cp -f announce/*.dat $(CFGDIR)
-	/bin/ln -s $(shell pwd)/gwys.txt $(CFGDIR)
-	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f system/qnlink.service $(SYSDIR)
-	systemctl enable qnlink.service
-	systemctl daemon-reload
-	systemctl start qnlink.service
+installitap : qnitap
 	######### QnetITAP #########
-	/bin/cp -f qnitap $(BINDIR)
-	/bin/cp -f system/qnitap.service $(SYSDIR)
-	systemctl enable qnitap.service
+	/bin/ln -f qnitap $(BINDIR)/qnitap$(MODULE)
+	/bin/cp -f system/qnitap$(MODULE).service $(SYSDIR)
+	systemctl enable qnitap$(MODULE).service
 	systemctl daemon-reload
-	systemctl start qnitap.service
+	systemctl start qnitap$(MODULE).service
 
-installicom : $(ICM_PROGRAMS) gwys.txt qn.cfg
-	######### QnetGateway #########
-	/bin/cp -f qnicomgateway $(BINDIR)
-	/bin/cp -f qnremote qnvoice $(BINDIR)
-	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
-	/bin/cp -f system/qnigateway.service $(SYSDIR)
-	systemctl enable qnigateway.service
-	systemctl daemon-reload
-	systemctl start qnigateway.service
-	######### QnetLink #########
-	/bin/cp -f qnlink $(BINDIR)
-	/bin/cp -f announce/*.dat $(CFGDIR)
-	/bin/ln -s $(shell pwd)/gwys.txt $(CFGDIR)
-	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f system/qnlink.service $(SYSDIR)
-	systemctl enable qnlink.service
-	systemctl daemon-reload
-	systemctl start qnlink.service
-
-installdvap : $(DVP_PROGRAMS) gwys.txt qn.cfg
-	######### QnetGateway #########
-	/bin/cp -f qngateway $(BINDIR)
-	/bin/cp -f qnremote qnvoice $(BINDIR)
-	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
-	/bin/cp -f system/qngateway.service $(SYSDIR)
-	systemctl enable qngateway.service
-	systemctl daemon-reload
-	systemctl start qngateway.service
-	######### QnetLink #########
-	/bin/cp -f qnlink $(BINDIR)
-	/bin/cp -f announce/*.dat $(CFGDIR)
-	/bin/ln -s $(shell pwd)/gwys.txt $(CFGDIR)
-	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f system/qnlink.service $(SYSDIR)
-	systemctl enable qnlink.service
-	systemctl daemon-reload
-	systemctl start qnlink.service
+installdvap : qndvap
 	######### QnetDVAP #########
-	/bin/cp -f qndvap $(BINDIR)
-	/bin/cp -f system/qndvap.service $(SYSDIR)
-	systemctl enable qndvap.service
+	/bin/ln -f qndvap $(BINDIR)/qndvap$(MODULE)
+	/bin/cp -f system/qndvap$(MODULE).service $(SYSDIR)
+	systemctl enable qndvap$(MODULE).service
 	systemctl daemon-reload
-	systemctl start qndvap.service
+	systemctl start qndvap$(MODULE).service
 
-installdvrptr : $(DVR_PROGRAMS) gwys.txt qn.cfg
-	######### QnetGateway #########
-	/bin/cp -f qngateway $(BINDIR)
-	/bin/cp -f qnremote qnvoice $(BINDIR)
-	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
-	/bin/cp -f system/qngateway.service $(SYSDIR)
-	systemctl enable qngateway.service
-	systemctl daemon-reload
-	systemctl start qngateway.service
-	######### QnetLink #########
-	/bin/cp -f qnlink $(BINDIR)
-	/bin/cp -f announce/*.dat $(CFGDIR)
-	/bin/ln -s $(shell pwd)/gwys.txt $(CFGDIR)
-	/bin/cp -f exec_?.sh $(CFGDIR)
-	/bin/cp -f system/qnlink.service $(SYSDIR)
-	systemctl enable qnlink.service
-	systemctl daemon-reload
-	systemctl start qnlink.service
+installdvrptr : qndvrptr
 	######### QnetDVRPTR #########
-	/bin/cp -f qndvrptr $(BINDIR)
-	/bin/cp -f system/qndvrptr.service $(SYSDIR)
-	systemctl enable qndvrptr.service
+	/bin/ln -f qndvrptr $(BINDIR)/qndvrptr$(MODULE)
+	/bin/cp -f system/qndvrptr$(MODULE).service $(SYSDIR)
+	systemctl enable qndvrptr$(MODULE).service
 	systemctl daemon-reload
-	systemctl start qndvrptr.service
+	systemctl start qndvrptr$(MODULE).service
 
 installdtmf : qndtmf
 	/bin/ln -s $(shell pwd)/qndtmf $(BINDIR)
@@ -209,25 +140,25 @@ installdtmf : qndtmf
 	systemctl daemon-reload
 	systemctl start qndtmf.service
 
-installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM.qn
-	/bin/cp -f $(MMPATH)/MMDVMHost $(BINDIR)
-	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM.qn $(CFGDIR)
-	/bin/cp -f system/mmdvm.service $(SYSDIR)
-	/bin/cp -f system/mmdvm.timer $(SYSDIR)
-	systemctl enable mmdvm.timer
+installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
+	/bin/ln -f $(MMPATH)/MMDVMHost $(BINDIR)/MMDVMHost$(MODULE)
+	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM$(MODULE).qn $(CFGDIR)
+	/bin/cp -f system/mmdvm$(MODULE).service $(SYSDIR)
+	/bin/cp -f system/mmdvm.timer $(SYSDIR)/mmdvm$(MODULE).timer
+	systemctl enable mmdvm$(MODULE).timer
 	systemctl daemon-reload
-	systemctl start mmdvm.service
+	systemctl start mmdvm$(MODULE).service
 
 uninstallmmdvm :
 	systemctl stop mmdvm.service
 	systemctl disable mmdvm.timer
 	/bin/rm -f $(SYSDIR)/mmdvm.service
-	/bin/rm -f $(SYSDIR)/mmdvm.timer
+	/bin/rm -f $(SYSDIR)/mmdvm$(MODULE).timer
 	/bin/rm -f $(BINDIR)/MMDVMHost
 	/bin/rm -f $(CFGDIR)/MMDVM.qn
 	sudo systemctl daemon-reload
 
-uninstall :
+uninstallbase :
 	######### QnetGateway #########
 	systemctl stop qngateway.service
 	systemctl disable qngateway.service
@@ -236,6 +167,7 @@ uninstall :
 	/bin/rm -f $(BINDIR)/qnremote
 	/bin/rm -f $(BINDIR)/qnvoice
 	/bin/rm -f $(CFGDIR)/qn.cfg
+	/bin/rm -f $(CFGDIR)/defaults
 	######### QnetLink #########
 	systemctl stop qnlink.service
 	systemctl disable qnlink.service
@@ -245,105 +177,37 @@ uninstall :
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(CFGDIR)/exec_?.sh
+
+uninstallrelay :
 	######### QnetRelay #########
-	systemctl stop qnrelay.service
-	systemctl disable qnrelay.service
-	/bin/rm -f $(SYSDIR)/qnrelay.service
-	/bin/rm -f $(BINDIR)/qnrelay
+	systemctl stop qnrelay$(MODULE).service
+	systemctl disable qnrelay$(MODULE).service
+	/bin/rm -f $(SYSDIR)/qnrelay$(MODULE).service
+	/bin/rm -f $(BINDIR)/qnrelay$(MODULE)
 	systemctl daemon-reload
 
 uninstallitap :
-	######### QnetGateway #########
-	systemctl stop qngateway.service
-	systemctl disable qngateway.service
-	/bin/rm -f $(SYSDIR)/qngateway.service
-	/bin/rm -f $(BINDIR)/qngateway
-	/bin/rm -f $(BINDIR)/qnremote
-	/bin/rm -f $(BINDIR)/qnvoice
-	/bin/rm -f $(CFGDIR)/qn.cfg
-	######### QnetLink #########
-	systemctl stop qnlink.service
-	systemctl disable qnlink.service
-	/bin/rm -f $(SYSDIR)/qnlink.service
-	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/*.dat
-	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
-	/bin/rm -f $(CFGDIR)/gwys.txt
-	/bin/rm -f $(CFGDIR)/exec_?.sh
 	######### QnetITAP #########
-	systemctl stop qnitap.service
-	systemctl disable qnitap.service
-	/bin/rm -f $(SYSDIR)/qnitap.service
-	/bin/rm -f $(BINDIR)/qnitap
+	systemctl stop qnitap$(MODULE).service
+	systemctl disable qnitap$(MODULE).service
+	/bin/rm -f $(SYSDIR)/qnitap$(MODULE).service
+	/bin/rm -f $(BINDIR)/qnitap$(MODULE)
 	systemctl daemon-reload
 
-uninstallicom :
-	######### QnetGateway #########
-	systemctl stop qnigateway.service
-	systemctl disable qnigateway.service
-	/bin/rm -f $(SYSDIR)/qnigateway.service
-	/bin/rm -f $(BINDIR)/qnigateway
-	/bin/rm -f $(BINDIR)/qnremote
-	/bin/rm -f $(BINDIR)/qnvoice
-	/bin/rm -f $(CFGDIR)/qn.cfg
-	######### QnetLink #########
-	systemctl stop qnlink.service
-	systemctl disable qnlink.service
-	/bin/rm -f $(SYSDIR)/qnlink.service
-	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/*.dat
-	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
-	/bin/rm -f $(CFGDIR)/gwys.txt
-	/bin/rm -f $(CFGDIR)/exec_?.sh
-
 uninstalldvap :
-	######### QnetGateway #########
-	systemctl stop qngateway.service
-	systemctl disable qngateway.service
-	/bin/rm -f $(SYSDIR)/qngateway.service
-	/bin/rm -f $(BINDIR)/qngateway
-	/bin/rm -f $(BINDIR)/qnremote
-	/bin/rm -f $(BINDIR)/qnvoice
-	/bin/rm -f $(CFGDIR)/qn.cfg
-	######### QnetLink #########
-	systemctl stop qnlink.service
-	systemctl disable qnlink.service
-	/bin/rm -f $(SYSDIR)/qnlink.service
-	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/*.dat
-	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
-	/bin/rm -f $(CFGDIR)/gwys.txt
-	/bin/rm -f $(CFGDIR)/exec_?.sh
 	######### QnetDVAP #########
-	systemctl stop qndvap.service
-	systemctl disable qndvap.service
-	/bin/rm -f $(SYSDIR)/qndvap.service
-	/bin/rm -f $(BINDIR)/qndvap
+	systemctl stop qndvap$(MODULE).service
+	systemctl disable qndvap$(MODULE).service
+	/bin/rm -f $(SYSDIR)/qndvap$(MODULE).service
+	/bin/rm -f $(BINDIR)/qndvap$(MODULE)
 	systemctl daemon-reload
 
 uninstalldvrptr :
-	######### QnetGateway #########
-	systemctl stop qngateway.service
-	systemctl disable qngateway.service
-	/bin/rm -f $(SYSDIR)/qngateway.service
-	/bin/rm -f $(BINDIR)/qngateway
-	/bin/rm -f $(BINDIR)/qnremote
-	/bin/rm -f $(BINDIR)/qnvoice
-	/bin/rm -f $(CFGDIR)/qn.cfg
-	######### QnetLink #########
-	systemctl stop qnlink.service
-	systemctl disable qnlink.service
-	/bin/rm -f $(SYSDIR)/qnlink.service
-	/bin/rm -f $(BINDIR)/qnlink
-	/bin/rm -f $(CFGDIR)/*.dat
-	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
-	/bin/rm -f $(CFGDIR)/gwys.txt
-	/bin/rm -f $(CFGDIR)/exec_?.sh
 	######### QnetDVRPTR #########
-	systemctl stop qndvrptr.service
-	systemctl disable qndvrptr.service
-	/bin/rm -f $(SYSDIR)/qndvrptr.service
-	/bin/rm -f $(BINDIR)/qndvrptr
+	systemctl stop qndvrptr$(MODULE).service
+	systemctl disable qndvrptr$(MODULE).service
+	/bin/rm -f $(SYSDIR)/qndvrptr$(MODULE).service
+	/bin/rm -f $(BINDIR)/qndvrptr$(MODULE)
 	systemctl daemon-reload
 
 uninstalldtmf :
