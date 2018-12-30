@@ -355,18 +355,42 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 		return true;
 
 	const std::string estr;	// an empty GetDefaultString
-	std::string type;
+
 	std::string mmdvm_path("module_");
-	mmdvm_path.append(1, 'a' + assigned_module);
-	if (cfg.KeyExists(mmdvm_path)) {
-		cfg.GetValue(mmdvm_path, estr, type, 1, 16);
-		if (type.compare("mmdvm")) {
-			fprintf(stderr, "%s = %s is not 'mmdvm' type!\n", mmdvm_path.c_str(), type.c_str());
+	std::string type;
+	if (0 > assigned_module) {
+		// we need to find the lone mmdvm module
+		for (int i=0; i<3; i++) {
+			std::string test(mmdvm_path);
+			test.append(1, 'a'+i);
+			if (cfg.KeyExists(test)) {
+				cfg.GetValue(test, estr, type, 1, 16);
+				if (type.compare("mmdvm")) {
+					fprintf(stderr, "%s = '%s', expecting 'mmdvm'!\n", test.c_str(), type.c_str());
+					return true;
+				}
+				mmdvm_path.assign(test);
+				assigned_module = i;
+				break;
+			}
+		}
+		if (0 > assigned_module) {
+			fprintf(stderr, "Error: no 'mmdvm' module found\n!");
 			return true;
 		}
 	} else {
-		fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
-		return true;
+		// make sure mmdvm module is defined
+		mmdvm_path.append(1, 'a' + assigned_module);
+		if (cfg.KeyExists(mmdvm_path)) {
+			cfg.GetValue(mmdvm_path, estr, type, 1, 16);
+			if (type.compare("mmdvm")) {
+				fprintf(stderr, "%s = %s is not 'mmdvm' type!\n", mmdvm_path.c_str(), type.c_str());
+				return true;
+			}
+		} else {
+			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
+			return true;
+		}
 	}
 	RPTR_MOD = 'A' + assigned_module;
 
@@ -394,41 +418,46 @@ void CQnetRelay::SignalCatch(const int signum)
 int main(int argc, const char **argv)
 {
 	setbuf(stdout, NULL);
-	if (3 != argc) {
-		fprintf(stderr, "usage: %s assigned_module path_to_config_file\n", argv[0]);
+	if (2 != argc) {
+		fprintf(stderr, "usage: %s path_to_config_file\n", argv[0]);
 		return 1;
-	} else {
-		printf("\nQnetRelay Version #%s Copyright (C) 2018 by Thomas A. Early N7TAE\n", RELAY_VERSION);
+	}
+
+	if ('-' == argv[1][0]) {
+		printf("\nQnetRelay Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", RELAY_VERSION);
 		printf("QnetRelay comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
 		return 0;
 	}
 
+	const char *qn = strstr(argv[0], "qnrelay");
+	if (NULL == qn) {
+		fprintf(stderr, "Error finding 'qnrelay' in %s!\n", argv[0]);
+		return 1;
+	}
+	qn += 7;
 	int module;
-	switch (argv[1][0]) {
-		case '0':
+	switch (*qn) {
+		case NULL:
+			module = -1;
+			break;
 		case 'a':
-		case 'A':
 			module = 0;
 			break;
-		case '1':
 		case 'b':
-		case 'B':
 			module = 1;
 			break;
-		case '2':
 		case 'c':
-		case 'C':
 			module = 2;
 			break;
 		default:
-			fprintf(stderr, "assigned module must be 0, a, A, 1, b, B, 2, c or C\n");
+			fprintf(stderr, "assigned module must be a, b or c\n");
 			return 1;
 	}
 
 	CQnetRelay qnmmdvm(module);
 
-	bool trouble = qnmmdvm.Run(argv[2]);
+	bool trouble = qnmmdvm.Run(argv[1]);
 
 	printf("%s is closing.\n", argv[0]);
 

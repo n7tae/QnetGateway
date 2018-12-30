@@ -1820,15 +1820,39 @@ static bool read_config(const char *cfgFile)
 	const std::string estr;	// an empty string
 	std::string type;
 	std::string path("module_");
-	path += ('a' + assigned_module);
-	if (cfg.KeyExists(path)) {
-		if (cfg.GetValue(path, estr, type, 1, 16) || type.compare("dvrptr")) {
-			fprintf(stderr, "%s = %s is not 'dvrptr'!\n", path.c_str(), type.c_str());
+	if (0 > assigned_module) {
+		// we need to find the lone dvrptr module
+		for (int i=0; i<3; i++) {
+			std::string test(path);
+			test.append(1, 'a'+i);
+			if (cfg.KeyExists(test)) {
+				cfg.GetValue(test, estr, type, 1, 16);
+				if (type.compare("dvrptr")) {
+					fprintf(stderr, "%s = '%s', expecting 'dvrptr'!\n", test.c_str(), type.c_str());
+					return true;
+				}
+				path.assign(test);
+				assigned_module = i;
+				break;
+			}
+		}
+		if (0 > assigned_module) {
+			fprintf(stderr, "Error: no 'dvrptr' module found\n!");
 			return true;
 		}
 	} else {
-		fprintf(stderr, "module %c is not defined\n", 'a' + assigned_module);
-		return 1;
+		// make sure dvrptr module is defined
+		path.append(1, 'a' + assigned_module);
+		if (cfg.KeyExists(path)) {
+			cfg.GetValue(path, estr, type, 1, 16);
+			if (type.compare("dvrptr")) {
+				fprintf(stderr, "%s = %s is not 'dvrptr' type!\n", path.c_str(), type.c_str());
+				return true;
+			}
+		} else {
+			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
+			return true;
+		}
 	}
 	DVRPTR_MOD = 'A' + assigned_module;
 	cfg.GetValue(path+"_gate2modem"+std::to_string(assigned_module), type, gate2modem, 1, FILENAME_MAX);
@@ -2473,33 +2497,37 @@ int main(int argc, const char **argv)
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	printf("dvrptr VERSION %s\n", VERSION);
 
-	if (argc != 3) {
-		fprintf(stderr, "Usage: %s assigned_module dvrptr.cfg\n", argv[0]);
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s dvrptr.cfg\n", argv[0]);
 		return 1;
+	}
+
+	if ('-' == argv[1][0]) {
+		printf("\nQnetDVRPTR Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVRPTR_VERSION);
+		printf("QnetDVRPTR comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
+		return 0;
 	}
 
 	switch (argv[1][0]) {
-		case '0':
+		case NULL:
+			assigned_module = -1;
+			break;
 		case 'a':
-		case 'A':
 			assigned_module = 0;
 			break;
-		case '1':
 		case 'b':
-		case 'B':
 			assigned_module = 1;
 			break;
-		case '2':
 		case 'c':
-		case 'C':
 			assigned_module = 2;
 			break;
 		default:
-		fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be 0, a, A, 1, b, B, 2, c or C\n", argv[1]);
+		fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
 		return 1;
 	}
 
-	if (read_config(argv[2])) {
+	if (read_config(argv[1])) {
 		fprintf(stderr, "Failed to process config file %s\n", argv[2]);
 		return 1;
 	}
