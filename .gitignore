@@ -1,6 +1,7 @@
 *.o
 *.d
 *.gch
+qn.cfg
 qnitap
 qndvap
 qndvrptr
