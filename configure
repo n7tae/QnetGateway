@@ -1,0 +1,579 @@
+#!/bin/bash
+#
+# Copyright (c) 2019 by Thomas A. Early N7TAE
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+SetBooleanValue () {
+	local nvname
+	local cv
+	if [ -z $2 ]; then
+		if [ -z ${!1+x} ]; then
+			dvname=${1}_d
+			cv=${!dvname}
+		else
+			cv=${!1}
+		fi
+		if [[ $cv == [tT]* ]]; then
+			eval ${1}=false
+		else
+			eval ${1}=true
+		fi
+	elif [[ "$2" == [tT]* ]]; then
+		eval ${1}=true
+	else
+		eval ${1}=false
+	fi
+}
+
+EvaluateVar () {
+	if [ -z ${!1+x} ]; then
+		if [ -z "${!2}" ]; then
+			echo "'' <DEFAULT>"
+		else
+			echo "${!2} <DEFAULT>"
+		fi
+	else
+		if [ -z "${!1}" ]; then
+			echo "''"
+		else
+			echo "${!1}"
+		fi
+	fi
+}
+
+EndMenu () {
+	echo
+	echo    "u  <key> to unset the value of key (revert to the default value)."
+	echo    "q  to return to the main menu"
+	read -p "Please input: <key> <new_value> # omit value to toggle a true/false : " key value
+}
+
+LinkMenu () {
+	key=''
+	while [[ "$key" != q* ]];do
+		clear
+		echo
+		echo "               Link/D-Plus Menu"
+		echo
+		echo    "    'CSV' means Comma Separated Values (of callsigns)"
+		echo    "     An empty CVS means everybody has permission"
+		echo -n "ad : CSV of calls that can execute scripts = "; EvaluateVar link_admin{,_d}
+		echo -n "li : CSV of calls that can link and unlink = "; EvaluateVar link_link_unlink{,_d}
+		echo -n "n  : CSV of calls that cannot link&unlink  = "; EvaluateVar link_no_link_unlink{,_d}
+		echo -n "i  : Incoming IP address of QnetLink       = "; EvaluateVar link_incoming_ip{,_d}
+		echo -n "r  : UDP port for REF linking              = "; EvaluateVar link_ref_port{,_d}
+		echo -n "x  : UDP port for XRF linking              = "; EvaluateVar link_xrf_port{,_d}
+		echo -n "d  : DCS port for XRF linking              = "; EvaluateVar link_dcs_port{,_d}
+		echo -n "an : Announce linking                      = "; EvaluateVar link_announce{,_d}
+		echo -n "ac : Acknowledge link on each keyup        = "; EvaluateVar link_acknowledge{,_d}
+		echo -n "m  : Maximum # of dongles allowed          = "; EvaluateVar link_max_dongles{,_d}
+		echo
+		echo    "     Legacy D-Plus Repeaters and Reflectors"
+		echo -n "au : Authorize Legacy D-Plus Linking       = "; EvaluateVar dplus_authorize{,_d}
+		echo -n "lo : Login call for authorization server   = "; EvaluateVar dplus_ref_login{,_d}
+		echo -n "RF : Add legacy reflectors to gateway list = "; EvaluateVar dplus_use_reflectors{,_d}
+		echo -n "RP : add legacy repeaters to gateway list  = "; EvaluateVar dplus_use_repeaters{,_d}
+		EndMenu
+
+		if   [[ "$key" == ad* ]]; then link_admin="${value^^}"
+		elif [[ "$key" == li* ]]; then link_link_unlink="${value^^}"
+		elif [[ "$key" == n*  ]]; then link_no_link_unlink="${value^^}"
+		elif [[ "$key" == i*  ]]; then link_incoming_ip="$value"
+		elif [[ "$key" == r*  ]]; then link_ref_port="$value"
+		elif [[ "$key" == x*  ]]; then link_xrf_port="$value"
+		elif [[ "$key" == d*  ]]; then link_dcs_port="$value"
+		elif [[ "$key" == an* ]]; then SetBooleanValue link_announce "$value"
+		elif [[ "$key" == ac* ]]; then SetBooleanValue link_acknowledge "$value"
+		elif [[ "$key" == m*  ]]; then link_max_dongles="$value"
+		elif [[ "$key" == au* ]]; then SetBooleanValue dplus_authorize "$value"
+		elif [[ "$key" == lo* ]]; then dplus_ref_login="${value^^}"
+		elif [[ "$key" == RF* ]]; then SetBooleanValue dplus_use_reflectors "$value"
+		elif [[ "$key" == RP* ]]; then SetBooleanValue dplus_use_repeaters "$value"
+		elif [[ "$key" == u*  ]]; then
+			if   [[ "$value" == ad* ]]; then unset link_admin
+			elif [[ "$value" == li* ]]; then unset link_link_unlink
+			elif [[ "$value" == n*  ]]; then unset link_no_link_unlink
+			elif [[ "$value" == i*  ]]; then unset link_incoming_ip
+			elif [[ "$value" == r*  ]]; then unset link_ref_port
+			elif [[ "$value" == x*  ]]; then unset link_xrf_port
+			elif [[ "$value" == d*  ]]; then unset link_dcs_port
+			elif [[ "$value" == an* ]]; then unset link_announce
+			elif [[ "$value" == ac* ]]; then unset link_acknowledge
+			elif [[ "$value" == m*  ]]; then unset link_max_dongles
+			elif [[ "$value" == au* ]]; then unset dplus_authorize
+			elif [[ "$value" == lo* ]]; then unset dplus_ref_login
+			elif [[ "$value" == RF* ]]; then unset dplus_use_reflectors
+			elif [[ "$value" == RP* ]]; then unset dplus_use_repeaters
+			fi
+		fi
+	done
+}
+
+FileMenu () {
+	key=''
+	while [[ "$key" != q* ]]; do
+		clear
+		echo
+		echo "              Files/Logs/Timings Menu"
+		echo
+		echo    "     Files and directories"
+		echo -n "sf : Repeater status file     :"; EvaluateVar file_status{,_d}
+		echo -n "ed : Echo/Voicemail directory :"; EvaluateVar file_echotest{,_d}
+		echo -n "dd : DTMF directory           :"; EvaluateVar file_dtmf{,_d}
+		echo -n "vf : QnetVoice filename       :"; EvaluateVar file_qnvoicefile{,_d}
+		echo -n "gf : Gateways filename        :"; EvaluateVar file_gwys{,_d}
+		echo -n "ad : Announce directory       :"; EvaluateVar file_announce_dir{,_d}
+		echo
+		echo    "     Logging file (in /usr/local/var)"
+		echo -n "cl : Call(QSO) logging        :"; EvaluateVar log_qso{,_d}
+		echo -n "il : IRC logging              :"; EvaluateVar log_irc{,_d}
+		echo -n "dl : DTMF logging             :"; EvaluateVar log_dtmf{,_d}
+		echo
+		echo    "     Timing controls"
+		echo -n "et : Echo timeout (sec)       :"; EvaluateVar timing_timeout_echo{,_d}
+		echo -n "vt : Voicemail timeout (sec)  :"; EvaluateVar timing_timeout_voicemail{,_d}
+		echo -n "gt : G2 timeout (sec)         :"; EvaluateVar timing_timeout_remote_g2{,_d}
+		echo -n "rt : Repeater timeout (sec)   :"; EvaluateVar timing_timeout_local_rptr{,_d}
+		echo -n "pw : Echo play wait (sec)     :"; EvaluateVar timing_play_wait{,_d}
+		echo -n "pd : Echo play delay (msec)   :"; EvaluateVar timing_play_delay{,_d}
+		EndMenu
+
+		if   [[ "$key" == sf* ]]; then file_status="$value"
+		elif [[ "$key" == ed* ]]; then file_echotest="$value"
+		elif [[ "$key" == dd* ]]; then file_dtmf="$value"
+		elif [[ "$key" == vf* ]]; then file_qnvoicefile="$value"
+		elif [[ "$key" == gf* ]]; then file_gwys="$value"
+		elif [[ "$key" == ad* ]]; then file_announce_dir="$value"
+		elif [[ "$key" == cl* ]]; then SetBooleanValue log_qso "$value"
+		elif [[ "$key" == il* ]]; then SetBooleanValue log_irc "$value"
+		elif [[ "$key" == dl* ]]; then SetBooleanValue log_dtmf "$value"
+		elif [[ "$key" == et* ]]; then timing_timeout_echo="$value"
+		elif [[ "$key" == vt* ]]; then timing_timeout_voicemail="$value"
+		elif [[ "$key" == gt* ]]; then timing_timeout_remote_g2="$value"
+		elif [[ "$key" == rt* ]]; then timing_timeout_local_rptr="$value"
+		elif [[ "$key" == pw* ]]; then timing_play_wait="$value"
+		elif [[ "$key" == pd* ]]; then timing_play_delay="$value"
+		elif [[ "$key" == u*  ]]; then
+			if   [[ "$value" == sf* ]]; then unset file_status
+			elif [[ "$value" == ed* ]]; then unset file_echotest
+			elif [[ "$value" == dd* ]]; then unset file_dtmf
+			elif [[ "$value" == vf* ]]; then unset file_qnvoicefile
+			elif [[ "$value" == gf* ]]; then unset file_gwys
+			elif [[ "$value" == ad* ]]; then unset file_announce_dir
+			elif [[ "$value" == cl* ]]; then unset log_qso
+			elif [[ "$value" == il* ]]; then unset log_irc
+			elif [[ "$value" == dl* ]]; then unset log_dtmf
+			elif [[ "$value" == et* ]]; then unset timing_timeout_echo
+			elif [[ "$value" == vt* ]]; then unset timing_timeout_voicemail
+			elif [[ "$value" == gt* ]]; then unset timing_timeout_remote_g2
+			elif [[ "$value" == rt* ]]; then unset timing_timeout_local_rptr
+			elif [[ "$value" == pw* ]]; then unset timing_play_wait
+			elif [[ "$value" == pd* ]]; then unset timing_play_delay
+			fi
+		fi
+	done
+}
+
+IrcddbMenu () {
+	key=''
+	while [[ "$key" != q* ]]; do
+		clear
+		echo
+		echo "               IRCDDB Menu"
+		echo
+		echo    "l  : Login - must be a legal callsign = '${ircddb_login}'"
+		echo -n "h  : Hostname for IRC Server          = "; EvaluateVar ircddb_host{,_d}
+		echo -n "po : IRC TCP port                     = "; EvaluateVar ircddb_port{,_d}
+		echo -n "pa : IRC Password                     = "; EvaluateVar ircddb_password{,_d}
+		EndMenu
+
+		if   [[ "$key" == l*  ]]; then ircddb_login="${value^^}"
+		elif [[ "$key" == h*  ]]; then ircddb_host="$value"
+		elif [[ "$key" == po* ]]; then ircddb_port="$value"
+		elif [[ "$key" == pa* ]]; then ircddb_password="$value"
+		elif [[ "$key" == u*  ]]; then
+			if   [[ "$value" == h*  ]]; then unset ircddb_host
+			elif [[ "$value" == po* ]]; then unset ircddb_port
+			elif [[ "$value" == pa* ]]; then unset ircddb_password
+			fi
+		fi
+	done
+}
+
+GateMenu () {
+	key=''
+	while [[ "$key" != q* ]]; do
+		clear
+		echo
+		echo "               Gateway/APRS Menu"
+		echo
+		echo    "     Gateway Option - default values are usually best"
+		echo -n "r  : Regenerate Headers             = "; EvaluateVar gateway_header_regen{,_d}
+		echo -n "s  : Send IRC network Module Info   = "; EvaluateVar gateway_send_qrgs_maps{,_d}
+		echo -n "i  : IRC TCP local network address  = "; EvaluateVar gateway_local_irc_ip{,_d}
+		echo -n "p  : IRC TCP port number            = "; EvaluateVar gateway_port{,_d}
+		echo -n "t  : UNIX socket to QnetLink        = "; EvaluateVar gateway_tolink{,_d}
+		echo -n "f  : UNIX socket from QnetLink      = "; EvaluateVar gateway_fromlink{,_d}
+		echo -n "la : Latitude (-90.0 to 90.0)       = "; EvaluateVar gateway_latitude{,_d}
+		echo -n "lo : Longitude (-180.0 to 180.0)    = "; EvaluateVar gateway_longitude{,_d}
+		echo -n "d1 : Description #1 (20 chars max)  = "; EvaluateVar gateway_desc1{,_d}
+		echo -n "d2 : Description #1 (20 chars max)  = "; EvaluateVar gateway_desc2{,_d}
+		echo -n "w  ; URL (80 char max)              = "; EvaluateVar gateway_url{,_d}
+		echo
+		echo    "     APRS - Repeater/User position tracking"
+		echo -n "e  : Enable APRS Tracking           = "; EvaluateVar aprs_enable{,_d}
+		echo -n "h  : APRS hostname                  = "; EvaluateVar aprs_host{,_d}
+		echo -n "ap : APRS TCP port number           = "; EvaluateVar aprs_port{,_d}
+		echo -n "k  : APRS Keep-alive interval (min) = "; EvaluateVar aprs_interval{,_d}
+		echo -n "af : APRS Filter (experimental)     = "; EvaluateVar aprs_filter{,_d}
+		EndMenu
+
+		if   [[ "$key" == r*  ]]; then SetBooleanValue gateway_header_regen "$value"
+		elif [[ "$key" == s*  ]]; then SetBooleanValue gateway_send_qrgs_maps "$value"
+		elif [[ "$key" == i*  ]]; then gateway_local_irc_ip="$value"
+		elif [[ "$key" == p*  ]]; then gateway_port="$value"
+		elif [[ "$key" == t*  ]]; then gateway_tolink="$value"
+		elif [[ "$key" == f*  ]]; then gateway_fromlink="$value"
+		elif [[ "$key" == la* ]]; then gateway_latitude="$value"
+		elif [[ "$key" == lo* ]]; then gateway_longitude="$value"
+		elif [[ "$key" == d1* ]]; then gateway_desc1="${value:0:20}"
+		elif [[ "$key" == d2* ]]; then gateway_desc2="${value:0:20}"
+		elif [[ "$key" == w*  ]]; then gateway_url="${value:0:80}"
+		elif [[ "$key" == e*  ]]; then SetBooleanValue aprs_enable "$value"
+		elif [[ "$key" == h*  ]]; then aprs_host="$value"
+		elif [[ "$key" == ap* ]]; then aprs_port="$value"
+		elif [[ "$key" == k*  ]]; then aprs_interval="$value"
+		elif [[ "$key" == af* ]]; then aprs_filter="$value"
+		elif [[ "$key" == u*  ]]; then
+			if   [[ "$value" == h*  ]]; then unset gateway_header_regen
+			elif [[ "$value" == s*  ]]; then unset gateway_send_qrgs_maps
+			elif [[ "$value" == l*  ]]; then unset gateway_local_irc_ip
+			elif [[ "$value" == i*  ]]; then unset gateway_ip
+			elif [[ "$value" == p*  ]]; then unset gateway_port
+			elif [[ "$value" == t*  ]]; then unset gateway_tolink
+			elif [[ "$value" == f*  ]]; then unset gateway_fromlink
+			elif [[ "$value" == la* ]]; then unset gateway_latitude
+			elif [[ "$value" == lo* ]]; then unset gateway_longitude
+			elif [[ "$value" == d1* ]]; then unset gateway_desc1
+			elif [[ "$value" == d2* ]]; then unset gateway_desc2
+			elif [[ "$value" == w*  ]]; then unset gateway_url
+			elif [[ "$value" == e*  ]]; then unset aprs_enable
+			elif [[ "$value" == h*  ]]; then unset aprs_host
+			elif [[ "$value" == ap* ]]; then unset aprs_port
+			elif [[ "$value" == k*  ]]; then unset aprs_interval
+			elif [[ "$value" == af* ]]; then unset aprs_filter
+			fi
+		fi
+	done
+}
+
+ModuleMenu () {
+	mod=module_${1}
+	if [[ $1 == a ]]; then
+		nmod=0
+	elif [[ $1 == b ]]; then
+		nmod=1
+	else
+		nmod=2
+	fi
+	clear
+	if [ -z ${!mod} ]; then
+		echo
+		echo "               Select a Module type"
+		echo
+		echo "1 : DVAP Dongle"
+		echo "2 : DVRPTR V1"
+		echo "3 : ICOM Terminal and Access Point Mode"
+		echo "4 : MMDVMHost-based Sytem"
+		echo
+		echo "    Anything else will return without selecting"
+		echo
+		echo -n "Select Module Type : "
+		read key unused
+		if   [[ "$key" == 1 ]]; then eval ${mod}=dvap
+		elif [[ "$key" == 2 ]]; then eval ${mod}=dvrptr
+		elif [[ "$key" == 3 ]]; then eval ${mod}=itap
+		elif [[ "$key" == 4 ]]; then eval ${mod}=mmdvm
+		else return
+		fi
+	fi
+	key=''
+	while [[ "$key" != q* ]]; do
+		clear
+		echo
+		echo "               Module ${1^^} Menu ($mod=${!mod})"
+		echo
+		echo -n "ls : Link at startup (must be 8 chars)            = "; EvaluateVar {${mod},module_x}_link_at_start
+		echo -n "cs : Callsign (uses ircddb_login if empty)        = "; EvaluateVar {${mod},module_x}_callsign
+		echo -n "fr : Frequency in MHz                             = "; EvaluateVar {${mod},module_x}_frequency
+		echo -n "of : Offset in Hz                                 = "; EvaluateVar {${mod},module_x}_offset
+		echo -n "ra : Range (in meters, 1 mile=1609.344 meters)    = "; EvaluateVar {${mod},module_x}_range
+		echo -n "ag : Above ground level (in meters)               = "; EvaluateVar {${mod},module_x}_agl
+		echo -n "uf : UNIX Socket from gateway                     = "; EvaluateVar {${mod},module_x}_gate2modem$nmod
+		echo -n "ut : UNIX Socket from gateway                     = "; EvaluateVar {${mod},module_x}_modem2gate$nmod
+		echo -n "in : Inactivity for this many minutes unlinks     = "; EvaluateVar {${mod},module_x}_inactivity
+		echo -n "wa : Wait this many msec for the next packet      = "; EvaluateVar {${mod},module_x}_packet_wait
+		echo -n "ac : Send acknowledgment on each transmission     = "; EvaluateVar {${mod},module_x}_acknowledge
+		echo -n "ad : acknowledgment delay (in msec)               = "; EvaluateVar {${mod},module_x}_ack_delay
+		if [[ "${!mod}" == dvap ]]; then
+			echo -n "po : Power (in dBm from -12 to 10)                = "; EvaluateVar {${mod},dvap}_power
+			echo -n "sq : Squelch (in dBm from -128 to -45)            = "; EvaluateVar {${mod},dvap}_squelch
+			echo -n "sn : Serial # (visible through the case)          = "; EvaluateVar {${mod},dvap}_serial_number
+		elif [[ "${!mod}" == dvrptr ]]; then
+			echo -n "sn : Serial # (run once and look in log)          = "; EvaluateVar {${mod},dvrptr}_serial_number
+			echo -n "rn : Callsign to turn RF on                       = "; EvaluateVar {${mod},dvrptr}_rf_on
+			echo -n "rf : Callsign to turn RF off                      = "; EvaluateVar {${mod},dvrptr}_rf_off
+			echo -n "rl : Receiver level                               = "; EvaluateVar {${mod},dvrptr}_rx_level
+			echo -n "du : Is duplex                                    = "; EvaluateVar {${mod},dvrptr}_duplex
+			echo -n "td : Transmitter delay (in msec) for tx/rx switch = "; EvaluateVar {${mod},dvrptr}_tx_delay
+			echo -n "rq : # of 2 sec interval before system reset      = "; EvaluateVar {${mod},dvrptr}_rqst_count
+			echo -n "ir : Inverse phase of receiver                    = "; EvaluateVar {${mod},dvrptr}_inverse_rx
+			echo -n "it : Inverse phase of transmitter                 = "; EvaluateVar {${mod},dvrptr}_inverse_tx
+		elif [[ "${!mod}" == itap ]]; then
+			echo -n "dv : USB device path                              = "; EvaluateVar {${mod},itap}_device
+		elif [[ "${!mod}" == mmdvm ]]; then
+			echo -n "ip : Internal IP address                          = "; EvaluateVar {${mod},mmdvm}_internal_ip
+			echo -n "gp : Gateway port number                          = "; EvaluateVar {${mod},mmdvm}_gateway_port
+			echo -n "lp : Local port number                            = "; EvaluateVar {${mod},mmdvm}_local_port
+		fi
+		echo    "xx : Delete this module"
+		EndMenu
+
+		if [[ "$key" == ls* ]]; then
+			value="${value:0:8}"
+			eval ${mod}_link_at_start="'${value^^}'"
+		elif [[ "$key" == cs* ]]; then eval ${mod}_callsign="${value^^}"
+		elif [[ "$key" == fr* ]]; then eval ${mod}_frequency="$value"
+		elif [[ "$key" == of* ]]; then eval ${mod}_offset="$value"
+		elif [[ "$key" == ra* ]]; then eval ${mod}_range="$value"
+		elif [[ "$key" == ag* ]]; then eval ${mod}_agl="$value"
+		elif [[ "$key" == uf* ]]; then eval ${mod}_gate2modem${nmod}="$value"
+		elif [[ "$key" == ut* ]]; then eval ${mod}_modem2gate${nmod}="$value"
+		elif [[ "$key" == in* ]]; then eval ${mod}_inactivity="$value"
+		elif [[ "$key" == wa* ]]; then eval ${mod}_packet_wait="$value"
+		elif [[ "$key" == ac* ]]; then SetBooleanValue ${mod}_acknowledge "$value"
+		elif [[ "$key" == ad* ]]; then eval ${mod}_ack_delay="$value"
+		elif [[ "$key" == po* ]]; then eval ${mod}_power="$value"
+		elif [[ "$key" == sq* ]]; then eval ${mod}_squelch="$value"
+		elif [[ "$key" == sn* ]]; then eval ${mod}_serial_number="$value"
+		elif [[ "$key" == rn* ]]; then eval ${mod}_rf_on="$value"
+		elif [[ "$key" == rf* ]]; then eval ${mod}_rf_off="$value"
+		elif [[ "$key" == rl* ]]; then eval ${mod}_rx_level="$value"
+		elif [[ "$key" == du* ]]; then SetBooleanValue ${mod}_duplex "$value"
+		elif [[ "$key" == td* ]]; then eval ${mod}_tx_delay="$value"
+		elif [[ "$key" == rq* ]]; then eval ${mod}_rqst_count="$value"
+		elif [[ "$key" == ir* ]]; then SetBooleanValue ${mod}_inverse_rx "$value"
+		elif [[ "$key" == it* ]]; then SetBooleanValue ${mod}_inverse_tx "$value"
+		elif [[ "$key" == dv* ]]; then eval ${mod}_device="$value"
+		elif [[ "$key" == ip* ]]; then eval ${mod}_internal_ip="$value"
+		elif [[ "$key" == gp* ]]; then eval ${mod}_gateway_port="$value"
+		elif [[ "$key" == lp* ]]; then eval ${mod}_local_port="$value"
+		elif [[ "$key" == xx* ]]; then
+			unset ${mod}_{link_at_start,callsign,frequency,offset,range,agl,{gate2modem,modem2gate}${nmod}}
+			unset ${mod}_{inactivity,packet_wait,acknowledge,ack_delay,power,squelch,serial_number,rf_o{n,ff},rx_level}
+			unset ${mod}_{duplex,tx_delay,rqst_count,inverse_{t,r}x,device,internal_ip,{gateway,local}_port}
+			unset ${mod}
+			return
+		elif [[ "$key" == u* ]]; then
+			if   [[ "$value" == ls* ]]; then unset ${mod}_link_at_start
+			elif [[ "$value" == cs* ]]; then unset ${mod}_callsign
+			elif [[ "$value" == fr* ]]; then unset ${mod}_frequency
+			elif [[ "$value" == of* ]]; then unset ${mod}_offset
+			elif [[ "$value" == ra* ]]; then unset ${mod}_range
+			elif [[ "$value" == ag* ]]; then unset ${mod}_agl
+			elif [[ "$value" == uf* ]]; then unset ${mod}_gate2modem${nmod}
+			elif [[ "$value" == ut* ]]; then unset ${mod}_modem2gate${nmod}
+			elif [[ "$value" == in* ]]; then unset ${mod}_inactivity
+			elif [[ "$value" == wa* ]]; then unset ${mod}_packet_wait
+			elif [[ "$value" == ac* ]]; then unset ${mod}_acknowledge
+			elif [[ "$value" == ad* ]]; then unset ${mod}_ack_delay
+			elif [[ "$value" == po* ]]; then unset ${mod}_power
+			elif [[ "$value" == sq* ]]; then unset ${mod}_squelch
+			elif [[ "$value" == sn* ]]; then unset ${mod}_serial_number
+			elif [[ "$value" == rn* ]]; then unset ${mod}_rf_on
+			elif [[ "$value" == rf* ]]; then unset ${mod}_rf_off
+			elif [[ "$value" == rl* ]]; then unset ${mod}_rx_level
+			elif [[ "$value" == du* ]]; then unset ${mod}_duplex
+			elif [[ "$value" == td* ]]; then unset ${mod}_tx_delay
+			elif [[ "$value" == rq* ]]; then unset ${mod}_rqst_count
+			elif [[ "$value" == ir* ]]; then unset ${mod}_inverse_rx
+			elif [[ "$value" == it* ]]; then unset ${mod}_inverse_tx
+			elif [[ "$value" == dv* ]]; then unset ${mod}_device
+			elif [[ "$value" == ip* ]]; then unset ${mod}_internal_ip
+			elif [[ "$value" == gp* ]]; then unset ${mod}_gateway_port
+			elif [[ "$value" == lp* ]]; then unset ${mod}_local_port
+			fi
+		fi
+	done
+}
+
+WriteCFGFile () {
+	local m n p q outFile
+	outFile='./qn.cfg'
+	echo "# Created on `date`" > $outFile
+	# gateway_ section
+	echo "ircddb_login='$ircddb_login'" >> $outFile
+	[ -z "${ircddb_host+x}"     ] || echo "ircddb_host='${ircddb_host}'"         >> $outFile
+	[ -z "${ircddb_port+x}"     ] || echo "ircddb_host=${ircddb_port}"           >> $outFile
+	[ -z "${ircddb_password+x}" ] || echo "ircddb_password='${ircddb_password}'" >> $outFile
+
+	# module_?_ section
+	for m in a b c
+	do
+		if   [[ "$m" == a ]]; then
+			n=0
+		elif [[ "$m" == b ]]; then
+			n=1
+		else
+			n=2
+		fi
+		p="module_$m"
+		if [ -n "${!p}" ]; then
+			echo "${p}=${!p}" >> $outFile
+			q=${p}_link_at_start;  [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+			q=${p}_callsign;       [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+			q=${p}_frequency;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			q=${p}_offset;         [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			q=${p}_range;          [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			q=${p}_agl;            [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			q=${p}_gate2modem${n}; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+			q=${p}_modem2gate${n}; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+			q=${p}_inactivity;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			q=${p}_packet_wait;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			q=${p}_acknowledge;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			q=${p}_ack_delay;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			if [[ "${!p}" == "dvap" ]]; then
+				q=${p}_power;         [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_squelch;       [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_serial_number; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+			elif [[ "${!p}" == "dvrptr" ]]; then
+				q=${p}_serial_number; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+				q=${p}_rf_on;         [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+				q=${p}_rf_off;        [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+				q=${p}_rx_level;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_duplex;        [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_tx_delay;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_rqst_count;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_inverse_rx;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_inverse_tx;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			elif [[ "${!p}" == "itap" ]]; then
+				q=${p}_device;        [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			elif [[ "${!p}" == "mmdvm" ]]; then
+				q=${p}_internal_ip;   [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+				q=${p}_gateway_port;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_local_port;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			fi
+		fi
+	done
+	# gateway_section
+	[ -z "${gateway_header_regen+x}"   ] || echo "gateway_header_regen=${gateway_header_regen}"     >> $outFile
+	[ -z "${gateway_send_qrgs_maps+x}" ] || echo "gateway_send_qrgs_maps=${gateway_send_qrgs_maps}" >> $outFile
+	[ -z "${gateway_local_irc_ip+x}"   ] || echo "gateway_local_irc_ip='${gateway_local_irc_ip}'"   >> $outFile
+	[ -z "${gateway_port+x}"           ] || echo "gateway_port=${gateway_port}"                     >> $outFile
+	[ -z "${gateway_tolink+x}"         ] || echo "gateway_tolink=${gateway_tolink}"                 >> $outFile
+	[ -z "${gateway_fromlink+x}"       ] || echo "gateway_fromlink=${gateway_fromlink}"             >> $outFile
+	[ -z "${gateway_latitude+x}"       ] || echo "gateway_latitude=${gateway_latitude}"             >> $outFile
+	[ -z "${gateway_longitude+x}"      ] || echo "gateway_longitude=${gateway_longitude}"           >> $outFile
+	[ -z "${gateway_desc1+x}"          ] || echo "gateway_desc1='${gateway_desc1}'"                 >> $outFile
+	[ -z "${gateway_desc2+x}"          ] || echo "gateway_desc2='${gateway_desc2}'"                 >> $outFile
+	[ -z "${gateway_url+x}"            ] || echo "gateway_url='${gateway_url}'"                     >> $outFile
+	# arps_ section
+	[ -z "${aprs_enable+x}"   ] || echo "aprs_enable='{aprs_enable}"     >> $outFile
+	[ -z "${aprs_host+x}"     ] || echo "aprs_host='${aprs_host}'"       >> $outFile
+	[ -z "${aprs_port+x}"     ] || echo "aprs_port=${aprs_port}"         >> $outFile
+	[ -z "${aprs_interval+x}" ] || echo "aprs_interval=${aprs_interval}" >> $outFile
+	[ -z "${aprs_filter+x}"   ] || echo "aprs_filter='${aprs_filter}'"   >> $outFile
+	# link_ section
+	[ -z "${link_admin+x}"          ] || echo "link_admin='${link_admin}'"                   >> $outFile
+	[ -z "${link_link_unlink+x}"    ] || echo "link_link_unlink='${link_link_unlink}'"       >> $outFile
+	[ -z "${link_no_link_unlink+x}" ] || echo "link_no_link_unlink='${link_no_link_unlink}'" >> $outFile
+	[ -z "${link_incoming_ip+x}"    ] || echo "link_incoming_ip='${link_incoming_ip}'"       >> $outFile
+	[ -z "${link_ref_port+x}"       ] || echo "link_ref_port=${link_ref_port}"               >> $outFile
+	[ -z "${link_xrf_port+x}"       ] || echo "link_xrf_port=${link_xrf_port}"               >> $outFile
+	[ -z "${link_dcs_port+x}"       ] || echo "link_dcs_port=${link_dcs_port}"               >> $outFile
+	[ -z "${link_announce+x}"       ] || echo "link_announce=${link_announce}"               >> $outFile
+	[ -z "${link_acknowledge+x}"    ] || echo "link_acknowledge=${link_acknowledge}"         >> $outFile
+	[ -z "${link_max_dongles+x}"    ] || echo "link_max_dongles=${link_max_dongles}"         >> $outFile
+	# log_ section
+	[ -z "${log_qso+x}"  ] || echo "log_qso=${log_qso}"   >> $outFile
+	[ -z "${log_irc+x}"  ] || echo "log_irc=${log_irc}"   >> $outFile
+	[ -z "${log_dtmf+x}" ] || echo "log_dtmf=${log_dtmf}" >> $outFile
+	# dplus_ section
+	[ -z "${dplus_authorize+x}"      ] || echo "dplus_authorize=${dplus_authorize}"           >> $outFile
+	[ -z "${dplus_ref_login+x}"      ] || echo "dplus_ref_login='${dplus_ref_login}'"         >> $outFile
+	[ -z "${dplus_use_repeaters+x}"  ] || echo "dplus_use_repeaters=${dplus_use_repeaters}"   >> $outFile
+	[ -z "${dplus_use_reflectors+x}" ] || echo "dplus_use_reflectors=${dplus_use_reflectors}" >> $outFile
+	# file_ section
+	[ -z "${file_gwys+x}"         ] || echo "file_gwys='${file_gwys}'"                 >> $outFile
+	[ -z "${file_dtmf+x}"         ] || echo "file_dtmf='${file_dtmf}'"                 >> $outFile
+	[ -z "${file_status+x}"       ] || echo "file_status='${file_status}'"             >> $outFile
+	[ -z "${file_echotest+x}"     ] || echo "file_echotest='${file_echotest}'"         >> $outFile
+	[ -z "${file_qnvoicefile+x}"  ] || echo "file_qnvoicefile='${file_qnvoicefile}'"   >> $outFile
+	[ -z "${file_announce_dir+x}" ] || echo "file_announce_dir='${file_announce_dir}'" >> $outFile
+	# timing_ section
+	[ -z "${timing_timeout_echo+x}"       ] || echo "timing_timeout_echo=${timing_timeout_echo}"             >> $outFile
+	[ -z "${timing_timeout_remote_g2+x}"  ] || echo "timing_timeout_remote_g2=${timing_timeout_remote_g2}"   >> $outFile
+	[ -z "${timing_timeout_voicemail+x}"  ] || echo "timing_timeout_voicemail=${timing_timeout_voicemail}"   >> $outFile
+	[ -z "${timing_timeout_local_rptr+x}" ] || echo "timing_timeout_local_rptr=${timing_timeout_local_rptr}" >> $outFile
+	[ -z "${timing_play_wait+x}"          ] || echo "timing_play_wait=${timing_play_wait}"                   >> $outFile
+	[ -z "${timing_play_delay+x}"         ] || echo "timing_play_delay=${timing_play_delay}"                 >> $outFile
+}
+
+# source files
+if [ -e ./defaults ]; then
+	source ./defaults
+else
+	echo 'Error: ./defaults not found!'
+	exit 1
+fi
+if [ -e ./qn.cfg ]; then
+	source ./qn.cfg
+else
+	echo 'No configuration file found...'
+	sleep 1
+fi
+
+# main loop
+while [[ "$ans" != q* ]]
+do
+	clear
+	echo
+	echo "               Main Menu"
+	echo
+	echo -n "a : Module A           - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
+	echo -n "b : Module B           - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
+	echo -n "c : Module C           - "; if [ -z $module_c ]; then echo "<EMPTY>"; else echo "${module_c^^}"; fi
+	echo    "i : IRCDDB Menu        - login = '${ircddb_login}'"
+	echo    "g : Gateway/APRS Menu  - default values are usually fine"
+	echo    "l : Link/D-Plus Menu   - linking access"
+	echo    "f : Files/Logs/Timings - miscellaneous parameters"
+	echo
+	if [ -n $module_a ] || [ -n $module_b ] || [ -n $module_c ] && [ -n $ircddb_login ]; then
+		echo    "w : Write qn.cfg configuration file (overwrites any existing file)"
+		echo
+	fi
+	read -p "q to quit: " ans
+
+	if   [[ "$ans" == a* ]]; then ModuleMenu a
+	elif [[ "$ans" == b* ]]; then ModuleMenu b
+	elif [[ "$ans" == c* ]]; then ModuleMenu c
+	elif [[ "$ans" == i* ]]; then IrcddbMenu
+	elif [[ "$ans" == g* ]]; then GateMenu
+	elif [[ "$ans" == l* ]]; then LinkMenu
+	elif [[ "$ans" == f* ]]; then FileMenu
+	elif [[ "$ans" == w* ]]; then WriteCFGFile
+	fi
+done
+exit 0

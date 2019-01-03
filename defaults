@@ -42,13 +42,17 @@ ircddb_password_d='1111111111111' # not needed for rr.openquad.net
 #
 # GATEWAY
 #
-gateway_bool_regen_header_d=true  # regenerate headers from incoming data
+gateway_header_regen_d=true       # regenerate headers from incoming data
 gateway_send_qrgs_maps_d=true     # send frequency, offset, coordinates and url to irc-server
-gateway_local_irc_ip_d='0.0.0.0'  # the local port on the gateway for the IRC tcp socket
-gateway_external_ip_d='0.0.0.0'   # this means accept a connection from any source
-gateway_external_port_d=40000     # don't change
+gateway_local_irc_ip_d='0.0.0.0'  # the local port on the gateway for the IRC TCP socket
+gateway_port_d=40000              # don't change
 gateway_tolink_d='gate2link'      # Unix sockets between qngateway and QnetLink
 gateway_fromlink_d='link2gate'    # all Unix sockets are on the file system, but hidden from view
+gateway_latitude_d=0                # you can leave this unspecified for a mobile rig
+gateway_longitude_d=0               # like the latitude
+gateway_desc1_d=''                  # maximum of 20 characters, most special symbols are not allowed
+gateway_desc2_d=''                  # just like desc1
+gateway_url_d='github.com/n7tae/QnetGateway' # 80 characters max
 
 ##########################################################################################################################
 #
@@ -80,27 +84,22 @@ link_max_dongles_d=5         # maximum number of linked hot-spots
 #
 # GENERIC MODULE - These will be defined for any and all defined modules
 #
-#module_x_link_at_start='' # For example, set to 'REF001 C' to link module to 1-charlie when the module starts.
+module_x_link_at_start=''  # For example, set to 'REF001 C' to link module to 1-charlie when the module starts.
 module_x_inactivity=0      # if no activity for this many minutes unlink reflector. Zero means no timer.
 module_x_callsign=''       # if you operate in a 'restriction mode', use your personal callsign. Usually leave this empty.
 module_x_packet_wait=25    # how many milliseconds to wait on packets in a voicestream
 module_x_acknowledge=false # Do you want an ACK back?
-module_x_ack_delay=250     # millisecond delay before acknowledgement
+module_x_ack_delay=250     # millisecond delay before acknowledgment
 module_x_frequency=0       # if you specify here, this frequency will show up on the QuadNet USER GATEWAYS webpage
 module_x_offset=0          # usually the duplex tx-rx offset, but for dvap, it's a frequency tweak
 module_x_range=0           # the range of this repeater, in meters 1609.344 meters is 1.0 miles
 module_x_agl=0             # the height above ground level for this repeater's antenna
-module_x_latitude=0        # you can leave this unspecified for a mobile rig
-module_x_longitude=0       # like the latitude
-module_x_desc1=''          # maximum of 20 characters, most special symbols are not allowed
-module_x_desc2=''          # just like desc1
 module_x_gate2modem0='gate2modem0'         # Unix Sockets between a modem and the gateway
 module_x_gate2modem1='gate2modem1'         # 0 is for A, 1 is for B and 2 is for C
 module_x_gate2modem2='gate2modem2'
 module_x_modem2gate0='modem2gate0'
 module_x_modem2gate1='modem2gate1'
 module_x_modem2gate2='modem2gate2'
-module_x_url='github.com/n7tae/g2_ircddb'  # 80 characters max
 
 ##########################################################################################################################
 #
@@ -154,8 +153,8 @@ log_dtmf_d=false  # DTMF debug info
 # The following settings do not affect your ability to use dplus linking to XRF or XLX reflectors!
 # You must be registered on the DPlus system, see www.dstargateway.org, otherwise authorization will fail,
 # even if QnetLink reports a successful authorization.
-dplus_ref_login_d=''        # for logging into REF reflectors, if empty, ircddb_login will be used
 dplus_authorize_d=false     # set to true if you want to use the closed-source DPlus reflectors and/or repeaters
+dplus_ref_login_d=''        # for logging into REF reflectors, if empty, ircddb_login will be used
 dplus_use_reflectors_d=true # set to false if you are not going to link to DPlus reflectors
 dplus_use_repeaters_d=true  # set to false if you are not going to link to DPlus repeaters
 # any gateways in your gwys.txt file will override any reflectors or repeaters that DPlus authorization returns.

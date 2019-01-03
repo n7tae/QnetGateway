@@ -226,11 +226,11 @@ bool CQnetGateway::read_config(char *cfgFile)
 			cfg.GetValue(path+"offset", type, rptr.mod[m].offset, -1.0e12, 1.0e12);
 			cfg.GetValue(path+"range", type, rptr.mod[m].range, 0.0, 1609344.0);
 			cfg.GetValue(path+"agl", type, rptr.mod[m].agl, 0.0, 1000.0);
-			cfg.GetValue(path+"latitude", type, rptr.mod[m].latitude, -90.0, 90.0);
-			cfg.GetValue(path+"longitude", type, rptr.mod[m].longitude, -180.0, 180.0);
-			cfg.GetValue(path+"desc1", type, rptr.mod[m].desc1, 0, 20);
-			cfg.GetValue(path+"desc2", type, rptr.mod[m].desc2, 0, 20);
-			cfg.GetValue(path+"url", type, rptr.mod[m].url, 0, 80);
+			cfg.GetValue("gateway_latitude", type, rptr.mod[m].latitude, -90.0, 90.0);
+			cfg.GetValue("gateway_longitude", type, rptr.mod[m].longitude, -180.0, 180.0);
+			cfg.GetValue("gateway_desc1", type, rptr.mod[m].desc1, 0, 20);
+			cfg.GetValue("gateway_desc2", type, rptr.mod[m].desc2, 0, 20);
+			cfg.GetValue("gateway_url", type, rptr.mod[m].url, 0, 80);
 
 			// make the long description for the log
 			if (rptr.mod[m].desc1.length())
@@ -246,9 +246,9 @@ bool CQnetGateway::read_config(char *cfgFile)
 	// gateway
 	path.assign("gateway_");
 	cfg.GetValue(path+"local_irc_ip", estr, local_irc_ip, 7, IP_SIZE);
-	cfg.GetValue(path+"external.ip", estr, g2_external.ip, 7, IP_SIZE);
-	cfg.GetValue(path+"external.port", estr, g2_external.port, 1024, 65535);
-	cfg.GetValue(path+"regen_header", estr, bool_regen_header);
+	cfg.GetValue(path+"ip", estr, g2_external.ip, 7, IP_SIZE);
+	cfg.GetValue(path+"port", estr, g2_external.port, 1024, 65535);
+	cfg.GetValue(path+"header_regen", estr, bool_regen_header);
 	cfg.GetValue(path+"send_qrgs_maps", estr, bool_send_qrgs);
 	cfg.GetValue(path+"tolink", estr, gate2link, 1, FILENAME_MAX);
 	cfg.GetValue(path+"fromlink", estr, link2gate, 1, FILENAME_MAX);
