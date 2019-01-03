@@ -198,7 +198,7 @@ void CQnetITAP::Run(const char *cfgfile)
 
 	int ug2m = Gate2Modem.GetFD();
 	int um2g = Modem2Gate.GetFD();
-	printf("gate2modem=%d, modem2gate=%d seral=%d\n", ug2m, um2g, serfd);
+	printf("gate2modem=%d, modem2gate=%d serial=%d\n", ug2m, um2g, serfd);
 
 	keep_running = true;
 	unsigned poll_counter = 0;
@@ -501,8 +501,8 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	RPTR_MOD = 'A' + assigned_module;
 
 	cfg.GetValue(itap_path+"_device", type, ITAP_DEVICE, 7, FILENAME_MAX);
-	cfg.GetValue(itap_path+"_gate2modem"+std::to_string(assigned_module), type, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue(itap_path+"_modem2gate"+std::to_string(assigned_module), type, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue(itap_path+"_gate2modem"+std::string(1, 'a'+assigned_module), type, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue(itap_path+"_modem2gate"+std::string(1, 'a'+assigned_module), type, modem2gate, 1, FILENAME_MAX);
 
 	itap_path.append("_callsign");
 	if (cfg.KeyExists(itap_path)) {

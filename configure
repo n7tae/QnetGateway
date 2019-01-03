@@ -420,7 +420,7 @@ ModuleMenu () {
 }
 
 WriteCFGFile () {
-	local m n p q outFile
+	local m p q outFile
 	outFile='./qn.cfg'
 	echo "# Created on `date`" > $outFile
 	# gateway_ section
@@ -432,13 +432,6 @@ WriteCFGFile () {
 	# module_?_ section
 	for m in a b c
 	do
-		if   [[ "$m" == a ]]; then
-			n=0
-		elif [[ "$m" == b ]]; then
-			n=1
-		else
-			n=2
-		fi
 		p="module_$m"
 		if [ -n "${!p}" ]; then
 			echo "${p}=${!p}" >> $outFile
@@ -448,8 +441,8 @@ WriteCFGFile () {
 			q=${p}_offset;         [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_range;          [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_agl;            [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
-			q=${p}_gate2modem${n}; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
-			q=${p}_modem2gate${n}; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+			q=${p}_gate2modem${m}; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+			q=${p}_modem2gate${m}; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
 			q=${p}_inactivity;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_packet_wait;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_acknowledge;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile

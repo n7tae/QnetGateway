@@ -94,12 +94,12 @@ module_x_frequency=0       # if you specify here, this frequency will show up on
 module_x_offset=0          # usually the duplex tx-rx offset, but for dvap, it's a frequency tweak
 module_x_range=0           # the range of this repeater, in meters 1609.344 meters is 1.0 miles
 module_x_agl=0             # the height above ground level for this repeater's antenna
-module_x_gate2modem0='gate2modem0'         # Unix Sockets between a modem and the gateway
-module_x_gate2modem1='gate2modem1'         # 0 is for A, 1 is for B and 2 is for C
-module_x_gate2modem2='gate2modem2'
-module_x_modem2gate0='modem2gate0'
-module_x_modem2gate1='modem2gate1'
-module_x_modem2gate2='modem2gate2'
+module_x_gate2modem0='gate2modema'         # Unix Sockets between a modem and the gateway
+module_x_gate2modem1='gate2modemb'
+module_x_gate2modem2='gate2modemc'
+module_x_modem2gate0='modem2gatea'
+module_x_modem2gate1='modem2gateb'
+module_x_modem2gate2='modem2gatec'
 
 ##########################################################################################################################
 #

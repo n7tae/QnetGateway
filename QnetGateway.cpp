@@ -220,8 +220,8 @@ bool CQnetGateway::read_config(char *cfgFile)
 			rptr.mod[m].defined = true;
 
 			path.append(1, '_');
-			cfg.GetValue(path+"togateway", type, modem2gate[m], 1, FILENAME_MAX);
-			cfg.GetValue(path+"fromgateway", type, gate2modem[m], 1, FILENAME_MAX);
+			cfg.GetValue(path+"modem2gate"+std::string(1, 'a'+m), type, modem2gate[m], 1, FILENAME_MAX);
+			cfg.GetValue(path+"gate2modem"+std::string(1, 'a'+m), type, gate2modem[m], 1, FILENAME_MAX);
 			cfg.GetValue(path+"frequency", type, rptr.mod[m].frequency, 0.0, 1.0e12);
 			cfg.GetValue(path+"offset", type, rptr.mod[m].offset, -1.0e12, 1.0e12);
 			cfg.GetValue(path+"range", type, rptr.mod[m].range, 0.0, 1609344.0);

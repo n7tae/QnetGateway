@@ -1855,8 +1855,8 @@ static bool read_config(const char *cfgFile)
 		}
 	}
 	DVRPTR_MOD = 'A' + assigned_module;
-	cfg.GetValue(path+"_gate2modem"+std::to_string(assigned_module), type, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue(path+"_modem2gate"+std::to_string(assigned_module), type, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue(path+"_gate2modem"+std::string(1, 'a'+assigned_module), type, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue(path+"_modem2gate"+std::string(1, 'a'+assigned_module), type, modem2gate, 1, FILENAME_MAX);
 
 	std::string call;
 	if (cfg.GetValue("ircddb_login", type, call, 3, 6))
