@@ -17,14 +17,14 @@
 
 InstallSystem () {
 	local n
-	if [ -z == ${1} ]; then
+	if [ -z ${1} ]; then
 		n=$( grep processor /proc/cpuinfo | wc -l )
 		echo "Detected $n processors for make"
 		make base -j$n
 	fi
 	sudo make ${1}installbase
 	if [ $ndvap -gt 0 ]; then
-		if [ -z == ${1} ]; then
+		if [ -z ${1} ]; then
 			make qndvap -j$n
 		fi
 		if [ $ndvap -eq 1 ]; then
@@ -38,7 +38,7 @@ InstallSystem () {
 		fi
 	fi
 	if [ $ndvrptr -gt 0 ]; then
-		if [ -z == ${1} ]; then
+		if [ -z ${1} ]; then
 			make qndvrptr -j$n
 		fi
 		if [ $ndvrptr -eq 1 ]; then
@@ -52,7 +52,7 @@ InstallSystem () {
 		fi
 	fi
 	if [ $nitap -gt 0 ]; then
-		if [ -z == ${1} ]; then
+		if [ -z ${1} ]; then
 			make qnitap -j$n
 		fi
 		if [ $nitap -eq 1 ]; then
@@ -66,7 +66,7 @@ InstallSystem () {
 		fi
 	fi
 	if [ $nmmdvm -gt 0 ]; then
-		if [ -z == ${1} ]; then
+		if [ -z ${1} ]; then
 			make qnrelay -j$n
 		fi
 		if [ $nmmdvm -eq 1 ]; then
@@ -198,6 +198,7 @@ while [[ "$ans" != q* ]]; do
 	echo
 	if [[ "$ActiveGate" == "inactive" ]] || [[ "$ActiveLink" == "inactive" ]]; then
 		echo "i  : Install configured system"
+		echo "u  : Uninstall System"
 		echo "d  : Install DTMF"
 	fi
 	echo "c  : Clean (remove temporary files and locally build executibles)"
@@ -207,6 +208,8 @@ while [[ "$ans" != q* ]]; do
 	# EXECUTE COMMANDS
 	if   [[ "$ans" == i* ]]; then
 		InstallSystem
+	elif [[ "$ans" == u* ]]; then
+		InstallSystem un
 	elif [[ "$ans" == d* ]]; then
 		sudo make installdtmf
 	elif [[ "$ans" == c* ]]; then
