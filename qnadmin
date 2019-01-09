@@ -19,6 +19,7 @@ InstallSystem () {
 	local n
 	if [ -z == ${1} ]; then
 		n=$( grep processor /proc/cpuinfo | wc -l )
+		echo "Detected $n processors for make"
 		make base -j$n
 	fi
 	sudo make ${1}installbase
@@ -26,12 +27,12 @@ InstallSystem () {
 		if [ -z == ${1} ]; then
 			make qndvap -j$n
 		fi
-		if [ $ndvap .eq 1 ]; then
+		if [ $ndvap -eq 1 ]; then
 			sudo make ${1}installdvap
 		else
 			sudo make MODULE=$advap[0] ${1}installdvap
 			sudo make MODULE=$advap[1] ${1}installdvap
-			if [ $ndvap .eq 3 ]; then
+			if [ $ndvap -eq 3 ]; then
 				sudo make MODULE=$advap[2] ${1}installdvap
 			fi
 		fi
@@ -40,12 +41,12 @@ InstallSystem () {
 		if [ -z == ${1} ]; then
 			make qndvrptr -j$n
 		fi
-		if [ $ndvrptr .eq 1 ]; then
+		if [ $ndvrptr -eq 1 ]; then
 			sudo make ${1}installdvrptr
 		else
 			sudo make MODULE=$advrptr[0] ${1}installdvrptr
 			sudo make MODULE=$advrptr[1] ${1}installdvrptr
-			if [ $ndvrptr .eq 3 ]; then
+			if [ $ndvrptr -eq 3 ]; then
 				sudo make MODULE=$advrptr[2] ${1}installdvrptr
 			fi
 		fi
@@ -54,12 +55,12 @@ InstallSystem () {
 		if [ -z == ${1} ]; then
 			make qnitap -j$n
 		fi
-		if [ $nitap .eq 1 ]; then
+		if [ $nitap -eq 1 ]; then
 			sudo make ${1}installitap
 		else
 			sudo make MODULE=$aitap[0] ${1}installitap
 			sudo make MODULE=$aitap[1] ${1}installitap
-			if [ $nitap .eq 3 ]; then
+			if [ $nitap -eq 3 ]; then
 				sudo make MODULE=$aitap[2] ${1}installitap
 			fi
 		fi
@@ -68,12 +69,12 @@ InstallSystem () {
 		if [ -z == ${1} ]; then
 			make qnrelay -j$n
 		fi
-		if [ $nmmdvm .eq 1 ]; then
+		if [ $nmmdvm -eq 1 ]; then
 			sudo make ${1}installrelay
 		else
 			sudo make MODULE=$ammdvm[0] ${1}installrelay
 			sudo make MODULE=$ammdvm[1] ${1}installrelay
-			if [ $nmmdvm .eq 3 ]; then
+			if [ $nmmdvm -eq 3 ]; then
 				sudo make MODULE=$advap[2] ${1}installrelay
 			fi
 		fi
