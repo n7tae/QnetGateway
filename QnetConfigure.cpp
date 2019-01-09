@@ -56,6 +56,7 @@ bool CQnetConfigure::ReadConfigFile(const char *configfile, std::map<std::string
 				else
 					val = strtok(val2, "# \t");
 				amap[key] = val;
+printf("%s=%s\n", key, val);
 			}
 		}
 		fclose(fp);
@@ -227,7 +228,7 @@ bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, s
 	if (cfg.end() == it) {
 		std::string dvalue;
 		if (GetDefaultString(path, mod, dvalue)) {
-			fprintf(stderr, "%s not found in either the cfg file for the defaults file\n", path.c_str());
+			fprintf(stderr, "%s not found in either the cfg file or the defaults file\n", path.c_str());
 			return true;
 		}
 		int l = dvalue.length();
