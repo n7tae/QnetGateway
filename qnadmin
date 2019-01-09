@@ -25,7 +25,7 @@ InstallSystem () {
 			make MODULE=$advap[1] ${1}installdvap
 			if [ $ndvap .eq 3 ]; then
 				make MODULE=$advap[2] ${1}installdvap
-			endif
+			fi
 		fi
 	fi
 	if [ $ndvrptr .gt 0 ]; then
@@ -36,7 +36,7 @@ InstallSystem () {
 			make MODULE=$advrptr[1] ${1}installdvrptr
 			if [ $ndvrptr .eq 3 ]; then
 				make MODULE=$advrptr[2] ${1}installdvrptr
-			endif
+			fi
 		fi
 	fi
 	if [ $nitap .gt 0 ]; then
@@ -47,7 +47,7 @@ InstallSystem () {
 			make MODULE=$aitap[1] ${1}installitap
 			if [ $nitap .eq 3 ]; then
 				make MODULE=$aitap[2] ${1}installitap
-			endif
+			fi
 		fi
 	fi
 	if [ $nmmdvm .gt 0 ]; then
@@ -58,7 +58,7 @@ InstallSystem () {
 			make MODULE=$ammdvm[1] ${1}installrelay
 			if [ $nmmdvm .eq 3 ]; then
 				make MODULE=$advap[2] ${1}installrelay
-			endif
+			fi
 		fi
 	fi
 }
