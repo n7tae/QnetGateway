@@ -16,48 +16,65 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 InstallSystem () {
-	make ${1}installbase
-	if [ $ndvap .gt 0 ]; then
+	local n
+	if [ -z == ${1} ]; then
+		n=$( grep processor /proc/cpuinfo | wc -l )
+		make base -j$n
+	fi
+	sudo make ${1}installbase
+	if [ $ndvap -gt 0 ]; then
+		if [ -z == ${1} ]; then
+			make qndvap -j$n
+		fi
 		if [ $ndvap .eq 1 ]; then
-			make ${1}installdvap
+			sudo make ${1}installdvap
 		else
-			make MODULE=$advap[0] ${1}installdvap
-			make MODULE=$advap[1] ${1}installdvap
+			sudo make MODULE=$advap[0] ${1}installdvap
+			sudo make MODULE=$advap[1] ${1}installdvap
 			if [ $ndvap .eq 3 ]; then
-				make MODULE=$advap[2] ${1}installdvap
+				sudo make MODULE=$advap[2] ${1}installdvap
 			fi
 		fi
 	fi
-	if [ $ndvrptr .gt 0 ]; then
+	if [ $ndvrptr -gt 0 ]; then
+		if [ -z == ${1} ]; then
+			make qndvrptr -j$n
+		fi
 		if [ $ndvrptr .eq 1 ]; then
-			make ${1}installdvrptr
+			sudo make ${1}installdvrptr
 		else
-			make MODULE=$advrptr[0] ${1}installdvrptr
-			make MODULE=$advrptr[1] ${1}installdvrptr
+			sudo make MODULE=$advrptr[0] ${1}installdvrptr
+			sudo make MODULE=$advrptr[1] ${1}installdvrptr
 			if [ $ndvrptr .eq 3 ]; then
-				make MODULE=$advrptr[2] ${1}installdvrptr
+				sudo make MODULE=$advrptr[2] ${1}installdvrptr
 			fi
 		fi
 	fi
-	if [ $nitap .gt 0 ]; then
+	if [ $nitap -gt 0 ]; then
+		if [ -z == ${1} ]; then
+			make qnitap -j$n
+		fi
 		if [ $nitap .eq 1 ]; then
-			make ${1}installitap
+			sudo make ${1}installitap
 		else
-			make MODULE=$aitap[0] ${1}installitap
-			make MODULE=$aitap[1] ${1}installitap
+			sudo make MODULE=$aitap[0] ${1}installitap
+			sudo make MODULE=$aitap[1] ${1}installitap
 			if [ $nitap .eq 3 ]; then
-				make MODULE=$aitap[2] ${1}installitap
+				sudo make MODULE=$aitap[2] ${1}installitap
 			fi
 		fi
 	fi
-	if [ $nmmdvm .gt 0 ]; then
+	if [ $nmmdvm -gt 0 ]; then
+		if [ -z == ${1} ]; then
+			make qnrelay -j$n
+		fi
 		if [ $nmmdvm .eq 1 ]; then
-			make ${1}installrelay
+			sudo make ${1}installrelay
 		else
-			make MODULE=$ammdvm[0] ${1}installrelay
-			make MODULE=$ammdvm[1] ${1}installrelay
+			sudo make MODULE=$ammdvm[0] ${1}installrelay
+			sudo make MODULE=$ammdvm[1] ${1}installrelay
 			if [ $nmmdvm .eq 3 ]; then
-				make MODULE=$advap[2] ${1}installrelay
+				sudo make MODULE=$advap[2] ${1}installrelay
 			fi
 		fi
 	fi
@@ -182,6 +199,7 @@ while [[ "$ans" != q* ]]; do
 		echo "i  : Install configured system"
 		echo "d  : Install DTMF"
 	fi
+	echo "c  : Clean (remove temporary files and locally build executibles)"
 	echo
 	read -p "q  to quit. Command: " ans
 
@@ -189,7 +207,9 @@ while [[ "$ans" != q* ]]; do
 	if   [[ "$ans" == i* ]]; then
 		InstallSystem
 	elif [[ "$ans" == d* ]]; then
-		make installdtmf
+		sudo make installdtmf
+	elif [[ "$ans" == c* ]]; then
+		make clean
 	fi
 done
 

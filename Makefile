@@ -41,6 +41,7 @@ ALL_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr qnitap
 BASE_PROGRAMS=qngateway qnlink qnremote qnvoice
 
 all    : $(ALL_PROGRAMS)
+base   : $(BASE_PROGRAMS)
 relay  : qnrelay
 dvap   : qndvap
 dvrptr : qndvrptr
