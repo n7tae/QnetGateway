@@ -198,10 +198,11 @@ while [[ "$ans" != q* ]]; do
 	echo
 	if [[ "$ActiveGate" == "inactive" ]] || [[ "$ActiveLink" == "inactive" ]]; then
 		echo "i  : Install configured system"
-		echo "u  : Uninstall System"
-		echo "d  : Install DTMF"
+		echo "u  : Uninstall configured System"
+		echo "D  : Install DTMF"
+		echo "U  : Uninstall DTMF"
 	fi
-	echo "c  : Clean (remove temporary files and locally build executibles)"
+	echo "c  : Clean (remove temporary files and locally build executables)"
 	echo
 	read -p "q  to quit. Command: " ans
 
@@ -212,6 +213,8 @@ while [[ "$ans" != q* ]]; do
 		InstallSystem un
 	elif [[ "$ans" == d* ]]; then
 		sudo make installdtmf
+	elif [[ "$ans" == U* ]]; then
+		sudo make uninstalldtmf
 	elif [[ "$ans" == c* ]]; then
 		make clean
 	fi
