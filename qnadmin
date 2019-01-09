@@ -1,0 +1,196 @@
+#!/bin/bash
+#
+# Copyright (c) 2019 by Thomas A. Early N7TAE
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+InstallSystem () {
+	make ${1}installbase
+	if [ $ndvap .gt 0 ]; then
+		if [ $ndvap .eq 1 ]; then
+			make ${1}installdvap
+		else
+			make MODULE=$advap[0] ${1}installdvap
+			make MODULE=$advap[1] ${1}installdvap
+			if [ $ndvap .eq 3 ]; then
+				make MODULE=$advap[2] ${1}installdvap
+			endif
+		fi
+	fi
+	if [ $ndvrptr .gt 0 ]; then
+		if [ $ndvrptr .eq 1 ]; then
+			make ${1}installdvrptr
+		else
+			make MODULE=$advrptr[0] ${1}installdvrptr
+			make MODULE=$advrptr[1] ${1}installdvrptr
+			if [ $ndvrptr .eq 3 ]; then
+				make MODULE=$advrptr[2] ${1}installdvrptr
+			endif
+		fi
+	fi
+	if [ $nitap .gt 0 ]; then
+		if [ $nitap .eq 1 ]; then
+			make ${1}installitap
+		else
+			make MODULE=$aitap[0] ${1}installitap
+			make MODULE=$aitap[1] ${1}installitap
+			if [ $nitap .eq 3 ]; then
+				make MODULE=$aitap[2] ${1}installitap
+			endif
+		fi
+	fi
+	if [ $nmmdvm .gt 0 ]; then
+		if [ $nmmdvm .eq 1 ]; then
+			make ${1}installrelay
+		else
+			make MODULE=$ammdvm[0] ${1}installrelay
+			make MODULE=$ammdvm[1] ${1}installrelay
+			if [ $nmmdvm .eq 3 ]; then
+				make MODULE=$advap[2] ${1}installrelay
+			endif
+		fi
+	fi
+}
+
+BaseStatus () {
+	ActiveGate=$( systemctl show -p ActiveState --value qngateway )
+	SubGate=$( systemctl show -p SubState --value qngateway )
+	ActiveLink=$( systemctl show -p ActiveState --value qnlink )
+	SubLink=$( systemctl show -p SubState --value qnlink )
+	ActiveDTMF=$( systemctl show -p ActiveState --value qndtmf )
+	SubDTMF=$( systemctl show -p SubState --value qndtmf )
+	echo -n "QnetGateway "
+	if [[ "$ActiveGate" == "inactive" ]]; then
+		echo "is not installed"
+	else
+		echo "ActiveState os $ActiveGate SubState is $SubGate"
+	fi
+	echo -n "QnetLink "
+	if [[ "$ActiveLink" == "inactive" ]]; then
+		echo "is not installed"
+	else
+		echo "ActiveState is $ActiveLink SubState is $SubLink"
+	fi
+	echo -n "DTMF "
+	if [[ "$ActiveDTMF" == "inactive" ]]; then
+		echo "is not installed"
+	else
+		echo "ActiveState is $ActiveDTMF SubState is $SubDTMF"
+	fi
+}
+
+ModuleStatus () {
+	if [ -z ${3} ]; then
+		echo "Module ${2^^} - EMPTY"
+	else
+		mcvar="n${3}"
+		if [[ ${!mcar} > 1 ]]; then
+			process="${3}${2}"
+		else
+			process="${3}"
+		fi
+		ActiveState=$( systemctl show -p ActiveState --value $process )
+		SubState=$( systemctl show -p SubState --value $process )
+		echo -n "Module ${2^^} - ${3^^}"
+		if [[ "$ActiveState" == "inactive" ]]; then
+			echo " is not installed"
+		else
+			echo " ActiveState is $ActiveState SubState is $SubState"
+		fi
+	fi
+}
+
+# get defined modules from the config file
+if [ -e qn.cfg ]; then
+	source <( grep "^module_[abc]=" qn.cfg )
+	if [ -z "$module_a" ] && [ -z "$module_b" ] && [ -z "$module_c" ]; then
+		echo "No moudules defined in the qn.cfg file!"
+		exit 1
+	fi
+else
+	"ERROR: can't find the qn.cfg file"
+	exit 1
+fi
+
+# get the installation directory from the make file
+if [ -e makefile ]; then
+	MAKEFILE=makefile
+elif [ -e Makefile ]; then
+	MAKEFILE=Makefile
+else
+	echo "ERROR: There is no Makefile or makefile"
+	exit 1
+fi
+source <( grep "^BINDIR=" $MAKEFILE )
+if [ -z $BINDIR ]; then
+	echo "ERROR: The BINDIR definition in $MAKEFILE is empty!"
+	exit 1
+fi
+if [ ! -d "$BINDIR" ]; then
+	echo "ERROR: The BINDIR directory $BINDIR is not a directory!"
+	exit 1
+fi
+
+ndvap=0
+ndvrptr=0
+nitap=0
+nmmdvm=0
+
+for m in a b c ; do
+	mod=module_${m}
+	if [ -z ${!mod} ]; then continue; fi
+	type=${!mod}
+	if [[ "$type" == 'dvap' ]]; then
+		advap[${ndvap}]=${m}
+		ndvap=$((ndvap + 1))
+	elif [[ "$type" == 'dvrptr' ]]; then
+		advrptr[$ndvap]=${m}
+		ndvrptr=$((ndvrptr + 1))
+	elif [[ "$type" == 'itap' ]]; then
+		aitap[${nitap}]=${m}
+		nitap=$((nitap + 1))
+	elif [[ "$type" == 'mmdvm' ]]; then
+		ammdvm[${nmmdvm}]=${m}
+		nmmdvm=$((nmmdvm + 1))
+	fi
+done
+
+MODULE_COUNT=$((ndvap + ndvrptr + nitap + nmmdvm))
+
+while [[ "$ans" != q* ]]; do
+	clear
+	echo
+	echo "            Qnet Administration Menu"
+	echo
+	BaseStatus
+	ModuleStatus 0 a "$module_a"
+	ModuleStatus 1 b "$module_b"
+	ModuleStatus 2 c "$module_c"
+	echo
+	if [[ "$ActiveGate" == "inactive" ]] || [[ "$ActiveLink" == "inactive" ]]; then
+		echo "i  : Install configured system"
+		echo "d  : Install DTMF"
+	fi
+	echo
+	read -p "q  to quit. Command: " ans
+
+	# EXECUTE COMMANDS
+	if   [[ "$ans" == i* ]]; then
+		InstallSystem
+	elif [[ "$ans" == d* ]]; then
+		make installdtmf
+	fi
+done
+
+exit 0

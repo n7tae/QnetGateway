@@ -62,7 +62,7 @@ EndMenu () {
 
 LinkMenu () {
 	key=''
-	while [[ "$key" != q* ]];do
+	while [[ "$key" != q* ]]; do
 		clear
 		echo
 		echo "               Link/D-Plus Menu"

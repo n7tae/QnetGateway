@@ -89,7 +89,7 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
-	systemctl start qngateway.service
+#	systemctl start qngateway.service
 	######### QnetLink #########
 	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
@@ -98,7 +98,7 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
 	systemctl daemon-reload
-	systemctl start qnlink.service
+#	systemctl start qnlink.service
 
 installrelay : qnrelay
 	######### QnetRelay #########
@@ -106,7 +106,7 @@ installrelay : qnrelay
 	/bin/cp -f system/qnrelay$(MODULE).service $(SYSDIR)
 	systemctl enable qnrelay$(MODULE).service
 	systemctl daemon-reload
-	systemctl start qnrelay$(MODULE).service
+#	systemctl start qnrelay$(MODULE).service
 	######### MMDVMHost #########
 
 installitap : qnitap
@@ -115,7 +115,7 @@ installitap : qnitap
 	/bin/cp -f system/qnitap$(MODULE).service $(SYSDIR)
 	systemctl enable qnitap$(MODULE).service
 	systemctl daemon-reload
-	systemctl start qnitap$(MODULE).service
+#	systemctl start qnitap$(MODULE).service
 
 installdvap : qndvap
 	######### QnetDVAP #########
@@ -123,7 +123,7 @@ installdvap : qndvap
 	/bin/cp -f system/qndvap$(MODULE).service $(SYSDIR)
 	systemctl enable qndvap$(MODULE).service
 	systemctl daemon-reload
-	systemctl start qndvap$(MODULE).service
+#	systemctl start qndvap$(MODULE).service
 
 installdvrptr : qndvrptr
 	######### QnetDVRPTR #########
@@ -131,7 +131,7 @@ installdvrptr : qndvrptr
 	/bin/cp -f system/qndvrptr$(MODULE).service $(SYSDIR)
 	systemctl enable qndvrptr$(MODULE).service
 	systemctl daemon-reload
-	systemctl start qndvrptr$(MODULE).service
+#	systemctl start qndvrptr$(MODULE).service
 
 installdtmf : qndtmf
 	/bin/ln -s $(shell pwd)/qndtmf $(BINDIR)

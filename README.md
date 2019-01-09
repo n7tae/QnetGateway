@@ -5,7 +5,11 @@ The QnetGateway is an D-Star IRCDDB gateway application that supports MMDVMHost 
 
 The Qnet Gateway program now includes support for Icom's new Terminal mode. Access Point mode is still having some performance issues and we will be working on this. For more information, please read the ITAP.README file.
 
-For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To build QnetGateway that uses a DVAP Dongle or DVRPTR V1, see the BUILDING file.
+For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To build QnetGateway that uses a DVAP Dongle or DVRPTR V1, see the BUILDING file. To build QnetGateway for an Icom Repeater Stack, switch to another branch after cloning the repository:
+
+```
+git checkout lastudp
+```
 
 To get started, clone the software to your Linux device:
 

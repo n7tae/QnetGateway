@@ -30,11 +30,17 @@ already have all or most of these but it still doesn't hurt to be sure:
 
 sudo apt-get update
 sudo apt-get upgrade
-sudo apt-get install make g++ unzip git libconfig++-dev
+sudo apt-get install make g++ unzip git
 
 If you are building a QnetGateway + MMDVMHost system, please use the instructions
 in the MMDVM.README file. If you are building a QnetGateway for an Icom repeater,
-use the qn.icom.cfg configuration file as a starting point for your configuration.
+you'll need to switch branches of this repository after downloading it (see below):
+
+git checkout lastudp
+
+Then you can  use the qn.icom.cfg configuration file as a starting point for your
+configuration.
+
 If you are building a QnetGateway for a DVAP or a DVRPTR_V1 read on...
 
 git clone git://github.com/n7tae/QnetGateway.git
@@ -44,7 +50,6 @@ dvrptr ircddb gateway.
 
 The first thing to do is change to the build directory with "cd QnetGateway" and then
 choose a target to make. There are targets for each of the supported devices:
-. "make icom"   will build all programs needed for the Icom repeater.
 . "make itap"   will build all programs needed for Icom Terminal mode.
 . "make dvap"   will build all programs needed for the DVAP Dongle.
 . "make dvrptr" will build all programs needed for the DVRPTR_V1.
@@ -53,20 +58,37 @@ choose a target to make. There are targets for each of the supported devices:
 . "make" will build all the QnetGateway executables. This is useful if you are
   experimenting around with lots of different devices.
 
-Next, create your qn.cfg configuration file. There are three example for you to look
-at:
-. qn.everything.cfg contains all parameter with lengthly comments about what
+Next, create your qn.cfg configuration file. Use the menu-driven configuration
+script. Type:
+
+./configure
+
+You can configure up to three different modules: a, b and/or c.
+
+The configure script will show you the default values of every parameter the
+QnetGateway programs use. In most cases, the defaults are just fine and you don't
+need to override them with your own values. Mostly you need to specify you callsign
+for the IRC login, specify at least one module and most users will want to enable
+the D-Plus legacy authorization. For a DVAP Dongle or a DVRPTR V1, there are some
+parameters that must be specified, like the serial number. After you are happy with
+your configuration, be sure to write it out. After you install and try out your
+system, you may find that you need to change some configuration values. In that
+case just start the configure script again. It will read the current qn.cfg file
+when it start.
+
+Of course, you can always build your own qn.cfg file. There are three example for
+you to look at:
+. qn.everything.cfg contains all parameter with comments about what
   each parameter does. The definitions that are commented out are defined with
   their default value.
 . qn.dvap.cfg is the simplest possible configuration for a 2m DVAP. If you have
   a 70cm DVAP rename the module to "b" and change the frequency.
-. qn.icom.cfg is the starting place for configuring an Icom repeater. Please note
-  that QnetGateway doesn't support the 23cm data only module in the Icom repeater
-  stack.
+. qn.mmdvm.cfg is the starting place for configuring an MMDVMHost repeater. Be sure
+  the module assignment agrees with the module configured in your MMDVM.cfg file.
 . qn.itap.cfg is a simple configuration file for Icom's Terminal and Access Point
   Mode. Please read ITAP.README for more information.
 
-Remeber the everything file or the icom file contain detailed comments about all of
+Remeber the 'everything' file file contain detailed comments about all of
 the values you can set. Just read through it and edit accordingly. In the end you will
 need a configuration file called "qn.cfg".
 
