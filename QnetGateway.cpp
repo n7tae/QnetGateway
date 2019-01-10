@@ -226,11 +226,11 @@ bool CQnetGateway::read_config(char *cfgFile)
 			cfg.GetValue(path+"offset", type, rptr.mod[m].offset, -1.0e12, 1.0e12);
 			cfg.GetValue(path+"range", type, rptr.mod[m].range, 0.0, 1609344.0);
 			cfg.GetValue(path+"agl", type, rptr.mod[m].agl, 0.0, 1000.0);
-			cfg.GetValue("gateway_latitude", type, rptr.mod[m].latitude, -90.0, 90.0);
-			cfg.GetValue("gateway_longitude", type, rptr.mod[m].longitude, -180.0, 180.0);
-			cfg.GetValue("gateway_desc1", type, rptr.mod[m].desc1, 0, 20);
-			cfg.GetValue("gateway_desc2", type, rptr.mod[m].desc2, 0, 20);
-			cfg.GetValue("gateway_url", type, rptr.mod[m].url, 0, 80);
+			cfg.GetValue("gateway_latitude", estr, rptr.mod[m].latitude, -90.0, 90.0);
+			cfg.GetValue("gateway_longitude", estr, rptr.mod[m].longitude, -180.0, 180.0);
+			cfg.GetValue("gateway_desc1", estr, rptr.mod[m].desc1, 0, 20);
+			cfg.GetValue("gateway_desc2", estr, rptr.mod[m].desc2, 0, 20);
+			cfg.GetValue("gateway_url", estr, rptr.mod[m].url, 0, 80);
 
 			// make the long description for the log
 			if (rptr.mod[m].desc1.length())
