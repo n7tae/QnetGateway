@@ -2451,14 +2451,14 @@ int CQnetGateway::Init(char *cfgfile)
 	}
 
 	// Open unix sockets between qngateway and qnlink
-	if (Gate2Link.Open(gate2link.c_str()))
-		return 1;
+	Gate2Link.SetUp(gate2link.c_str());
 	if (Link2Gate.Open(link2gate.c_str()))
 		return 1;
 
 	for (i=0; i<3; i++) {
 		if (rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
-			if (Gate2Modem[i].Open(gate2modem[i].c_str()) || Modem2Gate[i].Open(modem2gate[i].c_str()))
+			Gate2Modem[i].SetUp(gate2modem[i].c_str());
+			if (Modem2Gate[i].Open(modem2gate[i].c_str()))
 				return 1;
 		}
 		// recording for echotest on local repeater modules
@@ -2536,10 +2536,8 @@ CQnetGateway::CQnetGateway()
 
 CQnetGateway::~CQnetGateway()
 {
-	Gate2Link.Close();
 	Link2Gate.Close();
 	for (int i=0; i<3; i++) {
-		Gate2Modem[i].Close();
 		Modem2Gate[i].Close();
 	}
 

@@ -198,8 +198,7 @@ int main(int argc, char *argv[])
 	CUnixDgramWriter ToGateway;
 	std::string togateway("modem2gate");
 	togateway.append(1, module-'A'+'0');
-	if (ToGateway.Open(togateway.c_str()))
-		return 1;
+	ToGateway.SetUp(togateway.c_str());
 
 	SDSTR pkt;
 	memcpy(pkt.pkt_id,"DSTR", 4);
@@ -241,7 +240,6 @@ int main(int argc, char *argv[])
 	int sent = ToGateway.Write(pkt.pkt_id, 58);
 	if (sent != 58) {
 		printf("%s: ERROR: Couldn't send header!\n", argv[0]);
-		ToGateway.Close();
 		return 1;
 	}
 
@@ -313,10 +311,8 @@ int main(int argc, char *argv[])
 		sent = ToGateway.Write(pkt.pkt_id, 29);
 		if (sent != 29) {
 			printf("%s: ERROR: could not send voice packet %d\n", argv[0], i);
-			ToGateway.Close();
 			return 1;
 		}
 	}
-	ToGateway.Close();
 	return 0;
 }

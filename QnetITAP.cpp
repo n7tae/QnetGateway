@@ -78,7 +78,8 @@ bool CQnetITAP::Initialize(const char *cfgfile)
 		return true;
 	}
 
-	if (Gate2Modem.Open(gate2modem.c_str()) || Modem2Gate.Open(modem2gate.c_str()))
+	Modem2Gate.SetUp(modem2gate.c_str());
+	if (Gate2Modem.Open(gate2modem.c_str()))
 		return true;
 
 	return false;
@@ -197,8 +198,7 @@ void CQnetITAP::Run(const char *cfgfile)
 		return;
 
 	int ug2m = Gate2Modem.GetFD();
-	int um2g = Modem2Gate.GetFD();
-	printf("gate2modem=%d, modem2gate=%d serial=%d\n", ug2m, um2g, serfd);
+	printf("gate2modem=%d, serial=%d\n", ug2m, serfd);
 
 	keep_running = true;
 	unsigned poll_counter = 0;
@@ -300,7 +300,6 @@ void CQnetITAP::Run(const char *cfgfile)
 
 	::close(serfd);
 	Gate2Modem.Close();
-	Modem2Gate.Close();
 }
 
 int CQnetITAP::SendTo(const unsigned char length, const unsigned char *buf)

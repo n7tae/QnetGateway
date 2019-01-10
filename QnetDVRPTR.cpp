@@ -2559,7 +2559,8 @@ int main(int argc, const char **argv)
 	strcpy(DVCALL_and_MOD, DVCALL);
 	DVCALL_and_MOD[7] = DVRPTR_MOD;
 
-	if (Gate2Modem.Open(gate2modem.c_str()) || Modem2Gate.Open(modem2gate.c_str()))
+	Modem2Gate.SetUp(modem2gate.c_str());
+	if (Gate2Modem.Open(gate2modem.c_str()))
 		return 1;
 
 	if  (RX_Inverse == true) {
@@ -3087,7 +3088,6 @@ int main(int argc, const char **argv)
 		}
 	}
 
-	Modem2Gate.Close();
 	Gate2Modem.Close();
 	printf("dvrptr exiting...\n");
 

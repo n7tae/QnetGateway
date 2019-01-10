@@ -252,7 +252,8 @@ static bool read_config(const char *cfgFile)
 
 static int open_sock()
 {
-	if (Gate2Modem.Open(gate2modem.c_str()) || Modem2Gate.Open(modem2gate.c_str()))
+	Modem2Gate.SetUp(modem2gate.c_str());
+	if (Gate2Modem.Open(gate2modem.c_str()))
 		return 1;
 	return 0;
 }
@@ -648,7 +649,6 @@ int main(int argc, const char **argv)
 
 	readthread.get();
 	Gate2Modem.Close();
-	Modem2Gate.Close();
 	printf("dvap_rptr exiting\n");
 	return 0;
 }

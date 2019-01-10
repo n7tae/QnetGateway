@@ -18,6 +18,7 @@
  */
 
 #include <stdlib.h>
+#include <sys/un.h>
 
 class CUnixDgramReader
 {
@@ -37,10 +38,8 @@ class CUnixDgramWriter
 public:
 	CUnixDgramWriter();
 	~CUnixDgramWriter();
-	bool Open(const char *path);
+	void SetUp(const char *path);
 	ssize_t Write(void *buf, size_t size);
-	void Close();
-	int GetFD();
 private:
-	int fd;
+	struct sockaddr_un addr;
 };

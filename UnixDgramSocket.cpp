@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/un.h>
 
 #include "UnixDgramSocket.h"
 
@@ -75,51 +74,36 @@ int CUnixDgramReader::GetFD()
 	return fd;
 }
 
-CUnixDgramWriter::CUnixDgramWriter() : fd(-1) {}
+CUnixDgramWriter::CUnixDgramWriter() {}
 
-CUnixDgramWriter::~CUnixDgramWriter()
+CUnixDgramWriter::~CUnixDgramWriter() {}
+
+void CUnixDgramWriter::SetUp(const char *path)	// returns true on failure
 {
-	Close();
-}
-
-bool CUnixDgramWriter::Open(const char *path)	// returns true on failure
-{
-	fd = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (fd < 0) {
-		fprintf(stderr, "CUnixDgramWriter::Open: socket() failed: %s\n", strerror(errno));
-		return true;
-	}
-
-	struct sockaddr_un addr;
+	// setup the socket address
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
 	strncpy(addr.sun_path+1, path, sizeof(addr.sun_path)-2);
-
-	int rval = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
-	if (rval < 0) {
-		fprintf(stderr, "CUnixDgramWriter::Open: connect() failed: %s\n", strerror(errno));
-		close(fd);
-		fd = -1;
-		return true;
-	}
-	return false;
 }
 
 ssize_t CUnixDgramWriter::Write(void *buf, size_t size)
 {
-	if (fd >= 0)
-		return write(fd, buf, size);
-	return -1;
-}
-
-void CUnixDgramWriter::Close()
-{
-	if (fd >= 0)
+	// open the socket
+	int fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open socket %s\n", addr.sun_path+1);
+		return -1;
+	}
+	// connect to the receiver
+	int rval = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+	if (rval < 0) {
+		fprintf(stderr, "Failed to connect to socket %s\n", addr.sun_path+1);
 		close(fd);
-	fd = -1;
-}
+		return -1;
+	}
 
-int CUnixDgramWriter::GetFD()
-{
-	return fd;
+	ssize_t written = write(fd, buf, size);
+
+	close(fd);
+	return written;
 }

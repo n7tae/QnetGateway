@@ -127,7 +127,8 @@ bool CQnetRelay::Run(const char *cfgfile)
 	if (msock < 0)
 		return true;
 
-	if (Gate2Modem.Open(gate2modem.c_str()) || Modem2Gate.Open(modem2gate.c_str()))
+	Modem2Gate.SetUp(modem2gate.c_str());
+	if (Gate2Modem.Open(gate2modem.c_str()))
 		return true;
 
 	int fd = Gate2Modem.GetFD();
@@ -206,7 +207,6 @@ bool CQnetRelay::Run(const char *cfgfile)
 
 	::close(msock);
 	Gate2Modem.Close();
-	Modem2Gate.Close();
 	return false;
 }
 

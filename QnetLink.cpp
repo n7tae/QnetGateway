@@ -667,7 +667,8 @@ bool CQnetLink::srv_open()
 	}
 
 	/* create our gateway unix sockets */
-	if (Gate2Link.Open(gate2link.c_str()) || Link2Gate.Open(link2gate.c_str())) {
+	Link2Gate.SetUp(link2gate.c_str());
+	if (Gate2Link.Open(gate2link.c_str())) {
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
 		close(xrf_g2_sock);
@@ -675,7 +676,6 @@ bool CQnetLink::srv_open()
 		close(ref_g2_sock);
 		ref_g2_sock = -1;
 		Gate2Link.Close();
-		Link2Gate.Close();
 		return false;
 	}
 
@@ -707,7 +707,6 @@ void CQnetLink::srv_close()
 	}
 
 	Gate2Link.Close();
-	Link2Gate.Close();
 
 	if (ref_g2_sock != -1) {
 		close(ref_g2_sock);
