@@ -41,10 +41,10 @@
 
 #define VERSION "v2.0"
 
-char module;
+int module;
 time_t tNow = 0;
 short streamid_raw = 0;
-std::string REPEATER;
+std::string REPEATER, togateway;
 int PLAY_WAIT, PLAY_DELAY;
 
 unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
@@ -76,21 +76,26 @@ bool ReadCfgFile()
 	const std::string estr;
 	std::string type;
 	std::string path = "module_";
-	path.append(1, module);
+	path.append(1, 'a'+module);
 	if (cfg.GetValue(path, estr, type, 1, 16)) {
 		fprintf(stderr, "%s not found!\n", path.c_str());
 		return true;
 	}
 	if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("itap")) {
-		fprintf(stderr, "module type '%s is invalid!\n", type.c_str());
+		fprintf(stderr, "module type '%s' is invalid!\n", type.c_str());
 		return true;
 	}
-	if (cfg.GetValue(path+"_callsign", type, REPEATER, 3, 6)) {
+	cfg.GetValue(path+"_callsign", type, REPEATER, 0, 6);
+	if (REPEATER.length() < 4) {
 		if (cfg.GetValue("ircddb.login", estr, REPEATER, 3, 6)) {
 			fprintf(stderr, "no Callsign for the repeater was found!\n");
 			return true;
 		}
 	}
+	path.append("_modem2gate");
+	path.append(1, 'a'+module);
+	cfg.GetValue(path, type, togateway, 1, FILENAME_MAX);
+
 	cfg.GetValue("timing_play_wait", estr, PLAY_WAIT, 1,10);
 	cfg.GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
 	return false;
@@ -140,17 +145,17 @@ int main(int argc, char *argv[])
 		case '0':
 		case 'a':
 		case 'A':
-			module = 'A';
+			module = 0;
 			break;
 		case '1':
 		case 'b':
 		case 'B':
-			module = 'B';
+			module = 1;
 			break;
 		case '2':
 		case 'c':
 		case 'C':
-			module = 'C';
+			module = 2;
 			break;
 		default:
 			fprintf(stderr, "module must be 0, a, A, 1, b, B, 2, c or C, not %s\n", argv[1]);
@@ -196,8 +201,6 @@ int main(int argc, char *argv[])
 	time(&tNow);
 	CRandom Random;
 	CUnixDgramWriter ToGateway;
-	std::string togateway("modem2gate");
-	togateway.append(1, module-'A'+'0');
 	ToGateway.SetUp(togateway.c_str());
 
 	SDSTR pkt;
@@ -210,11 +213,11 @@ int main(int argc, char *argv[])
 	pkt.vpkt.icm_id = 0x20;
 	pkt.vpkt.dst_rptr_id = 0x00;
 	pkt.vpkt.snd_rptr_id = 0x01;
-	if (module == 'A')
+	if (module == 0)
 		pkt.vpkt.snd_term_id = 0x03;
-	else if (module == 'B')
+	else if (module == 1)
 		pkt.vpkt.snd_term_id = 0x01;
-	else if (module == 'C')
+	else if (module == 2)
 		pkt.vpkt.snd_term_id = 0x02;
 	else
 		pkt.vpkt.snd_term_id = 0x00;
@@ -224,8 +227,10 @@ int main(int argc, char *argv[])
 	pkt.vpkt.hdr.flag[0] = pkt.vpkt.hdr.flag[1] = pkt.vpkt.hdr.flag[2] = 0x00;
 
 	REPEATER.resize(7, ' ');
-	memcpy(pkt.vpkt.hdr.r2, std::string(REPEATER + 'G').c_str(), 8);
-	memcpy(pkt.vpkt.hdr.r1, std::string(REPEATER + module).c_str(), 8);
+	memcpy(pkt.vpkt.hdr.r2, REPEATER.c_str(), 8);
+	pkt.vpkt.hdr.r2[7] = 'G';
+	memcpy(pkt.vpkt.hdr.r1, REPEATER.c_str(), 8);
+	pkt.vpkt.hdr.r1[7] = 'A' + module;
 	mycall.resize(8, ' ');
 	memcpy(pkt.vpkt.hdr.my, mycall.c_str(), 8);
 	memcpy(pkt.vpkt.hdr.nm, "QNET", 4);
