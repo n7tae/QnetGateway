@@ -87,7 +87,7 @@ bool ReadCfgFile()
 	}
 	cfg.GetValue(path+"_callsign", type, REPEATER, 0, 6);
 	if (REPEATER.length() < 4) {
-		if (cfg.GetValue("ircddb.login", estr, REPEATER, 3, 6)) {
+		if (cfg.GetValue("ircddb_login", estr, REPEATER, 3, 6)) {
 			fprintf(stderr, "no Callsign for the repeater was found!\n");
 			return true;
 		}
