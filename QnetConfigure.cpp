@@ -231,7 +231,7 @@ bool CQnetConfigure::GetValue(const std::string &path, const std::string &mod, s
 			return true;
 		}
 		int l = dvalue.length();
-		if (l<min || l>max) {
+		if (min-1>=l || l>max) {
 			printf("Default value %s='%s' is wrong size\n", path.c_str(), value.c_str());
 			return true;
 		}
