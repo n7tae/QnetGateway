@@ -515,144 +515,6 @@ static void readFrom20000()
 	return;
 }
 
-int main(int argc, const char **argv)
-{
-	struct sigaction act;
-	int rc = -1;
-	time_t tnow = 0;
-	time_t ackpoint = 0;
-	short cnt = 0;
-
-	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("dvap_rptr VERSION %s\n", VERSION);
-
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s dvap_rptr.cfg\n", argv[0]);
-		return 1;
-	}
-
-	if ('-' == argv[1][0]) {
-		printf("\nQnetDVAP Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVAP_VERSION);
-		printf("QnetDVAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
-		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
-		return 0;
-	}
-
-	const char *qn = strstr(argv[0], "qndvap");
-	if (NULL == qn) {
-		fprintf(stderr, "Error finding 'qndvap' in %s!\n", argv[0]);
-		return 1;
-	}
-	qn += 6;
-
-	switch (argv[1][0]) {
-		case NULL:
-			assigned_module = -1;
-			break;
-		case 'a':
-			assigned_module = 0;
-			break;
-		case 'b':
-			assigned_module = 1;
-			break;
-		case 'c':
-			assigned_module = 2;
-			break;
-		default:
-			fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
-			return 1;
-	}
-
-	if (read_config(argv[1])) {
-		printf("Failed to process config file %s\n", argv[2]);
-		return 1;
-	}
-
-	if (RPTR.length() != 8) {
-		printf("Bad RPTR value, length must be exactly 8 bytes\n");
-		return 1;
-	}
-	if ((RPTR_MOD != 'A') && (RPTR_MOD != 'B') && (RPTR_MOD != 'C')) {
-		printf("Bad RPTR_MOD value, must be one of A or B or C\n");
-		return 1;
-	}
-
-	if (RPTR_MOD == 'A')
-		SND_TERM_ID = 0x03;
-	else if (RPTR_MOD == 'B')
-		SND_TERM_ID = 0x01;
-	else if (RPTR_MOD == 'C')
-		SND_TERM_ID = 0x02;
-
-	strcpy(RPTR_and_G, RPTR.c_str());
-	RPTR_and_G[7] = 'G';
-
-	strcpy(RPTR_and_MOD, RPTR.c_str());
-	RPTR_and_MOD[7] = RPTR_MOD;
-
-	time(&tnow);
-	aseed = tnow + getpid();
-
-	act.sa_handler = sig_catch;
-	sigemptyset(&act.sa_mask);
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return 1;
-	}
-	if (sigaction(SIGHUP, &act, 0) != 0) {
-		printf("sigaction-HUP failed, error=%d\n", errno);
-		return 1;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return 1;
-	}
-
-	/* open dvp */
-	if (!dongle.Initialize(DVP_SERIAL.c_str(), DVP_FREQ, DVP_OFF, DVP_PWR, DVP_SQL))
-		return 1;
-
-	rc = open_sock();
-	if (rc != 0) {
-		dongle.Stop();
-		close(serfd);
-		return 1;
-	}
-	printf("DVAP opened and initialized!\n");
-	dstar_dv_init();
-
-	std::future<void> readthread;
-	try {
-		readthread = std::async(std::launch::async, ReadDVAPThread);
-	} catch (const std::exception &e) {
-		printf("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
-		keep_running = false;
-	}
-	printf("Started ReadDVAPThread()\n");
-
-	while (keep_running) {
-		time(&tnow);
-		if ((tnow - ackpoint) > 2) {
-			rc = dongle.KeepAlive();
-			if (rc < 0) {
-				cnt ++;
-				if (cnt > 5) {
-					printf("Could not send KEEPALIVE signal to dvap 5 times...exiting\n");
-					keep_running = false;
-				}
-			} else
-				cnt = 0;
-			ackpoint = tnow;
-		}
-		readFrom20000();
-	}
-
-	readthread.get();
-	Gate2Modem.Close();
-	printf("dvap_rptr exiting\n");
-	return 0;
-}
-
 static void RptrAckThread(SDVAP_ACK_ARG *parg)
 {
 	char mycall[8];
@@ -1073,4 +935,142 @@ static void ReadDVAPThread()
 
 	keep_running = false;
 	return;
+}
+
+int main(int argc, const char **argv)
+{
+	struct sigaction act;
+	int rc = -1;
+	time_t tnow = 0;
+	time_t ackpoint = 0;
+	short cnt = 0;
+
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	printf("dvap_rptr VERSION %s\n", VERSION);
+
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s dvap_rptr.cfg\n", argv[0]);
+		return 1;
+	}
+
+	if ('-' == argv[1][0]) {
+		printf("\nQnetDVAP Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVAP_VERSION);
+		printf("QnetDVAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
+		return 0;
+	}
+
+	const char *qn = strstr(argv[0], "qndvap");
+	if (NULL == qn) {
+		fprintf(stderr, "Error finding 'qndvap' in %s!\n", argv[0]);
+		return 1;
+	}
+	qn += 6;
+
+	switch (*qn) {
+		case NULL:
+			assigned_module = -1;
+			break;
+		case 'a':
+			assigned_module = 0;
+			break;
+		case 'b':
+			assigned_module = 1;
+			break;
+		case 'c':
+			assigned_module = 2;
+			break;
+		default:
+			fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
+			return 1;
+	}
+
+	if (read_config(argv[1])) {
+		printf("Failed to process config file %s\n", argv[2]);
+		return 1;
+	}
+
+	if (RPTR.length() != 8) {
+		printf("Bad RPTR value, length must be exactly 8 bytes\n");
+		return 1;
+	}
+	if ((RPTR_MOD != 'A') && (RPTR_MOD != 'B') && (RPTR_MOD != 'C')) {
+		printf("Bad RPTR_MOD value, must be one of A or B or C\n");
+		return 1;
+	}
+
+	if (RPTR_MOD == 'A')
+		SND_TERM_ID = 0x03;
+	else if (RPTR_MOD == 'B')
+		SND_TERM_ID = 0x01;
+	else if (RPTR_MOD == 'C')
+		SND_TERM_ID = 0x02;
+
+	strcpy(RPTR_and_G, RPTR.c_str());
+	RPTR_and_G[7] = 'G';
+
+	strcpy(RPTR_and_MOD, RPTR.c_str());
+	RPTR_and_MOD[7] = RPTR_MOD;
+
+	time(&tnow);
+	aseed = tnow + getpid();
+
+	act.sa_handler = sig_catch;
+	sigemptyset(&act.sa_mask);
+	if (sigaction(SIGTERM, &act, 0) != 0) {
+		printf("sigaction-TERM failed, error=%d\n", errno);
+		return 1;
+	}
+	if (sigaction(SIGHUP, &act, 0) != 0) {
+		printf("sigaction-HUP failed, error=%d\n", errno);
+		return 1;
+	}
+	if (sigaction(SIGINT, &act, 0) != 0) {
+		printf("sigaction-INT failed, error=%d\n", errno);
+		return 1;
+	}
+
+	/* open dvp */
+	if (!dongle.Initialize(DVP_SERIAL.c_str(), DVP_FREQ, DVP_OFF, DVP_PWR, DVP_SQL))
+		return 1;
+
+	rc = open_sock();
+	if (rc != 0) {
+		dongle.Stop();
+		close(serfd);
+		return 1;
+	}
+	printf("DVAP opened and initialized!\n");
+	dstar_dv_init();
+
+	std::future<void> readthread;
+	try {
+		readthread = std::async(std::launch::async, ReadDVAPThread);
+	} catch (const std::exception &e) {
+		printf("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
+		keep_running = false;
+	}
+	printf("Started ReadDVAPThread()\n");
+
+	while (keep_running) {
+		time(&tnow);
+		if ((tnow - ackpoint) > 2) {
+			rc = dongle.KeepAlive();
+			if (rc < 0) {
+				cnt ++;
+				if (cnt > 5) {
+					printf("Could not send KEEPALIVE signal to dvap 5 times...exiting\n");
+					keep_running = false;
+				}
+			} else
+				cnt = 0;
+			ackpoint = tnow;
+		}
+		readFrom20000();
+	}
+
+	readthread.get();
+	Gate2Modem.Close();
+	printf("dvap_rptr exiting\n");
+	return 0;
 }
