@@ -521,16 +521,9 @@ bool CQnetLink::read_config(const char *cfgFile)
 	ToUpper(owner);
 	owner.resize(CALL_SIZE, ' ');
 
-	if (cfg.GetValue("dplus_ref_login", estr, login_call, 3, 6))
-		login_call.assign(owner);
-	else {
-		ToUpper(login_call);
-		login_call.resize(CALL_SIZE, ' ');
-	}
-
 	int modules = 0;
-	key.assign("module_");
 	for (int i=0; i<3; i++) {
+		key.assign("module_");
 		key.append(1, 'a'+i);
 		if (cfg.KeyExists(key)) {
 			std::string modem_type;
@@ -557,7 +550,7 @@ bool CQnetLink::read_config(const char *cfgFile)
 	csv.clear();
 	key.assign("link_no_link_unlink");
 	if (cfg.KeyExists(key)) {
-		cfg.GetValue(key, estr, csv, 0, 10250);
+		cfg.GetValue(key, estr, csv, 0, 10240);
 		UnpackCallsigns(csv, link_blacklist);
 		PrintCallsigns(key, link_blacklist);
 	} else {
@@ -600,6 +593,13 @@ bool CQnetLink::read_config(const char *cfgFile)
 	cfg.GetValue(key+"authorize", estr, dplus_authorize);
 	cfg.GetValue(key+"use_reflectors", estr, dplus_reflectors);
 	cfg.GetValue(key+"use_repeaters", estr, dplus_repeaters);
+	cfg.GetValue(key+"ref_login", estr, login_call, 0, 6);
+	if (login_call.length() < 4)
+		login_call.assign(owner);
+	else {
+		ToUpper(login_call);
+		login_call.resize(CALL_SIZE, ' ');
+	}
 
 	return false;
 }
