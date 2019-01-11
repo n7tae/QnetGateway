@@ -51,9 +51,12 @@ bool CQnetConfigure::ReadConfigFile(const char *configfile, std::map<std::string
 			if (strlen(key) && '#' != *key) {
 				char *val = strtok(NULL, "\r\n");
 				char *val2 = Trim(val);
-				if ('\'' ==  *val2)
-					val = strtok(val2, "'");
-				else
+				if ('\'' ==  val2[0]) {
+					if ('\'' == val2[1])
+						val[0] = '\0';
+					else
+						val = strtok(val2, "'");
+				} else
 					val = strtok(val2, "# \t");
 				amap[key] = val;
 			}
