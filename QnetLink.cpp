@@ -959,7 +959,9 @@ void CQnetLink::Process()
 				sleep(15);
 				first = false;
 			}
-			g2link('A'+i, link_at_startup[i].substr(0, 6).c_str(), link_at_startup[i].at(7));
+			std::string node(link_at_startup[i].substr(0, 6));
+			node.resize(CALL_SIZE, ' ');
+			g2link('A'+i, node.c_str(), link_at_startup[i].at(7));
 		}
 	}
 
