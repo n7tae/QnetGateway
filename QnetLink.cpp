@@ -564,6 +564,7 @@ bool CQnetLink::read_config(const char *cfgFile)
 	}
 
 	key.assign("link_");
+	cfg.GetValue(key+"incoming_ip", estr, my_g2_link_ip, 7, IP_SIZE);
 	cfg.GetValue(key+"ref_port", estr, rmt_ref_port, 10000, 65535);
 	cfg.GetValue(key+"xrf_port", estr, rmt_xrf_port, 10000, 65535);
 	cfg.GetValue(key+"dcs_port", estr, rmt_dcs_port, 10000, 65535);
