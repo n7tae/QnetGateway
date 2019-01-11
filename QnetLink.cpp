@@ -577,7 +577,7 @@ bool CQnetLink::read_config(const char *cfgFile)
 	cfg.GetValue(key+"tolink", estr, gate2link, 1, FILENAME_MAX);
 	cfg.GetValue(key+"fromlink", estr, link2gate, 1, FILENAME_MAX);
 
-	cfg.GetValue("log.qso", estr, qso_details);
+	cfg.GetValue("log_qso", estr, qso_details);
 
 	key.assign("file_");
 	cfg.GetValue(key+"gwys", estr, gwys, 2, FILENAME_MAX);

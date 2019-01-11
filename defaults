@@ -49,10 +49,10 @@ gateway_ip_d='0.0.0.0'            # the g2 port
 gateway_port_d=40000              # don't change
 gateway_tolink_d='gate2link'      # Unix sockets between qngateway and QnetLink
 gateway_fromlink_d='link2gate'    # all Unix sockets are on the file system, but hidden from view
-gateway_latitude_d=0                # you can leave this unspecified for a mobile rig
-gateway_longitude_d=0               # like the latitude
-gateway_desc1_d=''                  # maximum of 20 characters, most special symbols are not allowed
-gateway_desc2_d=''                  # just like desc1
+gateway_latitude_d=0              # you can leave this unspecified for a mobile rig
+gateway_longitude_d=0             # like the latitude
+gateway_desc1_d=''                # maximum of 20 characters, most special symbols are not allowed
+gateway_desc2_d=''                # just like desc1
 gateway_url_d='github.com/n7tae/QnetGateway' # 80 characters max
 
 ##########################################################################################################################
