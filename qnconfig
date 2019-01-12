@@ -483,7 +483,7 @@ WriteCFGFile () {
 	[ -z "${gateway_desc2+x}"          ] || echo "gateway_desc2='${gateway_desc2}'"                 >> $outFile
 	[ -z "${gateway_url+x}"            ] || echo "gateway_url='${gateway_url}'"                     >> $outFile
 	# arps_ section
-	[ -z "${aprs_enable+x}"   ] || echo "aprs_enable='{aprs_enable}"     >> $outFile
+	[ -z "${aprs_enable+x}"   ] || echo "aprs_enable=${aprs_enable}"     >> $outFile
 	[ -z "${aprs_host+x}"     ] || echo "aprs_host='${aprs_host}'"       >> $outFile
 	[ -z "${aprs_port+x}"     ] || echo "aprs_port=${aprs_port}"         >> $outFile
 	[ -z "${aprs_interval+x}" ] || echo "aprs_interval=${aprs_interval}" >> $outFile
