@@ -1902,10 +1902,7 @@ void CQnetGateway::Process()
 			// save incoming port for mobile systems
 			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
 				printf("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
-				portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);FD_ISSET(g2_sock, &fdset)) {
-			SDSVT g2buf;
-			socklen_t fromlen = sizeof(struct sockaddr_in);
-			ssize_t g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
+				portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
 			} else {
 				if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr]) {
 					printf("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
