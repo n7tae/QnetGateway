@@ -92,7 +92,7 @@ BaseStatus () {
 	if [[ "$ActiveGate" == "inactive" ]]; then
 		echo "is not installed"
 	else
-		echo "ActiveState os $ActiveGate SubState is $SubGate"
+		echo "ActiveState is $ActiveGate SubState is $SubGate"
 	fi
 	echo -n "QnetLink "
 	if [[ "$ActiveLink" == "inactive" ]]; then
