@@ -583,7 +583,7 @@ bool CQnetLink::read_config(const char *cfgFile)
 	key.assign("file_");
 	cfg.GetValue(key+"gwys", estr, gwys, 2, FILENAME_MAX);
 	cfg.GetValue(key+"status", estr, status_file, 2, FILENAME_MAX);
-	cfg.GetValue(key+"qnvoicefile", estr, qnvoice_file, 2, FILENAME_MAX);
+	cfg.GetValue(key+"qnvoice_file", estr, qnvoice_file, 2, FILENAME_MAX);
 	cfg.GetValue(key+"announce_dir", estr, announce_dir, 2, FILENAME_MAX);
 
 	key.assign("timing_play_");

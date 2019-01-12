@@ -167,7 +167,7 @@ dplus_use_repeaters_d=true  # set to false if you are not going to link to DPlus
 file_status_d='/usr/local/etc/rptr_status' # where repeater status info is passed between services
 file_dtmf_d='/tmp'                         # where DTMF is decoded
 file_echotest_d='/tmp'                     # echo dat files will end up here
-file_qnvoicefile_d='/tmp/qnvoice.txt'      # where qnvoice will create the play command
+file_qnvoice_file_d='/tmp/qnvoice.txt'     # where qnvoice will create the play command
 file_gwys_d='/usr/local/etc/gwys.txt'      # where the list of gateways and reflectors (with ports) is.
 file_announce_dir_d='/usr/local/etc'       # where the *.dat files are for the verbal link, unlink, etc. announcements
 

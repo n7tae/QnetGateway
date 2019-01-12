@@ -272,7 +272,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 	cfg.GetValue(path+"echotest", estr, echotest_dir, 2, FILENAME_MAX);
 	cfg.GetValue(path+"dtmf", estr, dtmf_dir, 2, FILENAME_MAX);
 	cfg.GetValue(path+"status", estr, status_file, 2, FILENAME_MAX);
-	cfg.GetValue(path+"qnvoicefile", estr, qnvoicefile, 2, FILENAME_MAX);
+	cfg.GetValue(path+"qnvoice_file", estr, qnvoicefile, 2, FILENAME_MAX);
 
 	// timing
 	path.assign("timing_play_");
