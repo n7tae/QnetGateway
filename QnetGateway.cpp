@@ -1894,7 +1894,7 @@ void CQnetGateway::Process()
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
 		// process packets coming from remote G2 or g2_link
-		if (FD_ISSET(g2_sock, &fdset)) {
+		if (keep_running && FD_ISSET(g2_sock, &fdset)) {
 			SDSVT g2buf;
 			socklen_t fromlen = sizeof(struct sockaddr_in);
 			ssize_t g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
@@ -1902,7 +1902,10 @@ void CQnetGateway::Process()
 			// save incoming port for mobile systems
 			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
 				printf("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
-				portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
+				portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);FD_ISSET(g2_sock, &fdset)) {
+			SDSVT g2buf;
+			socklen_t fromlen = sizeof(struct sockaddr_in);
+			ssize_t g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
 			} else {
 				if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr]) {
 					printf("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
@@ -1913,7 +1916,7 @@ void CQnetGateway::Process()
 			FD_CLR(g2_sock, &fdset);
 		}
 
-		if (FD_ISSET(Link2Gate.GetFD(), &fdset)) {
+		if (keep_running && FD_ISSET(Link2Gate.GetFD(), &fdset)) {
 			SDSVT g2buf;
 			ssize_t g2buflen = Link2Gate.Read(g2buf.title, 56);
 			ProcessG2(g2buflen, g2buf);
@@ -1922,7 +1925,7 @@ void CQnetGateway::Process()
 
 		// process packets coming from local repeater modules
 		for (int mod=0; mod<3; mod++) {
-			if (rptr.mod[mod].defined && FD_ISSET(Modem2Gate[mod].GetFD(), &fdset)) {
+			if (keep_running && rptr.mod[mod].defined && FD_ISSET(Modem2Gate[mod].GetFD(), &fdset)) {
 				ProcessModem(mod);
 				FD_CLR (Modem2Gate[mod].GetFD(), &fdset);
 			}

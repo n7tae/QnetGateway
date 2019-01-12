@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -39,6 +40,7 @@ bool CUnixDgramReader::Open(const char *path)	// returns true on failure
 		fprintf(stderr, "CUnixDgramReader::Open: socket() failed: %s\n", strerror(errno));
 		return true;
 	}
+	fcntl(fd, F_SETFL, O_NONBLOCK);
 
 	struct sockaddr_un addr;
 	memset(&addr, 0, sizeof(addr));

@@ -968,7 +968,7 @@ void CQnetLink::Process()
 
 	while (keep_running) {
 		time(&tnow);
-		if ((tnow - hb) > 0) {
+		if (keep_running && (tnow - hb) > 0) {
 			/* send heartbeat to connected donglers */
 			send_heartbeat();
 
@@ -1108,18 +1108,20 @@ void CQnetLink::Process()
 		// this could be coming from qnvoice or qngateway (connected2network or notincache)
 		std::ifstream voicefile(qnvoice_file.c_str(), std::ifstream::in);
 		if (voicefile) {
-			char line[FILENAME_MAX];
-			voicefile.getline(line, FILENAME_MAX);
-			// trim whitespace
-			char *start = line;
-			while (isspace(*start))
-				start++;
-			char *end = start + strlen(start) - 1;
-			while (isspace(*end))
-				*end-- = (char)0;
-			// anthing reasonable left?
-			if (strlen(start) > 2)
-				PlayAudioNotifyThread(start);
+			if (keep_running) {
+				char line[FILENAME_MAX];
+				voicefile.getline(line, FILENAME_MAX);
+				// trim whitespace
+				char *start = line;
+				while (isspace(*start))
+					start++;
+				char *end = start + strlen(start) - 1;
+				while (isspace(*end))
+					*end-- = (char)0;
+				// anthing reasonable left?
+				if (strlen(start) > 2)
+					PlayAudioNotifyThread(start);
+			}
 			//clean-up
 			voicefile.close();
 			remove(qnvoice_file.c_str());
@@ -1134,7 +1136,7 @@ void CQnetLink::Process()
 		tv.tv_usec = 20000;
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
-		if (FD_ISSET(xrf_g2_sock, &fdset)) {
+		if (keep_running && FD_ISSET(xrf_g2_sock, &fdset)) {
 			socklen_t fromlen = sizeof(struct sockaddr_in);
 			unsigned char buf[100];
 			int length = recvfrom(xrf_g2_sock, buf, 100, 0, (struct sockaddr *)&fromDst4, &fromlen);
@@ -1683,7 +1685,7 @@ void CQnetLink::Process()
 			FD_CLR (xrf_g2_sock,&fdset);
 		}
 
-		if (FD_ISSET(ref_g2_sock, &fdset)) {
+		if (keep_running && FD_ISSET(ref_g2_sock, &fdset)) {
 			socklen_t fromlen = sizeof(struct sockaddr_in);
 			unsigned char buf[100];
 			int length = recvfrom(ref_g2_sock, buf, 100, 0, (struct sockaddr *)&fromDst4,&fromlen);
@@ -2430,7 +2432,7 @@ void CQnetLink::Process()
 			FD_CLR (ref_g2_sock,&fdset);
 		}
 
-		if (FD_ISSET(dcs_g2_sock, &fdset)) {
+		if (keep_running && FD_ISSET(dcs_g2_sock, &fdset)) {
 			socklen_t fromlen = sizeof(struct sockaddr_in);
 			int length = recvfrom(dcs_g2_sock, dcs_buf, 1000, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
@@ -2662,7 +2664,7 @@ void CQnetLink::Process()
 			FD_CLR (dcs_g2_sock,&fdset);
 		}
 
-		if (FD_ISSET(Gate2Link.GetFD(), &fdset)) {
+		if (keep_running && FD_ISSET(Gate2Link.GetFD(), &fdset)) {
 			SDSTR dstr;
 			int length = Gate2Link.Read(dstr.pkt_id, 100);
 
@@ -3170,7 +3172,7 @@ void CQnetLink::Process()
 			FD_CLR (Gate2Link.GetFD(), &fdset);
 		}
 		for (int i=0; i<3; i++) {
-			if (notify_msg[i][0] && 0x0U == tracing[i].streamid) {
+			if (keep_running && notify_msg[i][0] && 0x0U == tracing[i].streamid) {
 				PlayAudioNotifyThread(notify_msg[i]);
 				notify_msg[i][0] = '\0';
 			}
