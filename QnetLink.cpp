@@ -3285,7 +3285,7 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
 	for (count=0; count<ambeblocks && keep_running; count++) {
-
+		//std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 		int nread = fread(edata.header.vasd.voice, 9, 1, fp);
 		if (nread == 1) {
 			edata.header.ctrl = (unsigned char)(count % 21);
@@ -3342,7 +3342,6 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 				edata.header.ctrl |= 0x40U;
 			Link2Gate.Write(edata.header.title, 27);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 	}
 	fclose(fp);
 
