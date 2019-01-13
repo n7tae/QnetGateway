@@ -212,7 +212,7 @@ void CQnetLink::RptrAckThread(char *arg)
 	memcpy(dsvt.hdr.sfx, "RPTR", 4);
 	calcPFCS(dsvt.title,56);
 	Link2Gate.Write(dsvt.title, 56);
-	std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(delay_between))
 
 	dsvt.config = 0x20;
 	memcpy(dsvt.vasd.voice, silence, 9);
@@ -575,8 +575,8 @@ bool CQnetLink::read_config(const char *cfgFile)
 	saved_max_dongles = max_dongles = (unsigned int)maxdongle;
 
 	key.assign("gateway_");
-	cfg.GetValue(key+"tolink", estr, gate2link, 1, FILENAME_MAX);
-	cfg.GetValue(key+"fromlink", estr, link2gate, 1, FILENAME_MAX);
+	cfg.GetValue(key+"gate2link", estr, gate2link, 1, FILENAME_MAX);
+	cfg.GetValue(key+"link2gate", estr, link2gate, 1, FILENAME_MAX);
 
 	cfg.GetValue("log_qso", estr, qso_details);
 
@@ -3287,7 +3287,6 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
 	for (count=0; count<ambeblocks && keep_running; count++) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 		int nread = fread(edata.header.vasd.voice, 9, 1, fp);
 		if (nread == 1) {
 			edata.header.ctrl = (unsigned char)(count % 21);
@@ -3343,6 +3342,7 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 			if (count+1 == ambeblocks && ! edata.is_linked)
 				edata.header.ctrl |= 0x40U;
 			Link2Gate.Write(edata.header.title, 27);
+			std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 		}
 	}
 	fclose(fp);
@@ -3395,8 +3395,8 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 				if (i+1==size && lastch)
 					edata.header.ctrl |= 0x40U;	// signal the last voiceframe (of the last character)
 				Link2Gate.Write(edata.header.title, 27);
+				std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(delay_between));
 		}
 	}
 	fclose(fp);

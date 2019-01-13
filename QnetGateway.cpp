@@ -220,17 +220,10 @@ bool CQnetGateway::read_config(char *cfgFile)
 			rptr.mod[m].defined = true;
 
 			path.append(1, '_');
-			cfg.GetValue(path+"modem2gate"+std::string(1, 'a'+m), type, modem2gate[m], 1, FILENAME_MAX);
-			cfg.GetValue(path+"gate2modem"+std::string(1, 'a'+m), type, gate2modem[m], 1, FILENAME_MAX);
 			cfg.GetValue(path+"frequency", type, rptr.mod[m].frequency, 0.0, 1.0e12);
 			cfg.GetValue(path+"offset", type, rptr.mod[m].offset, -1.0e12, 1.0e12);
 			cfg.GetValue(path+"range", type, rptr.mod[m].range, 0.0, 1609344.0);
 			cfg.GetValue(path+"agl", type, rptr.mod[m].agl, 0.0, 1000.0);
-			cfg.GetValue("gateway_latitude", estr, rptr.mod[m].latitude, -90.0, 90.0);
-			cfg.GetValue("gateway_longitude", estr, rptr.mod[m].longitude, -180.0, 180.0);
-			cfg.GetValue("gateway_desc1", estr, rptr.mod[m].desc1, 0, 20);
-			cfg.GetValue("gateway_desc2", estr, rptr.mod[m].desc2, 0, 20);
-			cfg.GetValue("gateway_url", estr, rptr.mod[m].url, 0, 80);
 
 			// make the long description for the log
 			if (rptr.mod[m].desc1.length())
@@ -250,8 +243,19 @@ bool CQnetGateway::read_config(char *cfgFile)
 	cfg.GetValue(path+"port", estr, g2_external.port, 1024, 65535);
 	cfg.GetValue(path+"header_regen", estr, bool_regen_header);
 	cfg.GetValue(path+"send_qrgs_maps", estr, bool_send_qrgs);
-	cfg.GetValue(path+"tolink", estr, gate2link, 1, FILENAME_MAX);
-	cfg.GetValue(path+"fromlink", estr, link2gate, 1, FILENAME_MAX);
+	cfg.GetValue(path+"gate2link", estr, gate2link, 1, FILENAME_MAX);
+	cfg.GetValue(path+"link2gate", estr, link2gate, 1, FILENAME_MAX);
+	cfg.GetValue(path+"modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+	for (int m=0; m<3; m++) {
+		if (rptr.mod[m].defined) {
+			cfg.GetValue(path+"gate2modem"+std::string(1, 'a'+m), estr, gate2modem[m], 1, FILENAME_MAX);
+			cfg.GetValue(path+"latitude", estr, rptr.mod[m].latitude, -90.0, 90.0);
+			cfg.GetValue(path+"longitude", estr, rptr.mod[m].longitude, -180.0, 180.0);
+			cfg.GetValue(path+"desc1", estr, rptr.mod[m].desc1, 0, 20);
+			cfg.GetValue(path+"desc2", estr, rptr.mod[m].desc2, 0, 20);
+			cfg.GetValue(path+"url", estr, rptr.mod[m].url, 0, 80);
+		}
+	}
 
 	// APRS
 	path.assign("aprs_");
@@ -1131,7 +1135,7 @@ void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf)
 	}
 }
 
-void CQnetGateway::ProcessModem(int mod)
+void CQnetGateway::ProcessModem()
 {
 	char temp_radio_user[CALL_SIZE + 1];
 	char temp_mod;
@@ -1142,7 +1146,7 @@ void CQnetGateway::ProcessModem(int mod)
 	char tempfile[FILENAME_MAX + 1];
 	SDSVT g2buf;
 
-	int recvlen = Modem2Gate[mod].Read(rptrbuf.pkt_id, 58);
+	int recvlen = Modem2Gate.Read(rptrbuf.pkt_id, 58);
 
 	if (0 == memcmp(rptrbuf.pkt_id, "DSTR", 4)) {
 		if ( (recvlen==58 || recvlen==29 || recvlen==32) && rptrbuf.flag[0]==0x73 && rptrbuf.flag[1]==0x12 && rptrbuf.flag[2]==0x0 && rptrbuf.vpkt.icm_id==0x20 && (rptrbuf.remaining==0x30 || rptrbuf.remaining==0x13 || rptrbuf.remaining==0x16) ) {
@@ -1885,9 +1889,7 @@ void CQnetGateway::Process()
 		FD_ZERO(&fdset);
 		AddFDSet(max_nfds, g2_sock, &fdset);
 		AddFDSet(max_nfds, Link2Gate.GetFD(), &fdset);
-		for (int i=0; i<3; i++)
-			if (rptr.mod[i].defined)
-				AddFDSet(max_nfds, Modem2Gate[i].GetFD(), &fdset);
+		AddFDSet(max_nfds, Modem2Gate.GetFD(), &fdset);
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000; // 20 ms
@@ -1921,11 +1923,9 @@ void CQnetGateway::Process()
 		}
 
 		// process packets coming from local repeater modules
-		for (int mod=0; mod<3; mod++) {
-			if (keep_running && rptr.mod[mod].defined && FD_ISSET(Modem2Gate[mod].GetFD(), &fdset)) {
-				ProcessModem(mod);
-				FD_CLR (Modem2Gate[mod].GetFD(), &fdset);
-			}
+		if (keep_running && FD_ISSET(Modem2Gate.GetFD(), &fdset)) {
+			ProcessModem();
+			FD_CLR(Modem2Gate.GetFD(), &fdset);
 		}
 	}
 
@@ -2454,12 +2454,12 @@ int CQnetGateway::Init(char *cfgfile)
 	Gate2Link.SetUp(gate2link.c_str());
 	if (Link2Gate.Open(link2gate.c_str()))
 		return 1;
+	if (Modem2Gate.Open(modem2gate.c_str()))
+		return 1;
 
 	for (i=0; i<3; i++) {
 		if (rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
 			Gate2Modem[i].SetUp(gate2modem[i].c_str());
-			if (Modem2Gate[i].Open(modem2gate[i].c_str()))
-				return 1;
 		}
 		// recording for echotest on local repeater modules
 		recd[i].last_time = 0;
@@ -2537,9 +2537,7 @@ CQnetGateway::CQnetGateway()
 CQnetGateway::~CQnetGateway()
 {
 	Link2Gate.Close();
-	for (int i=0; i<3; i++) {
-		Modem2Gate[i].Close();
-	}
+	Modem2Gate.Close();
 
 	if (g2_sock != -1) {
 		close(g2_sock);

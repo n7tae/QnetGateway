@@ -90,10 +90,10 @@ private:
 
 	SPORTIP g2_external, ircddb;
 
-	CUnixDgramReader Link2Gate, Modem2Gate[3];
+	CUnixDgramReader Link2Gate, Modem2Gate;
 	CUnixDgramWriter Gate2Link, Gate2Modem[3];
 
-	std::string gate2link, link2gate, gate2modem[3], modem2gate[3];
+	std::string gate2link, link2gate, gate2modem[3], modem2gate;
 
 	std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass, qnvoicefile;
 
@@ -170,7 +170,7 @@ private:
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, unsigned short sid);
 	void ProcessG2(ssize_t g2buflen, SDSVT &g2buf);
-	void ProcessModem(int mod);
+	void ProcessModem();
 	bool Flag_is_ok(unsigned char flag);
 
 	// read configuration file

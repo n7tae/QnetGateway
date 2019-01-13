@@ -394,8 +394,8 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	}
 	RPTR_MOD = 'A' + assigned_module;
 
-	cfg.GetValue(mmdvm_path+"_gate2modem"+std::string(1, 'a'+assigned_module), type, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue(mmdvm_path+"_modem2gate"+std::string(1, 'a'+assigned_module), type, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_gate2modem"+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
 	cfg.GetValue(mmdvm_path+"_internal_ip", type, MMDVM_IP, 7, IP_SIZE);
 	int i;
 	cfg.GetValue(mmdvm_path+"_local_port", type, i, 10000, 65535);

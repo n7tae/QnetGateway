@@ -47,8 +47,12 @@ gateway_send_qrgs_maps_d=true     # send frequency, offset, coordinates and url 
 gateway_local_irc_ip_d='0.0.0.0'  # the local port on the gateway for the IRC TCP socket
 gateway_ip_d='0.0.0.0'            # the g2 port
 gateway_port_d=40000              # don't change
-gateway_tolink_d='gate2link'      # Unix sockets between qngateway and QnetLink
-gateway_fromlink_d='link2gate'    # all Unix sockets are on the file system, but hidden from view
+gateway_gate2link_d='gate2link'   # Unix sockets between qngateway and QnetLink
+gateway_link2gate_d='link2gate'   # all Unix sockets are on the file system, but hidden from view
+gateway_modem2gate_d='modem2gate' # Unix Sockets between the modem(s) and the gateway (1 in, 3 out)
+gateway_gate2modema_d='gate2modema'
+gateway_gate2modemb_d='gate2modemb'
+gateway_gate2modemc_d='gate2modemc'
 gateway_latitude_d=0              # you can leave this unspecified for a mobile rig
 gateway_longitude_d=0             # like the latitude
 gateway_desc1_d=''                # maximum of 20 characters, most special symbols are not allowed
@@ -95,12 +99,6 @@ module_x_frequency=0       # if you specify here, this frequency will show up on
 module_x_offset=0          # usually the duplex tx-rx offset, but for dvap, it's a frequency tweak
 module_x_range=0           # the range of this repeater, in meters 1609.344 meters is 1.0 miles
 module_x_agl=0             # the height above ground level for this repeater's antenna
-module_x_gate2modema='gate2modema'         # Unix Sockets between a modem and the gateway
-module_x_gate2modemb='gate2modemb'
-module_x_gate2modemc='gate2modemc'
-module_x_modem2gatea='modem2gatea'
-module_x_modem2gateb='modem2gateb'
-module_x_modem2gatec='modem2gatec'
 
 ##########################################################################################################################
 #

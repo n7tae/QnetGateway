@@ -500,8 +500,8 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	RPTR_MOD = 'A' + assigned_module;
 
 	cfg.GetValue(itap_path+"_device", type, ITAP_DEVICE, 7, FILENAME_MAX);
-	cfg.GetValue(itap_path+"_gate2modem"+std::string(1, 'a'+assigned_module), type, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue(itap_path+"_modem2gate"+std::string(1, 'a'+assigned_module), type, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_gate2modem"+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
 
 	itap_path.append("_callsign");
 	if (cfg.KeyExists(itap_path)) {

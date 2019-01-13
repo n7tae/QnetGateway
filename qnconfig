@@ -224,8 +224,12 @@ GateMenu () {
 		echo -n "s  : Send IRC network Module Info   = "; EvaluateVar gateway_send_qrgs_maps{,_d}
 		echo -n "i  : IRC TCP local network address  = "; EvaluateVar gateway_local_irc_ip{,_d}
 		echo -n "p  : IRC TCP port number            = "; EvaluateVar gateway_port{,_d}
-		echo -n "t  : UNIX socket to QnetLink        = "; EvaluateVar gateway_tolink{,_d}
-		echo -n "f  : UNIX socket from QnetLink      = "; EvaluateVar gateway_fromlink{,_d}
+		echo -n "tl : UNIX socket to QnetLink        = "; EvaluateVar gateway_gate2link{,_d}
+		echo -n "fl : UNIX socket from QnetLink      = "; EvaluateVar gateway_link2gate{,_d}
+		echo -n "ta : UNIX socket to Modem A         = "; EvaluateVar gateway_gate2modema{,_d}
+		echo -n "tb : UNIX socket to Modem B         = "; EvaluateVar gateway_gate2modemb{,_d}
+		echo -n "tc : UNIX socket to Modem C         = "; EvaluateVar gateway_gate2modemc{,_d}
+		echo -n "fm : UNIX socket from Modem(s)      = "; EvaluateVar gateway_modem2gate{,_d}
 		echo -n "la : Latitude (-90.0 to 90.0)       = "; EvaluateVar gateway_latitude{,_d}
 		echo -n "lo : Longitude (-180.0 to 180.0)    = "; EvaluateVar gateway_longitude{,_d}
 		echo -n "d1 : Description #1 (20 chars max)  = "; EvaluateVar gateway_desc1{,_d}
@@ -244,8 +248,12 @@ GateMenu () {
 		elif [[ "$key" == s*  ]]; then SetBooleanValue gateway_send_qrgs_maps "$value"
 		elif [[ "$key" == i*  ]]; then gateway_local_irc_ip="$value"
 		elif [[ "$key" == p*  ]]; then gateway_port="$value"
-		elif [[ "$key" == t*  ]]; then gateway_tolink="$value"
-		elif [[ "$key" == f*  ]]; then gateway_fromlink="$value"
+		elif [[ "$key" == tl* ]]; then gateway_gate2link="$value"
+		elif [[ "$key" == fl* ]]; then gateway_link2gate="$value"
+		elif [[ "$key" == ta* ]]; then gateway_gate2modema="$value"
+		elif [[ "$key" == tb* ]]; then gateway_gate2modemb="$value"
+		elif [[ "$key" == tc* ]]; then gateway_gate2modemc="$value"
+		elif [[ "$key" == fm* ]]; then gateway_modem2gate="$value"
 		elif [[ "$key" == la* ]]; then gateway_latitude="$value"
 		elif [[ "$key" == lo* ]]; then gateway_longitude="$value"
 		elif [[ "$key" == d1* ]]; then gateway_desc1="${value:0:20}"
@@ -262,8 +270,11 @@ GateMenu () {
 			elif [[ "$value" == l*  ]]; then unset gateway_local_irc_ip
 			elif [[ "$value" == i*  ]]; then unset gateway_ip
 			elif [[ "$value" == p*  ]]; then unset gateway_port
-			elif [[ "$value" == t*  ]]; then unset gateway_tolink
-			elif [[ "$value" == f*  ]]; then unset gateway_fromlink
+			elif [[ "$value" == tl* ]]; then unset gateway_gate2link
+			elif [[ "$value" == ta* ]]; then unset gateway_gate2modema
+			elif [[ "$value" == tb* ]]; then unset gateway_gate2modemb
+			elif [[ "$value" == tc* ]]; then unset gateway_gate2modemc
+			elif [[ "$value" == fm* ]]; then unset gateway_modem2gate
 			elif [[ "$value" == la* ]]; then unset gateway_latitude
 			elif [[ "$value" == lo* ]]; then unset gateway_longitude
 			elif [[ "$value" == d1* ]]; then unset gateway_desc1
@@ -321,8 +332,6 @@ ModuleMenu () {
 		echo -n "of : Offset in Hz                                 = "; EvaluateVar {${mod},module_x}_offset
 		echo -n "ra : Range (in meters, 1 mile=1609.344 meters)    = "; EvaluateVar {${mod},module_x}_range
 		echo -n "ag : Above ground level (in meters)               = "; EvaluateVar {${mod},module_x}_agl
-		echo -n "uf : UNIX Socket from gateway                     = "; EvaluateVar {${mod},module_x}_gate2modem$nmod
-		echo -n "ut : UNIX Socket to gateway                       = "; EvaluateVar {${mod},module_x}_modem2gate$nmod
 		echo -n "in : Inactivity for this many minutes unlinks     = "; EvaluateVar {${mod},module_x}_inactivity
 		echo -n "wa : Wait this many msec for the next packet      = "; EvaluateVar {${mod},module_x}_packet_wait
 		echo -n "ac : Send acknowledgment on each transmission     = "; EvaluateVar {${mod},module_x}_acknowledge
@@ -359,8 +368,6 @@ ModuleMenu () {
 		elif [[ "$key" == of* ]]; then eval ${mod}_offset="$value"
 		elif [[ "$key" == ra* ]]; then eval ${mod}_range="$value"
 		elif [[ "$key" == ag* ]]; then eval ${mod}_agl="$value"
-		elif [[ "$key" == uf* ]]; then eval ${mod}_gate2modem${nmod}="$value"
-		elif [[ "$key" == ut* ]]; then eval ${mod}_modem2gate${nmod}="$value"
 		elif [[ "$key" == in* ]]; then eval ${mod}_inactivity="$value"
 		elif [[ "$key" == wa* ]]; then eval ${mod}_packet_wait="$value"
 		elif [[ "$key" == ac* ]]; then SetBooleanValue ${mod}_acknowledge "$value"
@@ -381,7 +388,7 @@ ModuleMenu () {
 		elif [[ "$key" == gp* ]]; then eval ${mod}_gateway_port="$value"
 		elif [[ "$key" == lp* ]]; then eval ${mod}_local_port="$value"
 		elif [[ "$key" == xx* ]]; then
-			unset ${mod}_{link_at_start,callsign,frequency,offset,range,agl,{gate2modem,modem2gate}${nmod}}
+			unset ${mod}_{link_at_start,callsign,frequency,offset,range,agl}
 			unset ${mod}_{inactivity,packet_wait,acknowledge,ack_delay,power,squelch,serial_number,rf_o{n,ff},rx_level}
 			unset ${mod}_{duplex,tx_delay,rqst_count,inverse_{t,r}x,device,internal_ip,{gateway,local}_port}
 			unset ${mod}
@@ -393,8 +400,6 @@ ModuleMenu () {
 			elif [[ "$value" == of* ]]; then unset ${mod}_offset
 			elif [[ "$value" == ra* ]]; then unset ${mod}_range
 			elif [[ "$value" == ag* ]]; then unset ${mod}_agl
-			elif [[ "$value" == uf* ]]; then unset ${mod}_gate2modem${nmod}
-			elif [[ "$value" == ut* ]]; then unset ${mod}_modem2gate${nmod}
 			elif [[ "$value" == in* ]]; then unset ${mod}_inactivity
 			elif [[ "$value" == wa* ]]; then unset ${mod}_packet_wait
 			elif [[ "$value" == ac* ]]; then unset ${mod}_acknowledge

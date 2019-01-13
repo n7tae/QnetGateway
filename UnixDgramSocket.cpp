@@ -40,7 +40,7 @@ bool CUnixDgramReader::Open(const char *path)	// returns true on failure
 		fprintf(stderr, "CUnixDgramReader::Open: socket() failed: %s\n", strerror(errno));
 		return true;
 	}
-	fcntl(fd, F_SETFL, O_NONBLOCK);
+	//fcntl(fd, F_SETFL, O_NONBLOCK);
 
 	struct sockaddr_un addr;
 	memset(&addr, 0, sizeof(addr));
@@ -104,7 +104,12 @@ ssize_t CUnixDgramWriter::Write(void *buf, size_t size)
 		return -1;
 	}
 
-	ssize_t written = write(fd, buf, size);
+	ssize_t written = -1;
+	while (written < 0) {
+		written = write(fd, buf, size);
+		if (written != (ssize_t)size)
+			fprintf(stderr, "ERROR: only wrote %ld bytes of %ld to %s\n", written, size, addr.sun_path+1);
+	}
 
 	close(fd);
 	return written;

@@ -202,8 +202,8 @@ static bool read_config(const char *cfgFile)
 		}
 	}
 	RPTR_MOD = 'A' + assigned_module;
-	cfg.GetValue(dvap_path+"_gate2modem"+std::string(1, 'a'+assigned_module), type, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue(dvap_path+"_modem2gate"+std::string(1, 'a'+assigned_module), type, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_gate2modem"+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
 	if (cfg.KeyExists(dvap_path+"_callsign")) {
 		if (cfg.GetValue(dvap_path+"_callsign", type, RPTR, 3, 6))
 			return true;
