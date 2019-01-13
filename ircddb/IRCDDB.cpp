@@ -32,7 +32,7 @@ CIRCDDB::~CIRCDDB()
 // A false return implies a network error, or unable to log in
 bool CIRCDDB::open()
 {
-	printf("start");
+	printf("starting CIRCDDB\n");
 	return d->client->startWork() && d->app->startWork();
 }
 
@@ -61,31 +61,30 @@ void CIRCDDB::kickWatchdog(const std::string &wdInfo)
 }
 
 // Send heard data, a false return implies a network error
-bool CIRCDDB::sendHeard(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1,
-                            const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3)
+bool CIRCDDB::sendHeard(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3)
 {
 	if (myCall.size() != 8) {
-		printf("CIRCDDB::sendHeard:myCall: len != 8");
+		printf("CIRCDDB::sendHeard:myCall: len != 8\n");
 		return false;
 	}
 
 	if (myCallExt.size() != 4) {
-		printf("CIRCDDB::sendHeard:myCallExt: len != 4");
+		printf("CIRCDDB::sendHeard:myCallExt: len != 4\n");
 		return false;
 	}
 
 	if (yourCall.size() != 8) {
-		printf("CIRCDDB::sendHeard:yourCall: len != 8");
+		printf("CIRCDDB::sendHeard:yourCall: len != 8\n");
 		return false;
 	}
 
 	if (rpt1.size() != 8) {
-		printf("CIRCDDB::sendHeard:rpt1: len != 8");
+		printf("CIRCDDB::sendHeard:rpt1: len != 8\n");
 		return false;
 	}
 
 	if (rpt2.size() != 8) {
-		printf("CIRCDDB::sendHeard:rpt2: len != 8");
+		printf("CIRCDDB::sendHeard:rpt2: len != 8\n");
 		return false;
 	}
 
@@ -93,31 +92,30 @@ bool CIRCDDB::sendHeard(const std::string &myCall, const std::string &myCallExt,
 }
 
 // Send heard data, a false return implies a network error
-bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
-                                  unsigned char flag2, unsigned char flag3, const std::string &network_destination, const std::string &tx_message)
+bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3, const std::string &network_destination, const std::string &tx_message)
 {
 	if (myCall.size() != 8) {
-		printf("CIRCDDB::sendHeard:myCall: len != 8");
+		printf("CIRCDDB::sendHeard:myCall: len != 8\n");
 		return false;
 	}
 
 	if (myCallExt.size() != 4) {
-		printf("CIRCDDB::sendHeard:myCallExt: len != 4");
+		printf("CIRCDDB::sendHeard:myCallExt: len != 4\n");
 		return false;
 	}
 
 	if (yourCall.size() != 8) {
-		printf("CIRCDDB::sendHeard:yourCall: len != 8");
+		printf("CIRCDDB::sendHeard:yourCall: len != 8\n");
 		return false;
 	}
 
 	if (rpt1.size() != 8) {
-		printf("CIRCDDB::sendHeard:rpt1: len != 8");
+		printf("CIRCDDB::sendHeard:rpt1: len != 8\n");
 		return false;
 	}
 
 	if (rpt2.size() != 8) {
-		printf("CIRCDDB::sendHeard:rpt2: len != 8");
+		printf("CIRCDDB::sendHeard:rpt2: len != 8\n");
 		return false;
 	}
 
@@ -127,7 +125,7 @@ bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &m
 		dest = "        ";
 
 	if (dest.size() != 8) {
-		printf("CIRCDDB::sendHeard:network_destination: len != 8");
+		printf("CIRCDDB::sendHeard:network_destination: len != 8\n");
 		return false;
 	}
 
@@ -154,42 +152,42 @@ bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string 
                         unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors)
 {
 	if (num_dv_frames<= 0 || num_dv_frames>65535) {
-		printf("CIRCDDB::sendHeard:num_dv_frames not in range 1-65535");
+		printf("CIRCDDB::sendHeard:num_dv_frames not in range 1-65535\n");
 		return false;
 	}
 
 	if (num_dv_silent_frames > num_dv_frames) {
-		printf("CIRCDDB::sendHeard:num_dv_silent_frames > num_dv_frames");
+		printf("CIRCDDB::sendHeard:num_dv_silent_frames > num_dv_frames\n");
 		return false;
 	}
 
 	if (num_bit_errors > 4*num_dv_frames) { // max 4 bit errors per frame
-		printf("CIRCDDB::sendHeard:num_bit_errors > (4*num_dv_frames)");
+		printf("CIRCDDB::sendHeard:num_bit_errors > (4*num_dv_frames)\n");
 		return false;
 	}
 
 	if (myCall.size() != 8) {
-		printf("CIRCDDB::sendHeard:myCall: len != 8");
+		printf("CIRCDDB::sendHeard:myCall: len != 8\n");
 		return false;
 	}
 
 	if (myCallExt.size() != 4) {
-		printf("CIRCDDB::sendHeard:myCallExt: len != 4");
+		printf("CIRCDDB::sendHeard:myCallExt: len != 4\n");
 		return false;
 	}
 
 	if (yourCall.size() != 8) {
-		printf("CIRCDDB::sendHeard:yourCall: len != 8");
+		printf("CIRCDDB::sendHeard:yourCall: len != 8\n");
 		return false;
 	}
 
 	if (rpt1.size() != 8) {
-		printf("CIRCDDB::sendHeard:rpt1: len != 8");
+		printf("CIRCDDB::sendHeard:rpt1: len != 8\n");
 		return false;
 	}
 
 	if (rpt2.size() != 8) {
-		printf("CIRCDDB::sendHeard:rpt2: len != 8");
+		printf("CIRCDDB::sendHeard:rpt2: len != 8\n");
 		return false;
 	}
 
@@ -222,7 +220,7 @@ bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string 
 bool CIRCDDB::findGateway(const std::string &gatewayCallsign)
 {
 	if (gatewayCallsign.size() != 8) {
-		printf("CIRCDDB::findGateway: len != 8");
+		printf("CIRCDDB::findGateway: len != 8\n");
 		return false;
 	}
 	std::string gcs = gatewayCallsign;
@@ -234,7 +232,7 @@ bool CIRCDDB::findGateway(const std::string &gatewayCallsign)
 bool CIRCDDB::findRepeater(const std::string &repeaterCallsign)
 {
 	if (repeaterCallsign.size() != 8) {
-		printf("CIRCDDB::findRepeater: len != 8");
+		printf("CIRCDDB::findRepeater: len != 8\n");
 		return false;
 	}
 	std::string rcs = repeaterCallsign;
@@ -246,7 +244,7 @@ bool CIRCDDB::findRepeater(const std::string &repeaterCallsign)
 bool CIRCDDB::findUser(const std::string &userCallsign)
 {
 	if (userCallsign.size() != 8) {
-		printf("CIRCDDB::findUser: len != 8");
+		printf("CIRCDDB::findUser: len != 8\n");
 		return false;
 	}
 	std::string ucs = userCallsign;
@@ -269,24 +267,24 @@ bool CIRCDDB::receiveRepeater(std::string &repeaterCallsign, std::string &gatewa
 	IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
 
 	if (rt != IDRT_REPEATER) {
-		printf("CIRCDDB::receiveRepeater: unexpected response type");
+		printf("CIRCDDB::receiveRepeater: unexpected response type\n");
 		return false;
 	}
 
 	IRCMessage * m = d->app->getReplyMessage();
 
 	if (m == NULL) {
-		printf("CIRCDDB::receiveRepeater: no message");
+		printf("CIRCDDB::receiveRepeater: no message\n");
 		return false;
 	}
 
 	if (m->getCommand().compare("IDRT_REPEATER")) {
-		printf("CIRCDDB::receiveRepeater: wrong message type");
+		printf("CIRCDDB::receiveRepeater: wrong message type\n");
 		return false;
 	}
 
 	if (m->getParamCount() != 3) {
-		printf("CIRCDDB::receiveRepeater: unexpected number of message parameters");
+		printf("CIRCDDB::receiveRepeater: unexpected number of message parameters\n");
 		return false;
 	}
 
@@ -306,24 +304,24 @@ bool CIRCDDB::receiveGateway(std::string &gatewayCallsign, std::string &address,
 	IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
 
 	if (rt != IDRT_GATEWAY) {
-		printf("CIRCDDB::receiveGateway: unexpected response type");
+		printf("CIRCDDB::receiveGateway: unexpected response type\n");
 		return false;
 	}
 
 	IRCMessage * m = d->app->getReplyMessage();
 
 	if (m == NULL) {
-		printf("CIRCDDB::receiveGateway: no message");
+		printf("CIRCDDB::receiveGateway: no message\n");
 		return false;
 	}
 
 	if (m->getCommand().compare("IDRT_GATEWAY")) {
-		printf("CIRCDDB::receiveGateway: wrong message type");
+		printf("CIRCDDB::receiveGateway: wrong message type\n");
 		return false;
 	}
 
 	if (m->getParamCount() != 2) {
-		printf("CIRCDDB::receiveGateway: unexpected number of message parameters");
+		printf("CIRCDDB::receiveGateway: unexpected number of message parameters\n");
 		return false;
 	}
 
@@ -343,30 +341,29 @@ bool CIRCDDB::receiveUser(std::string &userCallsign, std::string &repeaterCallsi
 	return receiveUser(userCallsign, repeaterCallsign, gatewayCallsign, address, dummy);
 }
 
-bool CIRCDDB::receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address,
-                          std::string &timeStamp)
+bool CIRCDDB::receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address, std::string &timeStamp)
 {
 	IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
 
 	if (rt != IDRT_USER) {
-		printf("CIRCDDB::receiveUser: unexpected response type");
+		printf("CIRCDDB::receiveUser: unexpected response type\n");
 		return false;
 	}
 
 	IRCMessage * m = d->app->getReplyMessage();
 
 	if (m == NULL) {
-		printf("CIRCDDB::receiveUser: no message");
+		printf("CIRCDDB::receiveUser: no message\n");
 		return false;
 	}
 
 	if (m->getCommand().compare("IDRT_USER")) {
-		printf("CIRCDDB::receiveUser: wrong message type");
+		printf("CIRCDDB::receiveUser: wrong message type\n");
 		return false;
 	}
 
 	if (m->getParamCount() != 5) {
-		printf("CIRCDDB::receiveUser: unexpected number of message parameters");
+		printf("CIRCDDB::receiveUser: unexpected number of message parameters\n");
 		return false;
 	}
 
@@ -386,4 +383,3 @@ void CIRCDDB::close()		// Implictely kills any threads in the IRC code
 	d->client->stopWork();
 	d->app->stopWork();
 }
-
