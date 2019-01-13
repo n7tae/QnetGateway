@@ -92,9 +92,7 @@ bool ReadCfgFile()
 			return true;
 		}
 	}
-	path.append("_modem2gate");
-	path.append(1, 'a'+module);
-	cfg.GetValue(path, type, togateway, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_modem2gate", estr, togateway, 1, FILENAME_MAX);
 
 	cfg.GetValue("timing_play_wait", estr, PLAY_WAIT, 1,10);
 	cfg.GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
