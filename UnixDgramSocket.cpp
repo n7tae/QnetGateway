@@ -108,7 +108,7 @@ ssize_t CUnixDgramWriter::Write(void *buf, size_t size)
 	while (written < 0) {
 		written = write(fd, buf, size);
 		if (written != (ssize_t)size)
-			fprintf(stderr, "ERROR: only wrote %ld bytes of %ld to %s\n", written, size, addr.sun_path+1);
+			fprintf(stderr, "ERROR: only wrote %d bytes of %d to %s\n", (int)written, (int)size, addr.sun_path+1);
 	}
 
 	close(fd);
