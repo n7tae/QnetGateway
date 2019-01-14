@@ -400,7 +400,7 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	int i;
 	cfg.GetValue(mmdvm_path+"_local_port", type, i, 10000, 65535);
 	MMDVM_IN_PORT = (unsigned short)i;
-	cfg.GetValue(mmdvm_path+"+gateway_port", type, i, 10000, 65535);
+	cfg.GetValue(mmdvm_path+"_gateway_port", type, i, 10000, 65535);
 	MMDVM_OUT_PORT = (unsigned short)i;
 
 	cfg.GetValue("log_qso", estr, log_qso);
