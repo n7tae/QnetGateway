@@ -602,4 +602,5 @@ do
 	elif [[ "$ans" == w* ]]; then WriteCFGFile
 	fi
 done
+[ -e qn.cfg ] && cat qn.cfg
 exit 0
