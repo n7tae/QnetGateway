@@ -992,7 +992,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 	}
 }
 
-void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf)
+void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
 {
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
@@ -1005,7 +1005,7 @@ void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf)
 				// toRptr[i] is receiving data from a cross-band
 				if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
 					if (bool_qso_details)
-						printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n", ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+						printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n", ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, is_from_g2?inet_ntoa(fromDst4.sin_addr):"From QnetLink", is_from_g2?ntohs(fromDst4.sin_port):0);
 
 					memcpy(rptrbuf.pkt_id, "DSTR", 4);
 					rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);	// bump the counter
@@ -1911,7 +1911,7 @@ void CQnetGateway::Process()
 					portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
 				}
 			}
-			ProcessG2(g2buflen, g2buf);
+			ProcessG2(g2buflen, g2buf, true);
 			FD_CLR(g2_sock, &fdset);
 		}
 
@@ -1919,7 +1919,7 @@ void CQnetGateway::Process()
 		if (keep_running && FD_ISSET(Link2Gate.GetFD(), &fdset)) {
 			SDSVT g2buf;
 			ssize_t g2buflen = Link2Gate.Read(g2buf.title, 56);
-			ProcessG2(g2buflen, g2buf);
+			ProcessG2(g2buflen, g2buf, false);
 			FD_CLR(Link2Gate.GetFD(), &fdset);
 		}
 
