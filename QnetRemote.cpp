@@ -94,7 +94,7 @@ bool ReadCfgFile()
 	}
 	cfg.GetValue("gateway_modem2gate", estr, togateway, 1, FILENAME_MAX);
 
-	cfg.GetValue("timing_play_wait", estr, PLAY_WAIT, 1,10);
+	cfg.GetValue("timing_play_wait", estr, PLAY_WAIT, 1, 10);
 	cfg.GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
 	return false;
 }

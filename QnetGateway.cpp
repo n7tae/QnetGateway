@@ -1895,7 +1895,7 @@ void CQnetGateway::Process()
 		tv.tv_usec = 20000; // 20 ms
 		(void)select(max_nfds + 1, &fdset, 0, 0, &tv);
 
-		// process packets coming from remote G2 or g2_link
+		// process packets coming from remote G2
 		if (keep_running && FD_ISSET(g2_sock, &fdset)) {
 			SDSVT g2buf;
 			socklen_t fromlen = sizeof(struct sockaddr_in);
@@ -1915,6 +1915,7 @@ void CQnetGateway::Process()
 			FD_CLR(g2_sock, &fdset);
 		}
 
+		// process packets from qnlink
 		if (keep_running && FD_ISSET(Link2Gate.GetFD(), &fdset)) {
 			SDSVT g2buf;
 			ssize_t g2buflen = Link2Gate.Read(g2buf.title, 56);
@@ -1922,7 +1923,7 @@ void CQnetGateway::Process()
 			FD_CLR(Link2Gate.GetFD(), &fdset);
 		}
 
-		// process packets coming from local repeater modules
+		// process packets coming from local repeater module(s)
 		if (keep_running && FD_ISSET(Modem2Gate.GetFD(), &fdset)) {
 			ProcessModem();
 			FD_CLR(Modem2Gate.GetFD(), &fdset);

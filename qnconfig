@@ -72,19 +72,23 @@ LinkMenu () {
 		echo -n "ad : CSV of calls that can execute scripts = "; EvaluateVar link_admin{,_d}
 		echo -n "li : CSV of calls that can link and unlink = "; EvaluateVar link_link_unlink{,_d}
 		echo -n "n  : CSV of calls that cannot link&unlink  = "; EvaluateVar link_no_link_unlink{,_d}
-		echo -n "i  : Incoming IP address of QnetLink       = "; EvaluateVar link_incoming_ip{,_d}
-		echo -n "r  : UDP port for REF linking              = "; EvaluateVar link_ref_port{,_d}
-		echo -n "x  : UDP port for XRF linking              = "; EvaluateVar link_xrf_port{,_d}
-		echo -n "d  : DCS port for XRF linking              = "; EvaluateVar link_dcs_port{,_d}
-		echo -n "an : Announce linking                      = "; EvaluateVar link_announce{,_d}
-		echo -n "ac : Acknowledge link on each keyup        = "; EvaluateVar link_acknowledge{,_d}
-		echo -n "m  : Maximum # of dongles allowed          = "; EvaluateVar link_max_dongles{,_d}
+		if [ -n "$em" ]; then
+			echo -n "i  : Incoming IP address of QnetLink       = "; EvaluateVar link_incoming_ip{,_d}
+			echo -n "r  : UDP port for REF linking              = "; EvaluateVar link_ref_port{,_d}
+			echo -n "x  : UDP port for XRF linking              = "; EvaluateVar link_xrf_port{,_d}
+			echo -n "d  : DCS port for XRF linking              = "; EvaluateVar link_dcs_port{,_d}
+			echo -n "an : Announce linking                      = "; EvaluateVar link_announce{,_d}
+			echo -n "ac : Acknowledge link on each keyup        = "; EvaluateVar link_acknowledge{,_d}
+			echo -n "m  : Maximum # of dongles allowed          = "; EvaluateVar link_max_dongles{,_d}
+		fi
 		echo
 		echo    "     Legacy D-Plus Repeaters and Reflectors"
 		echo -n "au : Authorize Legacy D-Plus Linking       = "; EvaluateVar dplus_authorize{,_d}
-		echo -n "lo : Login call for authorization server   = "; EvaluateVar dplus_ref_login{,_d}
-		echo -n "RF : Add legacy reflectors to gateway list = "; EvaluateVar dplus_use_reflectors{,_d}
-		echo -n "RP : add legacy repeaters to gateway list  = "; EvaluateVar dplus_use_repeaters{,_d}
+		if [ -n "$em" ]; then
+			echo -n "lo : Login call for authorization server   = "; EvaluateVar dplus_ref_login{,_d}
+			echo -n "RF : Add legacy reflectors to gateway list = "; EvaluateVar dplus_use_reflectors{,_d}
+			echo -n "RP : add legacy repeaters to gateway list  = "; EvaluateVar dplus_use_repeaters{,_d}
+		fi
 		EndMenu
 
 		if   [[ "$key" == ad* ]]; then link_admin="${value^^}"
@@ -126,28 +130,34 @@ FileMenu () {
 	while [[ "$key" != q* ]]; do
 		clear
 		echo
-		echo "              Files/Logs/Timings Menu"
+		if [ -z "$em" ]; then
+			echo "              Debugging Menu"
+		else
+			echo "              Debugging/Files/Timings Menu"
+		fi
 		echo
-		echo    "     Files and directories"
-		echo -n "sf : Repeater status file     :"; EvaluateVar file_status{,_d}
-		echo -n "ed : Echo/Voicemail directory :"; EvaluateVar file_echotest{,_d}
-		echo -n "dd : DTMF directory           :"; EvaluateVar file_dtmf{,_d}
-		echo -n "vf : QnetVoice filename       :"; EvaluateVar file_qnvoicefile{,_d}
-		echo -n "gf : Gateways filename        :"; EvaluateVar file_gwys{,_d}
-		echo -n "ad : Announce directory       :"; EvaluateVar file_announce_dir{,_d}
-		echo
-		echo    "     Logging file (in /usr/local/var)"
+		echo    "     Additional entries in log files (in /usr/local/var)"
 		echo -n "cl : Call(QSO) logging        :"; EvaluateVar log_qso{,_d}
 		echo -n "il : IRC logging              :"; EvaluateVar log_irc{,_d}
 		echo -n "dl : DTMF logging             :"; EvaluateVar log_dtmf{,_d}
-		echo
-		echo    "     Timing controls"
-		echo -n "et : Echo timeout (sec)       :"; EvaluateVar timing_timeout_echo{,_d}
-		echo -n "vt : Voicemail timeout (sec)  :"; EvaluateVar timing_timeout_voicemail{,_d}
-		echo -n "gt : G2 timeout (sec)         :"; EvaluateVar timing_timeout_remote_g2{,_d}
-		echo -n "rt : Repeater timeout (sec)   :"; EvaluateVar timing_timeout_local_rptr{,_d}
-		echo -n "pw : Echo play wait (sec)     :"; EvaluateVar timing_play_wait{,_d}
-		echo -n "pd : Echo play delay (msec)   :"; EvaluateVar timing_play_delay{,_d}
+		if [ -n "$em" ]; then
+			echo
+			echo    "     Files and directories"
+			echo -n "sf : Repeater status file     :"; EvaluateVar file_status{,_d}
+			echo -n "ed : Echo/Voicemail directory :"; EvaluateVar file_echotest{,_d}
+			echo -n "dd : DTMF directory           :"; EvaluateVar file_dtmf{,_d}
+			echo -n "vf : QnetVoice filename       :"; EvaluateVar file_qnvoicefile{,_d}
+			echo -n "gf : Gateways filename        :"; EvaluateVar file_gwys{,_d}
+			echo -n "ad : Announce directory       :"; EvaluateVar file_announce_dir{,_d}
+			echo
+			echo    "     Timing controls"
+			echo -n "et : Echo timeout (sec)       :"; EvaluateVar timing_timeout_echo{,_d}
+			echo -n "vt : Voicemail timeout (sec)  :"; EvaluateVar timing_timeout_voicemail{,_d}
+			echo -n "gt : G2 timeout (sec)         :"; EvaluateVar timing_timeout_remote_g2{,_d}
+			echo -n "rt : Repeater timeout (sec)   :"; EvaluateVar timing_timeout_local_rptr{,_d}
+			echo -n "pw : Echo play wait (sec)     :"; EvaluateVar timing_play_wait{,_d}
+			echo -n "pd : Echo play delay (msec)   :"; EvaluateVar timing_play_delay{,_d}
+		fi
 		EndMenu
 
 		if   [[ "$key" == sf* ]]; then file_status="$value"
@@ -195,8 +205,10 @@ IrcddbMenu () {
 		echo
 		echo    "l  : Login - must be a legal callsign = '${ircddb_login}'"
 		echo -n "h  : Hostname for IRC Server          = "; EvaluateVar ircddb_host{,_d}
-		echo -n "po : IRC TCP port                     = "; EvaluateVar ircddb_port{,_d}
-		echo -n "pa : IRC Password                     = "; EvaluateVar ircddb_password{,_d}
+		if [ -n "$em" ]; then
+			echo -n "po : IRC TCP port                     = "; EvaluateVar ircddb_port{,_d}
+			echo -n "pa : IRC Password                     = "; EvaluateVar ircddb_password{,_d}
+		fi
 		EndMenu
 
 		if   [[ "$key" == l*  ]]; then ircddb_login="${value^^}"
@@ -219,17 +231,19 @@ GateMenu () {
 		echo
 		echo "               Gateway/APRS Menu"
 		echo
-		echo    "     Gateway Option - default values are usually best"
-		echo -n "r  : Regenerate Headers             = "; EvaluateVar gateway_header_regen{,_d}
-		echo -n "s  : Send IRC network Module Info   = "; EvaluateVar gateway_send_qrgs_maps{,_d}
-		echo -n "i  : IRC TCP local network address  = "; EvaluateVar gateway_local_irc_ip{,_d}
-		echo -n "p  : IRC TCP port number            = "; EvaluateVar gateway_port{,_d}
-		echo -n "tl : UNIX socket to QnetLink        = "; EvaluateVar gateway_gate2link{,_d}
-		echo -n "fl : UNIX socket from QnetLink      = "; EvaluateVar gateway_link2gate{,_d}
-		echo -n "ta : UNIX socket to Modem A         = "; EvaluateVar gateway_gate2modema{,_d}
-		echo -n "tb : UNIX socket to Modem B         = "; EvaluateVar gateway_gate2modemb{,_d}
-		echo -n "tc : UNIX socket to Modem C         = "; EvaluateVar gateway_gate2modemc{,_d}
-		echo -n "fm : UNIX socket from Modem(s)      = "; EvaluateVar gateway_modem2gate{,_d}
+		echo    "     Gateway Option"
+		if [ -n "$em" ]; then
+			echo -n "r  : Regenerate Headers             = "; EvaluateVar gateway_header_regen{,_d}
+			echo -n "s  : Send IRC network Module Info   = "; EvaluateVar gateway_send_qrgs_maps{,_d}
+			echo -n "i  : IRC TCP local network address  = "; EvaluateVar gateway_local_irc_ip{,_d}
+			echo -n "p  : IRC TCP port number            = "; EvaluateVar gateway_port{,_d}
+			echo -n "tl : UNIX socket to QnetLink        = "; EvaluateVar gateway_gate2link{,_d}
+			echo -n "fl : UNIX socket from QnetLink      = "; EvaluateVar gateway_link2gate{,_d}
+			echo -n "ta : UNIX socket to Modem A         = "; EvaluateVar gateway_gate2modema{,_d}
+			echo -n "tb : UNIX socket to Modem B         = "; EvaluateVar gateway_gate2modemb{,_d}
+			echo -n "tc : UNIX socket to Modem C         = "; EvaluateVar gateway_gate2modemc{,_d}
+			echo -n "fm : UNIX socket from Modem(s)      = "; EvaluateVar gateway_modem2gate{,_d}
+		fi
 		echo -n "la : Latitude (-90.0 to 90.0)       = "; EvaluateVar gateway_latitude{,_d}
 		echo -n "lo : Longitude (-180.0 to 180.0)    = "; EvaluateVar gateway_longitude{,_d}
 		echo -n "d1 : Description #1 (20 chars max)  = "; EvaluateVar gateway_desc1{,_d}
@@ -238,10 +252,12 @@ GateMenu () {
 		echo
 		echo    "     APRS - Repeater/User position tracking"
 		echo -n "e  : Enable APRS Tracking           = "; EvaluateVar aprs_enable{,_d}
-		echo -n "h  : APRS hostname                  = "; EvaluateVar aprs_host{,_d}
-		echo -n "ap : APRS TCP port number           = "; EvaluateVar aprs_port{,_d}
-		echo -n "k  : APRS Keep-alive interval (min) = "; EvaluateVar aprs_interval{,_d}
-		echo -n "af : APRS Filter (experimental)     = "; EvaluateVar aprs_filter{,_d}
+		if [ -n "$em" ]; then
+			echo -n "h  : APRS hostname                  = "; EvaluateVar aprs_host{,_d}
+			echo -n "ap : APRS TCP port number           = "; EvaluateVar aprs_port{,_d}
+			echo -n "k  : APRS Keep-alive interval (min) = "; EvaluateVar aprs_interval{,_d}
+			echo -n "af : APRS Filter (experimental)     = "; EvaluateVar aprs_filter{,_d}
+		fi
 		EndMenu
 
 		if   [[ "$key" == r*  ]]; then SetBooleanValue gateway_header_regen "$value"
@@ -332,10 +348,12 @@ ModuleMenu () {
 		echo -n "of : Offset in Hz                                 = "; EvaluateVar {${mod},module_x}_offset
 		echo -n "ra : Range (in meters, 1 mile=1609.344 meters)    = "; EvaluateVar {${mod},module_x}_range
 		echo -n "ag : Above ground level (in meters)               = "; EvaluateVar {${mod},module_x}_agl
-		echo -n "in : Inactivity for this many minutes unlinks     = "; EvaluateVar {${mod},module_x}_inactivity
-		echo -n "wa : Wait this many msec for the next packet      = "; EvaluateVar {${mod},module_x}_packet_wait
-		echo -n "ac : Send acknowledgment on each transmission     = "; EvaluateVar {${mod},module_x}_acknowledge
-		echo -n "ad : acknowledgment delay (in msec)               = "; EvaluateVar {${mod},module_x}_ack_delay
+		if [ -n "$em" ]; then
+			echo -n "in : Inactivity for this many minutes unlinks     = "; EvaluateVar {${mod},module_x}_inactivity
+			echo -n "wa : Wait this many msec for the next packet      = "; EvaluateVar {${mod},module_x}_packet_wait
+			echo -n "ac : Send acknowledgment on each transmission     = "; EvaluateVar {${mod},module_x}_acknowledge
+			echo -n "ad : acknowledgment delay (in msec)               = "; EvaluateVar {${mod},module_x}_ack_delay
+		fi
 		if [[ "${!mod}" == dvap ]]; then
 			echo -n "po : Power (in dBm from -12 to 10)                = "; EvaluateVar {${mod},dvap}_power
 			echo -n "sq : Squelch (in dBm from -128 to -45)            = "; EvaluateVar {${mod},dvap}_squelch
@@ -529,6 +547,7 @@ WriteCFGFile () {
 	[ -z "${timing_play_delay+x}"         ] || echo "timing_play_delay=${timing_play_delay}"                 >> $outFile
 }
 
+# Execution starts here!
 # source files
 if [ -e ./defaults ]; then
 	source ./defaults
@@ -543,6 +562,11 @@ else
 	sleep 1
 fi
 
+# process arguments
+if [[ "$1" == ex* ]]; then
+	em="expertMode"
+fi
+
 # main loop
 while [[ "$ans" != q* ]]
 do
@@ -550,13 +574,17 @@ do
 	echo
 	echo "               Main Menu"
 	echo
-	echo -n "a : Module A           - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
-	echo -n "b : Module B           - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
-	echo -n "c : Module C           - "; if [ -z $module_c ]; then echo "<EMPTY>"; else echo "${module_c^^}"; fi
-	echo    "i : IRCDDB Menu        - login = '${ircddb_login}'"
-	echo    "g : Gateway/APRS Menu  - default values are usually fine"
-	echo    "l : Link/D-Plus Menu   - linking access"
-	echo    "f : Files/Logs/Timings - miscellaneous parameters"
+	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
+	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
+	echo -n "c : Module C                - "; if [ -z $module_c ]; then echo "<EMPTY>"; else echo "${module_c^^}"; fi
+	echo    "i : IRCDDB Menu             - login = '${ircddb_login}'"
+	echo    "g : Gateway/APRS Menu       - default values are usually fine"
+	echo    "l : Link/D-Plus Menu        - linking access"
+	if [ -n "$em" ]; then
+		echo "d : Debugging/Files/Timings - miscellaneous parameters"
+	else
+		echo "d : Debuging                - additional log entries"
+	fi
 	echo
 	if [ -n $module_a ] || [ -n $module_b ] || [ -n $module_c ] && [ -n $ircddb_login ]; then
 		echo    "w : Write qn.cfg configuration file (overwrites any existing file)"
@@ -570,7 +598,7 @@ do
 	elif [[ "$ans" == i* ]]; then IrcddbMenu
 	elif [[ "$ans" == g* ]]; then GateMenu
 	elif [[ "$ans" == l* ]]; then LinkMenu
-	elif [[ "$ans" == f* ]]; then FileMenu
+	elif [[ "$ans" == d* ]]; then FileMenu
 	elif [[ "$ans" == w* ]]; then WriteCFGFile
 	fi
 done
