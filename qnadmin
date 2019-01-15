@@ -96,7 +96,7 @@ BaseStatus () {
 			GateState='stopped'
 		fi
 	else
-		GateState='non installed'
+		GateState='not installed'
 	fi
 	echo "QetGateway is $GateState"
 	if [[ $LoadLink == 'loaded' ]]; then
@@ -106,7 +106,7 @@ BaseStatus () {
 			LinkState='stopped'
 		fi
 	else
-		LinkState='non installed'
+		LinkState='not installed'
 	fi
 	echo "QetLink is $LinkState"
 	if [[ $LoadDTMF == 'loaded' ]]; then
@@ -116,7 +116,7 @@ BaseStatus () {
 			DTMFState='stopped'
 		fi
 	else
-		DTMFState='non installed'
+		DTMFState='not installed'
 	fi
 	echo "DTMF is $DTMFState"
 }
@@ -214,28 +214,28 @@ while [[ "$ans" != q* ]]; do
 	ModuleStatus 1 b "$module_b"
 	ModuleStatus 2 c "$module_c"
 	echo
-	if [[ "$GateState" == "not-found" ]] || [[ "$LinkState" == "not-found" ]]; then
-		echo "i  : Install configured system"
+	if [[ "$GateState" == 'not installed' ]] || [[ "$LinkState" == 'not installed' ]]; then
+		echo "is : Install configured system"
 	else
-		echo "u  : Uninstall configured System"
+		echo "us : Uninstall configured System"
 	fi
-	if [[ "$DTMFState" == "not-found" ]]; then
-		echo "D  : Install DTMF"
+	if [[ "$DTMFState" == 'not installed' ]]; then
+		echo "id : Install DTMF"
 	else
-		echo "U  : Uninstall DTMF"
+		echo "ud : Uninstall DTMF"
 	fi
-	echo "c  : Clean (remove temporary files and locally build executables)"
+	echo "c  : Clean (remove temporary files and locally built executables)"
 	echo
 	read -p "q  to quit. Command: " ans
 
 	# EXECUTE COMMANDS
-	if   [[ "$ans" == i* ]]; then
+	if   [[ "$ans" == is* ]]; then
 		InstallSystem
-	elif [[ "$ans" == u* ]]; then
+	elif [[ "$ans" == us* ]]; then
 		InstallSystem un
-	elif [[ "$ans" == d* ]]; then
+	elif [[ "$ans" == id* ]]; then
 		sudo make installdtmf
-	elif [[ "$ans" == U* ]]; then
+	elif [[ "$ans" == ud* ]]; then
 		sudo make uninstalldtmf
 	elif [[ "$ans" == c* ]]; then
 		make clean
