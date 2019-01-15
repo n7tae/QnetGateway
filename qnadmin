@@ -151,11 +151,12 @@ ModuleStatus () {
 if [ -e qn.cfg ]; then
 	source <( grep "^module_[abc]=" qn.cfg )
 	if [ -z "$module_a" ] && [ -z "$module_b" ] && [ -z "$module_c" ]; then
-		echo "No moudules defined in the qn.cfg file!"
+		echo "No moudules defined in the qn.cfg file!, please re-edit you configuration."
 		exit 1
 	fi
 else
-	"ERROR: can't find the qn.cfg file"
+	echo "ERROR: can't find the qn.cfg configuration file!"
+	echo "You can use ./qnconfig to create your config file."
 	exit 1
 fi
 
