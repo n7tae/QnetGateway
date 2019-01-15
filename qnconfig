@@ -545,6 +545,10 @@ WriteCFGFile () {
 	[ -z "${timing_timeout_local_rptr+x}" ] || echo "timing_timeout_local_rptr=${timing_timeout_local_rptr}" >> $outFile
 	[ -z "${timing_play_wait+x}"          ] || echo "timing_play_wait=${timing_play_wait}"                   >> $outFile
 	[ -z "${timing_play_delay+x}"         ] || echo "timing_play_delay=${timing_play_delay}"                 >> $outFile
+	clear
+	cat $outFile
+	echo
+	read -p "File written! Press <Enter> to continue: " ans
 }
 
 # Execution starts here!
