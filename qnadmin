@@ -214,12 +214,12 @@ while [[ "$ans" != q* ]]; do
 	ModuleStatus 1 b "$module_b"
 	ModuleStatus 2 c "$module_c"
 	echo
-	if [[ "$LoadGate" == "not-found" ]] || [[ "$LoadLink" == "not-found" ]]; then
+	if [[ "$GateState" == "not-found" ]] || [[ "$LinkState" == "not-found" ]]; then
 		echo "i  : Install configured system"
 	else
 		echo "u  : Uninstall configured System"
 	fi
-	if [[ "$LoadDTMF" == "not-found" ]]; then
+	if [[ "$DTMFState" == "not-found" ]]; then
 		echo "D  : Install DTMF"
 	else
 		echo "U  : Uninstall DTMF"
