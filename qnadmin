@@ -122,15 +122,15 @@ BaseStatus () {
 }
 
 ModuleStatus () {
-	local LoadState SubState mcvar
+	local LoadState SubState mcvar process
 	if [ -z ${3} ]; then
 		ModuleState[$1]='EMPTY'
 	else
 		mcvar="n${3}"
+		process="qn$3"
+		if [[ "$process" == 'qnmmdvm' ]]; then process='qnrelay'; fi
 		if [[ ${!mcvar} > 1 ]]; then
-			process="${3}${2}"
-		else
-			process="${3}"
+			process="${process}${2}"
 		fi
 		LoadState=$( systemctl show -p LoadState --value $process )
 		SubState=$( systemctl show -p SubState --value $process )
