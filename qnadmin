@@ -82,33 +82,47 @@ InstallSystem () {
 }
 
 BaseStatus () {
-	ActiveGate=$( systemctl show -p ActiveState --value qngateway )
+	local LoadGate SubGate LoadLink SubLink LoadDTMF SubDTMF
+	LoadGate=$( systemctl show -p LoadState --value qngateway )
 	SubGate=$( systemctl show -p SubState --value qngateway )
-	ActiveLink=$( systemctl show -p ActiveState --value qnlink )
+	LoadLink=$( systemctl show -p LoadState --value qnlink )
 	SubLink=$( systemctl show -p SubState --value qnlink )
-	ActiveDTMF=$( systemctl show -p ActiveState --value qndtmf )
+	LoadDTMF=$( systemctl show -p LoadState --value qndtmf )
 	SubDTMF=$( systemctl show -p SubState --value qndtmf )
-	echo -n "QnetGateway "
-	if [[ "$ActiveGate" == "inactive" ]]; then
-		echo "is not installed"
+	if [[ $LoadGate == 'loaded' ]]; then
+		if [[ $SubGate == 'running' ]]; then
+			GateState='running'
+		else
+			GateState='stopped'
+		fi
 	else
-		echo "ActiveState is $ActiveGate SubState is $SubGate"
+		GateState='non installed'
 	fi
-	echo -n "QnetLink "
-	if [[ "$ActiveLink" == "inactive" ]]; then
-		echo "is not installed"
+	echo "QetGateway is $GateState"
+	if [[ $LoadLink == 'loaded' ]]; then
+		if [[ $SubLink == 'running' ]]; then
+			LinkState='running'
+		else
+			LinkState='stopped'
+		fi
 	else
-		echo "ActiveState is $ActiveLink SubState is $SubLink"
+		LinkState='non installed'
 	fi
-	echo -n "DTMF "
-	if [[ "$ActiveDTMF" == "inactive" ]]; then
-		echo "is not installed"
+	echo "QetLink is $LinkState"
+	if [[ $LoadDTMF == 'loaded' ]]; then
+		if [[ $SubDTMF == 'running' ]]; then
+			DTMFState='running'
+		else
+			DTMFState='stopped'
+		fi
 	else
-		echo "ActiveState is $ActiveDTMF SubState is $SubDTMF"
+		DTMFState='non installed'
 	fi
+	echo "DTMF is $DTMFState"
 }
 
 ModuleStatus () {
+	local LoadState SubState
 	if [ -z ${3} ]; then
 		echo "Module ${2^^} - EMPTY"
 	else
@@ -118,14 +132,18 @@ ModuleStatus () {
 		else
 			process="${3}"
 		fi
-		ActiveState=$( systemctl show -p ActiveState --value $process )
+		LoadState=$( systemctl show -p LoadState --value $process )
 		SubState=$( systemctl show -p SubState --value $process )
-		echo -n "Module ${2^^} - ${3^^}"
-		if [[ "$ActiveState" == "inactive" ]]; then
-			echo " is not installed"
+		if [[ "$LoadState" == "loaded" ]]; then
+			if [[ $SubState == "running" ]]; then
+				ModuleState[$1]='running'
+			else
+				ModuleState[$1]='stopped'
+			fi
 		else
-			echo " ActiveState is $ActiveState SubState is $SubState"
+			ModuleState[$1]='not installed'
 		fi
+		echo "Module ${2^^} - ${3^^} is $ModuleState[$1]"
 	fi
 }
 
@@ -196,10 +214,14 @@ while [[ "$ans" != q* ]]; do
 	ModuleStatus 1 b "$module_b"
 	ModuleStatus 2 c "$module_c"
 	echo
-	if [[ "$ActiveGate" == "inactive" ]] || [[ "$ActiveLink" == "inactive" ]]; then
+	if [[ "$LoadGate" == "not-found" ]] || [[ "$LoadLink" == "not-found" ]]; then
 		echo "i  : Install configured system"
+	else
 		echo "u  : Uninstall configured System"
+	fi
+	if [[ "$LoadDTMF" == "not-found" ]]; then
 		echo "D  : Install DTMF"
+	else
 		echo "U  : Uninstall DTMF"
 	fi
 	echo "c  : Clean (remove temporary files and locally build executables)"
