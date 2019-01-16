@@ -172,7 +172,7 @@ Header () {
 	if [ $count -gt 2 ]; then
 		echo
 		echo "USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND"
-		ps -aux | grep -e qngateway -e qnlink -e qndvap -e qnitap -e qnrelay -e dvrptr | grep -v grep
+		ps -aux | grep -v grep | grep -e qngateway -e qnlink -e qndvap -e qnitap -e qnrelay -e dvrptr
 	fi
 	echo
 }
