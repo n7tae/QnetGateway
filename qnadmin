@@ -18,10 +18,7 @@
 trap ControlC INT
 
 ControlC () {
-	sudo killall journalctl
-	if [ $? -ne 0 ]; then
-		exit 0
-	fi
+	echo "caught SIGINT"
 }
 
 InstallSystem () {
@@ -237,8 +234,8 @@ LogMenu () {
 			GetModuleProcess $module_c
 			sudo journalctl -u $process -f
 		fi
-
 	done
+	ans=
 }
 
 MaintenanceMenu () {
@@ -328,6 +325,7 @@ MaintenanceMenu () {
 		fi
 		BaseState
 	done
+	ans=''
 }
 
 # get defined modules from the config file
