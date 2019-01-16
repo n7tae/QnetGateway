@@ -155,7 +155,7 @@ GetModuleProcess () {
 		process='relay'
 	fi
 	process="qn$process"
-	if [${!nvar} -gt 1 ]; then
+	if [ ${!nvar} -gt 1 ]; then
 		process=${process}${1}
 	fi
 }
