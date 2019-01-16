@@ -15,6 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+trap ControlC INT
+
+ControlC () {
+	sudo killall journalctl
+	if [ $? -ne 0 ]; then
+		exit 0
+	fi
+}
+
 InstallSystem () {
 	local n
 	if [ -z ${1} ]; then
@@ -166,7 +175,7 @@ LogMenu () {
 		clear
 		echo "            Log Menu"
 		echo
-		echo "After starting a log, use <Control>-C to stop the log and return to this menu."
+		echo "After starting a log, use <Ctrl>+C to stop the log and return to this menu."
 		echo
 		if [[ $GateState == 'running' ]]; then
 			echo " g  : qngateway Log"
