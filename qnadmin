@@ -261,17 +261,17 @@ MaintenanceMenu () {
 			echo " d : Start DTMF"
 		fi
 		if [[ "${ModuleState[0]}" == 'running' ]]; then
-			echo " a : Stop Module A"
+			echo " a : Stop  Module A"
 		elif [[ "${ModuleState[0]}" == 'stopped' ]]; then
 			echo " a : Start Module A"
 		fi
 		if [[ "${ModuleState[1]}" == 'running' ]]; then
-			echo " b : Stop Module B"
+			echo " b : Stop  Module B"
 		elif [[ "${ModuleState[1]}" == 'stopped' ]]; then
 			echo " b : Start Module B"
 		fi
 		if [[ "${ModuleState[2]}" == 'running' ]]; then
-			echo " c : Stop Module C"
+			echo " c : Stop  Module C"
 		elif [[ "${ModuleState[2]}" == 'stopped' ]]; then
 			echo " c : Start Module C"
 		fi
