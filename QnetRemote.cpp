@@ -251,8 +251,6 @@ int main(int argc, char *argv[])
 	memcpy(pkt.vpkt.vasd.voice, silence, 9);
 
 	for (int i=0; i<10; i++) {
-		usleep(delay);
-
 		/* start sending silence + text */
 		pkt.counter = htons(++G2_COUNTER);
 		pkt.vpkt.ctrl = i;
@@ -316,6 +314,7 @@ int main(int argc, char *argv[])
 			printf("%s: ERROR: could not send voice packet %d\n", argv[0], i);
 			return 1;
 		}
+		usleep(delay);
 	}
 	return 0;
 }
