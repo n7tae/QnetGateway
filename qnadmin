@@ -277,19 +277,19 @@ MaintenanceMenu () {
 		if   [[ "$ans" == g* ]]; then
 			if [[ "$GateState" == 'running' ]]; then
 				sudo systemctl stop qngateway
-			elif [[ "$GateState" == 'stopped' ]]
+			elif [[ "$GateState" == 'stopped' ]]; then
 				sudo systemctl start qngateway
 			fi
 		elif [[ "$ans" == l* ]]; then
 			if [[ "$LinkState" == 'running' ]]; then
 				sudo systemctl stop qnlink
-			elif [[ "$LinkState" == 'stopped' ]]
+			elif [[ "$LinkState" == 'stopped' ]]; then
 				sudo systemctl start qnlink
 			fi
 		elif [[ "$ans" == d* ]]; then
 			if [[ "$DTMFState" == 'running' ]]; then
 				sudo systemctl stop qndtmf
-			elif [[ "$DTMFState" == 'stopped' ]]
+			elif [[ "$DTMFState" == 'stopped' ]]; then
 				sudo systemctl start qndtmf
 			fi
 		elif [[ "$ans" == a* ]] && [ -n $module_a ]; then
