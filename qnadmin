@@ -251,7 +251,7 @@ MaintenanceMenu () {
 		fi
 		if [[ "$DTMFState" == 'running' ]]; then
 			echo " d : Stop  DTMF"
-		elif [[ "$DTMFState" == 'stopped']]; then
+		elif [[ "$DTMFState" == 'stopped' ]]; then
 			echo " d : Start DTMF"
 		fi
 		if [[ "${ModuleState[0]}" == 'running' ]]; then
