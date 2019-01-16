@@ -169,10 +169,10 @@ GetModuleProcess () {
 Header () {
 	local count
 	count=$( ps -aux | grep qn | wc -l )
-	if [ $count -gt 1 ]; then
+	if [ $count -gt 2 ]; then
 		echo
 		echo "USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND"
-		ps -aux | grep qn | head --line=-1
+		ps -aux | grep qn | head --line=-2
 	fi
 	echo
 }
