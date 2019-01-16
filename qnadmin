@@ -323,7 +323,7 @@ MaintenanceMenu () {
 			fi
 			ModuleState 2 c $module_c
 		fi
-		BaseState
+		BaseStatus
 	done
 	ans=''
 }
