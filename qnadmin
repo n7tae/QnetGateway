@@ -235,7 +235,7 @@ LogMenu () {
 			sudo journalctl -u $process -f
 		fi
 	done
-	ans=
+	ans=''
 }
 
 MaintenanceMenu () {
@@ -286,18 +286,21 @@ MaintenanceMenu () {
 			elif [[ "$GateState" == 'stopped' ]]; then
 				sudo systemctl start qngateway
 			fi
+			BaseStatus
 		elif [[ "$ans" == l* ]]; then
 			if [[ "$LinkState" == 'running' ]]; then
 				sudo systemctl stop qnlink
 			elif [[ "$LinkState" == 'stopped' ]]; then
 				sudo systemctl start qnlink
 			fi
+			BaseStatus
 		elif [[ "$ans" == d* ]]; then
 			if [[ "$DTMFState" == 'running' ]]; then
 				sudo systemctl stop qndtmf
 			elif [[ "$DTMFState" == 'stopped' ]]; then
 				sudo systemctl start qndtmf
 			fi
+			BaseStatus
 		elif [[ "$ans" == a* ]] && [ -n $module_a ]; then
 			GetModuleProcess $module_a
 			if [[ "${ModuleState[0]}" == 'running' ]]; then
@@ -305,7 +308,7 @@ MaintenanceMenu () {
 			elif [[ "${ModuleState[0]}" == 'stopped' ]]; then
 				sudo systemctl start $process
 			fi
-			ModuleState 0 a $module_a
+			ModuleStatus 0 a $module_a
 		elif [[ "$ans" == b* ]] && [ -n $module_b ]; then
 			GetModuleProcess $module_b
 			if [[ "${ModuleState[1]}" == 'running' ]]; then
@@ -313,7 +316,7 @@ MaintenanceMenu () {
 			elif [[ "${ModuleState[1]}" == 'stopped' ]]; then
 				sudo systemctl start $process
 			fi
-			ModuleState 1 b $module_b
+			ModuleStatus 1 b $module_b
 		elif [[ "$ans" == c* ]] && [ -n $module_c ]; then
 			GetModuleProcess $module_c
 			if [[ "${ModuleState[2]}" == 'running' ]]; then
@@ -321,9 +324,8 @@ MaintenanceMenu () {
 			elif [[ "${ModuleState[2]}" == 'stopped' ]]; then
 				sudo systemctl start $process
 			fi
-			ModuleState 2 c $module_c
+			ModuleStatus 2 c $module_c
 		fi
-		BaseStatus
 	done
 	ans=''
 }
