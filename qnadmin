@@ -166,12 +166,23 @@ GetModuleProcess () {
 	fi
 }
 
+Header () {
+	local count
+	count=$( ps -aux | grep qn | wc -l )
+	if [ $count -gt 1 ]; then
+		echo
+		echo "USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND"
+		ps -aux | grep qn | head --line=-1
+	fi
+	echo
+}
+
 LogMenu () {
 	ans=''
 	while [[ "$ans" != q* ]]; do
 		clear
 		echo "            Log Menu"
-		echo
+		Header
 		echo "After starting a log, use <Ctrl>+C to stop the log and return to this menu."
 		echo
 		if [[ $GateState == 'running' ]]; then
@@ -244,7 +255,7 @@ MaintenanceMenu () {
 	while [[ "$ans" != q* ]]; do
 		clear
 		echo "            MaintenanceMenu"
-		echo
+		Header
 		if [[ "$GateState" == 'running' ]]; then
 			echo " g : Stop  QnetGateway"
 		elif [[ "$GateState" == 'stopped' ]]; then
@@ -392,7 +403,7 @@ while [[ "$ans" != q* ]]; do
 	clear
 	echo
 	echo "            Qnet Administration Menu"
-	echo
+	Header
 	BaseStatus
 	ModuleStatus 0 a "$module_a"
 	ModuleStatus 1 b "$module_b"
