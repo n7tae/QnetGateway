@@ -500,6 +500,7 @@ WriteCFGFile () {
 	[ -z "${gateway_send_qrgs_maps+x}" ] || echo "gateway_send_qrgs_maps=${gateway_send_qrgs_maps}" >> $outFile
 	[ -z "${gateway_local_irc_ip+x}"   ] || echo "gateway_local_irc_ip='${gateway_local_irc_ip}'"   >> $outFile
 	[ -z "${gateway_port+x}"           ] || echo "gateway_port=${gateway_port}"                     >> $outFile
+	[ -z "${gateway_ip+x}"             ] || echo "gateway_port=${gateway_ip}"                       >> $outFile
 	[ -z "${gateway_tolink+x}"         ] || echo "gateway_tolink=${gateway_tolink}"                 >> $outFile
 	[ -z "${gateway_fromlink+x}"       ] || echo "gateway_fromlink=${gateway_fromlink}"             >> $outFile
 	[ -z "${gateway_latitude+x}"       ] || echo "gateway_latitude=${gateway_latitude}"             >> $outFile
