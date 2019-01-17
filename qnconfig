@@ -283,7 +283,7 @@ GateMenu () {
 		elif [[ "$key" == k*  ]]; then aprs_interval="$value"
 		elif [[ "$key" == af* ]]; then aprs_filter="$value"
 		elif [[ "$key" == u*  ]]; then
-			if   [[ "$value" == h*  ]]; then unset gateway_header_regen
+			if   [[ "$value" == r*  ]]; then unset gateway_header_regen
 			elif [[ "$value" == s*  ]]; then unset gateway_send_qrgs_maps
 			elif [[ "$value" == i*  ]]; then unset gateway_local_irc_ip
 			elif [[ "$value" == a*  ]]; then unset gateway_ip
