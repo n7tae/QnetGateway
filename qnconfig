@@ -236,7 +236,8 @@ GateMenu () {
 			echo -n "r  : Regenerate Headers             = "; EvaluateVar gateway_header_regen{,_d}
 			echo -n "s  : Send IRC network Module Info   = "; EvaluateVar gateway_send_qrgs_maps{,_d}
 			echo -n "i  : IRC TCP local network address  = "; EvaluateVar gateway_local_irc_ip{,_d}
-			echo -n "p  : IRC TCP port number            = "; EvaluateVar gateway_port{,_d}
+			echo -n "a  : G2 port address                = "; EvaluateVar gateway_ip{,_d}
+			echo -n "p  : G2 port number                 = "; EvaluateVar gateway_port{,_d}
 			echo -n "tl : UNIX socket to QnetLink        = "; EvaluateVar gateway_gate2link{,_d}
 			echo -n "fl : UNIX socket from QnetLink      = "; EvaluateVar gateway_link2gate{,_d}
 			echo -n "ta : UNIX socket to Modem A         = "; EvaluateVar gateway_gate2modema{,_d}
@@ -263,6 +264,7 @@ GateMenu () {
 		if   [[ "$key" == r*  ]]; then SetBooleanValue gateway_header_regen "$value"
 		elif [[ "$key" == s*  ]]; then SetBooleanValue gateway_send_qrgs_maps "$value"
 		elif [[ "$key" == i*  ]]; then gateway_local_irc_ip="$value"
+		elif [[ "$key" == a*  ]]; then gateway_ip="$value"
 		elif [[ "$key" == p*  ]]; then gateway_port="$value"
 		elif [[ "$key" == tl* ]]; then gateway_gate2link="$value"
 		elif [[ "$key" == fl* ]]; then gateway_link2gate="$value"
@@ -283,8 +285,8 @@ GateMenu () {
 		elif [[ "$key" == u*  ]]; then
 			if   [[ "$value" == h*  ]]; then unset gateway_header_regen
 			elif [[ "$value" == s*  ]]; then unset gateway_send_qrgs_maps
-			elif [[ "$value" == l*  ]]; then unset gateway_local_irc_ip
-			elif [[ "$value" == i*  ]]; then unset gateway_ip
+			elif [[ "$value" == i*  ]]; then unset gateway_local_irc_ip
+			elif [[ "$value" == a*  ]]; then unset gateway_ip
 			elif [[ "$value" == p*  ]]; then unset gateway_port
 			elif [[ "$value" == tl* ]]; then unset gateway_gate2link
 			elif [[ "$value" == ta* ]]; then unset gateway_gate2modema
