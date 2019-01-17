@@ -466,8 +466,6 @@ WriteCFGFile () {
 			q=${p}_offset;         [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_range;          [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_agl;            [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
-			q=${p}_gate2modem${m}; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
-			q=${p}_modem2gate${m}; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
 			q=${p}_inactivity;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_packet_wait;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_acknowledge;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
@@ -503,6 +501,10 @@ WriteCFGFile () {
 	[ -z "${gateway_ip+x}"             ] || echo "gateway_ip=${gateway_ip}"                         >> $outFile
 	[ -z "${gateway_tolink+x}"         ] || echo "gateway_tolink=${gateway_tolink}"                 >> $outFile
 	[ -z "${gateway_fromlink+x}"       ] || echo "gateway_fromlink=${gateway_fromlink}"             >> $outFile
+	[ -z "${gateway_gate2modema+x}"    ] || echo "gateway_gate2modema=${gateway_gate2modema}"       >> $outFile
+	[ -z "${gateway_gate2modemb+x}"    ] || echo "gateway_gate2modemb=${gateway_gate2modemb}"       >> $outFile
+	[ -z "${gateway_gate2modemc+x}"    ] || echo "gateway_gate2modemc=${gateway_gate2modemc}"       >> $outFile
+	[ -z "${gateway_modem2gate+x}"     ] || echo "gateway_modem2gate=${gateway_modem2gate}"         >> $outFile
 	[ -z "${gateway_latitude+x}"       ] || echo "gateway_latitude=${gateway_latitude}"             >> $outFile
 	[ -z "${gateway_longitude+x}"      ] || echo "gateway_longitude=${gateway_longitude}"           >> $outFile
 	[ -z "${gateway_desc1+x}"          ] || echo "gateway_desc1='${gateway_desc1}'"                 >> $outFile
