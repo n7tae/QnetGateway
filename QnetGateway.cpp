@@ -993,6 +993,8 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 }
 
 void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
+// is_from_g2==true  means it's coming from external port 40000
+// is_from_g2==false means it's coming from the link2gate Unix socket
 {
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
@@ -1004,9 +1006,12 @@ void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
 				// toRptr[i] is active if a remote system is talking to it or
 				// toRptr[i] is receiving data from a cross-band
 				if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
-					if (bool_qso_details)
-						printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n", ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, is_from_g2?inet_ntoa(fromDst4.sin_addr):"From QnetLink", is_from_g2?ntohs(fromDst4.sin_port):0);
-
+					if (bool_qso_details) {
+						if (is_from_g2)
+							printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s IP=%s:%u\n", ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+						else
+							printf("id=%04x G2 start, ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s UnixSock=%s\n", ntohs(g2buf.streamid), g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx, link2gate.c_str());
+					}
 					memcpy(rptrbuf.pkt_id, "DSTR", 4);
 					rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);	// bump the counter
 					rptrbuf.flag[0] = 0x73;
@@ -1031,6 +1036,8 @@ void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
 					Gate2Modem[i].Write(rptrbuf.pkt_id, 58);
 
 					/* save the header */
+					if (! is_from_g2)
+						fromDst4.sin_addr.s_addr = (unsigned long)i;
 					memcpy(toRptr[i].saved_hdr, rptrbuf.pkt_id, 58);
 					toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
 
@@ -1154,7 +1161,7 @@ void CQnetGateway::ProcessModem()
 			if (recvlen == 58) {
 				vPacketCount = 0U;
 				if (bool_qso_details)
-					printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ip=%s\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm, inet_ntoa(fromRptr.sin_addr));
+					printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm);
 
 				if (0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	Flag_is_ok(rptrbuf.vpkt.hdr.flag[0])) {
 
@@ -1432,7 +1439,6 @@ void CQnetGateway::ProcessModem()
 
 												/* This is the active streamid */
 												toRptr[i].streamid = rptrbuf.vpkt.streamid;
-												toRptr[i].adr = fromRptr.sin_addr.s_addr;
 
 												/* time it, in case stream times out */
 												time(&toRptr[i].last_time);
@@ -1603,7 +1609,6 @@ void CQnetGateway::ProcessModem()
 
 							/* This is the active streamid */
 							toRptr[i].streamid = rptrbuf.vpkt.streamid;
-							toRptr[i].adr = fromRptr.sin_addr.s_addr;
 
 							/* time it, in case stream times out */
 							time(&toRptr[i].last_time);
@@ -1810,7 +1815,7 @@ void CQnetGateway::ProcessModem()
 						}
 						break;
 					}
-					else if ((toRptr[i].streamid==rptrbuf.vpkt.streamid) && (toRptr[i].adr == fromRptr.sin_addr.s_addr)) {	// or maybe this is cross-banding data
+					else if (toRptr[i].streamid == rptrbuf.vpkt.streamid) {	// or maybe this is cross-banding data
 						Gate2Modem[i].Write(rptrbuf.pkt_id, 29);
 
 						/* timeit */
@@ -1831,7 +1836,7 @@ void CQnetGateway::ProcessModem()
 					}
 				}
 
-				if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40)
+				if (bool_qso_details && rptrbuf.vpkt.ctrl&0x40U)
 					printf("id=%04x cntr=%04x END RPTR\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter));
 			}
 		}
