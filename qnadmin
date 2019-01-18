@@ -341,6 +341,61 @@ MaintenanceMenu () {
 	ans=''
 }
 
+GatewayMenu () {
+	ans=''
+	while [[ "$ans" != q* ]]; do
+		local refcount=$( grep -s "^REF" gwys.txt | wc -l )
+		local dcscount=$( grep -s "^DCS" gwys.txt | wc -l )
+		local xrfcount=$( grep -s "^XRF" gwys.txt | wc -l )
+		local repcount=$( grep -s -v "^#" gwys.txt | grep -s -v -e "^REF" -e "^DCS" -e "^XRF" | wc -l )
+		clear
+		echo
+		echo "            Gateway File"
+		echo
+		echo "     $refcount REF, $dcscount DCS, $xrfcount XRF and $repcount Repeaters"
+		echo
+		echo "     All initialization will overwrite any existing file!"
+		echo "ip : Initialize gwys.txt using www.PiStar.uk/downloads"
+		echo "iv : Initialize gwys.txt using VA3UV.com (includes a large # of repeaters)"
+		echo "ir : Initialize gwys.txt using VA3UV.com (but just the reflectors)"
+		echo "n  : Edit gwys.txt file with nano"
+		echo "v  : Edit gwys.txt file with vi"
+		echo
+		echo "q  : Quit and return to Main Menu"
+		echo
+		read -p "Command: " ans
+		if   [[ "$ans" == ip* ]]; then
+			/usr/bin/wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
+			/usr/bin/wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
+			/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt
+			/bin/rm -f gwys.txt
+			echo "# Downloaded from www.pistar.uk `date`" > gwys.txt
+			awk '$1 ~ /^REF/ { printf "%s %s 20001\n", $1, $2 }' DPlus_Hosts.txt >> gwys.txt
+			awk '$1 ~ /^XRF/ { printf "%s %s 30001\n", $1, $2 }' DExtra_Hosts.txt >> gwys.txt
+			awk '$1 ~ /^DCS/ { printf "%s %s 30051\n", $1, $2 }' DCS_Hosts.txt >> gwys.txt
+			/bin/rm -f D{Extra,Plus,CS}_Hosts.txt
+		elif [[ "$ans" == iv* ]]; then
+			/bin/rm -f gwys.txt
+			wget http://www.va3uv.com/gwys.txt
+		elif [[ "$ans" == ir* ]]; then
+			/bin/rm -f gwys.txt
+			/usr/bin/wget -nv -O gwys.va3uv.txt http://www.va3uv.com/gwys.txt
+			if [ -e gwys.va3uv.txt ]; then
+				echo "# Downloaded from www.va3uv.com `date`" > gwys.txt
+				awk '$1~/^REF/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
+				awk '$1~/^XRF/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
+				awk '$1~/^DCS/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
+				rm -f gwys.va3uv.txt
+			fi
+		elif [[ "$ans" == n* ]]; then
+			nano gwys.txt
+		elif [[ "$ans" == v* ]]; then
+			vi gwys.txt
+		fi
+	done
+	ans=''
+}
+
 # get defined modules from the config file
 if [ -e qn.cfg ]; then
 	source <( grep "^module_[abc]=" qn.cfg )
@@ -410,10 +465,15 @@ while [[ "$ans" != q* ]]; do
 	ModuleStatus 2 c "$module_c"
 	echo
 	if [[ "$GateState" == 'not installed' ]] || [[ "$LinkState" == 'not installed' ]]; then
-		echo "is : Install configured system"
+		if [ -e gwys.txt ]; then
+			echo "is : Install configured system"
+		else
+			echo "     You must set-up your gwys.txt file before installation."
+		fi
 	else
 		echo "us : Uninstall configured System"
 	fi
+	echo "gw : Gateway File Menu"
 	if [[ "$DTMFState" == 'not installed' ]]; then
 		echo "id : Install DTMF"
 	else
@@ -431,10 +491,14 @@ while [[ "$ans" != q* ]]; do
 	# EXECUTE COMMANDS
 	if   [[ "$ans" == is* ]]; then
 		InstallSystem
+		echo 'Wait for a few seconds for everything to start...'
+		sleep 5
 	elif [[ "$ans" == us* ]]; then
 		InstallSystem un
 	elif [[ "$ans" == id* ]]; then
 		sudo make installdtmf
+	elif [[ "$ans" == gw* ]]; then
+		GatewayMenu
 	elif [[ "$ans" == ud* ]]; then
 		sudo make uninstalldtmf
 	elif [[ "$ans" == c* ]]; then

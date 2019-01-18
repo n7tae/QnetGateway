@@ -169,7 +169,7 @@ private:
 	void APRSBeaconThread();
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, unsigned short sid);
-	void ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2);
+	void ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const bool is_from_g2);
 	void ProcessModem();
 	bool Flag_is_ok(unsigned char flag);
 

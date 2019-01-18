@@ -992,7 +992,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 	}
 }
 
-void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
+void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const bool is_from_g2)
 // is_from_g2==true  means it's coming from external port 40000
 // is_from_g2==false means it's coming from the link2gate Unix socket
 {
