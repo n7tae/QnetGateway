@@ -34,7 +34,7 @@ typedef struct to_remote_g2_tag {
 
 typedef struct torepeater_tag {
 	// help with header re-generation
-	unsigned char saved_hdr[58]; // repeater format
+	SDSTR saved_hdr; // repeater format
 	uint32_t saved_adr;
 
 	unsigned short streamid;

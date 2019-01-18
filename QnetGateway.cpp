@@ -576,7 +576,7 @@ void CQnetGateway::ProcessTimeouts()
 		if (recd[i].last_time != 0) {
 			time(&t_now);
 			if ((t_now - recd[i].last_time) > echotest_rec_timeout) {
-				printf("Inactivity on echotest recording mod %d, removing stream id=%04x\n", i, recd[i].streamid);
+				printf("Inactivity on echotest recording module %c, removing stream id=%04x\n", 'A'+i, ntohs(recd[i].streamid));
 
 				recd[i].streamid = 0;
 				recd[i].last_time = 0;
@@ -601,7 +601,7 @@ void CQnetGateway::ProcessTimeouts()
 		if (vm[i].last_time != 0) {
 			time(&t_now);
 			if ((t_now - vm[i].last_time) > voicemail_rec_timeout) {
-				printf("Inactivity on voicemail recording mod %d, removing stream id=%04x\n", i, vm[i].streamid);
+				printf("Inactivity on voicemail recording module %c, removing stream id=%04x\n", 'A'+i, ntohs(vm[i].streamid));
 
 				vm[i].streamid = 0;
 				vm[i].last_time = 0;
@@ -618,7 +618,7 @@ void CQnetGateway::ProcessTimeouts()
 			//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
 			//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
 			if ((t_now - toRptr[i].last_time) > from_remote_g2_timeout) {
-				printf("Inactivity to local rptr mod index %d, removing stream id %04x\n", i, toRptr[i].streamid);
+				printf("Inactivity to local rptr module %c, removing stream id %04x\n", 'A'+i, ntohs(toRptr[i].streamid));
 
 				// Send end_of_audio to local repeater.
 				// Let the repeater re-initialize
@@ -648,7 +648,7 @@ void CQnetGateway::ProcessTimeouts()
 			if ((t_now - band_txt[i].last_time) > from_local_rptr_timeout) {
 				/* This local stream never went to a remote system, so trace the timeout */
 				if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0)
-					printf("Inactivity from local rptr band %d, removing stream id %04x\n", i, band_txt[i].streamID);
+					printf("Inactivity from local rptr module %c, removing stream id %04x\n", 'A'+i, ntohs(band_txt[i].streamID));
 
 				band_txt[i].streamID = 0;
 				band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
@@ -1038,7 +1038,7 @@ void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
 					/* save the header */
 					if (! is_from_g2)
 						fromDst4.sin_addr.s_addr = (unsigned long)i;
-					memcpy(toRptr[i].saved_hdr, rptrbuf.pkt_id, 58);
+					memcpy(toRptr[i].saved_hdr.pkt_id, rptrbuf.pkt_id, 58);
 					toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
 
 					/* This is the active streamid */
@@ -1059,7 +1059,10 @@ void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
 			int i;
 			for (i=0; i<3; i++) {
 				/* streamid match ? */
-				if (toRptr[i].streamid==g2buf.streamid && toRptr[i].adr==fromDst4.sin_addr.s_addr) {
+				bool match = (toRptr[i].streamid == g2buf.streamid);
+				if (is_from_g2)
+					match = match && (toRptr[i].adr == fromDst4.sin_addr.s_addr);
+				if (match) {
 					memcpy(rptrbuf.pkt_id, "DSTR", 4);
 					rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);
 					rptrbuf.flag[0] = 0x73;
@@ -1079,7 +1082,7 @@ void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
 					/* End of stream ? */
 					if (g2buf.ctrl & 0x40) {
 						/* clear the saved header */
-						memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
+						memset(toRptr[i].saved_hdr.pkt_id, 0, 58);
 						toRptr[i].saved_adr = 0;
 
 						toRptr[i].last_time = 0;
@@ -1100,16 +1103,18 @@ void CQnetGateway::ProcessG2(ssize_t g2buflen, SDSVT &g2buf, bool is_from_g2)
 					/* for which repeater this stream has timed out ?  */
 					for (i = 0; i < 3; i++) {
 						/* match saved stream ? */
-						if (0==memcmp(toRptr[i].saved_hdr + 14, &g2buf.streamid, 2) && toRptr[i].saved_adr==fromDst4.sin_addr.s_addr) {
+						bool match = (toRptr[i].saved_hdr.vpkt.streamid == g2buf.streamid);
+						if (is_from_g2)
+							match = match && (toRptr[i].saved_adr == fromDst4.sin_addr.s_addr);
+						if (match) {
 							/* repeater module is inactive ?  */
 							if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
 								printf("Re-generating header for streamID=%04x\n", g2buf.streamid);
 
-								toRptr[i].saved_hdr[4] = (unsigned char)((toRptr[i].G2_COUNTER >> 8) & 0xff);
-								toRptr[i].saved_hdr[5] = (unsigned char)((toRptr[i].G2_COUNTER++) & 0xff);
+								toRptr[i].saved_hdr.counter = htons(toRptr[i].G2_COUNTER++);
 
 								/* re-generate/send the header */
-								Gate2Modem[i].Write(toRptr[i].saved_hdr, 58);
+								Gate2Modem[i].Write(toRptr[i].saved_hdr.pkt_id, 58);
 
 								/* send this audio packet to repeater */
 								memcpy(rptrbuf.pkt_id, "DSTR", 4);
@@ -2489,7 +2494,7 @@ int CQnetGateway::Init(char *cfgfile)
 		// the repeater modules run on these ports
 		memset(&toRptr[i],0,sizeof(toRptr[i]));
 
-		memset(toRptr[i].saved_hdr, 0, sizeof(toRptr[i].saved_hdr));
+		memset(toRptr[i].saved_hdr.pkt_id, 0, 58);
 		toRptr[i].saved_adr = 0;
 
 		toRptr[i].streamid = 0;
@@ -2510,17 +2515,17 @@ int CQnetGateway::Init(char *cfgfile)
 	   when audio from remote G2 has timed out
 	*/
 	memcpy(end_of_audio.pkt_id, "DSTR", 4);
-	end_of_audio.flag[0] = 0x73;
-	end_of_audio.flag[1] = 0x12;
-	end_of_audio.flag[2] = 0x00;
-	end_of_audio.remaining = 0x13;
-	end_of_audio.vpkt.icm_id = 0x20;
-	end_of_audio.vpkt.dst_rptr_id = 0x00;
-	end_of_audio.vpkt.snd_rptr_id = 0x01;
-	memset(end_of_audio.vpkt.vasd.voice, '\0', 9);
-	end_of_audio.vpkt.vasd.text[0] = 0x70;
-	end_of_audio.vpkt.vasd.text[1] = 0x4f;
-	end_of_audio.vpkt.vasd.text[2] = 0x93;
+	end_of_audio.flag[0] = 0x73U;
+	end_of_audio.flag[1] = 0x12U;
+	end_of_audio.flag[2] = 0x00U;
+	end_of_audio.remaining = 0x13U;
+	end_of_audio.vpkt.icm_id = 0x20U;
+	end_of_audio.vpkt.dst_rptr_id = 0x0U;
+	end_of_audio.vpkt.snd_rptr_id = 0x01U;
+	memset(end_of_audio.vpkt.vasd.voice, 0x0U, 9);
+	end_of_audio.vpkt.vasd.text[0] = 0x70U;
+	end_of_audio.vpkt.vasd.text[1] = 0x4FU;
+	end_of_audio.vpkt.vasd.text[2] = 0x93U;
 
 	/* to remote systems */
 	for (i = 0; i < 3; i++) {
