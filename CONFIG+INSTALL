@@ -1,0 +1,155 @@
+Creating a hotspot based on a Raspberry Pi or a BeagleBone Black that can connect to
+XRF and DCS reflectors as well as XREF reflectors based on QnetGateway software is
+easy.
+
+Start with a Raspberry Pi with the latest Raspbian image (see http://raspberrypi.org)
+or most any other computer with the latest Debian-based image. For this latest version
+of QnetGateway requires the c++ compiler of at least version 4.9.
+
+Even if you are building an MMDVMHost-based hot-spot, the executables and their
+source code are very small, so you can get away with a system with minimum storage
+capacity. We have build gui-less versions on two gigabyte partitions! You don't need
+to overclock the RPi for QnetGateway, the default clock rate is just fine.
+
+If you are using a DVAP Dongle or a DVRPTR_V1, or connecting to an Icom Terminal and
+Access Point enabled radio, login and plug in your device to see if the OS is
+recognizing it. The kernel should auto load drivers and you will see that with the
+"lsusb" command. The DVAP and the Icom radio digital-to-serial cable uses a FTDI chip
+and the DVRPTR uses Atmel. If you don't see an approprite output from "lsusb" after
+your device is plugged in, you need to enable it by executing:
+
+sudo depmod
+sudo modprobe <YOURDEVICEMODULE>
+
+where YOURDEVICEMODULE is "ftdi_sio" for the DVAP or is "cdc_acm" for the DVRPTR.
+After a reboot you should see the device in the "lsusb" list. If you don't see
+the device listed, QnetGateway software will never be able to open it either.
+
+You will need several packages to build the QnetGateway gateway. You will probably
+already have all or most of these but it still doesn't hurt to be sure:
+
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install make g++ unzip git
+
+If you are building a QnetGateway + MMDVMHost system, please use the instructions
+in the MMDVM.README file in order to setup and start your MMDVMHost.
+
+If you are building a QnetGateway for an Icom repeater, you'll need a different
+git repository. Please look for QnetICOMGateway.
+
+If you are building an MMDVM, DVAP, DVRPTR_V1 or an ICOM Terminal mode gateway,
+start by cloning this repository.
+
+git clone git://github.com/n7tae/QnetGateway.git
+
+This will create a QnetGateway directory with everything you need to build your
+Gateway system.
+
+The first thing to do is change to the build directory with "cd QnetGateway" and then
+define and create your configuration file, qn.cfg:
+
+./qnconfig
+
+This will start a menu driven script. In this mode, only the most common, useful
+parameters are available. If you want access to absolutely every parameter use:
+
+./qnconfig expert
+
+Please be sure you know what you are doing if you change these normally hidden parameters.
+The configuration script will show you the default value for a parameter. For most cases
+the default value is fine, so your qn.cfg file will usually be rather small.
+
+At a minimum, you need to specify an IRCDDB login (please use your legal callsign) and
+at least one module. By convention, specify a 23cm module on A, a 70cm module on B and
+a 2M module on C. QnetGateway supports a maximum of three modules.
+
+The configure script will show you the default values of every parameter the
+QnetGateway programs use. In most cases, the defaults are just fine and you don't
+need to override them with your own values. If you need to override the default value,
+the general method is to type the key followed by the new value. If you want to delete
+an overridden value, type a "u" followed by the key you want to unset. Boolean values
+(true or false) can be toggled by just entering the key.
+
+For a DVAP Dongle or a DVRPTR V1, there are some parameters that must be specified,
+like the serial number. The two "inverse" parameters for the DVRPTR will probably
+have to change. If you don't hear traffic on a connected system, try toggling the
+dvrptr_inverse_rx parameter. If you aren't heard, toggle the dvrptr_inverse_tx
+parameter.
+
+If you want to use the closed-source, legacy D-Plus reflectors and repeaters, you
+need to make sure you are authorized to use those systems. They require that you
+are a registered user, see www.dstargateway.org for more information. If you are
+a registered user, you can enable QnetGateway to used this closed-source system
+by DPlus. By default, when QnetLink registers your callsign you will download
+both repeaters and reflectors. You can control this with configuration parameters.
+You can also control the priority of D-Plus reflectors and repeaters. By default,
+QnetLink first loads the legacy systems first (if enabled) and then the systems
+in your gwys.cfg file. Since XLX systems can be linked as REF or XRF reflectors,
+there can be name collisions and the last read system will overwrite any previous
+system. By setting the dplus_priority to true, the legacy D-Plus systems will be
+read after your qn.cfg file.
+
+The information downloaded from the DPlus server is dynamic and will change
+from hour to hour. You can update QnetLink by sending "       F" to your system.
+This will purge the current table and re-authorize with the DPlus server and
+then reload gwys.txt.
+
+Because of the way DPlus authorization works, QnetLink can't actually confirm
+that your authorization was successful. If your system is unlinked after trying
+to transmit into a DPlus system, it means that your authorization was
+unsuccessful. This might indicate that their may be a problem with your
+DPlus registration.
+
+If you want to see what's going on inside the programs, there are logging options
+available that will cause a lot more log entries. These extra entries can be
+useful if you are trying to track down problems with your system.
+
+After you are happy with your configuration, be sure to write it out with the 'w'
+key in the main menu. It will show you your qn.cfg file after it writes it out.
+After you install and try out your system, you may find that you need to change
+some configuration values. In that case just start the configure script again.
+It will read the current qn.cfg file when it start and initialize the menus
+accordingly.
+
+Of course, you can always build your own qn.cfg file. There are three example for
+you to look at:
+. qn.everything.cfg contains all parameter with comments about what
+  each parameter does. The definitions that are commented out are defined with
+  their default value.
+. qn.dvap.cfg is the simplest possible configuration for a 2m DVAP. If you have
+  a 70cm DVAP rename the module to "b" and change the frequency.
+. qn.mmdvm.cfg is the starting place for configuring an MMDVMHost repeater. Be sure
+  the module assignment agrees with the module configured in your MMDVM.cfg file.
+. qn.itap.cfg is a simple configuration file for Icom's Terminal and Access Point
+  Mode. Please read ITAP.README for more information.
+
+Once you have your qn.cfg file, your ready to compile and install your system, type:
+
+./qnadmin
+
+The first thing you want to do is to create your gwys.txt file. use the 'gw' key
+to get into that sub-menu. There are several choices to initialize your gwys.txt
+file. Choose one and then you can edit the file to your satisfaction.
+
+You are now ready to install your QnetGateway system. If you are installing an
+MMDVM-based system, follow the instructions in MMDVM.README to get MMDVMHost
+up and running.
+
+Now, you can compile and install your system with the 'is' key. qnadmin will
+use your qn.cfg file to figure out what needs to be compiled and how it is to
+be installed.
+
+If you plan on using DTMF, use the 'id' key to install it. Once you install
+something, the qnadmin will dynamically change and show you how to uninstall the
+installed items.
+
+The maintenance sub-menu accessed with the 'm' key will let you stop and start
+different programs in your installed package. Note that this just uses
+systemctl to start and stop a service. It will not uninstall the service.
+You might want to do this if you have changed your configuration file.
+
+The log sub-menu accessed with the 'l' key can be use to put a "tail" on different
+log files and you can watch a log file in real-time.
+
+Tom Early, n7tae (at) arrl (dot) net

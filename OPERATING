@@ -84,10 +84,10 @@ YRCALL=_ _ _ _ _ _ _E
 2)
 For Voice Mail:
 YRCALL=_ _ _ _ _ _ S0
-The above command will Store/create voice mail in the dvtool file
+The above command will Store/create voice mail in a proprietary file
 x_voicemail.dat.
 YRCALL=_ _ _ _ _ _ R0
-The above command will Recall/playback voice mail from the dvtool file
+The above command will Recall/playback voice mail from the recorded file
 x_voicemail.dat.
 YRCALL=_ _ _ _ _ _ C0
 The above command will Clear/delete voice mail. File x_voicemail.dat will be

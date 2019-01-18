@@ -496,6 +496,9 @@ while [[ "$ans" != q* ]]; do
 	elif [[ "$ans" == us* ]]; then
 		InstallSystem un
 	elif [[ "$ans" == id* ]]; then
+		[ ! -e qndtmf ]; then
+			cp qndtmf.sh qndtmf
+		fi
 		sudo make installdtmf
 	elif [[ "$ans" == gw* ]]; then
 		GatewayMenu

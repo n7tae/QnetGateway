@@ -5,6 +5,9 @@ QnetGateway uses IRCDDB software written by Michael Dirska, DL1BFF. Both Scott a
 version 2 of the GNU General Public License. The current form of QnetGateway would be completely impossible without
 Scott and Michael's contribution. Thank you for a great starting point of this current project!
 
+Some parts of are also inspired from ircDDBGateway by Jonathan Naylor, G4KLX and his copyright appears in those files
+that used his ideas. The TCPReaderWriterClient is copied in whole. Thanks Jonathan!
+
 QnetGateway continues to be published under Version 2 of the GNU General Public License, see the LICENSE file.
 
 Tom
