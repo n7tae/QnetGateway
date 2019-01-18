@@ -84,6 +84,7 @@ LinkMenu () {
 		echo
 		echo    "     Legacy D-Plus Repeaters and Reflectors"
 		echo -n "au : Authorize Legacy D-Plus Linking       = "; EvaluateVar dplus_authorize{,_d}
+		echo -n "ap : DPlus Priority                        = "; EvaluateVar dplus_priority{,_d}
 		if [ -n "$em" ]; then
 			echo -n "lo : Login call for authorization server   = "; EvaluateVar dplus_ref_login{,_d}
 			echo -n "RF : Add legacy reflectors to gateway list = "; EvaluateVar dplus_use_reflectors{,_d}
@@ -102,6 +103,7 @@ LinkMenu () {
 		elif [[ "$key" == ac* ]]; then SetBooleanValue link_acknowledge "$value"
 		elif [[ "$key" == m*  ]]; then link_max_dongles="$value"
 		elif [[ "$key" == au* ]]; then SetBooleanValue dplus_authorize "$value"
+		elif [[ "$key" == ap* ]]; then SetBooleanValue dplus_priority "$value"
 		elif [[ "$key" == lo* ]]; then dplus_ref_login="${value^^}"
 		elif [[ "$key" == RF* ]]; then SetBooleanValue dplus_use_reflectors "$value"
 		elif [[ "$key" == RP* ]]; then SetBooleanValue dplus_use_repeaters "$value"
@@ -117,6 +119,7 @@ LinkMenu () {
 			elif [[ "$value" == ac* ]]; then unset link_acknowledge
 			elif [[ "$value" == m*  ]]; then unset link_max_dongles
 			elif [[ "$value" == au* ]]; then unset dplus_authorize
+			elif [[ "$value" == ap* ]]; then unset dplus_priority
 			elif [[ "$value" == lo* ]]; then unset dplus_ref_login
 			elif [[ "$value" == RF* ]]; then unset dplus_use_reflectors
 			elif [[ "$value" == RP* ]]; then unset dplus_use_repeaters
@@ -533,6 +536,7 @@ WriteCFGFile () {
 	[ -z "${log_dtmf+x}" ] || echo "log_dtmf=${log_dtmf}" >> $outFile
 	# dplus_ section
 	[ -z "${dplus_authorize+x}"      ] || echo "dplus_authorize=${dplus_authorize}"           >> $outFile
+	[ -z "${dplus_priority+x}"       ] || echo "dplus_priority=${dplus_priority}"             >> $outFile
 	[ -z "${dplus_ref_login+x}"      ] || echo "dplus_ref_login='${dplus_ref_login}'"         >> $outFile
 	[ -z "${dplus_use_repeaters+x}"  ] || echo "dplus_use_repeaters=${dplus_use_repeaters}"   >> $outFile
 	[ -z "${dplus_use_reflectors+x}" ] || echo "dplus_use_reflectors=${dplus_use_reflectors}" >> $outFile

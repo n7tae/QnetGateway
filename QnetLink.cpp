@@ -314,8 +314,8 @@ void CQnetLink::print_status_file()
 bool CQnetLink::load_gwys(const std::string &filename)
 {
 	// DPlus Authenticate
-	if (dplus_authorize) {
-		CDPlusAuthenticator auth(owner, std::string("auth.dstargateway.org"));
+	if (dplus_authorize && !dplus_priority) {
+		CDPlusAuthenticator auth(login_call, std::string("auth.dstargateway.org"));
 		if (auth.Process(gwy_list, dplus_reflectors, dplus_repeaters))
 			fprintf(stdout, "DPlus Authorization complete.\n");
 		else
@@ -409,6 +409,14 @@ bool CQnetLink::load_gwys(const std::string &filename)
 		gwy_list[call] = payload;
 	}
 	fclose(fp);
+	// DPlus Authenticate
+	if (dplus_authorize && dplus_priority) {
+		CDPlusAuthenticator auth(login_call, std::string("auth.dstargateway.org"));
+		if (auth.Process(gwy_list, dplus_reflectors, dplus_repeaters))
+			fprintf(stdout, "DPlus Authorization complete.\n");
+		else
+			fprintf(stderr, "DPlus Authorization failed!\n");
+	}
 
 	for (auto it=gwy_list.begin(); it!=gwy_list.end(); it++)
 		printf("%s %s\n", it->first.c_str(), it->second.c_str());
@@ -595,12 +603,13 @@ bool CQnetLink::read_config(const char *cfgFile)
 	cfg.GetValue(key+"use_reflectors", estr, dplus_reflectors);
 	cfg.GetValue(key+"use_repeaters", estr, dplus_repeaters);
 	cfg.GetValue(key+"ref_login", estr, login_call, 0, 6);
-	if (login_call.length() < 4)
+	if (login_call.length() < 4) {
 		login_call.assign(owner);
-	else {
+	} else {
 		ToUpper(login_call);
 		login_call.resize(CALL_SIZE, ' ');
 	}
+	cfg.GetValue(key+"priority", estr, dplus_priority);
 
 	return false;
 }
