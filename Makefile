@@ -101,19 +101,26 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	systemctl daemon-reload
 	systemctl start qnlink.service
 
-installrelay : qnrelay
+installrelay : qnrelay $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
 	######### QnetRelay #########
 	/bin/ln -f qnrelay $(BINDIR)/qnrelay$(MODULE)
-	/bin/cp -f system/qnrelay$(MODULE).service $(SYSDIR)
+	sed -e "s/XXX/qnrelay$(MODULE)/" system/qnrelay.service > $(SYSDIR)/qnrelay$(MODULE)
 	systemctl enable qnrelay$(MODULE).service
 	systemctl daemon-reload
 	systemctl start qnrelay$(MODULE).service
 	######### MMDVMHost #########
+	/bin/ln -f $(MMPATH)/MMDVMHost $(BINDIR)/MMDVMHost$(MODULE)
+	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM$(MODULE).qn $(CFGDIR)
+	sed -e "s/XXX/MMDVMHost$(MODULE)" -e "s/YYY/MMDVM$(MODULE).qn" system/mmdvm.service > $(SYSDIR)/mmdvm$(MODULE).service
+	/bin/cp -f system/mmdvm.timer $(SYSDIR)/mmdvm$(MODULE)
+	systemctl enable mmdvm$(MODULE).timer
+	systemctl daemon-reload
+	systemctl start mmdvm$(MODULE).service
 
 installitap : qnitap
 	######### QnetITAP #########
 	/bin/ln -f qnitap $(BINDIR)/qnitap$(MODULE)
-	/bin/cp -f system/qnitap$(MODULE).service $(SYSDIR)
+	sed -e "s/XXX/qnitap$(MODULE)/" system/qnitap.service > $(SYSDIR)/qnitap$(MODULE).service
 	systemctl enable qnitap$(MODULE).service
 	systemctl daemon-reload
 	systemctl start qnitap$(MODULE).service
@@ -121,7 +128,7 @@ installitap : qnitap
 installdvap : qndvap
 	######### QnetDVAP #########
 	/bin/ln -f qndvap $(BINDIR)/qndvap$(MODULE)
-	/bin/cp -f system/qndvap$(MODULE).service $(SYSDIR)
+	sed -e "s/XXX/qndvap$(MODULE)/" system/qndvap.service > $(SYSDIR)/qndvap$(MODULE).service
 	systemctl enable qndvap$(MODULE).service
 	systemctl daemon-reload
 	systemctl start qndvap$(MODULE).service
@@ -129,7 +136,7 @@ installdvap : qndvap
 installdvrptr : qndvrptr
 	######### QnetDVRPTR #########
 	/bin/ln -f qndvrptr $(BINDIR)/qndvrptr$(MODULE)
-	/bin/cp -f system/qndvrptr$(MODULE).service $(SYSDIR)
+	sed -e "s/XXX/qndvrptr$(MODULE)" system/qndvrptr.service > $(SYSDIR)/qndvrptr$(MODULE).service
 	systemctl enable qndvrptr$(MODULE).service
 	systemctl daemon-reload
 	systemctl start qndvrptr$(MODULE).service
@@ -140,24 +147,6 @@ installdtmf : qndtmf
 	systemctl enable qndtmf.service
 	systemctl daemon-reload
 	systemctl start qndtmf.service
-
-installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
-	/bin/ln -f $(MMPATH)/MMDVMHost $(BINDIR)/MMDVMHost$(MODULE)
-	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM$(MODULE).qn $(CFGDIR)
-	/bin/cp -f system/mmdvm$(MODULE).service $(SYSDIR)
-	/bin/cp -f system/mmdvm.timer $(SYSDIR)/mmdvm$(MODULE).timer
-	systemctl enable mmdvm$(MODULE).timer
-	systemctl daemon-reload
-	systemctl start mmdvm$(MODULE).service
-
-uninstallmmdvm :
-	systemctl stop mmdvm.service
-	systemctl disable mmdvm.timer
-	/bin/rm -f $(SYSDIR)/mmdvm.service
-	/bin/rm -f $(SYSDIR)/mmdvm$(MODULE).timer
-	/bin/rm -f $(BINDIR)/MMDVMHost
-	/bin/rm -f $(CFGDIR)/MMDVM.qn
-	sudo systemctl daemon-reload
 
 uninstallbase :
 	######### QnetGateway #########
@@ -186,6 +175,14 @@ uninstallrelay :
 	/bin/rm -f $(SYSDIR)/qnrelay$(MODULE).service
 	/bin/rm -f $(BINDIR)/qnrelay$(MODULE)
 	systemctl daemon-reload
+	######### MMDVMHost ##########
+	systemctl stop mmdvm.service
+	systemctl disable mmdvm.timer
+	/bin/rm -f $(SYSDIR)/mmdvm$(MODULE).service
+	/bin/rm -f $(SYSDIR)/mmdvm$(MODULE).timer
+	/bin/rm -f $(BINDIR)/MMDVMHost$(MODULE)
+	/bin/rm -f $(CFGDIR)/MMDVM$(MODULE).qn
+	sudo systemctl daemon-reload
 
 uninstallitap :
 	######### QnetITAP #########

@@ -128,18 +128,29 @@ BaseStatus () {
 }
 
 ModuleStatus () {
-	local LoadState SubState mcvar process
+	local LoadState SubState mcvar
 	if [ -z ${3} ]; then
 		ModuleState[$1]='EMPTY'
+		MMDVMState[$1]='EMPTY'
 	else
 		mcvar="n${3}"
-		process="qn$3"
-		if [[ "$process" == 'qnmmdvm' ]]; then process='qnrelay'; fi
-		if [[ ${!mcvar} > 1 ]]; then
-			process="${process}${2}"
+		ModuleProcess[$1]="qn$3"
+		if [[ "${ModuleProcess[$1]}" == 'qnmmdvm' ]]; then
+			ModuleProcess[$1]='qnrelay'
+			MMDVMProcess[$1]='mmdvm'
+			MMDVMState[$1]='not empty'
+		else
+			MMDVMState[$1]='EMPTY'
+			MMDVMProcess[$1]=''
 		fi
-		LoadState=$( systemctl show -p LoadState --value $process )
-		SubState=$( systemctl show -p SubState --value $process )
+		if [[ ${!mcvar} > 1 ]]; then
+			ModuleProcess[$1]="${ModuleProcess[$1]}${2}"
+			if [[ "${MMDVMProcess[$1]}" == 'mmdvm' ]]; then
+				MMDVMProcess[$1]="${MMDVMProcess[$1]}${2}"
+			fi
+		fi
+		LoadState=$( systemctl show -p LoadState --value ${ModuleProcess[$1]} )
+		SubState=$( systemctl show -p SubState --value ${ModuleProcess[$1]} )
 		if [[ "$LoadState" == "loaded" ]]; then
 			if [[ $SubState == "running" ]]; then
 				ModuleState[$1]='running'
@@ -149,20 +160,20 @@ ModuleStatus () {
 		else
 			ModuleState[$1]='not installed'
 		fi
+		if [[ "${MMDVMState[$1]}" != 'EMPTY' ]]; then
+			LoadState=$( systemctl show -p LoadState --value ${MMDVMProcess[$1]} )
+			SubState=$( systemctl show -p SubState --value ${MMDVMProcess[$1]} )
+			if [[ "$LoadState" == "loaded" ]]; then
+				if [[ $SubState == "running" ]]; then
+					MMDVMState[$1]='running'
+				else
+					MMDVMState[$1]='stopped'
+				fi
+			else
+				MMDVMState[$1]='not installed'
+			fi
+		fi
 		echo "Module ${2^^} - ${3^^} is ${ModuleState[$1]}"
-	fi
-}
-
-GetModuleProcess () {
-	local nvar
-	process=$1
-	nvar="n$process"
-	if [[ $process == 'mmdvm' ]]; then
-		process='relay'
-	fi
-	process="qn$process"
-	if [ ${!nvar} -gt 1 ]; then
-		process=${process}${1}
 	fi
 }
 
@@ -201,27 +212,45 @@ LogMenu () {
 			echo "      qndtmf is not running"
 		fi
 		if [[ ${ModuleState[0]} != 'EMPTY' ]]; then
-			GetModuleProcess $module_a
 			if [[ ${ModuleState[0]} == 'running' ]]; then
-				echo " a  : $process Log"
+				echo " a  : ${ModuleProcess[0]} Log"
 			else
-				echo "      $process is not running"
+				echo "      ${ModuleProcess[0]} is not running"
 			fi
 		fi
 		if [[ ${ModuleState[1]} != 'EMPTY' ]]; then
-			GetModuleProcess $module_b
 			if [[ ${ModuleState[1]} == 'running' ]]; then
-				echo " b  : $process Log"
+				echo " b  : ${ModuleProcess[1]} Log"
 			else
-				echo "      $process is not running"
+				echo "      ${ModuleProcess[1]} is not running"
 			fi
 		fi
 		if [[ ${ModuleState[2]} != 'EMPTY' ]]; then
-			GetModuleProcess $module_c
 			if [[ ${ModuleState[2]} == 'running' ]]; then
-				echo " c  : $process Log"
+				echo " c  : ${ModuleProcess[2]} Log"
 			else
-				echo "      $process is not running"
+				echo "      ${ModuleProcess[2]} is not running"
+			fi
+		fi
+		if [[ ${MMDVMState[0]} != 'EMPTY' ]]; then
+			if [[ ${MMDVMState[0]} == 'running' ]]; then
+				echo " x  : ${MMDVMProcess[0]} Log"
+			else
+				echo "      ${MMDVMProcess[0]} is not running"
+			fi
+		fi
+		if [[ ${MMDVMState[1]} != 'EMPTY' ]]; then
+			if [[ ${MMDVMState[1]} == 'running' ]]; then
+				echo " y  : ${MMDVMProcess[1]} Log"
+			else
+				echo "      ${MMDVMProcess[1]} is not running"
+			fi
+		fi
+		if [[ ${MMDVMState[2]} != 'EMPTY' ]]; then
+			if [[ ${MMDVMState[2]} == 'running' ]]; then
+				echo " z  : ${MDVMProcess[2]} Log"
+			else
+				echo "      ${MMDVMProcess[2]} is not running"
 			fi
 		fi
 		echo
@@ -236,14 +265,17 @@ LogMenu () {
 		elif [[ "$ans" == d* ]] && [[ "$DTMFState" == 'running' ]]; then
 			sudo journalctl -u qndtmf -f
 		elif [[ "$ans" == a* ]] && [[ "${ModuleState[0]}" == 'running' ]]; then
-			GetModuleProcess $module_a
-			sudo journalctl -u $process -f
+			sudo journalctl -u ${ModuleProcess[0]} -f
 		elif [[ "$ans" == b* ]] && [[ "${ModuleState[1]}" == 'running' ]]; then
-			GetModuleProcess $module_b
-			sudo journalctl -u $process -f
+			sudo journalctl -u ${ModuleProcess[1]} -f
 		elif [[ "$ans" == c* ]] && [[ "${ModuleState[2]}" == 'running' ]]; then
-			GetModuleProcess $module_c
-			sudo journalctl -u $process -f
+			sudo journalctl -u ${ModuleProcess[2]} -f
+		elif [[ "$ans" == x* ]] && [[ "${MMDVMState[0]}" == 'running' ]]; then
+			sudo journalctl -u ${MMDVMProcess[0]} -f
+		elif [[ "$ans" == y* ]] && [[ "${MMDVMState[1]}" == 'running' ]]; then
+			sudo journalctl -u ${MMDVMProcess[1]} -f
+		elif [[ "$ans" == z* ]] && [[ "${MMDVMState[2]}" == 'running' ]]; then
+			sudo journalctl -u ${MMDVMProcess[2]} -f
 		fi
 	done
 	ans=''
@@ -286,6 +318,21 @@ MaintenanceMenu () {
 		elif [[ "${ModuleState[2]}" == 'stopped' ]]; then
 			echo " c : Start Module C"
 		fi
+		if [[ "${MMDVMState[0]}" == 'running' ]]; then
+			echo " x : Stop  MMDVMHost A"
+		elif [[ "${MMDVMState[0]}" == 'stopped' ]]; then
+			echo " x : Start MMDVMHost A"
+		fi
+		if [[ "${MMDVMState[1]}" == 'running' ]]; then
+			echo " y : Stop  MMDVMHost B"
+		elif [[ "${MMDVMState[1]}" == 'stopped' ]]; then
+			echo " y : Start MMDVMHost B"
+		fi
+		if [[ "${MMDVMState[2]}" == 'running' ]]; then
+			echo " z : Stop  MMDVMHost C"
+		elif [[ "${MMDVMState[2]}" == 'stopped' ]]; then
+			echo " z : Start MMDVMHost C"
+		fi
 		echo
 		echo " q : Return to main Menu"
 		echo
@@ -313,27 +360,45 @@ MaintenanceMenu () {
 			fi
 			BaseStatus
 		elif [[ "$ans" == a* ]] && [ -n $module_a ]; then
-			GetModuleProcess $module_a
 			if [[ "${ModuleState[0]}" == 'running' ]]; then
-				sudo systemctl stop $process
+				sudo systemctl stop ${ModuleProcess[0]}
 			elif [[ "${ModuleState[0]}" == 'stopped' ]]; then
-				sudo systemctl start $process
+				sudo systemctl start ${ModuleProcess[0]}
 			fi
 			ModuleStatus 0 a $module_a
 		elif [[ "$ans" == b* ]] && [ -n $module_b ]; then
-			GetModuleProcess $module_b
 			if [[ "${ModuleState[1]}" == 'running' ]]; then
-				sudo systemctl stop $process
+				sudo systemctl stop ${ModuleProcess[1]}
 			elif [[ "${ModuleState[1]}" == 'stopped' ]]; then
-				sudo systemctl start $process
+				sudo systemctl start ${ModuleProcess[1]}
 			fi
 			ModuleStatus 1 b $module_b
 		elif [[ "$ans" == c* ]] && [ -n $module_c ]; then
-			GetModuleProcess $module_c
 			if [[ "${ModuleState[2]}" == 'running' ]]; then
-				sudo systemctl stop $process
+				sudo systemctl stop ${ModuleProcess[2]}
 			elif [[ "${ModuleState[2]}" == 'stopped' ]]; then
-				sudo systemctl start $process
+				sudo systemctl start ${ModuleProcess[2]}
+			fi
+			ModuleStatus 2 c $module_c
+		elif [[ "$ans" == x* ]] && [ -n $module_a ]; then
+			if [[ "${MMDVMState[0]}" == 'running' ]]; then
+				sudo systemctl stop ${MMDVMProcess[0]}
+			elif [[ "${MMDVMState[0]}" == 'stopped' ]]; then
+				sudo systemctl start ${MMDVMProcess[0]}
+			fi
+			ModuleStatus 0 a $module_a
+		elif [[ "$ans" == y* ]] && [ -n $module_b ]; then
+			if [[ "${MMDVMState[1]}" == 'running' ]]; then
+				sudo systemctl stop ${MMDVMProcess[1]}
+			elif [[ "${MMDVMState[1]}" == 'stopped' ]]; then
+				sudo systemctl start ${MMDVMProcess[1]}
+			fi
+			ModuleStatus 1 b $module_b
+		elif [[ "$ans" == z* ]] && [ -n $module_c ]; then
+			if [[ "${MMDVMState[2]}" == 'running' ]]; then
+				sudo systemctl stop ${MMDVMProcess[2]}
+			elif [[ "${MMDVMState[2]}" == 'stopped' ]]; then
+				sudo systemctl start ${MMDVMProcess[2]}
 			fi
 			ModuleStatus 2 c $module_c
 		fi

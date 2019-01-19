@@ -4,7 +4,7 @@ After=systemd-user-session.service qngateway.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/qnitap /usr/local/etc/qn.cfg
+ExecStart=/usr/local/bin/XXX /usr/local/etc/qn.cfg
 Restart=always
 
 [Install]
