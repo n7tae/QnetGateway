@@ -180,7 +180,7 @@ ModuleStatus () {
 Header () {
 	local count
 	count=$( ps -aux | grep qn | wc -l )
-	if [ $count -gt 2 ]; then
+	if [ ${count} -gt 3 ]; then
 		echo
 		echo "USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND"
 		ps -aux | grep -e qngateway -e qnlink -e qndvap -e qnitap -e qnrelay -e dvrptr | grep -v grep
@@ -539,18 +539,24 @@ while [[ "$ans" != q* ]]; do
 		echo "us : Uninstall configured System"
 	fi
 	echo "gw : Gateway File Menu"
+	echo
 	if [[ "$DTMFState" == 'not installed' ]]; then
+		echo "nd : Edit DTMF file with nano"
+		echo "vd : Edit DTMF file with vi"
+		if [ -e qndtmf ] && [ -n "`diff -q qndtmf qndtmf.sh`" ]; then
+			echo "rd : Restore DTMF file to default (this will overwrite existing DTMF file)"
+		fi
 		echo "id : Install DTMF"
 	else
 		echo "ud : Uninstall DTMF"
 	fi
+	echo
 	echo "c  : Clean (remove temporary files and locally built executables)"
 	echo
 	if [[ "$GateState" != 'not installed' ]] && [[ "$LinkState" != 'not installed' ]]; then
 		echo "m  : Maintenance Menu"
 		echo "l  : Log Menu"
 	fi
-	echo
 	read -p "q  to quit. Command: " ans
 
 	# EXECUTE COMMANDS
@@ -560,14 +566,20 @@ while [[ "$ans" != q* ]]; do
 		sleep 5
 	elif [[ "$ans" == us* ]]; then
 		InstallSystem un
-	elif [[ "$ans" == id* ]]; then
-		[ ! -e qndtmf ]; then
-			cp qndtmf.sh qndtmf
-		fi
-		sudo make installdtmf
 	elif [[ "$ans" == gw* ]]; then
 		GatewayMenu
-	elif [[ "$ans" == ud* ]]; then
+	elif [[ "$DTMFState" == 'not installed' ]] && [[ "$ans" == nd* ]]; then
+		if [ ! -e qndtmf ]; then cp qndtmf.sh qndtmf; fi
+		nano qndtmf
+	elif [[ "$DTMFState" == 'not installed' ]] && [[ "$ans" == vd* ]]; then
+		if [ ! -e qndtmf ]; then cp qndtmf.sh qndtmf; fi
+		vi qndtmf
+	elif [[ "$DTMFState" == 'not installed' ]] && [ -e qndtmf ] && [ -n "`diff -q qndtmf qndtmf.sh`" ] && [[ "$ans" == rd* ]]; then
+		rm -f qndtmf
+	elif [[ "$DTMFState" == 'not installed' ]] && [[ "$ans" == id* ]]; then
+		if [ ! -e qndtmf ]; then cp qndtmf.sh qndtmf; fi
+		sudo make installdtmf
+	elif [[ "$DTMFState" != 'not installed' ]] && [[ "$ans" == ud* ]]; then
 		sudo make uninstalldtmf
 	elif [[ "$ans" == c* ]]; then
 		make clean
