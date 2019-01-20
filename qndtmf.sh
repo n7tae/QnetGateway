@@ -60,7 +60,7 @@ do
 					if [[ "$LETTER" == "$BAD" ]]; then
 						echo "bad script letter index: '${CMD:2:2}'"
 					else
-						exec_${LETTER}.sh
+						qnremote $LOCAL_BAND $LUSER ${LETTER}X >/dev/null 2>&1
 					fi
 				elif [ ${#CMD} -eq 6 ]; then
 
