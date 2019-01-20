@@ -532,6 +532,7 @@ while [[ "$ans" != q* ]]; do
 	if [[ "$GateState" == 'not installed' ]] || [[ "$LinkState" == 'not installed' ]]; then
 		if [ -e gwys.txt ]; then
 			echo "is : Install configured system"
+			echo "gp : Do a 'git pull' to refresh sources"
 		else
 			echo "     You must set-up your gwys.txt file before installation."
 		fi
@@ -557,15 +558,20 @@ while [[ "$ans" != q* ]]; do
 		echo "m  : Maintenance Menu"
 		echo "l  : Log Menu"
 	fi
-	read -p "q  to quit. Command: " ans
+	echo
+	read -p "q    to quit. Command: " ans
 
 	# EXECUTE COMMANDS
-	if   [[ "$ans" == is* ]]; then
+	if   [[ "$GateState" == 'not installed' ]] && [[ "$ans" == is* ]]; then
 		InstallSystem
 		echo 'Wait for a few seconds for everything to start...'
 		sleep 5
-	elif [[ "$ans" == us* ]]; then
+	elif [[ "$GateState" != 'not installed' ]] && [[ "$ans" == us* ]]; then
 		InstallSystem un
+	elif [[ "$GateState" == 'not installed' ]] && [[ "$ans" == gp* ]]; then
+		git pull
+		read -p 'Press <Enter> to continue: ' ans
+		ans=''
 	elif [[ "$ans" == gw* ]]; then
 		GatewayMenu
 	elif [[ "$DTMFState" == 'not installed' ]] && [[ "$ans" == nd* ]]; then
