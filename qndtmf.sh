@@ -86,7 +86,7 @@ do
 
 					if [[ "$RMT" == "$BAD" ]] || [[ "$REMOTE_NODE" == "$BAD" ]] || [[ "$REMOTE_BAND" == "$BAD" ]]; then
 						echo "Bad link command: '$CMD'"
-						qnvoice $LOCAL_BAND baddtmfcmd.dat "Bad DTMF CMD"
+						qnvoice $LOCAL_BAND baddtmfcmd.dat "Bad Link CMD"
 					else
 						echo linking local band $LOCAL_BAND to remote node ${RMT}${REMOTE_NODE} $REMOTE_BAND requested by $LUSER
 						qnremote ${LOCAL_BAND} "$LUSER"  ${RMT}${REMOTE_NODE}${REMOTE_BAND}L  >/dev/null 2>&1
@@ -94,7 +94,7 @@ do
 					fi
 				else
 					echo "Bad command: '$CMD'"
-					qnvoice $LOCAL_BAND baddtmfcmd.dat "Bad DTMF CMD"
+					qnvoice $LOCAL_BAND baddtmfcmd.dat "Bad CMD"
 				fi
 			fi
 		else

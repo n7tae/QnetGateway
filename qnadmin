@@ -183,7 +183,7 @@ Header () {
 	if [ ${count} -gt 3 ]; then
 		echo
 		echo "USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND"
-		ps -aux | grep -e qngateway -e qnlink -e qndvap -e qnitap -e qnrelay -e dvrptr -e MMDVMHost | grep -v grep
+		ps -aux | grep -e qngateway -e qnlink -e qndtmf -e qndvap -e qnitap -e qnrelay -e dvrptr -e MMDVMHost | grep -v grep
 	fi
 	echo
 }
