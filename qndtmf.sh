@@ -59,6 +59,7 @@ do
 					GetLetter ${CMD:2:2}
 					if [[ "$LETTER" == "$BAD" ]]; then
 						echo "bad script letter index: '${CMD:2:2}'"
+						qnvoice $LOCAL_BAND baddtmfcmd.dat "Bad DTMF CMD"
 					else
 						qnremote $LOCAL_BAND $LUSER ${LETTER}X >/dev/null 2>&1
 					fi
@@ -84,7 +85,8 @@ do
 					REMOTE_BAND=$LETTER
 
 					if [[ "$RMT" == "$BAD" ]] || [[ "$REMOTE_NODE" == "$BAD" ]] || [[ "$REMOTE_BAND" == "$BAD" ]]; then
-						echo "nonsense link command: '$CMD'"
+						echo "Bad link command: '$CMD'"
+						qnvoice $LOCAL_BAND baddtmfcmd.dat "Bad DTMF CMD"
 					else
 						echo linking local band $LOCAL_BAND to remote node ${RMT}${REMOTE_NODE} $REMOTE_BAND requested by $LUSER
 						qnremote ${LOCAL_BAND} "$LUSER"  ${RMT}${REMOTE_NODE}${REMOTE_BAND}L  >/dev/null 2>&1
@@ -92,6 +94,7 @@ do
 					fi
 				else
 					echo "Bad command: '$CMD'"
+					qnvoice $LOCAL_BAND baddtmfcmd.dat "Bad DTMF CMD"
 				fi
 			fi
 		else

@@ -70,12 +70,12 @@ int main(int argc, char *argv[])
 	char RADIO_ID[21];
 
 	if (argc != 4) {
-		printf("Usage: %s <module> <dvtoolFile> <txtMsg>\n", argv[0]);
+		printf("Usage: %s <module> <datFile> <txtMsg>\n", argv[0]);
 		printf("Where...\n");
-		printf("        <module>     is one of your modules: A, B or C\n");
-		printf("        <dvtoolFile> is an installed voice file in the configured\n");
-		printf("                     directory, for example \"unlinked.dat\"\n");
-		printf("        <txtMsg>     is an up to 20-character text message\n");
+		printf("        <module>  is one of your modules: A, B or C\n");
+		printf("        <datFile> is an installed voice file in the configured\n");
+		printf("                  directory, for example \"unlinked.dat\"\n");
+		printf("        <txtMsg>  is an up to 20-character text message\n");
 		return 0;
 	}
 	char module = argv[1][0];
