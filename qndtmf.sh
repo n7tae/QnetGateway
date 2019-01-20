@@ -17,7 +17,7 @@
 # We set this to spaces, it will be set later
 
 GetLetter () {
-	if [[ $1 == ([0-9]) ]]; then
+	if [[ $1 == +([0-9]) ]]; then
 		if [ $1 -gt 0 ] && [ $1 -le 26 ]; then
 			LETTER=${LETTERS[$1-1]}
 			return
@@ -76,7 +76,7 @@ do
 					fi
 
 					REMOTE_NODE=${CMD:1:3}
-					if [[ $REMOTE_NODE != ([0-9]) ]]; then
+					if [[ $REMOTE_NODE != +([0-9]) ]]; then
 						REMOTE_NODE=$BAD
 					fi
 
