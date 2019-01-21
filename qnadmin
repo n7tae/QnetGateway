@@ -21,6 +21,21 @@ ControlC () {
 	echo "caught SIGINT"
 }
 
+InstallMMDVMHosts () {
+	if [ $nmmdvm -gt 0 ] && [ -e ${MMPATH}/MMDVMHost ]; then
+		if [ $nmmdvm -eq 1 ]; then
+			sudo make ${1}installmmdvm
+		else
+			sudo make MODULE=$ammdvm[0] ${1}installmmdvm
+			sudo make MODULE=$ammdvm[1] ${1}installmmdvm
+			if [ $nmmdvm -eq 3 ]; then
+				sudo make MODULE=$advap[2] ${1}installmmdvm
+			fi
+		fi
+	fi
+
+}
+
 InstallSystem () {
 	local n
 	if [ -z ${1} ]; then
@@ -138,7 +153,7 @@ ModuleStatus () {
 		if [[ "${ModuleProcess[$1]}" == 'qnmmdvm' ]]; then
 			ModuleProcess[$1]='qnrelay'
 			MMDVMProcess[$1]='mmdvm'
-			MMDVMState[$1]='not empty'
+			MMDVMState[$1]='not installed'
 		else
 			MMDVMState[$1]='EMPTY'
 			MMDVMProcess[$1]=''
@@ -173,7 +188,11 @@ ModuleStatus () {
 				MMDVMState[$1]='not installed'
 			fi
 		fi
-		echo "Module ${2^^} - ${3^^} is ${ModuleState[$1]}"
+		if [[ "$3" == 'mmdvm' ]]; then
+			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]} - ${MMDVMProcess[$1]} is ${MMDVMState[$1]}"
+		else
+			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]}"
+		fi
 	fi
 }
 
@@ -483,7 +502,7 @@ else
 	echo "ERROR: There is no Makefile or makefile"
 	exit 1
 fi
-source <( grep "^BINDIR=" $MAKEFILE )
+source <( grep -e '^BINDIR=' -e '^MMPATH=' $MAKEFILE )
 if [ -z $BINDIR ]; then
 	echo "ERROR: The BINDIR definition in $MAKEFILE is empty!"
 	exit 1
@@ -539,6 +558,15 @@ while [[ "$ans" != q* ]]; do
 	else
 		echo "us : Uninstall configured System"
 	fi
+	if [ -e "${MMPATH}/MMDVMHost" ] && [ $nmmdvm -gt 0 ]; then
+		if [[ "${MMDVMState[0]}" != 'EMPTY' ]] || [[ "${MMDVMState[1]}" != 'EMPTY' ]] || [[ "${MMDVMState[2]}" != 'EMPTY' ]]; then
+			if [[ "${MMDVMState[0]}" == 'not installed' ]] || [[ "${MMDVMState[1]}" != 'not installed' ]] || [[ "${MMDVMState[2]}" != 'not installed' ]]; then
+				echo "im : Install MMDVMHost(s)"
+			else
+				echo "um : Uninstall MMDVMHost(s)"
+			fi
+		fi
+	fi
 	echo "gw : Gateway File Menu"
 	echo
 	if [[ "$DTMFState" == 'not installed' ]]; then
@@ -568,6 +596,10 @@ while [[ "$ans" != q* ]]; do
 		sleep 5
 	elif [[ "$GateState" != 'not installed' ]] && [[ "$ans" == us* ]]; then
 		InstallSystem un
+	elif { [[ "${MMDVMState[0]}" == 'not installed' ]] || [[ "${MMDVMState[1]}" == 'not installed' ]] || [[ "${MMDVMState[2]}" == 'not installed' ]]; } && [ -e ${MMPATH}/MMDVMHost ] && [[ "$ans" == im* ]]; then
+		InstallMMDVMHosts
+	elif { [[ "${MMDVMState[0]}" == 'stopped' ]] || [[ "${MMDVMState[0]}" == 'running' ]] || [[ "${MMDVMState[1]}" == 'stopped' ]] || [[ "${MMDVMState[1]}" == 'running' ]] || [[ "${MMDVMState[2]}" == 'stopped' ]] || [[ "${MMDVMState[2]}" == 'running' ]]; } && [ -e ${MMPATH}/MMDVMHost ] && [[ "$ans" == um* ]]; then
+		InstallMMDVMHosts un
 	elif [[ "$GateState" == 'not installed' ]] && [[ "$ans" == gp* ]]; then
 		git pull
 		read -p 'Press <Enter> to continue: ' ans

@@ -101,18 +101,20 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	systemctl daemon-reload
 	systemctl start qnlink.service
 
-installrelay : qnrelay $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
+installrelay : qnrelay
 	######### QnetRelay #########
 	/bin/ln -f qnrelay $(BINDIR)/qnrelay$(MODULE)
 	sed -e "s/XXX/qnrelay$(MODULE)/" system/qnrelay.service > $(SYSDIR)/qnrelay$(MODULE)
 	systemctl enable qnrelay$(MODULE).service
 	systemctl daemon-reload
 	systemctl start qnrelay$(MODULE).service
+
+installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
 	######### MMDVMHost #########
 	/bin/ln -f $(MMPATH)/MMDVMHost $(BINDIR)/MMDVMHost$(MODULE)
 	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM$(MODULE).qn $(CFGDIR)
 	sed -e "s/XXX/MMDVMHost$(MODULE)" -e "s/YYY/MMDVM$(MODULE).qn" system/mmdvm.service > $(SYSDIR)/mmdvm$(MODULE).service
-	/bin/cp -f system/mmdvm.timer $(SYSDIR)/mmdvm$(MODULE)
+	/bin/cp -f system/mmdvm.timer $(SYSDIR)/mmdvm$(MODULE).timer
 	systemctl enable mmdvm$(MODULE).timer
 	systemctl daemon-reload
 	systemctl start mmdvm$(MODULE).service
@@ -175,9 +177,11 @@ uninstallrelay :
 	/bin/rm -f $(SYSDIR)/qnrelay$(MODULE).service
 	/bin/rm -f $(BINDIR)/qnrelay$(MODULE)
 	systemctl daemon-reload
+
+uninstallmmdvm :
 	######### MMDVMHost ##########
-	systemctl stop mmdvm.service
-	systemctl disable mmdvm.timer
+	systemctl stop mmdvm$(MODULE).service
+	systemctl disable mmdvm$(MODULE).timer
 	/bin/rm -f $(SYSDIR)/mmdvm$(MODULE).service
 	/bin/rm -f $(SYSDIR)/mmdvm$(MODULE).timer
 	/bin/rm -f $(BINDIR)/MMDVMHost$(MODULE)
