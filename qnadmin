@@ -560,7 +560,7 @@ while [[ "$ans" != q* ]]; do
 	fi
 	if [ -e "${MMPATH}/MMDVMHost" ] && [ $nmmdvm -gt 0 ]; then
 		if [[ "${MMDVMState[0]}" != 'EMPTY' ]] || [[ "${MMDVMState[1]}" != 'EMPTY' ]] || [[ "${MMDVMState[2]}" != 'EMPTY' ]]; then
-			if [[ "${MMDVMState[0]}" == 'not installed' ]] || [[ "${MMDVMState[1]}" != 'not installed' ]] || [[ "${MMDVMState[2]}" != 'not installed' ]]; then
+			if [[ "${MMDVMState[0]}" == 'not installed' ]] || [[ "${MMDVMState[1]}" == 'not installed' ]] || [[ "${MMDVMState[2]}" == 'not installed' ]]; then
 				echo "im : Install MMDVMHost(s)"
 			else
 				echo "um : Uninstall MMDVMHost(s)"
