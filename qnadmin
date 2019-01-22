@@ -38,7 +38,7 @@ InstallMMDVMHosts () {
 InstallSystem () {
 	local n
 	if [ -z ${1} ]; then
-		n=$( grep processor /proc/cpuinfo | wc -l )
+		n=$( grep '^processor' /proc/cpuinfo | wc -l )
 		echo "Detected $n processors for make"
 		make base -j$n
 	fi
