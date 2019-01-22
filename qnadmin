@@ -33,7 +33,6 @@ InstallMMDVMHosts () {
 			fi
 		fi
 	fi
-
 }
 
 InstallSystem () {
