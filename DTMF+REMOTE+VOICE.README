@@ -47,8 +47,8 @@ to do this search the web with "linux cron job".
 
                     ######## QnetVoice ########
 
-QnetVoice is another command line program to send any DVTool-formatted file
-to a moule configured on you gateway. It has a simple interface, like
+QnetVoice is another command line program to send any ambe-formatted file
+to a module configured on you gateway. It has a simple interface, like
 QnetRemote. To get started, open a shell on your system and type "qnvoice":
 
 pi@raspberrypi:~ $ qnvoice
