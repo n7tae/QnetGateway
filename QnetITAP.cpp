@@ -589,6 +589,7 @@ int main(int argc, const char **argv)
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
 		return 0;
 	}
+
 	const char *qn = strstr(argv[0], "qnitap");
 	if (NULL == qn) {
 		fprintf(stderr, "Error finding 'qnitap' in %s!\n", argv[0]);
@@ -597,7 +598,7 @@ int main(int argc, const char **argv)
 	qn += 6;
 
 	int assigned_module;
-	switch (argv[1][0]) {
+	switch (*qn) {
 		case NULL:
 			assigned_module = -1;
 			break;
