@@ -113,7 +113,7 @@ installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
 	######### MMDVMHost #########
 	/bin/ln -f $(MMPATH)/MMDVMHost $(BINDIR)/MMDVMHost$(MODULE)
 	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM$(MODULE).qn $(CFGDIR)
-	sed -e "s/XXX/MMDVMHost$(MODULE)" -e "s/YYY/MMDVM$(MODULE).qn" system/mmdvm.service > $(SYSDIR)/mmdvm$(MODULE).service
+	sed -e "s/XXX/MMDVMHost$(MODULE)/" -e "s/YYY/MMDVM$(MODULE).qn/" system/mmdvm.service > $(SYSDIR)/mmdvm$(MODULE).service
 	/bin/cp -f system/mmdvm.timer $(SYSDIR)/mmdvm$(MODULE).timer
 	systemctl enable mmdvm$(MODULE).timer
 	systemctl daemon-reload
@@ -138,7 +138,7 @@ installdvap : qndvap
 installdvrptr : qndvrptr
 	######### QnetDVRPTR #########
 	/bin/ln -f qndvrptr $(BINDIR)/qndvrptr$(MODULE)
-	sed -e "s/XXX/qndvrptr$(MODULE)" system/qndvrptr.service > $(SYSDIR)/qndvrptr$(MODULE).service
+	sed -e "s/XXX/qndvrptr$(MODULE)/" system/qndvrptr.service > $(SYSDIR)/qndvrptr$(MODULE).service
 	systemctl enable qndvrptr$(MODULE).service
 	systemctl daemon-reload
 	systemctl start qndvrptr$(MODULE).service
