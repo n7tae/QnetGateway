@@ -52,26 +52,26 @@ to a moule configured on you gateway. It has a simple interface, like
 QnetRemote. To get started, open a shell on your system and type "qnvoice":
 
 pi@raspberrypi:~ $ qnvoice
-Usage: qnvoice <module> <mycall> <dvtoolFile>
+Usage: qnvoice <module> <mycall> <dat_file>
 Where...
         module is one of your modules
         mycall is your personal callsign
-        dvtoolFile is a dvtool file
+        dat_file is a .dat voice file file
 
 Please note that <module> and <mycall> are not case sensitive, but
-<dvtoolFile> is.
+<dat_file> is.
 
-So what's a DVTool file? All the voice prompts delivered with QnetGateway,
-in the QnetGateway/announce directory and DVTool files. And, you can
+So what's a .dat voice file? All the voice prompts delivered with QnetGateway,
+in the QnetGateway/announce directory are .dat files. And, you can
 easily create your own!
 
-To make your own DVTool file, just put "      S0" in your radio's YourCall
-and key up and talk. You will be making a "voice mail" DVTool file:
+To make your own .dat voice file file, just put "      S0" in your radio's
+YourCall and key up and talk. You will be making a "voice mail" .dat file:
 /tmp/X_voicemail.dat, where X is the module on which you are transmitting.
 Once you have created it, you can move it out of the /tmp directory and
 rename it. Then you can use it in a qnvoice command. You can also replace
-all of the standard voice messsages with your own. If you want to do this
-put your versions in a directory outside of the build directoy and make
+all of the standard voice messages with your own. If you want to do this
+put your versions in a directory outside of the build directory and make
 a small script that will copy your messages over the existing, installed
 messages:
 

@@ -234,6 +234,10 @@ band to a remote reflector. QnetLink software is used by our QnetGateway
 Before we begin, there are some dat files included that are the voice
 prompts used by QnetGateway and QnetLink:
 
+rebooting.dat
+baddtmfcmd.dat
+gatewayrestart.dat
+shutdown.dat
 connected2network.dat
 notincache.dat
 gatewaynotfound.dat

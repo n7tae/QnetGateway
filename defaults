@@ -156,7 +156,7 @@ dplus_authorize_d=false     # set to true if you want to use the closed-source D
 dplus_ref_login_d=''        # for logging into REF reflectors, if empty, ircddb_login will be used
 dplus_use_reflectors_d=true # set to false if you are not going to link to DPlus reflectors
 dplus_use_repeaters_d=true  # set to false if you are not going to link to DPlus repeaters
-dplus_priority_d=false      # set to true if you want DPlus reflector read after gwys.txt
+dplus_priority_d=true       # set to true if you want DPlus reflector read after gwys.txt
 
 ##########################################################################################################################
 #

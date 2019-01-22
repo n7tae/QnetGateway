@@ -13,6 +13,7 @@
 # Example:  *00103   will link local module to REF001 C
 # Example:  0 or 00  will report status of the link, "       I"
 # Example:  ##08     will execute the exec_H.sh script (shutdown the system)
+# Please note that scripts exec_[0-9].sh are not accessible from DTMF.
 
 # We set this to spaces, it will be set later
 
