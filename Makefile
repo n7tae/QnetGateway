@@ -104,7 +104,7 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 installrelay : qnrelay
 	######### QnetRelay #########
 	/bin/ln -f qnrelay $(BINDIR)/qnrelay$(MODULE)
-	sed -e "s/XXX/qnrelay$(MODULE)/" system/qnrelay.service > $(SYSDIR)/qnrelay$(MODULE)
+	sed -e "s/XXX/qnrelay$(MODULE)/" system/qnrelay.service > $(SYSDIR)/qnrelay$(MODULE).service
 	systemctl enable qnrelay$(MODULE).service
 	systemctl daemon-reload
 	systemctl start qnrelay$(MODULE).service
