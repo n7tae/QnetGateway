@@ -113,7 +113,7 @@ installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
 	######### MMDVMHost #########
 	/bin/ln -f $(MMPATH)/MMDVMHost $(BINDIR)/MMDVMHost$(MODULE)
 	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM$(MODULE).qn $(CFGDIR)
-	sed -e "s/XXX/MMDVMHost$(MODULE)/" -e "s/YYY/MMDVM$(MODULE).qn/" system/mmdvm.service > $(SYSDIR)/mmdvm$(MODULE).service
+	sed -e "s/XXX/MMDVMHost$(MODULE)/" -e "s/YYY/MMDVM$(MODULE)/" system/mmdvm.service > $(SYSDIR)/mmdvm$(MODULE).service
 	/bin/cp -f system/mmdvm.timer $(SYSDIR)/mmdvm$(MODULE).timer
 	systemctl enable mmdvm$(MODULE).timer
 	systemctl daemon-reload
