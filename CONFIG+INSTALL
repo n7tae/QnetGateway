@@ -84,11 +84,9 @@ a registered user, you can enable QnetGateway to used this closed-source system
 by DPlus. By default, when QnetLink registers your callsign you will download
 both repeaters and reflectors. You can control this with configuration parameters.
 You can also control the priority of D-Plus reflectors and repeaters. By default,
-QnetLink first loads the legacy systems first (if enabled) and then the systems
-in your gwys.cfg file. Since XLX systems can be linked as REF or XRF reflectors,
-there can be name collisions and the last read system will overwrite any previous
-system. By setting the dplus_priority to true, the legacy D-Plus systems will be
-read after your qn.cfg file.
+QnetLink first loads the gwys.txt file first and then the systems delivered by the
+D-Plus Authorization system. You can change the order, if you want definitions
+in your gwys.txt file to override any delivered by the D-Plus authorization server.
 
 The information downloaded from the DPlus server is dynamic and will change
 from hour to hour. You can update QnetLink by sending "       F" to your system.

@@ -71,7 +71,7 @@ aprs_filter_d=''              # advanced feature
 
 ##########################################################################################################################
 #
-# LINK - controls the behaviour of QnetLink (qnlink)
+# LINK - controls the behavior of QnetLink (qnlink)
 #
 #link_admin_d=''             # these comma-separated list of users can execute scripts, block dongles, reload the gwys.txt
 #link_link_unlink_d=''       # if defined, comma-separated list of users that can link and unlink a repeater
