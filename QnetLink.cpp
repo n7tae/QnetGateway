@@ -47,14 +47,11 @@
 #include <utility>
 #include <thread>
 #include <chrono>
-#include <libconfig.h++>
 
 #include "versions.h"
 #include "DPlusAuthenticator.h"
 #include "QnetConfigure.h"
 #include "QnetLink.h"
-
-using namespace libconfig;
 
 std::atomic<bool> CQnetLink::keep_running(true);
 
