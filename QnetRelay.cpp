@@ -280,8 +280,7 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 
 bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 {
-	static short old_id = 0U;
-	static short stream_id = 0U;
+	static short id = 0U;
 	SDSRP dsrp;
 	if (len < 65)
 		::memcpy(dsrp.title, raw, len);	// transfer raw data to SDSRP struct
@@ -289,10 +288,12 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 	if (49==len || 21==len) {
 		// grab the stream id if this is a header
 		if (49 == len) {
-			stream_id = dsrp.header.id;
-			if (old_id == stream_id)
+			if (dsrp.header.id == id)
 				return false;
-			old_id = stream_id;
+			id = dsrp.header.id;
+		} else {
+			if (dsrp.voice.id != id)
+				return false;
 		}
 
 		SDSTR dstr;	// destination
@@ -306,7 +307,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 		dstr.vpkt.dst_rptr_id = 0x0;
 		dstr.vpkt.snd_rptr_id = 0x1;
 		dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
-		dstr.vpkt.streamid = stream_id;
+		dstr.vpkt.streamid = id;
 
 		if (49 == len) {	// header
 			dstr.remaining = 0x30;
