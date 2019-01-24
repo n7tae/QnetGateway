@@ -1102,7 +1102,9 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					;  /* we do not care about end-of-QSO */
 				else {
 					/* for which repeater this stream has timed out ?  */
-					for (i=0; i<3 && rptr.mod[i].defined; i++) {
+					for (i=0; i<3; i++) {
+						if (! rptr.mod[i].defined)
+							continue;
 						/* match saved stream ? */
 						bool match = (toRptr[i].saved_hdr.vpkt.streamid == g2buf.streamid);
 						if (is_from_g2)
