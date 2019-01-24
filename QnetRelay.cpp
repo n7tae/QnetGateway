@@ -280,7 +280,7 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 
 bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 {
-	static short id = 0U;
+	static unsigned short id = 0U;
 	SDSRP dsrp;
 	if (len < 65)
 		::memcpy(dsrp.title, raw, len);	// transfer raw data to SDSRP struct
@@ -320,8 +320,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			memcpy(dstr.vpkt.hdr.my,   dsrp.header.my,   8);
 			memcpy(dstr.vpkt.hdr.nm,   dsrp.header.nm,   4);
 			memcpy(dstr.vpkt.hdr.pfcs, dsrp.header.pfcs, 2);
-			int ret = Modem2Gate.Write(dstr.pkt_id, 58);
-			if (ret != 58) {
+			if (58 != Modem2Gate.Write(dstr.pkt_id, 58)) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
@@ -331,14 +330,14 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			dstr.remaining = 0x16;
 			dstr.vpkt.ctrl = dsrp.header.seq;
 			memcpy(dstr.vpkt.vasd.voice, dsrp.voice.ambe, 12);
-			int ret = Modem2Gate.Write(dstr.pkt_id, 29);
-			if (log_qso && dstr.vpkt.ctrl&0x40)
-				printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
 
-			if (ret != 29) {
+			if (29 != Modem2Gate.Write(dstr.pkt_id, 29)) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 				return true;
 			}
+			
+			if (log_qso && dstr.vpkt.ctrl&0x40)
+				printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
 		}
 	} else if (len < 65 && dsrp.tag == 0xAU) {
 //		printf("MMDVM Poll: '%s'\n", (char *)mpkt.poll_msg);
