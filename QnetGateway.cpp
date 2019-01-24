@@ -1054,41 +1054,43 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 		} else {	// g2buflen == 27
 			/* find out which repeater module to send the data to */
 			int i;
-			for (i=0; i<3 && rptr.mod[i].defined; i++) {
-				/* streamid match ? */
-				bool match = (toRptr[i].streamid == g2buf.streamid);
-				if (is_from_g2)
-					match = match && (toRptr[i].adr == fromDst4.sin_addr.s_addr);
-				if (match) {
-					memcpy(rptrbuf.pkt_id, "DSTR", 4);
-					rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);
-					rptrbuf.flag[0] = 0x73U;
-					rptrbuf.flag[1] = 0x12U;
-					rptrbuf.flag[2] = 0x00U;
-					rptrbuf.remaining= 0x13U;
-					rptrbuf.vpkt.icm_id = 0x20U;
-					memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
+			for (i=0; i<3; i++) {
+				if (rptr.mod[i].defined) {
+					/* streamid match ? */
+					bool match = (toRptr[i].streamid == g2buf.streamid);
+					if (is_from_g2)
+						match = match && (toRptr[i].adr == fromDst4.sin_addr.s_addr);
+					if (match) {
+						memcpy(rptrbuf.pkt_id, "DSTR", 4);
+						rptrbuf.counter = htons(toRptr[i].G2_COUNTER++);
+						rptrbuf.flag[0] = 0x73U;
+						rptrbuf.flag[1] = 0x12U;
+						rptrbuf.flag[2] = 0x00U;
+						rptrbuf.remaining= 0x13U;
+						rptrbuf.vpkt.icm_id = 0x20U;
+						memcpy(&rptrbuf.vpkt.dst_rptr_id, g2buf.flagb, 18);
 
-					Gate2Modem[i].Write(rptrbuf.pkt_id, 29);
+						Gate2Modem[i].Write(rptrbuf.pkt_id, 29);
 
-					/* timeit */
-					time(&toRptr[i].last_time);
+						/* timeit */
+						time(&toRptr[i].last_time);
 
-					toRptr[i].sequence = rptrbuf.vpkt.ctrl;
+						toRptr[i].sequence = rptrbuf.vpkt.ctrl;
 
-					/* End of stream ? */
-					if (g2buf.ctrl & 0x40U) {
-						/* clear the saved header */
-						memset(toRptr[i].saved_hdr.pkt_id, 0, 58);
-						toRptr[i].saved_adr = 0;
+						/* End of stream ? */
+						if (g2buf.ctrl & 0x40U) {
+							/* clear the saved header */
+							memset(toRptr[i].saved_hdr.pkt_id, 0, 58);
+							toRptr[i].saved_adr = 0;
 
-						toRptr[i].last_time = 0;
-						toRptr[i].streamid = 0;
-						toRptr[i].adr = 0;
-						if (bool_qso_details)
-							printf("id=%04x END\n", ntohs(g2buf.streamid));
-				}
-					break;
+							toRptr[i].last_time = 0;
+							toRptr[i].streamid = 0;
+							toRptr[i].adr = 0;
+							if (bool_qso_details)
+								printf("id=%04x END\n", ntohs(g2buf.streamid));
+						}
+						break;	// we're done
+					}
 				}
 			}
 
