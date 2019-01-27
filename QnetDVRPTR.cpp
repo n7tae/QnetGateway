@@ -2509,7 +2509,14 @@ int main(int argc, const char **argv)
 		return 0;
 	}
 
-	switch (argv[1][0]) {
+	const char *qn = strstr(argv[0], "qndvrptr");
+	if (NULL == qn) {
+		fprintf(stderr, "Error finding 'qndvrptr' in %s!\n", argv[0]);
+		return 1;
+	}
+	qn += 8;
+
+	switch (*qn) {
 		case NULL:
 			assigned_module = -1;
 			break;
