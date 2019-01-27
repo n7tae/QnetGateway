@@ -1884,13 +1884,13 @@ static bool read_config(const char *cfgFile)
 
 	cfg.GetValue(path+"_serial_number", type, DVRPTR_SERIAL, 11, 11);
 
-	cfg.GetValue(path+"_rf_rx_level", type, RF_AUDIO_Level, 1, 100);
+	cfg.GetValue(path+"_rx_level", type, RF_AUDIO_Level, 1, 100);
 
 	cfg.GetValue(path+"_duplex", type, DUPLEX);
 
 	cfg.GetValue(path+"_acknowledge", type, RPTR_ACK);
 
-	cfg.GetValue(path+".ack_delay", type, ACK_DELAY, 1, 999);
+	cfg.GetValue(path+"_ack_delay", type, ACK_DELAY, 1, 999);
 
 	cfg.GetValue(path+"_tx_delay", type, TX_DELAY, 0, 6000);
 	Modem_Init2[8] = TX_DELAY & 0xFF;
