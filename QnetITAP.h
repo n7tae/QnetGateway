@@ -36,8 +36,7 @@ enum REPLY_TYPE {
 	RT_DATA,
 	RT_HEADER_ACK,
 	RT_DATA_ACK,
-	RT_PONG,
-	RT_NOTHING
+	RT_PONG
 };
 
 // Icom Terminal and Access Point Mode data structure
