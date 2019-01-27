@@ -205,6 +205,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	bool is_alive = false;
 	std::chrono::steady_clock::time_point lastdata = std::chrono::steady_clock::now();
 
+	bool wasone = false;
 	while (keep_running) {
 		fd_set readfds;
 		FD_ZERO(&readfds);
@@ -271,10 +272,13 @@ void CQnetITAP::Run(const char *cfgfile)
 						printf("\n");
 						break;
 					case RT_DATA_ACK:
-						printf("DATA_ACK");
-						for (int i=0; i<int(buf[0]) && i<100; i++)
-							printf(" %02X", buf[i]);
-						printf("\n");
+						if (buf[3] || wasone) {
+							wasone = buf[3] ? true : false;
+							printf("DATA_ACK");
+							for (int i=0; i<int(buf[0]) && i<100; i++)
+								printf(" %02X", buf[i]);
+							printf("\n");
+						}
 						break;
 					case RT_PONG:
 						if (! is_alive) {
