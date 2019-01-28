@@ -205,7 +205,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	bool is_alive = false;
 	std::chrono::steady_clock::time_point lastdata = std::chrono::steady_clock::now();
 
-	bool wasone = false;
+//	bool wasone = false;
 	while (keep_running) {
 		fd_set readfds;
 		FD_ZERO(&readfds);
