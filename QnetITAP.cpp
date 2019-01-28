@@ -130,7 +130,8 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 {
 	// Shamelessly adapted from Jonathan G4KLX's CIcomController::GetResponse()
 	// and CSerialController::read()
-	// Get the start of the frame or nothing at all
+
+	// Get the buffer size or nothing at all
 	int ret = ::read(serfd, buf, 1U);
 	if (ret < 0) {
 		printf("Error when reading first byte from the Icom radio %d: %s", errno, strerror(errno));
@@ -153,17 +154,9 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 	unsigned int offset = 1U;
 
 	while (offset < length) {
-		fd_set fds;
-		FD_ZERO(&fds);
-		FD_SET(serfd, &fds);
-		int n = ::select(serfd+1, &fds, NULL, NULL, NULL);	// wait untill it's ready. won't return a zero.
-		if (n < 0) {
-			printf("ERROR: GetITAPData: select returned error %d: %s\n", errno, strerror(errno));
-			return RT_ERROR;
-		}
 
 		ret = ::read(serfd, buf + offset, length - offset);
-		if (ret < 0 && errno!=EAGAIN) {
+		if (ret<0 && errno!=EAGAIN) {
 			printf("Error when reading buffer from the Icom radio %d: %s\n", errno, strerror(errno));
 			return RT_ERROR;
 		}
@@ -246,55 +239,44 @@ void CQnetITAP::Run(const char *cfgfile)
 
 		// there is something to read!
 		unsigned char buf[100];
-		ssize_t len;
-		REPLY_TYPE rt = RT_NOTHING;
 
-		if (FD_ISSET(serfd, &readfds)) {
-			rt = GetITAPData(buf);
+		if (keep_running && FD_ISSET(serfd, &readfds)) {
+			lastdata = std::chrono::steady_clock::now();
+			switch (GetITAPData(buf)) {
+				case RT_ERROR:
+					keep_running = false;
+					break;
+				case RT_DATA:
+				case RT_HEADER:
+					if (ProcessITAP(buf))
+						keep_running = false;
+					break;
+				case RT_PONG:
+					if (! is_alive) {
+						printf("Icom Radio is connected.\n");
+						is_alive = true;
+					}
+					break;
+				default:
+					break;
+			}
+			FD_CLR(serfd, &readfds);
+		}
 
-			if (rt == RT_ERROR)
-				break;
-
-			if (rt == RT_TIMEOUT)
-				continue;
-
-		} else if (FD_ISSET(ug2m, &readfds)) {
-			len = Gate2Modem.Read(buf, 100);
+		if (keep_running && FD_ISSET(ug2m, &readfds)) {
+			ssize_t len = Gate2Modem.Read(buf, 100);
 
 			if (len < 0) {
 				printf("ERROR: Run: recvfrom(gsock) returned error %d, %s\n", errno, strerror(errno));
 				break;
 			}
-		}
 
-		if (rt != RT_NOTHING) {
-			lastdata = std::chrono::steady_clock::now();
-			//printf("read %d bytes from ITAP\n", (int)buf[0]);
-			if (RT_DATA==rt || RT_HEADER==rt) {
-				if (ProcessITAP(buf))
+			if (0 == memcmp(buf, "DSTR", 4)) {
+				//printf("read %d bytes from QnetGateway\n", (int)len);
+				if (ProcessGateway(len, buf))
 					break;
-			} else {
-				switch (rt) {
-					//case RT_HEADER_ACK:
-					//	printf("DEBUG: Run: got header acknowledgement\n");
-					//	break;
-					//case RT_DATA_ACK:
-					//	printf("DEBUG: Run: got data   acknowledgement\n");
-					//	break;
-					case RT_PONG:
-						if (! is_alive) {
-							printf("Icom Radio is connected.\n");
-							is_alive = true;
-						}
-						break;
-					default:
-						break;
-				}
 			}
-		} else if (0 == ::memcmp(buf, "DSTR", 4)) {
-			//printf("read %d bytes from QnetGateway\n", (int)len);
-			if (ProcessGateway(len, buf))
-				break;
+			FD_CLR(ug2m, &readfds);
 		}
 	}
 
