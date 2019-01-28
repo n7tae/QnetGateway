@@ -397,7 +397,7 @@ ModuleMenu () {
 		elif [[ "$key" == ad* ]]; then eval ${mod}_ack_delay="$value"
 		elif [[ "$key" == po* ]]; then eval ${mod}_power="$value"
 		elif [[ "$key" == sq* ]]; then eval ${mod}_squelch="$value"
-		elif [[ "$key" == sn* ]]; then eval ${mod}_serial_number="$value"
+		elif [[ "$key" == sn* ]]; then eval ${mod}_serial_number="${value^^}"
 		elif [[ "$key" == rn* ]]; then eval ${mod}_rf_on="$value"
 		elif [[ "$key" == rf* ]]; then eval ${mod}_rf_off="$value"
 		elif [[ "$key" == rl* ]]; then eval ${mod}_rx_level="$value"
@@ -449,10 +449,15 @@ ModuleMenu () {
 
 WriteCFGFile () {
 	local m p q outFile
+	if [ -z "$ircddb_login" ]; then
+		echo "You MUST set your ircddb login callsign (in the ircddb section)!"
+		read -p "Press <Enter> to continue: " ans
+		return
+	fi
 	outFile='./qn.cfg'
 	echo "# Created on `date`" > $outFile
 	# gateway_ section
-	echo "ircddb_login='$ircddb_login'" >> $outFile
+	echo "ircddb_login='$ircddb_login'"                                          >> $outFile
 	[ -z "${ircddb_host+x}"     ] || echo "ircddb_host='${ircddb_host}'"         >> $outFile
 	[ -z "${ircddb_port+x}"     ] || echo "ircddb_host=${ircddb_port}"           >> $outFile
 	[ -z "${ircddb_password+x}" ] || echo "ircddb_password='${ircddb_password}'" >> $outFile
