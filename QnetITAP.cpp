@@ -239,11 +239,10 @@ void CQnetITAP::Run(const char *cfgfile)
 
 		// there is something to read!
 		unsigned char buf[100];
-		ssize_t len;
 
 		if (keep_running && FD_ISSET(serfd, &readfds)) {
 			lastdata = std::chrono::steady_clock::now();
-			switch(GetITAPData(buf) {
+			switch (GetITAPData(buf)) {
 				case RT_ERROR:
 					keep_running = false;
 					break;
@@ -258,12 +257,14 @@ void CQnetITAP::Run(const char *cfgfile)
 						is_alive = true;
 					}
 					break;
+				default:
+					break;
 			}
 			FD_CLR(serfd, &readfds);
 		}
 
 		if (keep_running && FD_ISSET(ug2m, &readfds)) {
-			len = Gate2Modem.Read(buf, 100);
+			ssize_t len = Gate2Modem.Read(buf, 100);
 
 			if (len < 0) {
 				printf("ERROR: Run: recvfrom(gsock) returned error %d, %s\n", errno, strerror(errno));
