@@ -266,19 +266,19 @@ void CQnetITAP::Run(const char *cfgfile)
 			} else {
 				switch (rt) {
 					case RT_HEADER_ACK:
-						printf("HEADER_ACK");
-						for (int i=0; i<int(buf[0]) && i<100; i++)
-							printf(" %02X", buf[i]);
-						printf("\n");
+						//printf("HEADER_ACK");
+						//for (int i=0; i<int(buf[0]) && i<100; i++)
+						//	printf(" %02X", buf[i]);
+						//printf("\n");
 						break;
 					case RT_DATA_ACK:
-						if (buf[3] || wasone) {
-							wasone = buf[3] ? true : false;
-							printf("DATA_ACK");
-							for (int i=0; i<int(buf[0]) && i<100; i++)
-								printf(" %02X", buf[i]);
-							printf("\n");
-						}
+						//if (buf[3] || wasone) {
+						//	wasone = buf[3] ? true : false;
+						//	printf("DATA_ACK");
+						//	for (int i=0; i<int(buf[0]) && i<100; i++)
+						//		printf(" %02X", buf[i]);
+						//	printf("\n");
+						//}
 						break;
 					case RT_PONG:
 						if (! is_alive) {
