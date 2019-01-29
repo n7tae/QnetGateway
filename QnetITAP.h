@@ -48,11 +48,13 @@ typedef struct itap_tag {
 	unsigned char type;
 		// 0x03U pong
 		// 0x10U header from icom
+		// 0x11U acknowledgment
 		// 0x12U data   from icom (it's EOT if voice.sequence bit 0x40 is set)
+		// 0x13U acknowledgment
 		// 0x20U header to icom
-		// 0x21U header acknowledgement
+		// 0x21U header acknowledgment
 		// 0x22U   data to icom
-		// 0x23U   data acknowledgement
+		// 0x23U   data acknowledgment
 	union {
 		struct {
 			unsigned char flag[3];
@@ -61,14 +63,12 @@ typedef struct itap_tag {
 			unsigned char ur[8];
 			unsigned char my[8];
 			unsigned char nm[4];
-			unsigned char end;	// 0xFFU for sending
 		} header;
 		struct {
 			unsigned char counter;	// ordinal counter is reset with each header
 			unsigned char sequence;	// is modulo 21
 			unsigned char ambe[9];
 			unsigned char text[3];
-			unsigned char end;	// 0xFFU for sending
 		} voice;
 	};
 } SITAP;
@@ -94,7 +94,7 @@ private:
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessITAP(const unsigned char *raw);
 	int OpenITAP();
-	int SendTo(const unsigned char length, const unsigned char *buf);
+	int SendTo(const unsigned char *buf);
 	REPLY_TYPE GetITAPData(unsigned char *buf);
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
 
