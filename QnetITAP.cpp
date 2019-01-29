@@ -468,10 +468,8 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 			test.append(1, 'a'+i);
 			if (cfg.KeyExists(test)) {
 				cfg.GetValue(test, estr, type, 1, 16);
-				if (type.compare("itap")) {
-					fprintf(stderr, "%s = '%s', expecting 'itap'!\n", test.c_str(), type.c_str());
-					return true;
-				}
+				if (type.compare("itap"))
+					continue;	// this ain't it!
 				itap_path.assign(test);
 				assigned_module = i;
 				break;

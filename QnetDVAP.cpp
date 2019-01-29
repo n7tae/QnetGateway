@@ -174,10 +174,8 @@ static bool read_config(const char *cfgFile)
 			test.append(1, 'a'+i);
 			if (cfg.KeyExists(test)) {
 				cfg.GetValue(test, estr, type, 1, 16);
-				if (type.compare("dvap")) {
-					fprintf(stderr, "%s = '%s', expecting 'dvap'!\n", test.c_str(), type.c_str());
-					return true;
-				}
+				if (type.compare("dvap"))
+					continue;	// this ain't it!
 				dvap_path.assign(test);
 				assigned_module = i;
 				break;

@@ -335,7 +335,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 				return true;
 			}
-			
+
 			if (log_qso && dstr.vpkt.ctrl&0x40)
 				printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
 		}
@@ -365,10 +365,8 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 			test.append(1, 'a'+i);
 			if (cfg.KeyExists(test)) {
 				cfg.GetValue(test, estr, type, 1, 16);
-				if (type.compare("mmdvm")) {
-					fprintf(stderr, "%s = '%s', expecting 'mmdvm'!\n", test.c_str(), type.c_str());
-					return true;
-				}
+				if (type.compare("mmdvm"))
+					continue;	// this ain't it!
 				mmdvm_path.assign(test);
 				assigned_module = i;
 				break;
