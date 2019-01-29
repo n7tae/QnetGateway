@@ -1891,6 +1891,7 @@ static bool read_config(const char *cfgFile)
 	cfg.GetValue(path+"_acknowledge", type, RPTR_ACK);
 
 	cfg.GetValue(path+"_ack_delay", type, ACK_DELAY, 1, 999);
+	ACK_DELAY *= 1000; // from milliseconds to seconds
 
 	cfg.GetValue(path+"_tx_delay", type, TX_DELAY, 0, 6000);
 	Modem_Init2[8] = TX_DELAY & 0xFF;
