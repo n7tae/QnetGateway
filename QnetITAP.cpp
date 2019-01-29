@@ -128,11 +128,14 @@ int CQnetITAP::OpenITAP()
 
 REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 {
-	// Shamelessly adapted from Jonathan G4KLX's CIcomController::GetResponse()
+	// Some methods adapted from Jonathan G4KLX's CIcomController::GetResponse()
 	// and CSerialController::read()
 
+	const unsigned char ack_header[3] = { 0x03U, 0x11U, 0x0U };
+	unsigned char ack_voice[4] = { 0x04U, 0x13U, 0x0U, 0x0U };
+
 	// Get the buffer size or nothing at all
-	int ret = ::read(serfd, buf, 1U);
+	int ret = read(serfd, buf, 1U);
 	if (ret < 0) {
 		printf("Error when reading first byte from the Icom radio %d: %s", errno, strerror(errno));
 		return RT_ERROR;
@@ -155,7 +158,7 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 
 	while (offset < length) {
 
-		ret = ::read(serfd, buf + offset, length - offset);
+		ret = read(serfd, buf + offset, length - offset);
 		if (ret<0 && errno!=EAGAIN) {
 			printf("Error when reading buffer from the Icom radio %d: %s\n", errno, strerror(errno));
 			return RT_ERROR;
@@ -169,8 +172,12 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 		case 0x03U:
 			return RT_PONG;
 		case 0x10U:
+			ack_voice[2] = 0x0U;
+			SendTo(ack_header);
 			return RT_HEADER;
 		case 0x12U:
+			SendTo(ack_voice);
+			ack_voice[2]++;
 			return RT_DATA;
 		case 0x21U:
 			return RT_HEADER_ACK;
@@ -211,7 +218,7 @@ void CQnetITAP::Run(const char *cfgfile)
 
 		// don't care about writefds and exceptfds:
 		// and we'll wait for 100 ms or 1 s, depending on ;
-		int ret = ::select(maxfs+1, &readfds, NULL, NULL, &tv);
+		int ret = select(maxfs+1, &readfds, NULL, NULL, &tv);
 		if (ret < 0) {
 			printf("ERROR: Run: select returned err=%d, %s\n", errno, strerror(errno));
 			break;
@@ -228,11 +235,11 @@ void CQnetITAP::Run(const char *cfgfile)
 		if (0 == ret) {
 			// nothing to read, so do the polling or pinging
 			if (poll_counter++ < 18) {
-				unsigned char poll[3] = { 0xffu, 0xffu, 0xffu };
-				SendTo((unsigned char)0x03U, poll);
+				const unsigned char poll[2] = { 0xffu, 0xffu };
+				SendTo(poll);
 			} else {
-				unsigned char ping[3] = { 0x02u, 0x02u, 0xffu };
-				SendTo((unsigned char)0x03U, ping);
+				const unsigned char ping[3] = { 0x02u, 0x02u };
+				SendTo(ping);
 			}
 			continue;
 		}
@@ -280,29 +287,40 @@ void CQnetITAP::Run(const char *cfgfile)
 		}
 	}
 
-	::close(serfd);
+	close(serfd);
 	Gate2Modem.Close();
 }
 
-int CQnetITAP::SendTo(const unsigned char length, const unsigned char *buf)
+int CQnetITAP::SendTo(const unsigned char *buf)
 {
+	ssize_t n;
 	unsigned int ptr = 0;
-	const unsigned int len = (int)length;
+	unsigned int length = (0xffu == buf[0]) ? 2 : buf[0];
 
-	while (ptr < len) {
-		ssize_t n = ::write(serfd, buf + ptr, len - ptr);
+	while (ptr < length) {
+		n = write(serfd, buf + ptr, length - ptr);
 		if (n < 0) {
 			if (EAGAIN != errno) {
 				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
 				return -1;
 			}
 		}
-
-		if (n > 0)
-			ptr += n;
+		ptr += n;
 	}
 
-	return len;
+	n = 0;	// send an ending 0xffu
+	while (0 == n) {
+		const unsigned char push = 0xffu;
+		n = write(serfd, &push, 1);
+		if (n < 0) {
+			if (EAGAIN != errno) {
+				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
+				return -1;
+			}
+		}
+	}
+
+	return length;
 }
 
 bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
@@ -310,7 +328,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 	static unsigned char counter = 0;
 	if (29==len || 58==len) { //here is dstar data
 		SDSTR dstr;
-		::memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
+		memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
 
 		SITAP itap;	// destination
 		if (58 == len) {			// write a Header packet
@@ -323,8 +341,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(itap.header.ur,   dstr.vpkt.hdr.ur,   8);
 			memcpy(itap.header.my,   dstr.vpkt.hdr.my,   8);
 			memcpy(itap.header.nm,   dstr.vpkt.hdr.nm,   4);
-			itap.header.end = 0xFFU;
-			if (42 != SendTo(42U, &itap.length)) {
+			if (41 != SendTo(&itap.length)) {
 				printf("ERROR: ProcessGateway: Could not write Header ITAP packet\n");
 				return true;
 			}
@@ -340,8 +357,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			if ((dstr.vpkt.ctrl & ~0x40U) > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
 			memcpy(itap.voice.ambe, dstr.vpkt.vasd.voice, 12);
-			itap.voice.end = 0xFFU;
-			if (17 != SendTo(17U, &itap.length)) {
+			if (16 != SendTo(&itap.length)) {
 				printf("ERROR: ProcessGateway: Could not write AMBE ITAP packet\n");
 				return true;
 			}
@@ -357,7 +373,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 	static short stream_id = 0U;
 	SITAP itap;
 	unsigned int len = (0x10U == buf[1]) ? 41 : 16;
-	::memcpy(&itap.length, buf, len);	// transfer raw data to SITAP struct
+	memcpy(&itap.length, buf, len);	// transfer raw data to SITAP struct
 
 	// create a stream id if this is a header
 	if (41 == len)
@@ -365,7 +381,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 
 	SDSTR dstr;	// destination
 	// sets most of the params
-	::memcpy(dstr.pkt_id, "DSTR", 4);
+	memcpy(dstr.pkt_id, "DSTR", 4);
 	dstr.counter = htons(COUNTER++);
 	dstr.flag[0] = 0x73;
 	dstr.flag[1] = 0x12;
