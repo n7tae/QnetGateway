@@ -48,10 +48,11 @@
 #include <thread>
 #include <chrono>
 
-#include "versions.h"
 #include "DPlusAuthenticator.h"
 #include "QnetConfigure.h"
 #include "QnetLink.h"
+
+#define LINK_VERSION "QnetLink7.0.1"
 
 std::atomic<bool> CQnetLink::keep_running(true);
 
@@ -1976,7 +1977,7 @@ void CQnetLink::Process()
 					// printf("Remote station %s %s requested version\n", inbound_ptr->call, ip);
 
 					buf[0] = 9;
-					strncpy((char *)buf + 4, VERSION, 4);
+					strncpy((char *)buf + 4, LINK_VERSION, 4);
 					buf[8] = 0;
 
 					sendto(ref_g2_sock, buf, 9, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
@@ -3555,7 +3556,7 @@ int main(int argc, char **argv)
 	CQnetLink qnlink;
 	if (qnlink.Init(argv[1]))
 		return 1;
-	printf("g2_link %s initialized...entering processing loop\n", VERSION);
+	printf("g2_link %s initialized...entering processing loop\n", LINK_VERSION);
 	qnlink.Process();
 	printf("g2_link exiting\n");
 	qnlink.Shutdown();

@@ -21,14 +21,14 @@
 #include <termios.h>
 #include <wchar.h>
 #include <sys/file.h>
-#include "versions.h"
 #include <string>
 
 #include "Random.h"
 #include "UnixDgramSocket.h"
 #include "QnetConfigure.h"
 
-#define VERSION DVRPTR_VERSION
+#define DVRPTR_VERSION "QnetDVRPTR-6.0.2"
+
 #define BAUD B115200
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -2494,7 +2494,7 @@ int main(int argc, const char **argv)
 	char fw_string[10];
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("dvrptr VERSION %s\n", VERSION);
+	printf("dvrptr VERSION %s\n", DVRPTR_VERSION);
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s dvrptr.cfg\n", argv[0]);

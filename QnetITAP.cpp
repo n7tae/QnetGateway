@@ -40,10 +40,11 @@
 #include <thread>
 #include <chrono>
 
-#include "versions.h"
 #include "QnetITAP.h"
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
+
+#define ITAP_VERSION "QnetITAP-1.0.2"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 

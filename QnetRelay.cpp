@@ -32,10 +32,11 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
-#include "versions.h"
 #include "QnetRelay.h"
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
+
+#define RELAY_VERSION "QnetRelay-1.0.2"
 
 std::atomic<bool> CQnetRelay::keep_running(true);
 

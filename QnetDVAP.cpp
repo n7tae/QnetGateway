@@ -37,7 +37,6 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <sys/file.h>
-#include "versions.h"
 
 #include <atomic>
 #include <future>
@@ -52,7 +51,8 @@
 #include "UnixDgramSocket.h"
 #include "QnetConfigure.h"
 
-#define VERSION DVAP_VERSION
+#define DVAP_VERSION "QnetDVAP-6.0.1"
+
 #define CALL_SIZE 8
 #define IP_SIZE 15
 
@@ -944,7 +944,7 @@ int main(int argc, const char **argv)
 	short cnt = 0;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("dvap_rptr VERSION %s\n", VERSION);
+	printf("dvap_rptr VERSION %s\n", DVAP_VERSION);
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s dvap_rptr.cfg\n", argv[0]);

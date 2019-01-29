@@ -55,9 +55,10 @@
 
 #include "IRCDDB.h"
 #include "IRCutils.h"
-#include "versions.h"
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
+
+#define IRCDDB_VERSION "QnetGateway-8.0.1"
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -206,13 +207,13 @@ bool CQnetGateway::read_config(char *cfgFile)
 		} else {
 			printf("Found Module: %s = '%s'\n", path.c_str(), type.c_str());
 			if (0 == type.compare("dvap")) {
-				rptr.mod[m].package_version = DVAP_VERSION;
+				rptr.mod[m].package_version = "QnetDVAP";
 			} else if (0 == type.compare("dvrptr")) {
-				rptr.mod[m].package_version = DVRPTR_VERSION;
+				rptr.mod[m].package_version = "QnetDVRPTR";
 			} else if (0 == type.compare("mmdvm")) {
-				rptr.mod[m].package_version = MMDVM_VERSION;
+				rptr.mod[m].package_version = "QnetRelay";
 			} else if (0 == type.compare("itap")) {
-				rptr.mod[m].package_version = ITAP_VERSION;
+				rptr.mod[m].package_version = "QnetITAP";
 			} else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;

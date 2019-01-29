@@ -25,14 +25,13 @@
 #include <set>
 #include <atomic>
 #include <netinet/in.h>
-#include "versions.h"
+
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "Random.h"
 #include "UnixDgramSocket.h"
 
 /*** version number must be x.xx ***/
-#define VERSION LINK_VERSION
 #define CALL_SIZE 8
 #define IP_SIZE 15
 #define QUERY_SIZE 56
