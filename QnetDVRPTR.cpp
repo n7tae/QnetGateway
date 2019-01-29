@@ -1905,7 +1905,7 @@ static bool read_config(const char *cfgFile)
 	path.assign("timing_");
 	cfg.GetValue(path+"timeout_remote_g2", estr, REMOTE_TIMEOUT, 1, 10);
 
-	cfg.GetValue(path+"_play_delay", estr, DELAY_BETWEEN, 10, 25);
+	cfg.GetValue(path+"play_delay", estr, DELAY_BETWEEN, 10, 25);
 	DELAY_BETWEEN *= 1000;
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000000) / 400;
