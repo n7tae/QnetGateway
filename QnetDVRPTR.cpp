@@ -97,8 +97,8 @@ static char ENABLE_RF[CALL_SIZE + 1];
 static char DISABLE_RF[CALL_SIZE + 1];
 static bool IS_ENABLED = true;
 static bool ok = false;
-static bool RX_Inverse = 0;
-static bool TX_Inverse = 0;
+static bool RX_Inverse = true;
+static bool TX_Inverse = true;
 static int TX_DELAY;  /* in milliseconds */
 static unsigned char SND_TERM_ID = 0x00;
 static char DVCALL_and_G[9];
