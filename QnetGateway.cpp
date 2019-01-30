@@ -422,8 +422,9 @@ void CQnetGateway::GetIRCDataThread()
 			if (doFind) {
 				printf("Finding Routes");
 				for (auto it=findRoute.begin(); it!=findRoute.end(); it++) {
-					*it.resize(8, ' ');
-					ii->findUser(*it);
+					std::string str(*it);
+					str.resize(CALL_SIZE, ' ');
+					ii->findUser(str);
 				}
 				doFind = false;
 			}
