@@ -287,7 +287,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 			cfg.GetValue(path+"url", estr, rptr.mod[m].url, 0, 80);
 		}
 	}
-	path.append("_find_route");
+	path.append("find_route");
 	if (cfg.KeyExists(path)) {
 		std::string csv;
 		cfg.GetValue(path, estr, csv, 0, 10240);
