@@ -252,7 +252,10 @@ GateMenu () {
 		echo -n "lo : Longitude (-180.0 to 180.0)    = "; EvaluateVar gateway_longitude{,_d}
 		echo -n "d1 : Description #1 (20 chars max)  = "; EvaluateVar gateway_desc1{,_d}
 		echo -n "d2 : Description #1 (20 chars max)  = "; EvaluateVar gateway_desc2{,_d}
-		echo -n "w  ; URL (80 char max)              = "; EvaluateVar gateway_url{,_d}
+		echo -n "w  : URL (80 char max)              = "; EvaluateVar gateway_url{,_d}
+		echo -n "fr : Find Route(s)                  = "; EvaluateVar gateway_find_route{,_d}
+		echo "     Find Route(s) is a comma-separated list of common routing callsigns."
+		echo "     These will be added in your local cache on boot-up."
 		echo
 		echo    "     APRS - Repeater/User position tracking"
 		echo -n "e  : Enable APRS Tracking           = "; EvaluateVar aprs_enable{,_d}
@@ -280,6 +283,7 @@ GateMenu () {
 		elif [[ "$key" == d1* ]]; then gateway_desc1="${value:0:20}"
 		elif [[ "$key" == d2* ]]; then gateway_desc2="${value:0:20}"
 		elif [[ "$key" == w*  ]]; then gateway_url="${value:0:80}"
+		elif [[ "$key" == fr* ]]; then gateway_find_route="$value"
 		elif [[ "$key" == e*  ]]; then SetBooleanValue aprs_enable "$value"
 		elif [[ "$key" == h*  ]]; then aprs_host="$value"
 		elif [[ "$key" == ap* ]]; then aprs_port="$value"
@@ -518,6 +522,7 @@ WriteCFGFile () {
 	[ -z "${gateway_desc1+x}"          ] || echo "gateway_desc1='${gateway_desc1}'"                 >> $outFile
 	[ -z "${gateway_desc2+x}"          ] || echo "gateway_desc2='${gateway_desc2}'"                 >> $outFile
 	[ -z "${gateway_url+x}"            ] || echo "gateway_url='${gateway_url}'"                     >> $outFile
+	[ -z "${gateway_find_route+x}"     ] || echo "gateway_find_route='${gateway_find_route}'"       >> $outFile
 	# arps_ section
 	[ -z "${aprs_enable+x}"   ] || echo "aprs_enable=${aprs_enable}"     >> $outFile
 	[ -z "${aprs_host+x}"     ] || echo "aprs_host='${aprs_host}'"       >> $outFile

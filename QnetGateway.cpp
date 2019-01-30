@@ -51,7 +51,6 @@
 #include <string>
 #include <thread>
 #include <chrono>
-#include <map>
 
 #include "IRCDDB.h"
 #include "IRCutils.h"
@@ -74,6 +73,37 @@ static void sigCatch(int signum)
 
 	return;
 }
+
+
+void CQnetGateway::UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters)
+{
+	std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);	// Skip delimiters at beginning.
+	std::string::size_type pos = str.find_first_of(delimiters, lastPos);	// Find first non-delimiter.
+
+	while (std::string::npos != pos || std::string::npos != lastPos) {
+		std::string element = str.substr(lastPos, pos-lastPos);
+		if (element.length()>=3 && element.length()<=6) {
+			ToUpper(element);
+			element.resize(CALL_SIZE, ' ');
+			set.insert(element);	// Found a token, add it to the list.
+		} else
+			fprintf(stderr, "found bad callsign in list: %s\n", str.c_str());
+		lastPos = str.find_first_not_of(delimiters, pos);	// Skip delimiters.
+		pos = str.find_first_of(delimiters, lastPos);	// Find next non-delimiter.
+	}
+}
+
+void CQnetGateway::PrintCallsigns(const std::string &key, const std::set<std::string> &set)
+{
+	printf("%s = [ ", key.c_str());
+	for (auto it=set.begin(); it!=set.end(); it++) {
+		if (it != set.begin())
+			printf(", ");
+		printf("%s", (*it).c_str());
+	}
+	printf(" ]");
+}
+
 
 void CQnetGateway::set_dest_rptr(int mod_ndx, char *dest_rptr)
 {
@@ -257,6 +287,13 @@ bool CQnetGateway::read_config(char *cfgFile)
 			cfg.GetValue(path+"url", estr, rptr.mod[m].url, 0, 80);
 		}
 	}
+	path.append("_find_route");
+	if (cfg.KeyExists(path)) {
+		std::string csv;
+		cfg.GetValue(path, estr, csv, 0, 10240);
+		UnpackCallsigns(csv, findRoute);
+		PrintCallsigns(path, findRoute);
+	}
 
 	// APRS
 	path.assign("aprs_");
@@ -357,6 +394,7 @@ void CQnetGateway::GetIRCDataThread()
 	for (int i=0; i<3; i++)
 		not_announced[i] = this->rptr.mod[i].defined;	// announce to all modules that are defined!
 	bool is_quadnet = (0 == ircddb.ip.compare("rr.openquad.net"));
+	bool doFind = true;
 	while (keep_running) {
 		int rc = ii->getConnectionState();
 		if (rc > 5 && rc < 8 && is_quadnet) {
@@ -380,6 +418,13 @@ void CQnetGateway::GetIRCDataThread()
 					} else
 						fprintf(stderr, "could not open %s\n", qnvoicefile.c_str());
 				}
+			}
+			if (doFind) {
+				printf("Finding Routes");
+				for (auto it=findRoute.begin(); it!=findRoute.end(); it++) {
+					ii->findUser(*it);
+				}
+				doFind = false;
 			}
 		}
 		threshold++;

@@ -16,6 +16,9 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <map>
+#include <set>
+
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "UnixDgramSocket.h"
@@ -103,7 +106,8 @@ private:
 
 	unsigned int vPacketCount;
 
-	std::map <uint32_t, uint16_t> portmap;
+	std::map<uint32_t, uint16_t> portmap;
+	std::set<std::string> findRoute;
 
 	// data needed for aprs login and aprs beacon
 	// RPTR defined in aprs.h
@@ -172,6 +176,8 @@ private:
 	void ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const bool is_from_g2);
 	void ProcessModem();
 	bool Flag_is_ok(unsigned char flag);
+	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
+	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
 
 	// read configuration file
 	bool read_config(char *);

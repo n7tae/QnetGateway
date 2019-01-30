@@ -58,6 +58,7 @@ gateway_longitude_d=0             # like the latitude
 gateway_desc1_d=''                # maximum of 20 characters, most special symbols are not allowed
 gateway_desc2_d=''                # just like desc1
 gateway_url_d='github.com/n7tae/QnetGateway' # 80 characters max
+gateway_find_route_d=''           # CSV list of route(s) to load on boot-up (prevents the "not in cache" message)
 
 ##########################################################################################################################
 #
