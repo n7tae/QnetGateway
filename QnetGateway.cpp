@@ -82,7 +82,7 @@ void CQnetGateway::UnpackCallsigns(const std::string &str, std::set<std::string>
 
 	while (std::string::npos != pos || std::string::npos != lastPos) {
 		std::string element = str.substr(lastPos, pos-lastPos);
-		if (element.length()>=3 && element.length()<=6) {
+		if (element.length()>=3 && element.length()<=8) {
 			ToUpper(element);
 			element.resize(CALL_SIZE, ' ');
 			set.insert(element);	// Found a token, add it to the list.
@@ -95,13 +95,13 @@ void CQnetGateway::UnpackCallsigns(const std::string &str, std::set<std::string>
 
 void CQnetGateway::PrintCallsigns(const std::string &key, const std::set<std::string> &set)
 {
-	printf("%s = [ ", key.c_str());
+	printf("%s = [", key.c_str());
 	for (auto it=set.begin(); it!=set.end(); it++) {
 		if (it != set.begin())
-			printf(", ");
+			printf(",");
 		printf("%s", (*it).c_str());
 	}
-	printf(" ]");
+	printf("]\n");
 }
 
 
@@ -422,9 +422,8 @@ void CQnetGateway::GetIRCDataThread()
 			if (doFind) {
 				printf("Finding Routes for...\n");
 				for (auto it=findRoute.begin(); it!=findRoute.end(); it++) {
-					std::string str(*it);
-					str.resize(CALL_SIZE, ' ');
-					printf("\t%s\n", str.c_str());
+					printf("\t%s\n", *it.c_str());
+					ii->findUser(*it);
 				}
 				doFind = false;
 			}
