@@ -283,7 +283,7 @@ GateMenu () {
 		elif [[ "$key" == d1* ]]; then gateway_desc1="${value:0:20}"
 		elif [[ "$key" == d2* ]]; then gateway_desc2="${value:0:20}"
 		elif [[ "$key" == w*  ]]; then gateway_url="${value:0:80}"
-		elif [[ "$key" == fr* ]]; then gateway_find_route="$value"
+		elif [[ "$key" == fr* ]]; then gateway_find_route="${value^^}"
 		elif [[ "$key" == e*  ]]; then SetBooleanValue aprs_enable "$value"
 		elif [[ "$key" == h*  ]]; then aprs_host="$value"
 		elif [[ "$key" == ap* ]]; then aprs_port="$value"
