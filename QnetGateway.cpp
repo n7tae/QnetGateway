@@ -420,11 +420,11 @@ void CQnetGateway::GetIRCDataThread()
 				}
 			}
 			if (doFind) {
-				printf("Finding Routes");
+				printf("Finding Routes for...\n");
 				for (auto it=findRoute.begin(); it!=findRoute.end(); it++) {
 					std::string str(*it);
 					str.resize(CALL_SIZE, ' ');
-					ii->findUser(str);
+					printf("\t%s\n", str.c_str());
 				}
 				doFind = false;
 			}
