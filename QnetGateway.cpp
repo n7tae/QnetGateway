@@ -57,7 +57,7 @@
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
 
-#define IRCDDB_VERSION "QnetGateway-8.0.1"
+#define IRCDDB_VERSION "QnetGateway-8.1.0"
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -422,7 +422,7 @@ void CQnetGateway::GetIRCDataThread()
 			if (doFind) {
 				printf("Finding Routes for...\n");
 				for (auto it=findRoute.begin(); it!=findRoute.end(); it++) {
-					std::this_thread::sleep_for(std::chrono::milliseconds(500));
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
 					printf("\t'%s'\n", it->c_str());
 					ii->findUser(*it);
 				}

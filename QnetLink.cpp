@@ -52,7 +52,7 @@
 #include "QnetConfigure.h"
 #include "QnetLink.h"
 
-#define LINK_VERSION "QnetLink7.0.1"
+#define LINK_VERSION "QnetLink7.0.2"
 
 std::atomic<bool> CQnetLink::keep_running(true);
 
@@ -502,13 +502,13 @@ void CQnetLink::UnpackCallsigns(const std::string &str, std::set<std::string> &s
 
 void CQnetLink::PrintCallsigns(const std::string &key, const std::set<std::string> &set)
 {
-	printf("%s = [ ", key.c_str());
+	printf("%s = [", key.c_str());
 	for (auto it=set.begin(); it!=set.end(); it++) {
 		if (it != set.begin())
-			printf(", ");
+			printf(",");
 		printf("%s", (*it).c_str());
 	}
-	printf(" ]");
+	printf("]\n");
 }
 
 /* process configuration file */
