@@ -180,10 +180,12 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 			SendTo(ack_voice);
 			return RT_DATA;
 		case 0x21U:
-			if (acknowledged)
+			if (acknowledged) {
 				fprintf(stderr, "ERROR: Header already acknowledged!\n");
-			else
-				acknowledged = true;
+			} else {
+				if (0x0U == buf[2])
+					acknowledged = true;
+			}
 			return RT_HEADER_ACK;
 		case 0x23U:
 			if (acknowledged) {
@@ -218,15 +220,6 @@ void CQnetITAP::Run(const char *cfgfile)
 
 	while (keep_running) {
 
-		// send queued frames
-		if (acknowledged) {
-			if (! queue.empty()) {
-				CFrame frame = queue.front();
-				queue.pop();
-				SendTo(frame.data());
-				acknowledged = false;
-			}
-		}
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(serfd, &readfds);
@@ -306,7 +299,17 @@ void CQnetITAP::Run(const char *cfgfile)
 			}
 			FD_CLR(ug2m, &readfds);
 		}
-	}
+
+		// send queued frames
+		if (keep_running && acknowledged) {
+			if (! queue.empty()) {
+				CFrame frame = queue.front();
+				queue.pop();
+				SendTo(frame.data());
+				acknowledged = false;
+			}
+		}
+}
 
 	close(serfd);
 	Gate2Modem.Close();
