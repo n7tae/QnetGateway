@@ -19,7 +19,9 @@
 #pragma once
 
 #include <atomic>
+#include <cstring>
 #include <string>
+#include <queue>
 
 #include <netinet/in.h>
 #include "Random.h"	// for streamid generation
@@ -43,8 +45,8 @@ enum REPLY_TYPE {
 #pragma pack(push, 1)
 typedef struct itap_tag {
 	unsigned char length;
-		// 41 for header (42 for writing)
-		// 16 for voice  (17 for writing)
+		// 41 for header
+		// 16 for voice
 	unsigned char type;
 		// 0x03U pong
 		// 0x10U header from icom
@@ -73,6 +75,27 @@ typedef struct itap_tag {
 	};
 } SITAP;
 #pragma pack(pop)
+
+class CFrame
+{
+public:
+	CFrame(const unsigned char *buf) {
+		memcpy(&frame.length, buf, buf[0]);
+	}
+
+	CFrame(const CFrame &from) {
+		memcpy(&frame.length, from.data(), from.size());
+	}
+
+	~CFrame() {}
+
+	size_t size() const { return (size_t)frame.length; }
+
+	const unsigned char *data() const { return &frame.length; }
+
+private:
+	SITAP frame;
+};
 
 class CQnetITAP
 {
@@ -117,4 +140,8 @@ private:
 	std::string modem2gate, gate2modem;
 	CUnixDgramWriter Modem2Gate;
 	CUnixDgramReader Gate2Modem;
+
+	// Queue
+	std::queue<CFrame> queue;
+	bool acknowledged;
 };

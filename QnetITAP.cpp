@@ -44,7 +44,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define ITAP_VERSION "QnetITAP-1.0.2"
+#define ITAP_VERSION "QnetITAP-2.0.0"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -173,16 +173,25 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 		case 0x03U:
 			return RT_PONG;
 		case 0x10U:
-			ack_voice[2] = 0x0U;
 			SendTo(ack_header);
 			return RT_HEADER;
 		case 0x12U:
+			ack_voice[2] = buf[2];
 			SendTo(ack_voice);
-			ack_voice[2]++;
 			return RT_DATA;
 		case 0x21U:
+			if (acknowledged)
+				fprintf(stderr, "ERROR: Header already acknowledged!\n");
+			else
+				acknowledged = true;
 			return RT_HEADER_ACK;
 		case 0x23U:
+			if (acknowledged) {
+				fprintf(stderr, "ERROR: voice frame %d already acknowledged!\n", (int)buf[2]);
+			} else {
+				if (0x0U == buf[3])
+					acknowledged = true;
+			}
 			return RT_DATA_ACK;
 		default:
 			return RT_UNKNOWN;
@@ -204,9 +213,20 @@ void CQnetITAP::Run(const char *cfgfile)
 	keep_running = true;
 	unsigned poll_counter = 0;
 	bool is_alive = false;
+	acknowledged = true;
 	std::chrono::steady_clock::time_point lastdata = std::chrono::steady_clock::now();
 
 	while (keep_running) {
+
+		// send queued frames
+		if (acknowledged) {
+			if (! queue.empty()) {
+				CFrame frame = queue.front();
+				queue.pop();
+				SendTo(frame.data());
+				acknowledged = false;
+			}
+		}
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(serfd, &readfds);
@@ -342,27 +362,20 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(itap.header.ur,   dstr.vpkt.hdr.ur,   8);
 			memcpy(itap.header.my,   dstr.vpkt.hdr.my,   8);
 			memcpy(itap.header.nm,   dstr.vpkt.hdr.nm,   4);
-			if (41 != SendTo(&itap.length)) {
-				printf("ERROR: ProcessGateway: Could not write Header ITAP packet\n");
-				return true;
-			}
 			if (log_qso)
-				printf("Sent ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(), itap.header.ur, itap.header.r2, itap.header.r1, itap.header.my, itap.header.nm);
+				printf("Queued ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(), itap.header.ur, itap.header.r2, itap.header.r1, itap.header.my, itap.header.nm);
 		} else {	// write an AMBE packet
 			itap.length = 16U;
 			itap.type = 0x22U;
 			itap.voice.counter = counter++;
 			itap.voice.sequence = dstr.vpkt.ctrl;
 			if (log_qso && (dstr.vpkt.ctrl & 0x40))
-				printf("Sent ITAP end of stream\n");
+				printf("Queued ITAP end of stream\n");
 			if ((dstr.vpkt.ctrl & ~0x40U) > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
 			memcpy(itap.voice.ambe, dstr.vpkt.vasd.voice, 12);
-			if (16 != SendTo(&itap.length)) {
-				printf("ERROR: ProcessGateway: Could not write AMBE ITAP packet\n");
-				return true;
-			}
 		}
+		queue.push(CFrame(&itap.length));
 
 	} else
 		printf("DEBUG: ProcessGateway: unusual packet size read len=%d\n", len);
