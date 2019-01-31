@@ -2,6 +2,8 @@
 *.d
 *.gch
 qn.cfg
+qndtmf
+gwys.txt
 qnitap
 qndvap
 qndvrptr
