@@ -371,7 +371,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(itap.header.my,   dstr.vpkt.hdr.my,   8);
 			memcpy(itap.header.nm,   dstr.vpkt.hdr.nm,   4);
 			if (log_qso)
-				printf("Queued ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(), itap.header.ur, itap.header.r2, itap.header.r1, itap.header.my, itap.header.nm);
+				printf("Queued ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(), itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
 		} else {	// write an AMBE packet
 			itap.length = 16U;
 			itap.type = 0x22U;
