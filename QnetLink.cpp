@@ -3118,7 +3118,7 @@ void CQnetLink::Process()
 									printf("END from local g2: cntr=%04x, streamID=%04x, %d bytes\n", ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), length);
 
 								if ('\0' == notify_msg[i][0]) {
-									if (bool_rptr_ack)
+									if (bool_rptr_ack && ' ' != your[i])
 										rptr_ack(i);
 								}
 
@@ -3183,7 +3183,7 @@ void CQnetLink::Process()
 			FD_CLR (Gate2Link.GetFD(), &fdset);
 		}
 		for (int i=0; i<3; i++) {
-			if (keep_running && notify_msg[i][0] && 0x0U == tracing[i].streamid && ' ' != your[i]) {
+			if (keep_running && notify_msg[i][0] && 0x0U == tracing[i].streamid) {
 				PlayAudioNotifyThread(notify_msg[i]);
 				notify_msg[i][0] = '\0';
 			}
