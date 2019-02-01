@@ -52,7 +52,7 @@
 #include "QnetConfigure.h"
 #include "QnetLink.h"
 
-#define LINK_VERSION "QnetLink7.0.2"
+#define LINK_VERSION "QnetLink7.0.3"
 
 std::atomic<bool> CQnetLink::keep_running(true);
 
@@ -2674,6 +2674,7 @@ void CQnetLink::Process()
 		if (keep_running && FD_ISSET(Gate2Link.GetFD(), &fdset)) {
 			SDSTR dstr;
 			int length = Gate2Link.Read(dstr.pkt_id, 100);
+			static unsigned char your[3];
 
 			if ((length==58 || length==29 || length==32) && dstr.flag[0]==0x73 && dstr.flag[1] == 0x12 && dstr.flag[2] ==0x0 && (0==memcmp(dstr.pkt_id,"DSTR", 4) || 0==memcmp(dstr.pkt_id,"CCS_", 4)) && dstr.vpkt.icm_id==0x20 && (dstr.remaining==0x30 || dstr.remaining==0x13 || dstr.remaining==0x16)) {
 
@@ -2681,7 +2682,7 @@ void CQnetLink::Process()
 					if (qso_details)
 						printf("START from local g2: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes on %s\n", ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm, dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, length, gate2link.c_str());
 
-					/* save mycall */
+					// save mycall
 					memcpy(call, dstr.vpkt.hdr.my, 8);
 					call[8] = '\0';
 
@@ -2694,6 +2695,8 @@ void CQnetLink::Process()
 						i = 2;
 
 					if (i >= 0) {
+						// save the first char of urcall
+						your[i] = dstr.vpkt.hdr.ur[0];	// used by rptr_ack
 						memcpy(dtmf_mycall[i], dstr.vpkt.hdr.my, 8);
 						dtmf_mycall[i][8] = '\0';
 
@@ -3179,7 +3182,7 @@ void CQnetLink::Process()
 			FD_CLR (Gate2Link.GetFD(), &fdset);
 		}
 		for (int i=0; i<3; i++) {
-			if (keep_running && notify_msg[i][0] && 0x0U == tracing[i].streamid) {
+			if (keep_running && notify_msg[i][0] && 0x0U == tracing[i].streamid && ' ' != your[i]) {
 				PlayAudioNotifyThread(notify_msg[i]);
 				notify_msg[i][0] = '\0';
 			}
