@@ -911,7 +911,7 @@ void CQnetLink::Process()
 	char ip[IP_SIZE + 1];
 	bool found = false;
 
-	usigned char your[3] = { 'C', 'C', 'C' };
+	unsigned char your[3] = { 'C', 'C', 'C' };
 
 	char cmd_2_dcs[23];
 	unsigned char dcs_seq[3] = { 0x00, 0x00, 0x00 };
