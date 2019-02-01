@@ -911,6 +911,8 @@ void CQnetLink::Process()
 	char ip[IP_SIZE + 1];
 	bool found = false;
 
+	usigned char your[3] = { 'C', 'C', 'C' };
+
 	char cmd_2_dcs[23];
 	unsigned char dcs_seq[3] = { 0x00, 0x00, 0x00 };
 	struct {
@@ -2674,7 +2676,6 @@ void CQnetLink::Process()
 		if (keep_running && FD_ISSET(Gate2Link.GetFD(), &fdset)) {
 			SDSTR dstr;
 			int length = Gate2Link.Read(dstr.pkt_id, 100);
-			static unsigned char your[3];
 
 			if ((length==58 || length==29 || length==32) && dstr.flag[0]==0x73 && dstr.flag[1] == 0x12 && dstr.flag[2] ==0x0 && (0==memcmp(dstr.pkt_id,"DSTR", 4) || 0==memcmp(dstr.pkt_id,"CCS_", 4)) && dstr.vpkt.icm_id==0x20 && (dstr.remaining==0x30 || dstr.remaining==0x13 || dstr.remaining==0x16)) {
 
