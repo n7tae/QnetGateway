@@ -360,7 +360,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			itap.length = 41U;
 			itap.type = 0x20;
 			memcpy(itap.header.flag, dstr.vpkt.hdr.flag, 3);
-			if (RPTR_MOD == dstar.vpkt.hdr.r2[7]) {
+			if (RPTR_MOD == dstr.vpkt.hdr.r2[7]) {
 				memcpy(itap.header.r1,   dstr.vpkt.hdr.r2,   8);
 				memcpy(itap.header.r2,   dstr.vpkt.hdr.r1,   8);
 			} else {
