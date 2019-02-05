@@ -44,8 +44,8 @@ bool CQnetConfigure::ReadConfigFile(const char *configfile, std::map<std::string
 {
 	FILE *fp = fopen(configfile, "r");
 	if (fp) {
-		char line[128];
-		while (fgets(line, 128, fp)) {
+		char line[2048];
+		while (fgets(line, 2048, fp)) {
 			char *key = strtok(line, "=");
 			key = Trim(key);
 			if (strlen(key) && '#' != *key) {
