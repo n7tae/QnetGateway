@@ -1225,7 +1225,7 @@ void CQnetGateway::ProcessModem()
 			if (recvlen == 58) {
 				vPacketCount = 0U;
 				if (bool_qso_details)
-					printf("id=%04x cntr=%04x start RPTR ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm);
+					printf("id=%04x cntr=%04x start RPTR flag=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(rptrbuf.vpkt.streamid), ntohs(rptrbuf.counter), rptrbuf.vpkt.hdr.flag[0], rptrbuf.vpkt.hdr.flag[1], rptrbuf.vpkt.hdr.flag[2], rptrbuf.vpkt.hdr.ur, rptrbuf.vpkt.hdr.r1, rptrbuf.vpkt.hdr.r2, rptrbuf.vpkt.hdr.my, rptrbuf.vpkt.hdr.nm);
 
 				if (0==memcmp(rptrbuf.vpkt.hdr.r1, OWNER.c_str(), 7) &&	Flag_is_ok(rptrbuf.vpkt.hdr.flag[0])) {
 
