@@ -81,7 +81,7 @@ public:
 	CQnetGateway();
 	~CQnetGateway();
 	void Process();
-	int Init(char *cfgfile);
+	bool Init(char *cfgfile);
 
 private:
 	// text stuff

@@ -232,7 +232,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 		path.assign("module_");
 		path.append(1, 'a' + m);
 		std::string type;
-		if (cfg.GetValue(path, estr, type, 1, 8)) {
+		if (cfg.GetValue(path, estr, type, 1, 16)) {
 			rptr.mod[m].defined = false;
 		} else {
 			printf("Found Module: %s = '%s'\n", path.c_str(), type.c_str());
@@ -2384,7 +2384,7 @@ void CQnetGateway::qrgs_and_maps()
 	return;
 }
 
-int CQnetGateway::Init(char *cfgfile)
+bool CQnetGateway::Init(char *cfgfile)
 {
 	short int i;
 	struct sigaction act;
@@ -2396,7 +2396,7 @@ int CQnetGateway::Init(char *cfgfile)
 	int rc = regcomp(&preg, "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", REG_EXTENDED | REG_NOSUB);
 	if (rc != REG_NOERROR) {
 		printf("The IRC regular expression is NOT valid\n");
-		return 1;
+		return true;
 	}
 
 	act.sa_handler = sigCatch;
@@ -2404,15 +2404,15 @@ int CQnetGateway::Init(char *cfgfile)
 	act.sa_flags = SA_RESTART;
 	if (sigaction(SIGTERM, &act, 0) != 0) {
 		printf("sigaction-TERM failed, error=%d\n", errno);
-		return 1;
+		return true;
 	}
 	if (sigaction(SIGINT, &act, 0) != 0) {
 		printf("sigaction-INT failed, error=%d\n", errno);
-		return 1;
+		return true;
 	}
 	if (sigaction(SIGPIPE, &act, 0) != 0) {
 		printf("sigaction-PIPE failed, error=%d\n", errno);
-		return 1;
+		return true;
 	}
 
 	for (i = 0; i < 3; i++)
@@ -2421,7 +2421,7 @@ int CQnetGateway::Init(char *cfgfile)
 	/* process configuration file */
 	if ( read_config(cfgfile) ) {
 		printf("Failed to process config file %s\n", cfgfile);
-		return 1;
+		return true;
 	}
 
 	playNotInCache = false;
@@ -2489,7 +2489,7 @@ int CQnetGateway::Init(char *cfgfile)
 	bool ok = ii->open();
 	if (!ok) {
 		printf("irc open failed\n");
-		return 1;
+		return true;
 	}
 
 	rc = ii->getConnectionState();
@@ -2517,15 +2517,15 @@ int CQnetGateway::Init(char *cfgfile)
 	g2_sock = open_port(g2_external);
 	if (0 > g2_sock) {
 		printf("Can't open %s:%d\n", g2_external.ip.c_str(), g2_external.port);
-		return 1;
+		return true;
 	}
 
 	// Open unix sockets between qngateway and qnlink
 	Gate2Link.SetUp(gate2link.c_str());
 	if (Link2Gate.Open(link2gate.c_str()))
-		return 1;
+		return true;
 	if (Modem2Gate.Open(modem2gate.c_str()))
-		return 1;
+		return true;
 
 	for (i=0; i<3; i++) {
 		if (rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
@@ -2597,7 +2597,7 @@ int CQnetGateway::Init(char *cfgfile)
 
 	if (bool_send_qrgs)
 		qrgs_and_maps();
-	return 0;
+	return false;
 }
 
 CQnetGateway::CQnetGateway()
