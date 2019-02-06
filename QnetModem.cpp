@@ -601,7 +601,8 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		dstr.remaining = 0x30;
 		dstr.vpkt.ctrl = 0x80;
 
-		memcpy(dstr.vpkt.hdr.flag, frame.header.flag, 3);
+		//memcpy(dstr.vpkt.hdr.flag, frame.header.flag, 3);
+		memset(dstr.vpkt.hdr.flag, 0, 3);
 		memcpy(dstr.vpkt.hdr.r1,   frame.header.r1,   8);
 		memcpy(dstr.vpkt.hdr.r2,   frame.header.r2,   8);
 		memcpy(dstr.vpkt.hdr.ur,   frame.header.ur,   8);
