@@ -551,7 +551,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 			PacketWait.start();
 			g2_is_active = true;
 			if (LOG_QSO)
-				printf("Queued to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.ur, frame.header.r1, frame.header.r2, frame.header.my, frame.header.nm);
+				printf("Queued to %s flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.flag[0], frame.header.flag[1], frame.header.flag[2], frame.header.ur, frame.header.r1, frame.header.r2, frame.header.my, frame.header.nm);
 		} else {	// write a voice data packet
 			if (g2_is_active) {
 				if (dstr.vpkt.ctrl & 0x40U) {
@@ -601,16 +601,15 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		dstr.remaining = 0x30;
 		dstr.vpkt.ctrl = 0x80;
 
-		//memcpy(dstr.vpkt.hdr.flag, frame.header.flag, 3);
-		memset(dstr.vpkt.hdr.flag, 0, 3);
+		memcpy(dstr.vpkt.hdr.flag, frame.header.flag, 3);
 		memcpy(dstr.vpkt.hdr.r1,   frame.header.r1,   8);
 		memcpy(dstr.vpkt.hdr.r2,   frame.header.r2,   8);
 		memcpy(dstr.vpkt.hdr.ur,   frame.header.ur,   8);
-		//dstr.vpkt.hdr.flag[0] &= ~0x40U;	// clear this bit
+		dstr.vpkt.hdr.flag[0] &= ~0x40U;	// clear this bit
 
-		memcpy(dstr.vpkt.hdr.my,   frame.header.my,    8);
-		memcpy(dstr.vpkt.hdr.nm,   frame.header.nm,    4);
-		memcpy(dstr.vpkt.hdr.flag, dstr.vpkt.hdr.pfcs, 2);
+		memcpy(dstr.vpkt.hdr.my,   frame.header.my,   8);
+		memcpy(dstr.vpkt.hdr.nm,   frame.header.nm,   4);
+		memcpy(dstr.vpkt.hdr.pfcs, frame.header.pfcs, 2);
 		if (58 != Modem2Gate.Write(dstr.pkt_id, 58)) {
 			printf("ERROR: ProcessModem: Could not write gateway header packet\n");
 			return true;
