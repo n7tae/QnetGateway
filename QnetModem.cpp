@@ -98,7 +98,7 @@ bool CQnetModem::GetVersion()
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			MODEM_RESPONSE resp = GetModemData(&frame.start, sizeof(SVERSION));
 			if (resp == VERSION_RESPONSE && frame.length > 14U) {
-				frame.version[frame.length-1U] = '\0';	// just to make sure!
+				frame.version[frame.length-4U] = '\0';	// just to make sure!
 				if      (0 == memcmp(frame.version, "MMDVM ", 6U))
 					hardwareType = HWT_MMDVM;
 				else if (0 == memcmp(frame.version, "DVMEGA", 6U))
@@ -119,7 +119,7 @@ bool CQnetModem::GetVersion()
 					hardwareType = HWT_UNKNOWN;
 				}
 
-				printf("MMDVM protocol version: %u, Modem: %s", (unsigned int)frame.protocol, frame.version);
+				printf("MMDVM protocol version: %u, Modem: %s", (unsigned int)frame.protocol, (char *)frame.version);
 				return false;
 			}
 		}
