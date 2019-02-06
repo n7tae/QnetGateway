@@ -129,10 +129,6 @@ private:
 	// must be fed into our local repeater modules.
 	STOREPEATER toRptr[3]; // 0=A, 1=B, 2=C
 
-	// input from our own local repeater modules
-	//SDSTR rptrbuf; // 58 or 29 or 32, max is 58
-	//struct sockaddr_in fromRptr;
-
 	SDSTR end_of_audio;
 
 	// send packets to g2_link
