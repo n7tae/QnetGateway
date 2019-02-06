@@ -704,7 +704,7 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	cfg.GetValue(modem_path+"_rx_invert", type, RX_INVERT);
 	cfg.GetValue(modem_path+"_tx_invert", type, TX_INVERT);
 	cfg.GetValue(modem_path+"_ptt_invert", type, PTT_INVERT);
-	cfg.GetValue(modem_path+"_delay", type, TX_DELAY, 0, 1000);
+	cfg.GetValue(modem_path+"_tx_delay", type, TX_DELAY, 0, 1000);
 	cfg.GetValue(modem_path+"_rx_level", type, RX_LEVEL, 0, 255);
 	cfg.GetValue(modem_path+"_tx_level", type, TX_LEVEL, 0, 255);
 	cfg.GetValue(modem_path+"_packet_wait", type, PACKET_WAIT, 18, 30);
