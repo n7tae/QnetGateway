@@ -27,7 +27,7 @@
 #include "UnixDgramSocket.h"
 #include "QnetConfigure.h"
 
-#define DVRPTR_VERSION "QnetDVRPTR-6.0.2"
+#define DVRPTR_VERSION "QnetDVRPTR-6.0.3"
 
 #define BAUD B115200
 #define CALL_SIZE 8
@@ -1897,8 +1897,8 @@ static bool read_config(const char *cfgFile)
 
 	cfg.GetValue(path+"_rqst_count", type, RQST_COUNT, 6, 20);
 
-	cfg.GetValue(path+"_inverse_rx", type, RX_Inverse);
-	cfg.GetValue(path+"_inverse_tx", type, TX_Inverse);
+	cfg.GetValue(path+"_rx_invert", type, RX_Inverse);
+	cfg.GetValue(path+"_tx_invert", type, TX_Inverse);
 
 	path.assign("timing_");
 	cfg.GetValue(path+"timeout_remote_g2", estr, REMOTE_TIMEOUT, 1, 10);

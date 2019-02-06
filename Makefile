@@ -37,7 +37,7 @@ SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 
-ALL_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr qnitap
+ALL_PROGRAMS=qngateway qnlink qnremote qnvoice qnrelay qndvap qndvrptr qnitap qnmodem
 BASE_PROGRAMS=qngateway qnlink qnremote qnvoice
 
 all    : $(ALL_PROGRAMS)
@@ -46,6 +46,7 @@ relay  : qnrelay
 dvap   : qndvap
 dvrptr : qndvrptr
 itap   : qnitap
+modem  : qnmodem
 
 qngateway : QnetGateway.o aprs.o UnixDgramSocket.o QnetConfigure.o $(IRCOBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
@@ -58,6 +59,9 @@ qnrelay : QnetRelay.o UnixDgramSocket.o QnetConfigure.o
 
 qnitap : QnetITAP.o Random.o UnixDgramSocket.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
+
+qnmodem : QnetModem.o Random.o UnixDgramSocket.o QnetConfigure.o
+		g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
 qndvap : QnetDVAP.o DVAPDongle.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
@@ -127,6 +131,14 @@ installitap : qnitap
 	systemctl daemon-reload
 	systemctl start qnitap$(MODULE).service
 
+installmodem : qnmodem
+	######### QnetModem #########
+	/bin/ln -f qnmodem $(BINDIR)/qnmodem$(MODULE)
+	sed -e "s/XXX/qnmodem$(MODULE)/" system/qnmodem.service > $(SYSDIR)/qnmodem$(MODULE).service
+	systemctl enable qnmodem$(MODULE).service
+	systemctl daemon-reload
+	systemctl start qnmodem$(MODULE).service
+
 installdvap : qndvap
 	######### QnetDVAP #########
 	/bin/ln -f qndvap $(BINDIR)/qndvap$(MODULE)
@@ -187,6 +199,14 @@ uninstallmmdvm :
 	/bin/rm -f $(BINDIR)/MMDVMHost$(MODULE)
 	/bin/rm -f $(CFGDIR)/MMDVM$(MODULE).qn
 	sudo systemctl daemon-reload
+
+uninstallmodem :
+	######### QnetModem #########
+	systemctl stop qnmodem$(MODULE).service
+	systemctl disable qnmodem$(MODULE).service
+	/bin/rm -f $(SYSDIR)/qnmodem$(MODULE).service
+	/bin/rm -f $(BINDIR)/qnmodem$(MODULE)
+	systemctl daemon-reload
 
 uninstallitap :
 	######### QnetITAP #########

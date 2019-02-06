@@ -57,7 +57,7 @@
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
 
-#define IRCDDB_VERSION "QnetGateway-8.1.0"
+#define IRCDDB_VERSION "QnetGateway-8.1.1"
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -236,14 +236,11 @@ bool CQnetGateway::read_config(char *cfgFile)
 			rptr.mod[m].defined = false;
 		} else {
 			printf("Found Module: %s = '%s'\n", path.c_str(), type.c_str());
-			if (0 == type.compare("dvap")) {
-				rptr.mod[m].package_version = "QnetDVAP";
-			} else if (0 == type.compare("dvrptr")) {
-				rptr.mod[m].package_version = "QnetDVRPTR";
-			} else if (0 == type.compare("mmdvm")) {
-				rptr.mod[m].package_version = "QnetRelay";
-			} else if (0 == type.compare("itap")) {
-				rptr.mod[m].package_version = "QnetITAP";
+			if        (0 == type.compare("dvap"))       { rptr.mod[m].package_version = "QnetDVAP";
+			} else if (0 == type.compare("dvrptr"))     { rptr.mod[m].package_version = "QnetDVRPTR";
+			} else if (0 == type.compare("mmdvmhost"))  { rptr.mod[m].package_version = "QnetRelay";
+			} else if (0 == type.compare("mmdvmmodem")) { rptr.mod[m].package_version = "QnetModem";
+			} else if (0 == type.compare("itap"))       { rptr.mod[m].package_version = "QnetITAP";
 			} else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
@@ -251,8 +248,19 @@ bool CQnetGateway::read_config(char *cfgFile)
 			rptr.mod[m].defined = true;
 
 			path.append(1, '_');
-			cfg.GetValue(path+"frequency", type, rptr.mod[m].frequency, 0.0, 1.0e12);
-			cfg.GetValue(path+"offset", type, rptr.mod[m].offset, -1.0e12, 1.0e12);
+			if (cfg.KeyExists(path+"tx_frequency")) {
+				cfg.GetValue(path+"tx_frequency", type, rptr.mod[m].frequency, 0.0, 6.0E9);
+				double rx_freq;
+				cfg.GetValue(path+"rx_frequency", type, rx_freq, 0.0, 6.0E9);
+				if (0.0 == rx_freq)
+					rx_freq = rptr.mod[m].frequency;
+				rptr.mod[m].offset = rx_freq - rptr.mod[m].frequency;
+			} else if (cfg.KeyExists(path+"frequency")) {
+				cfg.GetValue(path+"frequency", type, rptr.mod[m].frequency, 0.0, 1.0E9);
+				rptr.mod[m].offset = 0.0;
+			} else {
+				rptr.mod[m].frequency = rptr.mod[m].offset = 0.0;
+			}
 			cfg.GetValue(path+"range", type, rptr.mod[m].range, 0.0, 1609344.0);
 			cfg.GetValue(path+"agl", type, rptr.mod[m].agl, 0.0, 1000.0);
 

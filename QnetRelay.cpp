@@ -36,7 +36,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "QnetRelay-1.0.2"
+#define RELAY_VERSION "QnetRelay-1.0.3"
 
 std::atomic<bool> CQnetRelay::keep_running(true);
 
@@ -166,7 +166,7 @@ bool CQnetRelay::Run(const char *cfgfile)
 			len = ::recvfrom(msock, buf, 100, 0, (sockaddr *)&addr, &size);
 
 			if (len < 0) {
-				fprintf(stderr, "ERROR: Run: recvfrom(mmdvm) return error %d: %s\n", errno, strerror(errno));
+				fprintf(stderr, "ERROR: Run: recvfrom(mmdvmhost) return error %d: %s\n", errno, strerror(errno));
 				break;
 			}
 
@@ -248,7 +248,7 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(dsrp.voice.ambe, dstr.vpkt.vasd.voice, 12);
 			int ret = SendTo(msock, dsrp.title, 21, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 21) {
-				printf("ERROR: ProcessGateway: Could not write AMBE mmdvm packet\n");
+				printf("ERROR: ProcessGateway: Could not write AMBE mmdvmhost packet\n");
 				return true;
 			}
 		} else {			// write a Header packet
@@ -267,7 +267,7 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(dsrp.header.pfcs, dstr.vpkt.hdr.pfcs, 2);
 			int ret = SendTo(msock, dsrp.title, 49, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 49) {
-				printf("ERROR: ProcessGateway: Could not write Header mmdvm packet\n");
+				printf("ERROR: ProcessGateway: Could not write Header mmdvmhost packet\n");
 				return true;
 			}
 			if (log_qso)
@@ -360,13 +360,13 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	std::string mmdvm_path("module_");
 	std::string type;
 	if (0 > assigned_module) {
-		// we need to find the lone mmdvm module
+		// we need to find the lone mmdvmhost module
 		for (int i=0; i<3; i++) {
 			std::string test(mmdvm_path);
 			test.append(1, 'a'+i);
 			if (cfg.KeyExists(test)) {
 				cfg.GetValue(test, estr, type, 1, 16);
-				if (type.compare("mmdvm"))
+				if (type.compare("mmdvmhost"))
 					continue;	// this ain't it!
 				mmdvm_path.assign(test);
 				assigned_module = i;
@@ -374,16 +374,16 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 			}
 		}
 		if (0 > assigned_module) {
-			fprintf(stderr, "Error: no 'mmdvm' module found\n!");
+			fprintf(stderr, "Error: no 'mmdvmhost' module found\n!");
 			return true;
 		}
 	} else {
-		// make sure mmdvm module is defined
+		// make sure mmdvmhost module is defined
 		mmdvm_path.append(1, 'a' + assigned_module);
 		if (cfg.KeyExists(mmdvm_path)) {
 			cfg.GetValue(mmdvm_path, estr, type, 1, 16);
-			if (type.compare("mmdvm")) {
-				fprintf(stderr, "%s = %s is not 'mmdvm' type!\n", mmdvm_path.c_str(), type.c_str());
+			if (type.compare("mmdvmhost")) {
+				fprintf(stderr, "%s = %s is not 'mmdvmhost' type!\n", mmdvm_path.c_str(), type.c_str());
 				return true;
 			}
 		} else {

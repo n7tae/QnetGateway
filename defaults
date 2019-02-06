@@ -96,29 +96,49 @@ module_x_callsign=''       # if you operate in a 'restriction mode', use your pe
 module_x_packet_wait=25    # how many milliseconds to wait on packets in a voicestream
 module_x_acknowledge=false # Do you want an ACK back?
 module_x_ack_delay=250     # millisecond delay before acknowledgment
-module_x_frequency=0       # if you specify here, this frequency will show up on the QuadNet USER GATEWAYS webpage
-module_x_offset=0          # usually the duplex tx-rx offset, but for dvap, it's a frequency tweak
 module_x_range=0           # the range of this repeater, in meters 1609.344 meters is 1.0 miles
 module_x_agl=0             # the height above ground level for this repeater's antenna
 
 ##########################################################################################################################
 #
-# MMDVM - Special parameters when: module_x='mmdvm'
+# MMDVMHost - Special parameters when: module_x='mmdvmhost'
 #
-mmdvm_internal_ip='0.0.0.0' # where MMDVMHost will find the QnetRelay program
-mmdvm_gateway_port=20010    # which port will QnetRelay be sending on
-mmdvm_local_port=20011      # which port will MMDVMHost be sending on
+mmdvmhost_tx_frequency=0        # in MHz, not required, set in MMDVM.qn in Hz
+mmdvmhost_rx_frequency=0        # in Mhz, not required, set in MMDVM.qn in Hz
+mmdvmhost_internal_ip='0.0.0.0' # where MMDVMHost will find the QnetRelay program
+mmdvmhost_gateway_port=20010    # which port will QnetRelay be sending on
+mmdvmhost_local_port=20011      # which port will MMDVMHost be sending on
+
+##########################################################################################################################
+#
+# MMDVM Modem - Special parameters when: module_x='mmdmvmmodem'
+#
+mmdvmmodem_device='/dev/ttyAMA0' # where QnetModem will find the MMDVM modem
+mmdvmmodem_tx_frequency=0        # in MHz, you MUST set a valid transmitter frequency!
+mmdvmmodem_rx_frequency=0        # in MHz. If unset, then it's simplex, where rx=tx
+mmdvmmodem_tx_offset=0           # in MHz. A frequency tweak.
+mmdvmmodem_rx_offset=0           # in MHz. A frequency tweak.
+mmdvmmodem_duplex=false          # set to true for duplex for modems that support it
+mmdvmmodem_rx_invert=false       # receiver gate
+mmdvmmodem_tx_invert=true        # transmitter gate
+mmdvmmodem_ppt_invert=false      # push-to-talk gate
+mmdvmmodem_tx_delay=100          # delay in milliseconds
+mmdvmmodem_rx_level=128          # range is 0-255
+mmdvmmodem_tx_level=128          # range is 0-255
 
 ##########################################################################################################################
 #
 # ITAP - Special parameters when: module_x='itap'
 #
 itap_device='/dev/ttyUSB0' # where the serial-to-USB cable show up
+itap_frequency=0           # in MHz, not required for either mode, for AP mode, the simplex frequency is set on your radio
 
 ##########################################################################################################################
 #
 # DVAP - Special parameters when: module.x='dvap'
 #
+module_x_frequency=0          # in MHz, you must specify an operational frequency for the DVAP
+module_x_offset=0             # it's a frequency tweak, in Hz
 dvap_power=10                 # TX power level: -12 to 10, 10 is maximum power
 dvap_squelch=-100             # RX Squelch: -128 to -45, -100 to -80 usually works best
 dvap_serial_number='APXXXXXX' # The serial number of your DVAP is visible through the bottom of the case
@@ -128,6 +148,8 @@ dvap_serial_number='APXXXXXX' # The serial number of your DVAP is visible throug
 # DVRPTR - Special parameters when: module_x='dvrptr'
 #
 # if you don't know what your DVRPTR serial number is, look in the log file after running qndvrptr
+dvrptr_tx_frequency=0  # in MHz, not required
+dvrptr_rx_frequency=0  # in MHz, also not required
 dvrptr_serial_number='00.00.00.00' # the DVRPTR serial number
 dvrptr_rf_on='RFON'    # put this in YRCALL to disable the channel
 dvrptr_rf_off='RFOFF'  # put this in YRCALL to enable the channel

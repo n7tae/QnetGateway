@@ -99,6 +99,20 @@ InstallSystem () {
 			fi
 		fi
 	fi
+	if [ $nmodem -gt 0 ]; then
+		if [ -z ${1} ]; then
+			make qnmodem -j$n
+		fi
+		if [ $nmodem -eq 1 ]; then
+			sudo make ${1}installmodem
+		else
+			sudo make MODULE=$amodem[0] ${1}installmodem
+			sudo make MODULE=$amodem[1] ${1}installmodem
+			if [ $nmmdvm -eq 3 ]; then
+				sudo make MODULE=$amodem[2] ${1}installmodem
+			fi
+		fi
+	fi
 }
 
 BaseStatus () {
@@ -149,10 +163,14 @@ ModuleStatus () {
 	else
 		mcvar="n${3}"
 		ModuleProcess[$1]="qn$3"
-		if [[ "${ModuleProcess[$1]}" == 'qnmmdvm' ]]; then
+		if [[ "${ModuleProcess[$1]}" == 'qnmmdvmhost' ]]; then
 			ModuleProcess[$1]='qnrelay'
 			MMDVMProcess[$1]='mmdvm'
 			MMDVMState[$1]='not installed'
+		elif [[ "${ModuleProcess[$1]}" == 'qnmmdvmmodem' ]] then
+			ModuleProcess[$1]='qnmodem'
+			MMDVMProcess[$1]=''
+			MMDVMState[$1]='EMPTY'
 		else
 			MMDVMState[$1]='EMPTY'
 			MMDVMProcess[$1]=''
@@ -187,7 +205,7 @@ ModuleStatus () {
 				MMDVMState[$1]='not installed'
 			fi
 		fi
-		if [[ "$3" == 'mmdvm' ]]; then
+		if [[ "$3" == 'mmdvmhost' ]]; then
 			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]} - ${MMDVMProcess[$1]} is ${MMDVMState[$1]}"
 		else
 			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]}"
@@ -515,6 +533,7 @@ ndvap=0
 ndvrptr=0
 nitap=0
 nmmdvm=0
+nmodem=0
 
 for m in a b c ; do
 	mod=module_${m}
@@ -529,13 +548,16 @@ for m in a b c ; do
 	elif [[ "$type" == 'itap' ]]; then
 		aitap[${nitap}]=${m}
 		nitap=$((nitap + 1))
-	elif [[ "$type" == 'mmdvm' ]]; then
+	elif [[ "$type" == 'mmdvmhost' ]]; then
 		ammdvm[${nmmdvm}]=${m}
 		nmmdvm=$((nmmdvm + 1))
+	elif [[ "$type" == 'mmdvmmodem' ]]; then
+		amodem[${nmodem}]=${m}
+		nmodem=$((nmodem + 1))
 	fi
 done
 
-MODULE_COUNT=$((ndvap + ndvrptr + nitap + nmmdvm))
+MODULE_COUNT=$((ndvap + ndvrptr + nitap + nmmdvm + nmodem))
 
 while [[ "$ans" != q* ]]; do
 	clear
