@@ -119,14 +119,14 @@ bool CQnetModem::GetVersion()
 					hardwareType = HWT_UNKNOWN;
 				}
 
-				printf("MMDVM protocol version: %u, Modem: %s", (unsigned int)frame.protocol, (char *)frame.version);
+				printf("MMDVM protocol version: %u, Modem: %s\n", (unsigned int)frame.protocol, (char *)frame.version);
 				return false;
 			}
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 	}
-	fprintf(stderr, "Unable to read the firmware version after six attempts");
+	fprintf(stderr, "Unable to read the firmware version after six attempts\n");
 	return true;
 }
 
