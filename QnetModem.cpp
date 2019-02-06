@@ -176,7 +176,7 @@ bool CQnetModem::SetFrequency()
 				break;
 		}
 	}
-	printf("Modem frequencies set: rx=%u(%u) tx=%u(%u) Hz\n", (uint32_t)RX_FREQUENCY, rx_frequency, (uint32_t)TX_FREQUENCY, tx_frequency);
+	printf("Modem frequencies set: rx=%u(%u) tx=%u(%u) Hz\n", (uint32_t)(1.0E6 * RX_FREQUENCY), rx_frequency, (uint32_t)(1.0E6 * TX_FREQUENCY), tx_frequency);
 	return false;
 }
 
