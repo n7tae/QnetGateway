@@ -621,12 +621,12 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		dstr.vpkt.ctrl = ctrl++;
 		if (ctrl >= 21U)
 			ctrl = 0U;
-		if (frame.type==TYPE_DATA) {
+		if (frame.type == TYPE_DATA) {
 			memcpy(dstr.vpkt.vasd.voice, frame.voice.ambe, 12);
 		} else {
-			const unsigned char silence[12] = { 0x4EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70,0x4FU,0x93U };
+			const unsigned char silence[12] = { 0x4EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 			memcpy(dstr.vpkt.vasd.voice, silence, 12);
-			dstr.vpkt.ctrl &= 0x40U;
+			dstr.vpkt.ctrl |= 0x40U;
 		}
 		if (29 != Modem2Gate.Write(dstr.pkt_id, 29)) {
 			printf("ERROR: ProcessModem: Could not write gateway voice packet\n");
