@@ -62,7 +62,7 @@ typedef struct version_tag {
 	unsigned char length;
 	unsigned char type;
 	unsigned char protocol;
-	unsigned char version[252];
+	unsigned char version[251];
 } SVERSION;
 
 typedef struct mmodem_tag {

@@ -119,7 +119,7 @@ bool CQnetModem::GetVersion()
 					hardwareType = HWT_UNKNOWN;
 				}
 
-				printf("MMDVM protocol version: %u, Modem: %s", frame.protocol, frame.version);
+				printf("MMDVM protocol version: %u, Modem: %s", (unsigned int)frame.protocol, frame.version);
 				return false;
 			}
 		}
