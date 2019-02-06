@@ -167,7 +167,7 @@ ModuleStatus () {
 			ModuleProcess[$1]='qnrelay'
 			MMDVMProcess[$1]='mmdvm'
 			MMDVMState[$1]='not installed'
-		elif [[ "${ModuleProcess[$1]}" == 'qnmmdvmmodem' ]] then
+		elif [[ "${ModuleProcess[$1]}" == 'qnmmdvmmodem' ]]; then
 			ModuleProcess[$1]='qnmodem'
 			MMDVMProcess[$1]=''
 			MMDVMState[$1]='EMPTY'
