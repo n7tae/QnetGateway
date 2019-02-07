@@ -554,6 +554,7 @@ WriteCFGFile () {
 				q=${p}_rx_invert;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_ptt_invert;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_tx_delay;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_device;        [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			fi
 		fi
 	done
