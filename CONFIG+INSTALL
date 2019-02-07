@@ -11,12 +11,14 @@ source code are very small, so you can get away with a system with minimum stora
 capacity. We have build gui-less versions on two gigabyte partitions! You don't need
 to overclock the RPi for QnetGateway, the default clock rate is just fine.
 
-If you are using a DVAP Dongle or a DVRPTR_V1, or connecting to an Icom Terminal and
-Access Point enabled radio, login and plug in your device to see if the OS is
-recognizing it. The kernel should auto load drivers and you will see that with the
-"lsusb" command. The DVAP and the Icom radio digital-to-serial cable uses a FTDI chip
-and the DVRPTR uses Atmel. If you don't see an approprite output from "lsusb" after
-your device is plugged in, you need to enable it by executing:
+If you are using a DVAP Dongle, a DVRPTR_V1, an MMDVM modem or connecting to an Icom
+Terminal and Access Point enabled radio, login and plug in your device to see if the OS
+is recognizing it. The MMDVM modem will either plug right onto the Raspberry Pi header,
+or with an appropriate adaptor, it can be plugged into a USB port. The kernel should
+auto load drivers and you will see that with the "lsusb" command. The DVAP and the Icom
+radio digital-to-serial cable uses a FTDI chip and the DVRPTR uses Atmel. If you don't
+see an appropriate output from "lsusb" after your device is plugged in, you need to
+enable it by executing:
 
 sudo depmod
 sudo modprobe <YOURDEVICEMODULE>
@@ -38,8 +40,9 @@ in the MMDVM.README file in order to setup and start your MMDVMHost.
 If you are building a QnetGateway for an Icom repeater, you'll need a different
 git repository. Please look for QnetICOMGateway.
 
-If you are building an MMDVM, DVAP, DVRPTR_V1 or an ICOM Terminal mode gateway,
-start by cloning this repository.
+If you are building an MMDVM, DVAP, DVRPTR_V1, using an MMDVM modem but don't need
+any mode besides D-Star or you are using an ICOM Access Point or Terminal Mode
+gateway, start by cloning this repository.
 
 git clone git://github.com/n7tae/QnetGateway.git
 
@@ -75,7 +78,11 @@ For a DVAP Dongle or a DVRPTR V1, there are some parameters that must be specifi
 like the serial number. The two "inverse" parameters for the DVRPTR will probably
 have to change. If you don't hear traffic on a connected system, try toggling the
 dvrptr_inverse_rx parameter. If you aren't heard, toggle the dvrptr_inverse_tx
-parameter.
+parameter. For the DVAP Dongle, or if you are using an MMDVM modem without
+MMDVMHost, you need to specify the operational frequency. You also need to make
+sure the device address is correct for the MMDVM modem. "Hats" connected to the
+Raspberry Pi header can usually be found at /dev/ttyAMA0 while device plugged into
+a USB port are usually at /dev/ttyUSB0.
 
 If you want to use the closed-source, legacy D-Plus reflectors and repeaters, you
 need to make sure you are authorized to use those systems. They require that you
