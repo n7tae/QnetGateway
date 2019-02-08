@@ -652,7 +652,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	dstr.vpkt.streamid = htons(stream_id);
 
 	if (frame.type == TYPE_HEADER) {	// header
-		ctrl = 1U;
+		ctrl = 0U;
 		dstr.remaining = 0x30;
 		dstr.vpkt.ctrl = 0x80;
 
@@ -674,14 +674,9 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	} else if (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST) {	// ambe
 		dstr.remaining = 0x16;
 		dstr.vpkt.ctrl = ctrl++;
-		if (ctrl >= 21U)
-			ctrl = 0U;
 		if (frame.type == TYPE_DATA) {
-			//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
-			if (0U == (0x3FU & dstr.vpkt.ctrl)) {
-				if (0x55U!=frame.voice.text[0] || 0x2DU!=frame.voice.text[1] || 0x16U!=frame.voice.text[2])
-					printf("Warning: Voice sync frame contained text %02x:%02x:%02x!\n", frame.voice.text[0], frame.voice.text[1], frame.voice.text[2]);
-			}
+			if (0x55U==frame.voice.text[0] && 0x2DU==frame.voice.text[1] && 0x16U==frame.voice.text[2])
+					dstr.vpkt.ctrl = ctrl = 0U;	// re-sync!
 			memcpy(dstr.vpkt.vasd.voice, frame.voice.ambe, 12);
 		} else {
 			const unsigned char silence[12] = { 0x4EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
