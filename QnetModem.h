@@ -81,7 +81,6 @@ typedef struct mmodem_tag {
 		// 0x12U transmission lost
 		// 0x13U transmission end
 	union {
-		unsigned char unused[51];	// this makes room for trailing crap on the header
 		unsigned char ack;			// the type being acknowledged
 		unsigned char mode;			// 0 idle, 1 dstar, 2 dmr, 3 ysf, 99 calibration
 		struct {
@@ -183,7 +182,7 @@ public:
 	}
 	double time() {
 		std::chrono::steady_clock::duration elapsed = std::chrono::steady_clock::now() - starttime;
-		return double(elapsed.count() * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den);
+		return double(elapsed.count()) * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
 	}
 private:
 	std::chrono::steady_clock::time_point starttime;
@@ -203,7 +202,7 @@ public:
 private:
 	int assigned_module;
 	unsigned short COUNTER;
-	unsigned char dstarSpace;
+	unsigned int dstarSpace;
 	bool g2_is_active;
 
 	// functions
@@ -215,6 +214,7 @@ private:
 	int SendToModem(const unsigned char *buf);
 	MODEM_RESPONSE GetModemData(unsigned char *buf, unsigned int size);
 	bool GetVersion();
+	bool GetBufferSize();
 	bool SetFrequency();
 	bool SetConfiguration();
 
