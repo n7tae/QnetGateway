@@ -607,7 +607,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 				//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 				if (0U == (0x3FU & dstr.vpkt.ctrl)) {
 					if (0x55U!=dstr.vpkt.vasd.text[0] || 0x2DU!=dstr.vpkt.vasd.text[1] || 0x16U!=dstr.vpkt.vasd.text[2])
-						printf("Warning: Voice sync frame contained text %02x:%02x:%02x!\n", dstr.vpkt.vasd.text[0], dstr.vpkt.vasd.text[1], dstr.vpkt.vasd.text[2]);
+						printf("Warning: Voice sync frame (ctrl=0x%02xU) contained text %02x:%02x:%02x!\n", dstr.vpkt.ctrl, dstr.vpkt.vasd.text[0], dstr.vpkt.vasd.text[1], dstr.vpkt.vasd.text[2]);
 				}
 				if (dstr.vpkt.ctrl & 0x40U) {
 					frame.length = 3U;
