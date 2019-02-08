@@ -406,12 +406,11 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 
 	while (junk_count) {
 		unsigned char junk[8];
-		ret = read(serfd, &junk, (junk_count < 8U) ? 8U : junk_count);
+		ret = read(serfd, junk, (junk_count < 8U) ? 8U : junk_count);
 		if (ret < 0) {
 			printf("Error when reading junk: %s\n", strerror(errno));
 			return ERROR_RESPONSE;
-		}
-		if (ret == 0) {
+		} else if (ret == 0) {
 			printf("READ junk RETURNED A ZERO!\n");
 		} else
 			junk_count -= (unsigned int)ret;
