@@ -652,7 +652,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	dstr.vpkt.streamid = htons(stream_id);
 
 	if (frame.type == TYPE_HEADER) {	// header
-		ctrl = 0U;
+		ctrl = 1U;
 		dstr.remaining = 0x30;
 		dstr.vpkt.ctrl = 0x80;
 
