@@ -652,7 +652,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	dstr.vpkt.streamid = htons(stream_id);
 
 	if (frame.type == TYPE_HEADER) {	// header
-		ctrl = 0U;
+		ctrl = 1U;
 		dstr.remaining = 0x30;
 		dstr.vpkt.ctrl = 0x80;
 
@@ -686,18 +686,18 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			else
 				memcpy(dstr.vpkt.vasd.voice, silence, 12);
 			dstr.vpkt.ctrl |= 0x40U;
+			if (LOG_QSO) {
+				if (frame.type == TYPE_EOT)
+					printf("Sent dstr end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+				else
+					printf("Sent lost end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+			}
 		}
 		if (29 != Modem2Gate.Write(dstr.pkt_id, 29)) {
 			printf("ERROR: ProcessModem: Could not write gateway voice packet\n");
 			return true;
 		}
 
-		if (LOG_QSO && (dstr.vpkt.ctrl & 0x40)) {
-			if (frame.type == TYPE_EOT)
-				printf("Sent dstr end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
-			else
-				printf("Sent lost end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
-		}
 	} else {
 		fprintf(stderr, "Warning! Unexpected frame type %02x", frame.start);
 		for (unsigned int i=0; i<frame.length; i++)
