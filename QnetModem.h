@@ -161,6 +161,11 @@ public:
 		memcpy(&frame.start, from.data(), from.size());
 	}
 
+	CFrame &operator=(const CFrame &from) {
+		memcpy(&frame.start, from.data(), from.size());
+		return *this;
+	}
+
 	~CFrame() {}
 
 	size_t size() const { return (size_t)frame.length; }
