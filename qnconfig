@@ -143,6 +143,8 @@ FileMenu () {
 		echo -n "cl : Call(QSO) logging        :"; EvaluateVar log_qso{,_d}
 		echo -n "il : IRC logging              :"; EvaluateVar log_irc{,_d}
 		echo -n "dl : DTMF logging             :"; EvaluateVar log_dtmf{,_d}
+		echo -n "xl : Debug logging            :"; EvaluateVar log_debug{,_d}
+		echo    "     WARNING debug logging can produce large log file!"
 		if [ -n "$em" ]; then
 			echo
 			echo    "     Files and directories"
@@ -172,6 +174,7 @@ FileMenu () {
 		elif [[ "$key" == cl* ]]; then SetBooleanValue log_qso "$value"
 		elif [[ "$key" == il* ]]; then SetBooleanValue log_irc "$value"
 		elif [[ "$key" == dl* ]]; then SetBooleanValue log_dtmf "$value"
+		elif [[ "$key" == xl* ]]; then SetBooleanValue log_debug "$value"
 		elif [[ "$key" == et* ]]; then timing_timeout_echo="$value"
 		elif [[ "$key" == vt* ]]; then timing_timeout_voicemail="$value"
 		elif [[ "$key" == gt* ]]; then timing_timeout_remote_g2="$value"
@@ -188,6 +191,7 @@ FileMenu () {
 			elif [[ "$value" == cl* ]]; then unset log_qso
 			elif [[ "$value" == il* ]]; then unset log_irc
 			elif [[ "$value" == dl* ]]; then unset log_dtmf
+			elif [[ "$value" == xl* ]]; then unset log_debug
 			elif [[ "$value" == et* ]]; then unset timing_timeout_echo
 			elif [[ "$value" == vt* ]]; then unset timing_timeout_voicemail
 			elif [[ "$value" == gt* ]]; then unset timing_timeout_remote_g2
@@ -594,9 +598,10 @@ WriteCFGFile () {
 	[ -z "${link_acknowledge+x}"    ] || echo "link_acknowledge=${link_acknowledge}"         >> $outFile
 	[ -z "${link_max_dongles+x}"    ] || echo "link_max_dongles=${link_max_dongles}"         >> $outFile
 	# log_ section
-	[ -z "${log_qso+x}"  ] || echo "log_qso=${log_qso}"   >> $outFile
-	[ -z "${log_irc+x}"  ] || echo "log_irc=${log_irc}"   >> $outFile
-	[ -z "${log_dtmf+x}" ] || echo "log_dtmf=${log_dtmf}" >> $outFile
+	[ -z "${log_qso+x}"   ] || echo "log_qso=${log_qso}"     >> $outFile
+	[ -z "${log_irc+x}"   ] || echo "log_irc=${log_irc}"     >> $outFile
+	[ -z "${log_dtmf+x}"  ] || echo "log_dtmf=${log_dtmf}"   >> $outFile
+	[ -z "${log_debug+x}" ] || echo "log_debug=${log_debug}" >> $outFile
 	# dplus_ section
 	[ -z "${dplus_authorize+x}"      ] || echo "dplus_authorize=${dplus_authorize}"           >> $outFile
 	[ -z "${dplus_priority+x}"       ] || echo "dplus_priority=${dplus_priority}"             >> $outFile

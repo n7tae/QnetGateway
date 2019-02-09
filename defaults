@@ -167,6 +167,7 @@ dvrptr_inverse_tx=true # if you're not hearing your system, try false
 log_qso_d=false   # QSO info goes into the log
 log_irc_d=false   # IRC debug info
 log_dtmf_d=false  # DTMF debug info
+log_debug_d=false # WARNING, can produce a large number of log entries!
 
 ##########################################################################################################################
 #

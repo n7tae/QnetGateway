@@ -211,6 +211,7 @@ private:
 	bool g2_is_active;
 
 	// functions
+	bool VoicePacketIsSync(const unsigned char *);
 	bool Initialize(const char *cfgfile);
 	static void SignalCatch(const int signum);
 	bool ProcessGateway(const int len, const unsigned char *raw);
@@ -231,7 +232,7 @@ private:
 	std::string MODEM_DEVICE, RPTR;
 	double TX_FREQUENCY, RX_FREQUENCY, TX_OFFSET, RX_OFFSET, packet_wait;
 	int TX_DELAY, RX_LEVEL, TX_LEVEL, PACKET_WAIT;
-	bool DUPLEX, RX_INVERT, TX_INVERT, PTT_INVERT, LOG_QSO;
+	bool DUPLEX, RX_INVERT, TX_INVERT, PTT_INVERT, LOG_QSO, LOG_DEBUG;
 
 	// parameters
 	HARDWARE_TYPE hardwareType;
