@@ -587,8 +587,12 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 		if (LOG_DEBUG) {
 			if (58 == len)
 				printf("From Gateway id=%04X header='%.36s'\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag+3);
-			else
-				printf("from Gateway id=%04X ctrl=%02X text=%02X:%02X:%02X\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.ctrl, dstr.vpkt.vasd.text[0], dstr.vpkt.vasd.text[1], dstr.vpkt.vasd.text[2]);
+			else {
+				printf("from Gateway id=%04X ctrl=%02X text=%02X:%02X:%02X", ntohs(dstr.vpkt.streamid), dstr.vpkt.ctrl, dstr.vpkt.vasd.text[0], dstr.vpkt.vasd.text[1], dstr.vpkt.vasd.text[2]);
+				if (VoicePacketIsSync(dstr.vpkt.vasd.text))
+					printf(" <SYNC FRAME>");
+				printf("\n");
+			}
 		}
 		SMODEM frame;	// destination
 		frame.start = FRAME_START;
@@ -645,7 +649,10 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 				printf("Header from modem: %.36s\n", frame.header.flag+3);
 				break;
 			case TYPE_DATA:
-				printf("Data from modem: text is %02X:%02X:%02X\n", frame.voice.text[0], frame.voice.text[1], frame.voice.text[2]);
+				printf("Data from modem: text is %02X:%02X:%02X", frame.voice.text[0], frame.voice.text[1], frame.voice.text[2]);
+				if (VoicePacketIsSync(frame.voice.text))
+					printf(" <SYNC FRAME>");
+				printf("\n");
 				break;
 			case TYPE_EOT:
 				printf("EOT From modem\n");
