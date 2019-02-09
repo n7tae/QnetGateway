@@ -667,9 +667,11 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		if (LOG_QSO)
 			printf("Sent DSTR to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 	} else if (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST) {	// ambe
-		dstr.remaining = 0x16;
-		dstr.vpkt.ctrl = ctrl++;
+		if (frame.type == TYPE_LOST)
+			printf("Got a TYPE_LOST packet.\n");
 		if (frame.type == TYPE_DATA) {
+			dstr.remaining = 0x16;
+			dstr.vpkt.ctrl = ctrl++;
 			if (0x55U==frame.voice.text[0] && 0x2DU==frame.voice.text[1] && 0x16U==frame.voice.text[2])
 					dstr.vpkt.ctrl = ctrl = 0U;	// re-sync!
 			memcpy(dstr.vpkt.vasd.voice, frame.voice.ambe, 12);
