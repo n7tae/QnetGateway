@@ -576,6 +576,7 @@ int CQnetModem::SendToModem(const unsigned char *buf)
 
 bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 {
+	static unsigned int sfcount = 0U;
 	if (29==len || 58==len) { //here is dstar data
 		SDSTR dstr;
 		memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
@@ -583,6 +584,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 		SMODEM frame;	// destination
 		frame.start = FRAME_START;
 		if (58 == len) {			// write a Header packet
+			sfcount = 20U;
 			frame.length = 44U;
 			frame.type = TYPE_HEADER;
 			memcpy(frame.header.flag, dstr.vpkt.hdr.flag, 3);
@@ -601,9 +603,13 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 			if (g2_is_active) {
 				//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 				if (0U == (0x3FU & dstr.vpkt.ctrl)) {
+					if (sfcount != 20U)
+						printf("Warning: Superframe count is %u\n", sfcount);
+					sfcount = 0U;
 					if (0x55U!=dstr.vpkt.vasd.text[0] || 0x2DU!=dstr.vpkt.vasd.text[1] || 0x16U!=dstr.vpkt.vasd.text[2])
 						printf("Warning: Voice sync frame (ctrl=0x%02xU) contained text %02x:%02x:%02x!\n", dstr.vpkt.ctrl, dstr.vpkt.vasd.text[0], dstr.vpkt.vasd.text[1], dstr.vpkt.vasd.text[2]);
-				}
+				} else
+					sfcount++;
 				if (dstr.vpkt.ctrl & 0x40U) {
 					frame.length = 3U;
 					frame.type = TYPE_EOT;
@@ -611,6 +617,8 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 					if (LOG_QSO)
 						printf("Queued modem end of transmission\n");
 				} else {
+					if (sfcount != (dstr.vpkt.ctrl & 0x3FU))
+						printf("Warning: frame ctrl should be %u, but it's %u!\n", sfcount, (dstr.vpkt.ctrl & 0x3FU));
 					frame.length = 15U;
 					frame.type = TYPE_DATA;
 					memcpy(frame.voice.ambe, dstr.vpkt.vasd.voice, 12);
@@ -637,19 +645,19 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	// sets most of the params
 	memcpy(dstr.pkt_id, "DSTR", 4);
 	dstr.counter = htons(COUNTER++);
-	dstr.flag[0] = 0x73;
-	dstr.flag[1] = 0x12;
-	dstr.flag[2] = 0x0;
-	dstr.vpkt.icm_id = 0x20;
-	dstr.vpkt.dst_rptr_id = 0x0;
-	dstr.vpkt.snd_rptr_id = 0x1;
-	dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
+	dstr.flag[0] = 0x73U;
+	dstr.flag[1] = 0x12U;
+	dstr.flag[2] = 0x0U;
+	dstr.vpkt.icm_id = 0x20U;
+	dstr.vpkt.dst_rptr_id = 0x0U;
+	dstr.vpkt.snd_rptr_id = 0x1U;
+	dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1U : (('C'==RPTR_MOD) ? 0x2U : 0x3U);
 	dstr.vpkt.streamid = htons(stream_id);
 
 	if (frame.type == TYPE_HEADER) {	// header
 		ctrl = 1U;
-		dstr.remaining = 0x30;
-		dstr.vpkt.ctrl = 0x80;
+		dstr.remaining = 0x30U;
+		dstr.vpkt.ctrl = 0x80U;
 
 		memcpy(dstr.vpkt.hdr.flag, frame.header.flag, 3);
 		memcpy(dstr.vpkt.hdr.r1,   frame.header.r1,   8);
@@ -667,7 +675,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		if (LOG_QSO)
 			printf("Sent DSTR to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 	} else if (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST) {	// ambe
-		dstr.remaining = 0x16;
+		dstr.remaining = 0x16U;
 		dstr.vpkt.ctrl = ctrl++;
 		if (frame.type == TYPE_DATA) {
 			if (0x55U==frame.voice.text[0] && 0x2DU==frame.voice.text[1] && 0x16U==frame.voice.text[2]) {
@@ -687,9 +695,9 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			dstr.vpkt.ctrl |= 0x40U;
 			if (LOG_QSO) {
 				if (frame.type == TYPE_EOT)
-					printf("Sent dstr end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+					printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
 				else
-					printf("Sent lost end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+					printf("Sent LOST end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
 			}
 		}
 		if (29 != Modem2Gate.Write(dstr.pkt_id, 29)) {
@@ -699,7 +707,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 
 	} else {
 		fprintf(stderr, "Warning! Unexpected frame: %02x", frame.start);
-		for (unsigned int i=1; i<frame.length; i++)
+		for (unsigned int i=1U; i<frame.length; i++)
 			fprintf(stderr, ":%02x", *(&frame.start + i));
 		fprintf(stderr, "\n");
 	}
