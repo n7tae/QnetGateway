@@ -667,15 +667,17 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		if (LOG_QSO)
 			printf("Sent DSTR to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 	} else if (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST) {	// ambe
-		if (frame.type == TYPE_LOST)
-			printf("Got a TYPE_LOST packet.\n");
+		dstr.remaining = 0x16;
+		dstr.vpkt.ctrl = ctrl++;
 		if (frame.type == TYPE_DATA) {
-			dstr.remaining = 0x16;
-			dstr.vpkt.ctrl = ctrl++;
-			if (0x55U==frame.voice.text[0] && 0x2DU==frame.voice.text[1] && 0x16U==frame.voice.text[2])
-					dstr.vpkt.ctrl = ctrl = 0U;	// re-sync!
+			if (0x55U==frame.voice.text[0] && 0x2DU==frame.voice.text[1] && 0x16U==frame.voice.text[2]) {
+				dstr.vpkt.ctrl = 0U;	// re-sync!
+				ctrl = 1U;	// the frame after the sync
+			}
 			memcpy(dstr.vpkt.vasd.voice, frame.voice.ambe, 12);
 		} else {
+			if (frame.type == TYPE_LOST)
+				printf("Got a TYPE_LOST packet.\n");
 			const unsigned char silence[12] = { 0x4EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 			const unsigned char silsync[12] = { 0x4EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
 			if (0U == dstr.vpkt.ctrl)
@@ -696,8 +698,8 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		}
 
 	} else {
-		fprintf(stderr, "Warning! Unexpected frame type %02x", frame.start);
-		for (unsigned int i=0; i<frame.length; i++)
+		fprintf(stderr, "Warning! Unexpected frame: %02x", frame.start);
+		for (unsigned int i=1; i<frame.length; i++)
 			fprintf(stderr, ":%02x", *(&frame.start + i));
 		fprintf(stderr, "\n");
 	}
