@@ -586,13 +586,8 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 			frame.length = 44U;
 			frame.type = TYPE_HEADER;
 			memcpy(frame.header.flag, dstr.vpkt.hdr.flag, 3);
-			if (RPTR_MOD == dstr.vpkt.hdr.r2[7]) {
-				memcpy(frame.header.r1,   dstr.vpkt.hdr.r2,   8);
-				memcpy(frame.header.r2,   dstr.vpkt.hdr.r1,   8);
-			} else {
-				memcpy(frame.header.r1,   dstr.vpkt.hdr.r1,   8);
-				memcpy(frame.header.r2,   dstr.vpkt.hdr.r2,   8);
-			}
+			memcpy(frame.header.r1,   dstr.vpkt.hdr.r1,   8);
+			memcpy(frame.header.r2,   dstr.vpkt.hdr.r2,   8);
 			memcpy(frame.header.ur,   dstr.vpkt.hdr.ur,   8);
 			memcpy(frame.header.my,   dstr.vpkt.hdr.my,   8);
 			memcpy(frame.header.nm,   dstr.vpkt.hdr.nm,   4);
