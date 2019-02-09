@@ -749,10 +749,12 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		}
 
 	} else {
-		fprintf(stderr, "Warning! Unexpected frame: %02x", frame.start);
-		for (unsigned int i=1U; i<frame.length; i++)
-			fprintf(stderr, ":%02x", *(&frame.start + i));
-		fprintf(stderr, "\n");
+		if (in_stream) {
+			fprintf(stderr, "Warning! Unexpected frame: %02x", frame.start);
+			for (unsigned int i=1U; i<frame.length; i++)
+				fprintf(stderr, ":%02x", *(&frame.start + i));
+			fprintf(stderr, "\n");
+		}
 	}
 
 	return false;
