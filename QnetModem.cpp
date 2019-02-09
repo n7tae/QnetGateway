@@ -535,8 +535,8 @@ void CQnetModem::Run(const char *cfgfile)
 				CFrame cframe = queue.front();
 				const unsigned char type = cframe.type();
 				if ((type==TYPE_HEADER && dstarSpace>3U) || ((type==TYPE_DATA || type==TYPE_EOT || type==TYPE_LOST) && dstarSpace>0U)) {
-					queue.pop();
 					SendToModem(cframe.data());
+					queue.pop();
 					dstarSpace -= (type==TYPE_HEADER) ? 4U : 1U;
 				}
 			}
