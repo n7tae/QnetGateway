@@ -581,22 +581,15 @@ int CQnetModem::SendToModem(const unsigned char *buf)
 
 bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 {
+	std::string superframe;
 	if (29==len || 58==len) { //here is dstar data
 		SDSTR dstr;
 		memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
-		if (LOG_DEBUG) {
-			if (58 == len)
-				printf("From Gateway id=%04X header='%.36s'\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag+3);
-			else {
-				printf("from Gateway id=%04X ctrl=%02X text=%02X:%02X:%02X", ntohs(dstr.vpkt.streamid), dstr.vpkt.ctrl, dstr.vpkt.vasd.text[0], dstr.vpkt.vasd.text[1], dstr.vpkt.vasd.text[2]);
-				if (VoicePacketIsSync(dstr.vpkt.vasd.text))
-					printf(" <SYNC FRAME>");
-				printf("\n");
-			}
-		}
+
 		SMODEM frame;	// destination
 		frame.start = FRAME_START;
 		if (58 == len) {			// write a Header packet
+			superframe.empty();
 			frame.length = 44U;
 			frame.type = TYPE_HEADER;
 			memcpy(frame.header.flag, dstr.vpkt.hdr.flag, 3);
@@ -609,12 +602,14 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 			queue.push(CFrame(&frame.start));
 			PacketWait.start();
 			g2_is_active = true;
-			if (LOG_QSO && ! LOG_DEBUG)
+			if (LOG_QSO)
 				printf("Queued to %s flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.flag[0], frame.header.flag[1], frame.header.flag[2], frame.header.ur, frame.header.r1, frame.header.r2, frame.header.my, frame.header.nm);
 		} else {	// write a voice data packet
 			if (g2_is_active) {
 				//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 				if (dstr.vpkt.ctrl & 0x40U) {
+					if (LOG_DEBUG && superframe.size())
+						printf("Final frame order: %s\n", superframe.c_str());
 					frame.length = 3U;
 					frame.type = TYPE_EOT;
 					g2_is_active = false;
@@ -624,6 +619,18 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 					frame.length = 15U;
 					frame.type = TYPE_DATA;
 					memcpy(frame.voice.ambe, dstr.vpkt.vasd.voice, 12);
+					if (LOG_DEBUG) {
+						if (VoicePacketIsSync(dstr.vpkt.vasd.text)) {
+							if (0 == superframe.size()) {
+								printf("There were no previous voice frames.\n");
+							} else if (superframe.size() > 65) {
+								printf("Frame order: %s\n", superframe.c_str());
+								superframe.empty();
+							}
+							superframe.append(1, '#');
+						} else
+							superframe.append(1, (dstr.vpkt.ctrl<26U) ? 'A' + dstr.vpkt.ctrl : ((dstr.vpkt.ctrl<52) ? 'a' + (dstr.vpkt.ctrl-26U) : '*'));
+					}
 				}
 				queue.push(CFrame(&frame.start));
 				PacketWait.start();
@@ -642,32 +649,8 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	static bool first_voice_packet = false;
 	static short stream_id = 0U;
 	static unsigned char ctrl = 0U;
+	static unsigned int super_frame_count = 0U;
 
-	if (LOG_DEBUG) {
-		switch (frame.type) {
-			case TYPE_HEADER:
-				printf("Header from modem: %.36s\n", frame.header.flag+3);
-				break;
-			case TYPE_DATA:
-				printf("Data from modem: text is %02X:%02X:%02X", frame.voice.text[0], frame.voice.text[1], frame.voice.text[2]);
-				if (VoicePacketIsSync(frame.voice.text))
-					printf(" <SYNC FRAME>");
-				printf("\n");
-				break;
-			case TYPE_EOT:
-				printf("EOT From modem\n");
-				break;
-			case TYPE_LOST:
-				printf("Lost Transmission from modem\n");
-				break;
-			default:
-				printf("Other packet from modem: %02X", frame.start);
-				for (unsigned int i=0; i<frame.length; i++)
-					printf(":%02X", *(&frame.start + i));
-				printf("\n");
-				break;
-		}
-	}
 	// create a stream id if this is a header
 	if (frame.type == TYPE_HEADER)
 		stream_id = random.NewStreamID();
@@ -688,6 +671,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	if (frame.type == TYPE_HEADER) {	// header
 		in_stream = first_voice_packet = true;
 		ctrl = 0U;
+		super_frame_count = 21U;
 		dstr.remaining = 0x30U;
 		dstr.vpkt.ctrl = 0x80U;
 
@@ -704,7 +688,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			printf("ERROR: ProcessModem: Could not write gateway header packet\n");
 			return true;
 		}
-		if (LOG_QSO && ! LOG_DEBUG)
+		if (LOG_QSO)
 			printf("Sent DSTR to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 	} else if (in_stream && (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST)) {	// ambe
 		dstr.remaining = 0x16U;
@@ -712,19 +696,24 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		if (frame.type == TYPE_DATA) {
 			if (first_voice_packet) {
 				if (! VoicePacketIsSync(frame.voice.text)) { // create a quite sync voice packet, if needed
+					if (LOG_DEBUG)
+						printf("Warning: Inserting missing frame sync after header\n");
 					const unsigned char sync[12] = { 0x4EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
 					dstr.vpkt.ctrl = 0U;
 					memcpy(dstr.vpkt.vasd.voice, sync, 12U);
 					Modem2Gate.Write(dstr.pkt_id, 29);
-					ctrl = 1U;
+					ctrl = super_frame_count = 1U;
 				}
 				first_voice_packet = false;
 			}
 			if (VoicePacketIsSync(frame.voice.text)) {
-				dstr.vpkt.ctrl = 0U;	// re-sync!
+				if (LOG_DEBUG && super_frame_count!=21U)
+					printf("Warning: got a frame sync but frame count is %u\n", super_frame_count);
+				dstr.vpkt.ctrl = super_frame_count = 0U;	// re-sync!
 				ctrl = 1U;	// the frame after the sync
 			}
 			memcpy(dstr.vpkt.vasd.voice, frame.voice.ambe, 12);
+			super_frame_count++;
 		} else {
 			if (frame.type == TYPE_LOST)
 				printf("Got a TYPE_LOST packet.\n");
@@ -735,7 +724,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			else
 				memcpy(dstr.vpkt.vasd.voice, silence, 12);
 			dstr.vpkt.ctrl |= 0x40U;
-			if (LOG_QSO && ! LOG_DEBUG) {
+			if (LOG_QSO) {
 				if (frame.type == TYPE_EOT)
 					printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
 				else
