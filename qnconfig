@@ -258,8 +258,8 @@ GateMenu () {
 		echo -n "d2 : Description #1 (20 chars max)  = "; EvaluateVar gateway_desc2{,_d}
 		echo -n "w  : URL (80 char max)              = "; EvaluateVar gateway_url{,_d}
 		echo -n "fr : Find Route(s)                  = "; EvaluateVar gateway_find_route{,_d}
-		echo "     Find Route(s) is a comma-separated list of common routing callsigns."
-		echo "     These will be added in your local cache on boot-up."
+		echo    "     Find Route(s) is a comma-separated list of common routing callsigns."
+		echo    "     These will be added to your local cache on boot-up."
 		echo
 		echo    "     APRS - Repeater/User position tracking"
 		echo -n "e  : Enable APRS Tracking           = "; EvaluateVar aprs_enable{,_d}
@@ -659,7 +659,7 @@ do
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
 	echo -n "c : Module C                - "; if [ -z $module_c ]; then echo "<EMPTY>"; else echo "${module_c^^}"; fi
 	echo    "i : IRCDDB Menu             - login = '${ircddb_login}'"
-	echo    "g : Gateway/APRS Menu       - default values are usually fine"
+	echo    "g : Gateway/APRS Menu       - location info and route cache"
 	echo    "l : Link/D-Plus Menu        - linking access"
 	if [ -n "$em" ]; then
 		echo "d : Debugging/Files/Timings - miscellaneous parameters"
