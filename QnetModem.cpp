@@ -609,7 +609,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 				//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 				if (dstr.vpkt.ctrl & 0x40U) {
 					if (LOG_DEBUG && superframe.size())
-						printf("Final frame order: %s\n", superframe.c_str());
+						printf("Final order: %s\n", superframe.c_str());
 					frame.length = 3U;
 					frame.type = TYPE_EOT;
 					g2_is_active = false;
