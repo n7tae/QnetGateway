@@ -581,7 +581,7 @@ int CQnetModem::SendToModem(const unsigned char *buf)
 
 bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 {
-	std::string superframe;
+	static std::string superframe;
 	if (29==len || 58==len) { //here is dstar data
 		SDSTR dstr;
 		memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
