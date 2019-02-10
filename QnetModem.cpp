@@ -629,7 +629,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 							}
 							superframe.append(1, '#');
 						} else
-							superframe.append(1, (dstr.vpkt.ctrl<26U) ? 'A' + dstr.vpkt.ctrl : ((dstr.vpkt.ctrl<52) ? 'a' + (dstr.vpkt.ctrl-26U) : '*'));
+							superframe.append(1, (dstr.vpkt.ctrl<26U) ? 'A' + (dstr.vpkt.ctrl-1U) : ((dstr.vpkt.ctrl<52U) ? 'a' + (dstr.vpkt.ctrl-27U) : '*'));
 					}
 				}
 				queue.push(CFrame(&frame.start));
