@@ -589,7 +589,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 		SMODEM frame;	// destination
 		frame.start = FRAME_START;
 		if (58 == len) {			// write a Header packet
-			superframe.empty();
+			superframe.clear();
 			frame.length = 44U;
 			frame.type = TYPE_HEADER;
 			memcpy(frame.header.flag, dstr.vpkt.hdr.flag, 3);
@@ -625,7 +625,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 								printf("There were no previous voice frames.\n");
 							} else if (superframe.size() > 65) {
 								printf("Frame order: %s\n", superframe.c_str());
-								superframe.empty();
+								superframe.clear();
 							}
 							superframe.append(1, '#');
 						} else
