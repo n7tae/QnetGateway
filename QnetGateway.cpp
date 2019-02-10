@@ -107,7 +107,7 @@ void CQnetGateway::PrintCallsigns(const std::string &key, const std::set<std::st
 
 void CQnetGateway::set_dest_rptr(int mod_ndx, char *dest_rptr)
 {
-	FILE *statusfp = fopen(status_file.c_str(), "r");
+	FILE *statusfp = fopen(FILE_STATUS.c_str(), "r");
 	if (statusfp) {
 		setvbuf(statusfp, (char *)NULL, _IOLBF, 0);
 
@@ -201,7 +201,7 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 }
 
 /* process configuration file */
-bool CQnetGateway::read_config(char *cfgFile)
+bool CQnetGateway::ReadConfig(char *cfgFile)
 {
 	const std::string estr;	// an empty string
 	CQnetConfigure cfg;
@@ -224,7 +224,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 	if (cfg.GetValue(path+"port", estr, ircddb.port, 1000, 65535))
 		return true;
 
-	if (cfg.GetValue(path+"password", estr, irc_pass, 0, 512))
+	if (cfg.GetValue(path+"password", estr, IRCDDB_PASSWORD, 0, 512))
 		return true;
 
 	// module
@@ -277,11 +277,11 @@ bool CQnetGateway::read_config(char *cfgFile)
 
 	// gateway
 	path.assign("gateway_");
-	cfg.GetValue(path+"local_irc_ip", estr, local_irc_ip, 7, IP_SIZE);
+	cfg.GetValue(path+"local_irc_ip", estr, GATEWAY_LOCAL_IRC_IP, 7, IP_SIZE);
 	cfg.GetValue(path+"ip", estr, g2_external.ip, 7, IP_SIZE);
 	cfg.GetValue(path+"port", estr, g2_external.port, 1024, 65535);
-	cfg.GetValue(path+"header_regen", estr, bool_regen_header);
-	cfg.GetValue(path+"send_qrgs_maps", estr, bool_send_qrgs);
+	cfg.GetValue(path+"header_regen", estr, GATEWAY_HEADER_REGEN);
+	cfg.GetValue(path+"send_qrgs_maps", estr, GATEWAY_SEND_QRGS_MAP);
 	cfg.GetValue(path+"gate2link", estr, gate2link, 1, FILENAME_MAX);
 	cfg.GetValue(path+"link2gate", estr, link2gate, 1, FILENAME_MAX);
 	cfg.GetValue(path+"modem2gate", estr, modem2gate, 1, FILENAME_MAX);
@@ -305,7 +305,7 @@ bool CQnetGateway::read_config(char *cfgFile)
 
 	// APRS
 	path.assign("aprs_");
-	cfg.GetValue(path+"enable", estr, bool_send_aprs);
+	cfg.GetValue(path+"enable", estr, APRS_ENABLE);
 	cfg.GetValue(path+"host", estr, rptr.aprs.ip, 7, MAXHOSTNAMELEN);
 	cfg.GetValue(path+"port", estr, rptr.aprs.port, 10000, 65535);
 	cfg.GetValue(path+"interval", estr, rptr.aprs_interval, 40, 1000);
@@ -313,26 +313,27 @@ bool CQnetGateway::read_config(char *cfgFile)
 
 	// log
 	path.assign("log_");
-	cfg.GetValue(path+"qso", estr, bool_qso_details);
-	cfg.GetValue(path+"irc", estr, bool_irc_debug);
-	cfg.GetValue(path+"dtmf", estr, bool_dtmf_debug);
+	cfg.GetValue(path+"qso", estr, LOG_QSO);
+	cfg.GetValue(path+"irc", estr, LOG_IRC);
+	cfg.GetValue(path+"dtmf", estr, LOG_DTMF);
+	cfg.GetValue(path+"debug", estr, LOG_DEBUG);
 
 	// file
 	path.assign("file_");
-	cfg.GetValue(path+"echotest", estr, echotest_dir, 2, FILENAME_MAX);
-	cfg.GetValue(path+"dtmf", estr, dtmf_dir, 2, FILENAME_MAX);
-	cfg.GetValue(path+"status", estr, status_file, 2, FILENAME_MAX);
-	cfg.GetValue(path+"qnvoice_file", estr, qnvoicefile, 2, FILENAME_MAX);
+	cfg.GetValue(path+"echotest", estr, FILE_ECHOTEST, 2, FILENAME_MAX);
+	cfg.GetValue(path+"dtmf", estr, FILE_DTMF, 2, FILENAME_MAX);
+	cfg.GetValue(path+"status", estr, FILE_STATUS, 2, FILENAME_MAX);
+	cfg.GetValue(path+"qnvoice_file", estr, FILE_QNVOICE_FILE, 2, FILENAME_MAX);
 
 	// timing
 	path.assign("timing_play_");
-	cfg.GetValue(path+"wait", estr, play_wait, 1, 10);
-	cfg.GetValue(path+"delay", estr, play_delay, 9, 25);
+	cfg.GetValue(path+"wait", estr, TIMING_PLAY_WAIT, 1, 10);
+	cfg.GetValue(path+"delay", estr, TIMING_PLAY_DELAY, 9, 25);
 	path.assign("timing_timeout_");
-	cfg.GetValue(path+"echo", estr, echotest_rec_timeout, 1, 10);
-	cfg.GetValue(path+"voicemail", estr, voicemail_rec_timeout, 1, 10);
-	cfg.GetValue(path+"remote_g2", estr, from_remote_g2_timeout, 1, 10);
-	cfg.GetValue(path+"local_rptr", estr, from_local_rptr_timeout, 1, 10);
+	cfg.GetValue(path+"echo", estr, TIMING_TIMEOUT_ECHO, 1, 10);
+	cfg.GetValue(path+"voicemail", estr, TIMING_TIMEOUT_VOICEMAIL, 1, 10);
+	cfg.GetValue(path+"remote_g2", estr, TIMING_TIMEOUT_REMOTE_G2, 1, 10);
+	cfg.GetValue(path+"local_rptr", estr, TIMING_TIMEOUT_LOCAL_RPTR, 1, 10);
 
 	return false;
 }
@@ -416,15 +417,15 @@ void CQnetGateway::GetIRCDataThread()
 			if (ch) {
 				// we need to announce, but can we?
 				struct stat sbuf;
-				if (stat(qnvoicefile.c_str(), &sbuf)) {
-					// yes, there is no qnvoicefile, so create it
-					FILE *fp = fopen(qnvoicefile.c_str(), "w");
+				if (stat(FILE_QNVOICE_FILE.c_str(), &sbuf)) {
+					// yes, there is no FILE_QNVOICE_FILE, so create it
+					FILE *fp = fopen(FILE_QNVOICE_FILE.c_str(), "w");
 					if (fp) {
 						fprintf(fp, "%c_connected2network.dat_WELCOME_TO_QUADNET", ch);
 						fclose(fp);
 						not_announced[ch - 'A'] = false;
 					} else
-						fprintf(stderr, "could not open %s\n", qnvoicefile.c_str());
+						fprintf(stderr, "could not open %s\n", FILE_QNVOICE_FILE.c_str());
 				}
 			}
 			if (doFind) {
@@ -463,7 +464,7 @@ void CQnetGateway::GetIRCDataThread()
 				ii->receiveUser(user, rptr, gateway, ipaddr);
 				if (!user.empty()) {
 					if (!rptr.empty() && !gateway.empty() && !ipaddr.empty()) {
-						if (bool_irc_debug)
+						if (LOG_IRC)
 							printf("C-u:%s,%s,%s,%s\n", user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 
 						pthread_mutex_lock(&irc_data_mutex);
@@ -482,7 +483,7 @@ void CQnetGateway::GetIRCDataThread()
 				ii->receiveRepeater(rptr, gateway, ipaddr, proto);
 				if (!rptr.empty()) {
 					if (!gateway.empty() && !ipaddr.empty()) {
-						if (bool_irc_debug)
+						if (LOG_IRC)
 							printf("C-r:%s,%s,%s\n", rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 
 						pthread_mutex_lock(&irc_data_mutex);
@@ -499,7 +500,7 @@ void CQnetGateway::GetIRCDataThread()
 			} else if (type == IDRT_GATEWAY) {
 				ii->receiveGateway(gateway, ipaddr, proto);
 				if (!gateway.empty() && !ipaddr.empty()) {
-					if (bool_irc_debug)
+					if (LOG_IRC)
 						printf("C-g:%s,%s\n", gateway.c_str(),ipaddr.c_str());
 
 					pthread_mutex_lock(&irc_data_mutex);
@@ -631,7 +632,7 @@ void CQnetGateway::ProcessTimeouts()
 		/* echotest recording timed out? */
 		if (recd[i].last_time != 0) {
 			time(&t_now);
-			if ((t_now - recd[i].last_time) > echotest_rec_timeout) {
+			if ((t_now - recd[i].last_time) > TIMING_TIMEOUT_ECHO) {
 				printf("Inactivity on echotest recording module %c, removing stream id=%04x\n", 'A'+i, ntohs(recd[i].streamid));
 
 				recd[i].streamid = 0;
@@ -656,7 +657,7 @@ void CQnetGateway::ProcessTimeouts()
 		/* voicemail recording timed out? */
 		if (vm[i].last_time != 0) {
 			time(&t_now);
-			if ((t_now - vm[i].last_time) > voicemail_rec_timeout) {
+			if ((t_now - vm[i].last_time) > TIMING_TIMEOUT_VOICEMAIL) {
 				printf("Inactivity on voicemail recording module %c, removing stream id=%04x\n", 'A'+i, ntohs(vm[i].streamid));
 
 				vm[i].streamid = 0;
@@ -673,7 +674,7 @@ void CQnetGateway::ProcessTimeouts()
 			//   The stream can be from a cross-band, or from a remote system,
 			//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
 			//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
-			if ((t_now - toRptr[i].last_time) > from_remote_g2_timeout) {
+			if ((t_now - toRptr[i].last_time) > TIMING_TIMEOUT_REMOTE_G2) {
 				printf("Inactivity to local rptr module %c, removing stream id %04x\n", 'A'+i, ntohs(toRptr[i].streamid));
 
 				// Send end_of_audio to local repeater.
@@ -701,7 +702,7 @@ void CQnetGateway::ProcessTimeouts()
 		/* any stream coming from local repeater timed out ? */
 		if (band_txt[i].last_time != 0) {
 			time(&t_now);
-			if ((t_now - band_txt[i].last_time) > from_local_rptr_timeout) {
+			if ((t_now - band_txt[i].last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
 				/* This local stream never went to a remote system, so trace the timeout */
 				if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0)
 					printf("Inactivity from local rptr module %c, removing stream id %04x\n", 'A'+i, ntohs(band_txt[i].streamID));
@@ -730,7 +731,7 @@ void CQnetGateway::ProcessTimeouts()
 		/* any stream from local repeater to a remote gateway timed out ? */
 		if (to_remote_g2[i].toDst4.sin_addr.s_addr != 0) {
 			time(&t_now);
-			if ((t_now - to_remote_g2[i].last_time) > from_local_rptr_timeout) {
+			if ((t_now - to_remote_g2[i].last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
 				printf("Inactivity from local rptr mod %d, removing stream id %04x\n", i, to_remote_g2[i].streamid);
 
 				memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
@@ -807,7 +808,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 								} else if (band_txt[i].temp_line[0] != '$') {
 									memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 									band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-									if (bool_send_aprs && !band_txt[i].is_gps_sent)
+									if (APRS_ENABLE && !band_txt[i].is_gps_sent)
 										gps_send(i);
 								}
 								band_txt[i].temp_line[0] = '\0';
@@ -838,7 +839,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 								} else if (band_txt[i].temp_line[0] != '$') {
 									memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 									band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-									if (bool_send_aprs && !band_txt[i].is_gps_sent)
+									if (APRS_ENABLE && !band_txt[i].is_gps_sent)
 										gps_send(i);
 								}
 								band_txt[i].temp_line[0] = '\0';
@@ -962,7 +963,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 								} else if (band_txt[i].temp_line[0] != '$') {
 									memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 									band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-									if (bool_send_aprs && !band_txt[i].is_gps_sent)
+									if (APRS_ENABLE && !band_txt[i].is_gps_sent)
 										gps_send(i);
 								}
 								band_txt[i].temp_line[0] = '\0';
@@ -998,7 +999,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 							} else if (band_txt[i].temp_line[0] != '$') {
 								memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 								band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-								if (bool_send_aprs && !band_txt[i].is_gps_sent)
+								if (APRS_ENABLE && !band_txt[i].is_gps_sent)
 									gps_send(i);
 							}
 							band_txt[i].temp_line[0] = '\0';
@@ -1028,7 +1029,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 							} else if (band_txt[i].temp_line[0] != '$') {
 								memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
 								band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-								if (bool_send_aprs && !band_txt[i].is_gps_sent)
+								if (APRS_ENABLE && !band_txt[i].is_gps_sent)
 									gps_send(i);
 							}
 							band_txt[i].temp_line[0] = '\0';
@@ -1062,7 +1063,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 				// toRptr[i] is active if a remote system is talking to it or
 				// toRptr[i] is receiving data from a cross-band
 				if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
-					if (bool_qso_details) {
+					if (LOG_QSO) {
 						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
 						if (is_from_g2)
 							printf("IP=%s:%u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
@@ -1143,7 +1144,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							toRptr[i].last_time = 0;
 							toRptr[i].streamid = 0;
 							toRptr[i].adr = 0;
-							if (bool_qso_details)
+							if (LOG_QSO)
 								printf("id=%04x END\n", ntohs(g2buf.streamid));
 						}
 						break;	// we're done
@@ -1152,7 +1153,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 			}
 
 			/* no match ? */
-			if ((i == 3) && bool_regen_header) {
+			if ((i == 3) && GATEWAY_HEADER_REGEN) {
 				/* check if this a continuation of audio that timed out */
 
 				if (g2buf.ctrl & 0x40)
@@ -1227,7 +1228,7 @@ void CQnetGateway::ProcessModem()
 
 			if (recvlen == 58) {
 				vPacketCount = 0U;
-				if (bool_qso_details)
+				if (LOG_QSO)
 					printf("id=%04x cntr=%04x start RPTR flag=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), ntohs(dstr.counter), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
 
 				if (0==memcmp(dstr.vpkt.hdr.r1, OWNER.c_str(), 7) &&	Flag_is_ok(dstr.vpkt.hdr.flag[0])) {
@@ -1235,7 +1236,7 @@ void CQnetGateway::ProcessModem()
 					int i = dstr.vpkt.hdr.r1[7] - 'A';
 
 					if (i>=0  && i<3) {
-						if (bool_dtmf_debug)
+						if (LOG_DTMF)
 							printf("resetting dtmf[%d] (got a header)\n", i);
 						dtmf_last_frame[i] = 0;
 						dtmf_counter[i] = 0;
@@ -1288,7 +1289,7 @@ void CQnetGateway::ProcessModem()
 						band_txt[i].num_bit_errors = 0;
 
 						/* select the band for aprs processing, and lock on the stream ID */
-						if (bool_send_aprs)
+						if (APRS_ENABLE)
 							aprs->SelectBand(i, ntohs(dstr.vpkt.streamid));
 					}
 				}
@@ -1566,7 +1567,7 @@ void CQnetGateway::ProcessModem()
 							printf("Already recording for voicemail on mod %d\n", i);
 						else {
 							memset(tempfile, '\0', sizeof(tempfile));
-							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), dstr.vpkt.hdr. r1[7], "voicemail.dat");
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), dstr.vpkt.hdr. r1[7], "voicemail.dat");
 
 							vm[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 							if (vm[i].fd < 0)
@@ -1609,7 +1610,7 @@ void CQnetGateway::ProcessModem()
 							printf("Already recording for echotest on mod %d\n", i);
 						else {
 							memset(tempfile, '\0', sizeof(tempfile));
-							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), dstr.vpkt.hdr.r1[7], "echotest.dat");
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), dstr.vpkt.hdr.r1[7], "echotest.dat");
 
 							recd[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 							if (recd[i].fd < 0)
@@ -1696,11 +1697,11 @@ void CQnetGateway::ProcessModem()
 
 						if (dstr.vpkt.ctrl & 0x40) {	// end of voice data
 							if (dtmf_buf_count[i] > 0) {
-								dtmf_file = dtmf_dir;
+								std::string dtmf_file(FILE_DTMF);
 								dtmf_file.push_back('/');
 								dtmf_file.push_back('A'+i);
 								dtmf_file += "_mod_DTMF_NOTIFY";
-								if (bool_dtmf_debug)
+								if (LOG_DTMF)
 									printf("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
 								FILE *dtmf_fp = fopen(dtmf_file.c_str(), "w");
 								if (dtmf_fp) {
@@ -1710,7 +1711,7 @@ void CQnetGateway::ProcessModem()
 									printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
 
 
-								if (bool_dtmf_debug)
+								if (LOG_DTMF)
 									printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].lh_mycall);
 								memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
 								dtmf_buf_count[i] = 0;
@@ -1733,7 +1734,7 @@ void CQnetGateway::ProcessModem()
 
 							if (playNotInCache) {
 								// Not in cache, please try again!
-								FILE *fp = fopen(qnvoicefile.c_str(), "w");
+								FILE *fp = fopen(FILE_QNVOICE_FILE.c_str(), "w");
 								if (fp) {
 									fprintf(fp, "%c_notincache.dat_NOT_IN_CACHE\n", band_txt[i].lh_rpt1[7]);
 									fclose(fp);
@@ -1806,7 +1807,7 @@ void CQnetGateway::ProcessModem()
 				Gate2Link.Write(dstr.pkt_id, recvlen);
 
 				/* aprs processing */
-				if (bool_send_aprs)
+				if (APRS_ENABLE)
 					//                             streamID               seq                audio+text
 					aprs->ProcessText(ntohs(dstr.vpkt.streamid), dstr.vpkt.ctrl, dstr.vpkt.vasd.voice);
 
@@ -1903,7 +1904,7 @@ void CQnetGateway::ProcessModem()
 					}
 				}
 
-				if (bool_qso_details && dstr.vpkt.ctrl&0x40U)
+				if (LOG_QSO && dstr.vpkt.ctrl&0x40U)
 					printf("id=%04x cntr=%04x END RPTR\n", ntohs(dstr.vpkt.streamid), ntohs(dstr.counter));
 			}
 		}
@@ -1931,7 +1932,7 @@ void CQnetGateway::Process()
 	dstar_dv_init();
 
 	std::future<void> aprs_future, irc_data_future;
-	if (bool_send_aprs) {	// start the beacon thread
+	if (APRS_ENABLE) {	// start the beacon thread
 		try {
 			aprs_future = std::async(std::launch::async, &CQnetGateway::APRSBeaconThread, this);
 		} catch (const std::exception &e) {
@@ -2003,7 +2004,7 @@ void CQnetGateway::Process()
 	}
 
 	// thread clean-up
-	if (bool_send_aprs) {
+	if (APRS_ENABLE) {
 		if (aprs_future.valid())
 			aprs_future.get();
 	}
@@ -2272,7 +2273,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 		return;
 	}
 
-	sleep(play_wait);
+	sleep(TIMING_PLAY_WAIT);
 
 	// reformat the header and send it
 	memcpy(dstr.pkt_id, "DSTR", 4);
@@ -2359,7 +2360,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 
 			Gate2Modem[mod].Write(dstr.pkt_id, 29);
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(play_delay));
+			std::this_thread::sleep_for(std::chrono::milliseconds(TIMING_PLAY_DELAY));
 		}
 	}
 	fclose(fp);
@@ -2422,7 +2423,7 @@ bool CQnetGateway::Init(char *cfgfile)
 		memset(&band_txt[0], 0, sizeof(SBANDTXT));
 
 	/* process configuration file */
-	if ( read_config(cfgfile) ) {
+	if ( ReadConfig(cfgfile) ) {
 		printf("Failed to process config file %s\n", cfgfile);
 		return true;
 	}
@@ -2477,18 +2478,18 @@ bool CQnetGateway::Init(char *cfgfile)
 
 	}
 
-	if (bool_send_aprs) {
+	if (APRS_ENABLE) {
 		aprs = new CAPRS(&rptr);
 		if (aprs)
 			aprs->Init();
 		else {
 			printf("aprs class init failed!\nAPRS will be turned off");
-			bool_send_aprs = false;
+			APRS_ENABLE = false;
 		}
 	}
 	compute_aprs_hash();
 
-	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, irc_pass, IRCDDB_VERSION, local_irc_ip);
+	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, IRCDDB_PASSWORD, IRCDDB_VERSION, GATEWAY_LOCAL_IRC_IP);
 	bool ok = ii->open();
 	if (!ok) {
 		printf("irc open failed\n");
@@ -2546,7 +2547,7 @@ bool CQnetGateway::Init(char *cfgfile)
 		vm[i].fd = -1;
 		memset(vm[i].file, 0, sizeof(vm[i].file));
 
-		snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s", echotest_dir.c_str(), 'A'+i, "voicemail.dat");
+		snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), 'A'+i, "voicemail.dat");
 
 		if (access(vm[i].file, F_OK) != 0)
 			memset(vm[i].file, 0, sizeof(vm[i].file));
@@ -2598,7 +2599,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 	printf("QnetGateway...entering processing loop\n");
 
-	if (bool_send_qrgs)
+	if (GATEWAY_SEND_QRGS_MAP)
 		qrgs_and_maps();
 	return false;
 }
@@ -2617,7 +2618,7 @@ CQnetGateway::~CQnetGateway()
 		printf("Closed G2_EXTERNAL_PORT\n");
 	}
 
-	if (bool_send_aprs) {
+	if (APRS_ENABLE) {
 		if (aprs->GetSock() != -1) {
 			close(aprs->GetSock());
 			printf("Closed APRS\n");

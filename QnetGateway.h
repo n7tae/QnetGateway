@@ -98,11 +98,12 @@ private:
 
 	std::string gate2link, link2gate, gate2modem[3], modem2gate;
 
-	std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass, qnvoicefile;
+	std::string OWNER, owner, GATEWAY_LOCAL_IRC_IP, FILE_STATUS, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD, FILE_QNVOICE_FILE;
 
-	bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header, bool_qso_details, bool_send_aprs, playNotInCache;
+	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache;
+	bool LOG_DEBUG, LOG_IRC, LOG_DTMF, LOG_QSO;
 
-	int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
+	int TIMING_PLAY_WAIT, TIMING_PLAY_DELAY, TIMING_TIMEOUT_ECHO, TIMING_TIMEOUT_VOICEMAIL, TIMING_TIMEOUT_REMOTE_G2, TIMING_TIMEOUT_LOCAL_RPTR, dtmf_digit;
 
 	unsigned int vPacketCount;
 
@@ -176,7 +177,7 @@ private:
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
 
 	// read configuration file
-	bool read_config(char *);
+	bool ReadConfig(char *);
 
 /* aprs functions, borrowed from my retired IRLP node 4201 */
 	void gps_send(short int rptr_idx);
