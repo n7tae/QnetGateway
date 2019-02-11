@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
  *
  *   CQnetITAP::GetITAPData() is based on some code that is...
  *   Copyright (C) 2011-2015,2018 by Jonathan Naylor G4KLX
@@ -50,7 +50,6 @@ std::atomic<bool> CQnetITAP::keep_running(true);
 
 CQnetITAP::CQnetITAP(int mod)
 : assigned_module(mod)
-, COUNTER(0)
 {
 }
 
@@ -350,38 +349,38 @@ int CQnetITAP::SendTo(const unsigned char *buf)
 bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 {
 	static unsigned char counter = 0;
-	if (29==len || 58==len) { //here is dstar data
-		SDSTR dstr;
-		memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
+	if (27==len || 56==len) { //here is dstar data
+		SDSVT dsvt;
+		memcpy(dsvt.title, raw, len);	// transfer raw data to SDSVT struct
 
 		SITAP itap;	// destination
 		if (58 == len) {			// write a Header packet
 			counter = 0;
 			itap.length = 41U;
 			itap.type = 0x20;
-			memcpy(itap.header.flag, dstr.vpkt.hdr.flag, 3);
-			if (RPTR_MOD == dstr.vpkt.hdr.r2[7]) {
-				memcpy(itap.header.r1,   dstr.vpkt.hdr.r2,   8);
-				memcpy(itap.header.r2,   dstr.vpkt.hdr.r1,   8);
+			memcpy(itap.header.flag, dsvt.hdr.flag, 3);
+			if (RPTR_MOD == dsvt.hdr.rpt2[7]) {
+				memcpy(itap.header.r1, dsvt.hdr.rpt2, 8);
+				memcpy(itap.header.r2, dsvt.hdr.rpt1, 8);
 			} else {
-				memcpy(itap.header.r1,   dstr.vpkt.hdr.r1,   8);
-				memcpy(itap.header.r2,   dstr.vpkt.hdr.r2,   8);
+				memcpy(itap.header.r1, dsvt.hdr.rpt1, 8);
+				memcpy(itap.header.r2, dsvt.hdr.rpt2, 8);
 			}
-			memcpy(itap.header.ur,   dstr.vpkt.hdr.ur,   8);
-			memcpy(itap.header.my,   dstr.vpkt.hdr.my,   8);
-			memcpy(itap.header.nm,   dstr.vpkt.hdr.nm,   4);
+			memcpy(itap.header.ur, dsvt.hdr.urcall, 8);
+			memcpy(itap.header.my, dsvt.hdr.mycall, 8);
+			memcpy(itap.header.nm, dsvt.hdr.sfx,    4);
 			if (log_qso)
 				printf("Queued ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(), itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
 		} else {	// write an AMBE packet
 			itap.length = 16U;
 			itap.type = 0x22U;
 			itap.voice.counter = counter++;
-			itap.voice.sequence = dstr.vpkt.ctrl;
-			if (log_qso && (dstr.vpkt.ctrl & 0x40))
+			itap.voice.sequence = dsvt.ctrl;
+			if (log_qso && (dsvt.ctrl & 0x40))
 				printf("Queued ITAP end of stream\n");
-			if ((dstr.vpkt.ctrl & ~0x40U) > 20)
+			if ((dsvt.ctrl & ~0x40U) > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
-			memcpy(itap.voice.ambe, dstr.vpkt.vasd.voice, 12);
+			memcpy(itap.voice.ambe, dsvt.vasd.voice, 12);
 		}
 		queue.push(CFrame(&itap.length));
 
@@ -401,72 +400,66 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 	if (41 == len)
 		stream_id = random.NewStreamID();
 
-	SDSTR dstr;	// destination
+	SDSVT dsvt;	// destination
 	// sets most of the params
-	memcpy(dstr.pkt_id, "DSTR", 4);
-	dstr.counter = htons(COUNTER++);
-	dstr.flag[0] = 0x73;
-	dstr.flag[1] = 0x12;
-	dstr.flag[2] = 0x0;
-	dstr.vpkt.icm_id = 0x20;
-	dstr.vpkt.dst_rptr_id = 0x0;
-	dstr.vpkt.snd_rptr_id = 0x1;
-	dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
-	dstr.vpkt.streamid = htons(stream_id);
+	memcpy(dsvt.title, "DSVT", 4);
+	dsvt.config = (len==41) ? 0x10U : 0x20U;
+	memset(dsvt.flaga, 0U, 3U);
+	dsvt.id = 0x20;
+	dsvt.flagb[0] = 0x0;
+	dsvt.flagb[1] = 0x1;
+	dsvt.flagb[2] = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
+	dsvt.streamid = htons(stream_id);
 
 	if (41 == len) {	// header
-		dstr.remaining = 0x30;
-		dstr.vpkt.ctrl = 0x80;
+		dsvt.ctrl = 0x80;
 
-		memcpy(dstr.vpkt.hdr.flag, itap.header.flag, 3);
+		memcpy(dsvt.hdr.flag, itap.header.flag, 3);
 
 		////////////////// Terminal or Access /////////////////////////
 		if (0 == memcmp(itap.header.r1, "DIRECT", 6)) {
 			// Terminal Mode!
-			memcpy(dstr.vpkt.hdr.r1, RPTR.c_str(), 7);	// build r1
-			dstr.vpkt.hdr.r1[7] = RPTR_MOD;		// with module
-			memcpy(dstr.vpkt.hdr.r2, RPTR.c_str(), 7);	// build r2
-			dstr.vpkt.hdr.r2[7] = 'G';			// with gateway
+			memcpy(dsvt.hdr.rpt1, RPTR.c_str(), 7);	// build r1
+			dsvt.hdr.rpt1[7] = RPTR_MOD;		// with module
+			memcpy(dsvt.hdr.rpt2, RPTR.c_str(), 7);	// build r2
+			dsvt.hdr.rpt2[7] = 'G';			// with gateway
 			if (' '==itap.header.ur[2] && ' '!=itap.header.ur[0]) {
 				// it's a command because it has as space in the 3rd position, we have to right-justify it!
 				// Terminal Mode left justifies short commands.
-				memset(dstr.vpkt.hdr.ur, ' ', 8);	// first file ur with spaces
+				memset(dsvt.hdr.urcall, ' ', 8);	// first file ur with spaces
 				if (' ' == itap.header.ur[1])
-					dstr.vpkt.hdr.ur[7] = itap.header.ur[0];		// one char command, like "E" or "I"
+					dsvt.hdr.urcall[7] = itap.header.ur[0];		// one char command, like "E" or "I"
 				else
-					memcpy(dstr.vpkt.hdr.ur+6, itap.header.ur, 2);	// two char command, like "HX" or "S0"
+					memcpy(dsvt.hdr.urcall+6, itap.header.ur, 2);	// two char command, like "HX" or "S0"
 			} else
-				memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);	// ur is at least 3 chars
+				memcpy(dsvt.hdr.urcall, itap.header.ur, 8);	// ur is at least 3 chars
 		} else {
 			// Access Point Mode
-			memcpy(dstr.vpkt.hdr.r1,   itap.header.r1,   8);
-			memcpy(dstr.vpkt.hdr.r2,   itap.header.r2,   8);
-			memcpy(dstr.vpkt.hdr.ur,   itap.header.ur,   8);
-			dstr.vpkt.hdr.flag[0] &= ~0x40U;	// clear this bit
+			memcpy(dsvt.hdr.rpt1,   itap.header.r1,   8);
+			memcpy(dsvt.hdr.rpt2,   itap.header.r2,   8);
+			memcpy(dsvt.hdr.urcall, itap.header.ur,   8);
+			dsvt.hdr.flag[0] &= ~0x40U;	// clear this bit
 		}
 
-		memcpy(dstr.vpkt.hdr.my,   itap.header.my,   8);
-		memcpy(dstr.vpkt.hdr.nm,   itap.header.nm,   4);
-		calcPFCS(dstr.vpkt.hdr.flag, dstr.vpkt.hdr.pfcs);
-		int ret = Modem2Gate.Write(dstr.pkt_id, 58);
-		if (ret != 58) {
+		memcpy(dsvt.hdr.mycall, itap.header.my,   8);
+		memcpy(dsvt.hdr.sfx,    itap.header.nm,   4);
+		calcPFCS(dsvt.hdr.flag, dsvt.hdr.pfcs);
+		if (56 != Modem2Gate.Write(dsvt.title, 56)) {
 			printf("ERROR: ProcessITAP: Could not write gateway header packet\n");
 			return true;
 		}
 		if (log_qso)
-			printf("Sent DSTR to gateway, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+			printf("Sent DSTR to gateway, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 	} else if (16 == len) {	// ambe
-		dstr.remaining = 0x16;
-		dstr.vpkt.ctrl = itap.voice.sequence;
-		memcpy(dstr.vpkt.vasd.voice, itap.voice.ambe, 12);
-		int ret = Modem2Gate.Write(dstr.pkt_id, 29);
-		if (ret != 29) {
+		dsvt.ctrl = itap.voice.sequence;
+		memcpy(dsvt.vasd.voice, itap.voice.ambe, 12);
+		if (27 != Modem2Gate.Write(dsvt.title, 27)) {
 			printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 			return true;
 		}
 
-		if (log_qso && (dstr.vpkt.ctrl & 0x40))
-			printf("Sent dstr end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+		if (log_qso && (dsvt.ctrl & 0x40))
+			printf("Sent dsvt end of streamid=%04x\n", ntohs(dsvt.streamid));
 	}
 
 	return false;
