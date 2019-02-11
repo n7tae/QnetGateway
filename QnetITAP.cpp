@@ -332,7 +332,7 @@ int CQnetITAP::SendTo(const unsigned char *buf)
 	}
 
 	n = 0;	// send an ending 0xffu
-	while (0 == n) {
+	while (0 == n) {it
 		const unsigned char push = 0xffu;
 		n = write(serfd, &push, 1);
 		if (n < 0) {
@@ -354,7 +354,7 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 		memcpy(dsvt.title, raw, len);	// transfer raw data to SDSVT struct
 
 		SITAP itap;	// destination
-		if (58 == len) {			// write a Header packet
+		if (56 == len) {			// write a Header packet
 			counter = 0;
 			itap.length = 41U;
 			itap.type = 0x20;
