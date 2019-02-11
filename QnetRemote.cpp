@@ -235,8 +235,7 @@ int main(int argc, char *argv[])
 
 	calcPFCS(pkt.title);
 	// send the header
-	int sent = ToGateway.Write(pkt.title, 56);
-	if (sent != 58) {
+	if (56 !=  ToGateway.Write(pkt.title, 56)) {
 		printf("%s: ERROR: Couldn't send header!\n", argv[0]);
 		return 1;
 	}
@@ -303,8 +302,7 @@ int main(int argc, char *argv[])
 				break;
 		}
 
-		sent = ToGateway.Write(pkt.title, 27);
-		if (sent != 29) {
+		if (27 != ToGateway.Write(pkt.title, 27)) {
 			printf("%s: ERROR: could not send voice packet %d\n", argv[0], i);
 			return 1;
 		}
