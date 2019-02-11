@@ -328,7 +328,7 @@ static void readFrom20000()
 					break;
 				}
 
-				if ((memcmp(dsvt.title, "DSTR", 4) != 0) || (dsvt.id != 0x20)) { /* voice type */
+				if ((memcmp(dsvt.title, "DSVT", 4) != 0) || (dsvt.id != 0x20)) { /* voice type */
 					FD_CLR(fd, &readfd);
 					break;
 				}
@@ -814,7 +814,7 @@ static void ReadDVAPThread()
 				if (dsvt.hdr.rpt2[7] != ' ')
 					memcpy(dsvt.hdr.rpt2, OWNER.c_str(), 7);
 
-				memcpy(dsvt.title, "DSTR", 4);
+				memcpy(dsvt.title, "DSVT", 4);
 				dsvt.config = 0x10U;
 				dsvt.id = 0x20;
 				streamid_raw = Random.NewStreamID();

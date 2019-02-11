@@ -291,7 +291,7 @@ void CQnetITAP::Run(const char *cfgfile)
 				break;
 			}
 
-			if (0 == memcmp(buf, "DSTR", 4)) {
+			if (0 == memcmp(buf, "DSVT", 4)) {
 				//printf("read %d bytes from QnetGateway\n", (int)len);
 				if (ProcessGateway(len, buf))
 					break;
@@ -449,7 +449,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 			return true;
 		}
 		if (log_qso)
-			printf("Sent DSTR to gateway, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
+			printf("Sent DSVT to gateway, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 	} else if (16 == len) {	// ambe
 		dsvt.ctrl = itap.voice.sequence;
 		memcpy(dsvt.vasd.voice, itap.voice.ambe, 12);

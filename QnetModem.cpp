@@ -518,7 +518,7 @@ void CQnetModem::Run(const char *cfgfile)
 				break;
 			}
 
-			if (0 == memcmp(buf, "DSTR", 4)) {
+			if (0 == memcmp(buf, "DSVT", 4)) {
 				//printf("read %d bytes from QnetGateway\n", (int)len);
 				if (ProcessGateway(len, buf))
 					break;
@@ -583,7 +583,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 	static std::string superframe;
 	if (27==len || 56==len) { //here is dstar data
 		SDSVT dsvt;
-		memcpy(dsvt.title, raw, len);	// transfer raw data to SDSTR struct
+		memcpy(dsvt.title, raw, len);	// transfer raw data to SDSVT struct
 
 		SMODEM frame;	// destination
 		frame.start = FRAME_START;
@@ -686,7 +686,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			return true;
 		}
 		if (LOG_QSO)
-			printf("Sent DSTR to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
+			printf("Sent DSVT to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 	} else if (in_stream && (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST)) {	// ambe
 		dsvt.ctrl = ctrl++;
 		if (frame.type == TYPE_DATA) {
@@ -722,7 +722,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			dsvt.ctrl |= 0x40U;
 			if (LOG_QSO) {
 				if (frame.type == TYPE_EOT)
-					printf("Sent DSTR end of streamid=%04x\n", ntohs(dsvt.streamid));
+					printf("Sent DSVT end of streamid=%04x\n", ntohs(dsvt.streamid));
 				else
 					printf("Sent LOST end of streamid=%04x\n", ntohs(dsvt.streamid));
 			}
