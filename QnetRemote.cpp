@@ -39,7 +39,7 @@
 #include "QnetConfigure.h"
 #include "UnixDgramSocket.h"
 
-#define VERSION "v2.0"
+#define VERSION "v2.1"
 
 int module;
 time_t tNow = 0;
@@ -99,13 +99,13 @@ bool ReadCfgFile()
 	return false;
 }
 
-void calcPFCS(unsigned char rawbytes[58])
+void calcPFCS(unsigned char rawbytes[56])
 {
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
 	short int i;
 
-	for (i = 17; i < 56 ; i++) {
+	for (i = 15; i < 54 ; i++) {
 		short_c = 0x00ff & (unsigned short)rawbytes[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
@@ -113,8 +113,8 @@ void calcPFCS(unsigned char rawbytes[58])
 	crc_dstar_ffff =  ~crc_dstar_ffff;
 	tmp = crc_dstar_ffff;
 
-	rawbytes[56] = (unsigned char)(crc_dstar_ffff & 0xff);
-	rawbytes[57] = (unsigned char)((tmp >> 8) & 0xff);
+	rawbytes[54] = (unsigned char)(crc_dstar_ffff & 0xff);
+	rawbytes[55] = (unsigned char)((tmp >> 8) & 0xff);
 	return;
 }
 
@@ -127,8 +127,6 @@ void ToUpper(std::string &str)
 
 int main(int argc, char *argv[])
 {
-	unsigned short G2_COUNTER = 0;
-
 	if (argc != 4) {
 		fprintf(stderr, "Usage: %s <module> <mycall> <yourcall>\n", argv[0]);
 		fprintf(stderr, "Example: %s c n7tae xrf757al\n", argv[0]);
@@ -201,115 +199,111 @@ int main(int argc, char *argv[])
 	CUnixDgramWriter ToGateway;
 	ToGateway.SetUp(togateway.c_str());
 
-	SDSTR pkt;
-	memcpy(pkt.pkt_id,"DSTR", 4);
-	pkt.counter = htons(G2_COUNTER);
-	pkt.flag[0] = 0x73;
-	pkt.flag[1] = 0x12;
-	pkt.flag[2] = 0x00;
-	pkt.remaining = 0x30;
-	pkt.vpkt.icm_id = 0x20;
-	pkt.vpkt.dst_rptr_id = 0x00;
-	pkt.vpkt.snd_rptr_id = 0x01;
+	SDSVT pkt;
+	memcpy(pkt.title, "DSVT", 4);
+	pkt.config = 0x10U;
+	memset(pkt.flaga, 0U, 3U);
+	pkt.id = 0x20U;
+	pkt.flagb[0] = 0x0U;
+	pkt.flagb[1] = 0x1U;
 	if (module == 0)
-		pkt.vpkt.snd_term_id = 0x03;
+		pkt.flagb[2] = 0x3U;
 	else if (module == 1)
-		pkt.vpkt.snd_term_id = 0x01;
+		pkt.flagb[2] = 0x1U;
 	else if (module == 2)
-		pkt.vpkt.snd_term_id = 0x02;
+		pkt.flagb[2] = 0x2U;
 	else
-		pkt.vpkt.snd_term_id = 0x00;
+		pkt.flagb[3] = 0x0U;
 	streamid_raw = Random.NewStreamID();
-	pkt.vpkt.streamid = htons(streamid_raw);
-	pkt.vpkt.ctrl = 0x80;
-	pkt.vpkt.hdr.flag[0] = pkt.vpkt.hdr.flag[1] = pkt.vpkt.hdr.flag[2] = 0x00;
+	pkt.streamid = htons(streamid_raw);
+	pkt.ctrl = 0x80;
+	pkt.hdr.flag[0] = pkt.hdr.flag[1] = pkt.hdr.flag[2] = 0x00;
 
 	REPEATER.resize(7, ' ');
-	memcpy(pkt.vpkt.hdr.r2, REPEATER.c_str(), 8);
-	pkt.vpkt.hdr.r2[7] = 'G';
-	memcpy(pkt.vpkt.hdr.r1, REPEATER.c_str(), 8);
-	pkt.vpkt.hdr.r1[7] = 'A' + module;
+	memcpy(pkt.hdr.rpt2, REPEATER.c_str(), 8);
+	pkt.hdr.rpt2[7] = 'G';
+	memcpy(pkt.hdr.rpt1, REPEATER.c_str(), 8);
+	pkt.hdr.rpt1[7] = 'A' + module;
 	mycall.resize(8, ' ');
-	memcpy(pkt.vpkt.hdr.my, mycall.c_str(), 8);
-	memcpy(pkt.vpkt.hdr.nm, "QNET", 4);
+	memcpy(pkt.hdr.mycall, mycall.c_str(), 8);
+	memcpy(pkt.hdr.sfx, "QNET", 4);
 	if (yourcall.size() < 3)
 		yourcall = std::string(8-yourcall.size(), ' ') + yourcall;	// right justify 1 or 2 letter commands
 	else
 		yourcall.resize(8, ' ');
-	memcpy(pkt.vpkt.hdr.ur, yourcall.c_str(), 8);
+	memcpy(pkt.hdr.urcall, yourcall.c_str(), 8);
 
-	calcPFCS(pkt.pkt_id);
+	calcPFCS(pkt.title);
 	// send the header
-	int sent = ToGateway.Write(pkt.pkt_id, 58);
+	int sent = ToGateway.Write(pkt.title, 56);
 	if (sent != 58) {
 		printf("%s: ERROR: Couldn't send header!\n", argv[0]);
 		return 1;
 	}
 
 	// prepare and send 10 voice packets
-	pkt.remaining = 0x13;
-	memcpy(pkt.vpkt.vasd.voice, silence, 9);
+	pkt.config = 0x20U;
+	memcpy(pkt.vasd.voice, silence, 9);
 
 	for (int i=0; i<10; i++) {
 		/* start sending silence + text */
-		pkt.counter = htons(++G2_COUNTER);
-		pkt.vpkt.ctrl = i;
+		pkt.ctrl = i;
 
 		switch (i) {
 			case 0:	// sync voice frame
-				pkt.vpkt.vasd.text[0] = 0x55;
-				pkt.vpkt.vasd.text[1] = 0x2d;
-				pkt.vpkt.vasd.text[2] = 0x16;
+				pkt.vasd.text[0] = 0x55;
+				pkt.vasd.text[1] = 0x2d;
+				pkt.vasd.text[2] = 0x16;
 				break;
 			case 1:
-				pkt.vpkt.vasd.text[0] = '@' ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[0] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[1] ^ 0x93;
+				pkt.vasd.text[0] = '@' ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[0] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[1] ^ 0x93;
 				break;
 			case 2:
-				pkt.vpkt.vasd.text[0] = RADIO_ID[2] ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[3] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[4] ^ 0x93;
+				pkt.vasd.text[0] = RADIO_ID[2] ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[3] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[4] ^ 0x93;
 				break;
 			case 3:
-				pkt.vpkt.vasd.text[0] = 'A' ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[5] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[6] ^ 0x93;
+				pkt.vasd.text[0] = 'A' ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[5] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[6] ^ 0x93;
 				break;
 			case 4:
-				pkt.vpkt.vasd.text[0] = RADIO_ID[7] ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[8] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[9] ^ 0x93;
+				pkt.vasd.text[0] = RADIO_ID[7] ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[8] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[9] ^ 0x93;
 				break;
 			case 5:
-				pkt.vpkt.vasd.text[0] = 'B' ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[10] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[11] ^ 0x93;
+				pkt.vasd.text[0] = 'B' ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[10] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[11] ^ 0x93;
 				break;
 			case 6:
-				pkt.vpkt.vasd.text[0] = RADIO_ID[12] ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[13] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[14] ^ 0x93;
+				pkt.vasd.text[0] = RADIO_ID[12] ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[13] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[14] ^ 0x93;
 				break;
 			case 7:
-				pkt.vpkt.vasd.text[0] = 'C' ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[15] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[16] ^ 0x93;
+				pkt.vasd.text[0] = 'C' ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[15] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[16] ^ 0x93;
 				break;
 			case 8:
-				pkt.vpkt.vasd.text[0] = RADIO_ID[17] ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[18] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[19] ^ 0x93;
+				pkt.vasd.text[0] = RADIO_ID[17] ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[18] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[19] ^ 0x93;
 				break;
 			case 9:	// terminal voice packet
-				pkt.vpkt.ctrl |= 0x40;
-				pkt.vpkt.vasd.text[0] = 0x70;
-				pkt.vpkt.vasd.text[1] = 0x4f;
-				pkt.vpkt.vasd.text[2] = 0x93;
+				pkt.ctrl |= 0x40;
+				pkt.vasd.text[0] = 0x70;
+				pkt.vasd.text[1] = 0x4f;
+				pkt.vasd.text[2] = 0x93;
 				break;
 		}
 
-		sent = ToGateway.Write(pkt.pkt_id, 29);
+		sent = ToGateway.Write(pkt.title, 27);
 		if (sent != 29) {
 			printf("%s: ERROR: could not send voice packet %d\n", argv[0], i);
 			return 1;
