@@ -70,7 +70,6 @@ const unsigned char TYPE_NACK    = 0x7FU;
 
 CQnetModem::CQnetModem(int mod)
 : assigned_module(mod)
-, COUNTER(0)
 , dstarSpace(0U)
 , g2_is_active(false)
 {
@@ -582,23 +581,23 @@ int CQnetModem::SendToModem(const unsigned char *buf)
 bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 {
 	static std::string superframe;
-	if (29==len || 58==len) { //here is dstar data
-		SDSTR dstr;
-		memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
+	if (27==len || 56==len) { //here is dstar data
+		SDSVT dsvt;
+		memcpy(dsvt.title, raw, len);	// transfer raw data to SDSTR struct
 
 		SMODEM frame;	// destination
 		frame.start = FRAME_START;
-		if (58 == len) {			// write a Header packet
+		if (56 == len) {			// write a Header packet
 			superframe.clear();
 			frame.length = 44U;
 			frame.type = TYPE_HEADER;
-			memcpy(frame.header.flag, dstr.vpkt.hdr.flag, 3);
-			memcpy(frame.header.r1,   dstr.vpkt.hdr.r1,   8);
-			memcpy(frame.header.r2,   dstr.vpkt.hdr.r2,   8);
-			memcpy(frame.header.ur,   dstr.vpkt.hdr.ur,   8);
-			memcpy(frame.header.my,   dstr.vpkt.hdr.my,   8);
-			memcpy(frame.header.nm,   dstr.vpkt.hdr.nm,   4);
-			memcpy(frame.header.pfcs, dstr.vpkt.hdr.pfcs, 2);
+			memcpy(frame.header.flag, dsvt.hdr.flag,   3);
+			memcpy(frame.header.r1,   dsvt.hdr.rpt1,   8);
+			memcpy(frame.header.r2,   dsvt.hdr.rpt2,   8);
+			memcpy(frame.header.ur,   dsvt.hdr.urcall, 8);
+			memcpy(frame.header.my,   dsvt.hdr.mycall, 8);
+			memcpy(frame.header.nm,   dsvt.hdr.sfx,    4);
+			memcpy(frame.header.pfcs, dsvt.hdr.pfcs,   2);
 			queue.push(CFrame(&frame.start));
 			PacketWait.start();
 			g2_is_active = true;
@@ -607,7 +606,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 		} else {	// write a voice data packet
 			if (g2_is_active) {
 				//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
-				if (dstr.vpkt.ctrl & 0x40U) {
+				if (dsvt.ctrl & 0x40U) {
 					if (LOG_DEBUG && superframe.size())
 						printf("Final order: %s\n", superframe.c_str());
 					frame.length = 3U;
@@ -618,9 +617,9 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 				} else {
 					frame.length = 15U;
 					frame.type = TYPE_DATA;
-					memcpy(frame.voice.ambe, dstr.vpkt.vasd.voice, 12);
+					memcpy(frame.voice.ambe, dsvt.vasd.voice, 12);
 					if (LOG_DEBUG) {
-						if (VoicePacketIsSync(dstr.vpkt.vasd.text)) {
+						if (VoicePacketIsSync(dsvt.vasd.text)) {
 							if (0 == superframe.size()) {
 								printf("There were no previous voice frames.\n");
 							} else if (superframe.size() > 65) {
@@ -629,7 +628,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 							}
 							superframe.append(1, '#');
 						} else
-							superframe.append(1, (dstr.vpkt.ctrl<27U) ? '@' + dstr.vpkt.ctrl : '*');
+							superframe.append(1, (dsvt.ctrl<27U) ? '@' + dsvt.ctrl : '*');
 					}
 				}
 				queue.push(CFrame(&frame.start));
@@ -655,53 +654,50 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	if (frame.type == TYPE_HEADER)
 		stream_id = random.NewStreamID();
 
-	SDSTR dstr;	// destination
+	SDSVT dsvt;	// destination
 	// sets most of the params
-	memcpy(dstr.pkt_id, "DSTR", 4);
-	dstr.counter = htons(COUNTER++);
-	dstr.flag[0] = 0x73U;
-	dstr.flag[1] = 0x12U;
-	dstr.flag[2] = 0x0U;
-	dstr.vpkt.icm_id = 0x20U;
-	dstr.vpkt.dst_rptr_id = 0x0U;
-	dstr.vpkt.snd_rptr_id = 0x1U;
-	dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1U : (('C'==RPTR_MOD) ? 0x2U : 0x3U);
-	dstr.vpkt.streamid = htons(stream_id);
+	memcpy(dsvt.title, "DSVT", 4);
+	dsvt.config = 0x20U;	// voice packet
+	memset(dsvt.flaga, 0U, 3U);
+	dsvt.id = 0x20U;
+	dsvt.flagb[0] = 0x0U;
+	dsvt.flagb[1] = 0x1U;
+	dsvt.flagb[2] = ('B'==RPTR_MOD) ? 0x1U : (('C'==RPTR_MOD) ? 0x2U : 0x3U);
+	dsvt.streamid = htons(stream_id);
 
 	if (frame.type == TYPE_HEADER) {	// header
 		in_stream = first_voice_packet = true;
 		ctrl = 0U;
 		super_frame_count = 21U;
-		dstr.remaining = 0x30U;
-		dstr.vpkt.ctrl = 0x80U;
+		dsvt.config = 0x10U;
+		dsvt.ctrl = 0x80U;
 
-		memcpy(dstr.vpkt.hdr.flag, frame.header.flag, 3);
-		memcpy(dstr.vpkt.hdr.r1,   frame.header.r1,   8);
-		memcpy(dstr.vpkt.hdr.r2,   frame.header.r2,   8);
-		memcpy(dstr.vpkt.hdr.ur,   frame.header.ur,   8);
-		dstr.vpkt.hdr.flag[0] &= ~0x40U;	// clear this bit
+		memcpy(dsvt.hdr.flag, frame.header.flag, 3);
+		dsvt.hdr.flag[0] &= ~0x40U;	// clear this bit
+		memcpy(dsvt.hdr.rpt1,   frame.header.r1,   8);
+		memcpy(dsvt.hdr.rpt2,   frame.header.r2,   8);
+		memcpy(dsvt.hdr.urcall, frame.header.ur,   8);
 
-		memcpy(dstr.vpkt.hdr.my,   frame.header.my,   8);
-		memcpy(dstr.vpkt.hdr.nm,   frame.header.nm,   4);
-		memcpy(dstr.vpkt.hdr.pfcs, frame.header.pfcs, 2);
-		if (58 != Modem2Gate.Write(dstr.pkt_id, 58)) {
+		memcpy(dsvt.hdr.mycall, frame.header.my,   8);
+		memcpy(dsvt.hdr.sfx,    frame.header.nm,   4);
+		memcpy(dsvt.hdr.pfcs,   frame.header.pfcs, 2);
+		if (56 != Modem2Gate.Write(dsvt.title, 56)) {
 			printf("ERROR: ProcessModem: Could not write gateway header packet\n");
 			return true;
 		}
 		if (LOG_QSO)
-			printf("Sent DSTR to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+			printf("Sent DSTR to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 	} else if (in_stream && (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST)) {	// ambe
-		dstr.remaining = 0x16U;
-		dstr.vpkt.ctrl = ctrl++;
+		dsvt.ctrl = ctrl++;
 		if (frame.type == TYPE_DATA) {
 			if (first_voice_packet) {
 				if (! VoicePacketIsSync(frame.voice.text)) { // create a quite sync voice packet, if needed
 					if (LOG_DEBUG)
 						printf("Warning: Inserting missing frame sync after header\n");
 					const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
-					dstr.vpkt.ctrl = 0U;
-					memcpy(dstr.vpkt.vasd.voice, sync, 12U);
-					Modem2Gate.Write(dstr.pkt_id, 29);
+					dsvt.ctrl = 0U;
+					memcpy(dsvt.vasd.voice, sync, 12U);
+					Modem2Gate.Write(dsvt.title, 27);
 					ctrl = super_frame_count = 1U;
 				}
 				first_voice_packet = false;
@@ -709,30 +705,30 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			if (VoicePacketIsSync(frame.voice.text)) {
 				if (LOG_DEBUG && super_frame_count!=21U)
 					printf("Warning: got a frame sync but frame count is %u\n", super_frame_count);
-				dstr.vpkt.ctrl = super_frame_count = 0U;	// re-sync!
+				dsvt.ctrl = super_frame_count = 0U;	// re-sync!
 				ctrl = 1U;	// the frame after the sync
 			}
-			memcpy(dstr.vpkt.vasd.voice, frame.voice.ambe, 12);
+			memcpy(dsvt.vasd.voice, frame.voice.ambe, 12);
 			super_frame_count++;
 		} else {
 			if (frame.type == TYPE_LOST)
 				printf("Got a TYPE_LOST packet.\n");
 			const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 			const unsigned char silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
-			if (0U == dstr.vpkt.ctrl)
-				memcpy(dstr.vpkt.vasd.voice, silsync, 12);
+			if (0U == dsvt.ctrl)
+				memcpy(dsvt.vasd.voice, silsync, 12);
 			else
-				memcpy(dstr.vpkt.vasd.voice, silence, 12);
-			dstr.vpkt.ctrl |= 0x40U;
+				memcpy(dsvt.vasd.voice, silence, 12);
+			dsvt.ctrl |= 0x40U;
 			if (LOG_QSO) {
 				if (frame.type == TYPE_EOT)
-					printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+					printf("Sent DSTR end of streamid=%04x\n", ntohs(dsvt.streamid));
 				else
-					printf("Sent LOST end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+					printf("Sent LOST end of streamid=%04x\n", ntohs(dsvt.streamid));
 			}
 			first_voice_packet = in_stream = false;
 		}
-		if (29 != Modem2Gate.Write(dstr.pkt_id, 29)) {
+		if (29 != Modem2Gate.Write(dsvt.title, 27)) {
 			printf("ERROR: ProcessModem: Could not write gateway voice packet\n");
 			return true;
 		}

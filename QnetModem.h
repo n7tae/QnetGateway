@@ -206,7 +206,6 @@ public:
 
 private:
 	int assigned_module;
-	unsigned short COUNTER;
 	unsigned int dstarSpace;
 	bool g2_is_active;
 
