@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright 2017,2018 by Thomas Early, N7TAE
+ *   Copyright 2017-2019 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
  */
 
 // for communicating with the g2 gateway on the internal port
-#pragma pack(push, 1)	// we need to be sure these structures don't have any dead space
+#pragma pack(push, 1)	// used internally by Icom stacks
 typedef struct dstr_tag {
 	unsigned char pkt_id[4];	//  0	"DSTR"
 	unsigned short counter;		//  4
@@ -63,7 +63,7 @@ typedef struct dstr_tag {
 } SDSTR;
 #pragma pack(pop)
 
-// for the g2 external port
+// for the g2 external port and between QnetGateway programs
 #pragma pack(push, 1)
 typedef struct dsvt_tag {
 	unsigned char title[4];	//  0   "DSVT"
