@@ -332,7 +332,7 @@ int CQnetITAP::SendTo(const unsigned char *buf)
 	}
 
 	n = 0;	// send an ending 0xffu
-	while (0 == n) {it
+	while (0 == n) {
 		const unsigned char push = 0xffu;
 		n = write(serfd, &push, 1);
 		if (n < 0) {
