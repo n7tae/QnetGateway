@@ -718,9 +718,7 @@ static void ReadDVAPThread()
 					ok = false;
 			}
 
-			memcpy(dsvt.hdr.flag, dr.frame.hdr.flag, 41);	// copy the header, but...
-			memcpy(dsvt.hdr.rpt1, dr.frame.hdr.rpt1, 8);	// swap r1 <--> r2
-			memcpy(dsvt.hdr.rpt2, dr.frame.hdr.rpt2, 8);	// Internet Labs DVAP Dongle Tech. Ref. V 1.01 has it backwards!
+			memcpy(dsvt.hdr.flag, dr.frame.hdr.flag, 41);	// copy the header
 
 			/* RPT1 must always be the repeater + module */
 			memcpy(dsvt.hdr.rpt1, RPTR_and_MOD, 8);
