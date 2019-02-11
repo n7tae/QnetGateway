@@ -44,7 +44,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define ITAP_VERSION "QnetITAP-2.0.0"
+#define ITAP_VERSION "QnetITAP-2.1.0"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 

@@ -45,7 +45,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-0.0.0"
+#define MODEM_VERSION "QnetModem-0.1.0"
 #define MAX_RESPONSES 30
 
 std::atomic<bool> CQnetModem::keep_running(true);

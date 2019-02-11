@@ -57,7 +57,7 @@
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
 
-#define IRCDDB_VERSION "QnetGateway-9.0.0"
+#define IRCDDB_VERSION "QnetGateway-8.1.0"
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);

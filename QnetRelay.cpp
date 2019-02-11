@@ -36,7 +36,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "QnetRelay-1.0.3"
+#define RELAY_VERSION "QnetRelay-1.1.0"
 
 std::atomic<bool> CQnetRelay::keep_running(true);
 
@@ -193,7 +193,7 @@ bool CQnetRelay::Run(const char *cfgfile)
 			//printf("read %d bytes from MMDVMHost\n", (int)len);
 			if (ProcessMMDVM(len, buf))
 				break;
-		} else if (0 == ::memcmp(buf, "DSTR", 4)) {
+		} else if (0 == ::memcmp(buf, "DSVT", 4)) {
 			//printf("read %d bytes from MMDVMHost\n", (int)len);
 			if (ProcessGateway(len, buf))
 				break;
@@ -229,23 +229,23 @@ int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, c
 
 bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 {
-	if (29==len || 58==len) { //here is dstar data
-		SDSTR dstr;
-		::memcpy(dstr.pkt_id, raw, len);	// transfer raw data to SDSTR struct
+	if (27==len || 56==len) { //here is dstar data
+		SDSVT dsvt;
+		::memcpy(dsvt.title, raw, len);	// transfer raw data to SDSVT struct
 
 		SDSRP dsrp;	// destination
 		// fill in some inital stuff
 		::memcpy(dsrp.title, "DSRP", 4);
-		dsrp.voice.id = dstr.vpkt.streamid;	// voice or header is the same position
-		dsrp.voice.seq = dstr.vpkt.ctrl;	// ditto
-		if (29 == len) {	// write an AMBE packet
+		dsrp.voice.id = dsvt.streamid;	// voice or header is the same position
+		dsrp.voice.seq = dsvt.ctrl;	// ditto
+		if (27 == len) {	// write an AMBE packet
 			dsrp.tag = 0x21U;
 			if (log_qso && (dsrp.voice.seq & 0x40))
 				printf("Sent DSRP end of streamid=%04x\n", ntohs(dsrp.voice.id));
 			if ((dsrp.voice.seq & ~0x40U) > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", dsrp.voice.seq);
 			dsrp.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
-			memcpy(dsrp.voice.ambe, dstr.vpkt.vasd.voice, 12);
+			memcpy(dsrp.voice.ambe, dsvt.vasd.voice, 12);
 			int ret = SendTo(msock, dsrp.title, 21, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 21) {
 				printf("ERROR: ProcessGateway: Could not write AMBE mmdvmhost packet\n");
@@ -257,14 +257,14 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 //				printf("DEBUG: ProcessGateway: unexpected pkt.header.seq %d, resetting to 0\n", pkt.header.seq);
 				dsrp.header.seq = 0;
 			}
-			//memcpy(dsrp.header.flag, dstr.vpkt.hdr.flag, 41);
-			memcpy(dsrp.header.flag, dstr.vpkt.hdr.flag, 3);
-			memcpy(dsrp.header.r1,   dstr.vpkt.hdr.r1,   8);
-			memcpy(dsrp.header.r2,   dstr.vpkt.hdr.r2,   8);
-			memcpy(dsrp.header.ur,   dstr.vpkt.hdr.ur,   8);
-			memcpy(dsrp.header.my,   dstr.vpkt.hdr.my,   8);
-			memcpy(dsrp.header.nm,   dstr.vpkt.hdr.nm,   4);
-			memcpy(dsrp.header.pfcs, dstr.vpkt.hdr.pfcs, 2);
+			//memcpy(dsrp.header.flag, dsvt.hdr.flag, 41);
+			memcpy(dsrp.header.flag, dsvt.hdr.flag,   3);
+			memcpy(dsrp.header.r1,   dsvt.hdr.rpt1,   8);
+			memcpy(dsrp.header.r2,   dsvt.hdr.rpt2,   8);
+			memcpy(dsrp.header.ur,   dsvt.hdr.urcall, 8);
+			memcpy(dsrp.header.my,   dsvt.hdr.mycall, 8);
+			memcpy(dsrp.header.nm,   dsvt.hdr.sfx,    4);
+			memcpy(dsrp.header.pfcs, dsvt.hdr.pfcs,   2);
 			int ret = SendTo(msock, dsrp.title, 49, MMDVM_IP, MMDVM_IN_PORT);
 			if (ret != 49) {
 				printf("ERROR: ProcessGateway: Could not write Header mmdvmhost packet\n");
@@ -297,48 +297,44 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 				return false;
 		}
 
-		SDSTR dstr;	// destination
+		SDSVT dsvt;	// destination
 		// sets most of the params
-		::memcpy(dstr.pkt_id, "DSTR", 4);
-		dstr.counter = htons(COUNTER++);
-		dstr.flag[0] = 0x73;
-		dstr.flag[1] = 0x12;
-		dstr.flag[2] = 0x0;
-		dstr.vpkt.icm_id = 0x20;
-		dstr.vpkt.dst_rptr_id = 0x0;
-		dstr.vpkt.snd_rptr_id = 0x1;
-		dstr.vpkt.snd_term_id = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
-		dstr.vpkt.streamid = id;
+		::memcpy(dsvt.title, "DSVT", 4);
+		dsvt.config = (len==49) ? 0x10U : 0x20U;
+		memset(dsvt.flaga, 0U, 3U);
+		dsvt.id = 0x20U;
+		dsvt.flagb[0] = 0x0U;
+		dsvt.flagb[1] = 0x1U;
+		dsvt.flagb[2] = ('B'==RPTR_MOD) ? 0x1U : (('C'==RPTR_MOD) ? 0x2U : 0x3U);
+		dsvt.streamid = id;
 
 		if (49 == len) {	// header
-			dstr.remaining = 0x30;
-			dstr.vpkt.ctrl = 0x80;
-			//memcpy(dstr.vpkt.hdr.flag, dsrp.header.flag, 41);
-			memcpy(dstr.vpkt.hdr.flag, dsrp.header.flag, 3);
-			memcpy(dstr.vpkt.hdr.r1,   dsrp.header.r1,   8);
-			memcpy(dstr.vpkt.hdr.r2,   dsrp.header.r2,   8);
-			memcpy(dstr.vpkt.hdr.ur,   dsrp.header.ur,   8);
-			memcpy(dstr.vpkt.hdr.my,   dsrp.header.my,   8);
-			memcpy(dstr.vpkt.hdr.nm,   dsrp.header.nm,   4);
-			memcpy(dstr.vpkt.hdr.pfcs, dsrp.header.pfcs, 2);
-			if (58 != Modem2Gate.Write(dstr.pkt_id, 58)) {
+			dsvt.ctrl = 0x80;
+			//memcpy(dsvt.hdr.flag, dsrp.header.flag, 41);
+			memcpy(dsvt.hdr.flag,   dsrp.header.flag, 3);
+			memcpy(dsvt.hdr.rpt1,   dsrp.header.r1,   8);
+			memcpy(dsvt.hdr.rpt2,   dsrp.header.r2,   8);
+			memcpy(dsvt.hdr.urcall, dsrp.header.ur,   8);
+			memcpy(dsvt.hdr.mycall, dsrp.header.my,   8);
+			memcpy(dsvt.hdr.sfx,    dsrp.header.nm,   4);
+			memcpy(dsvt.hdr.pfcs,   dsrp.header.pfcs, 2);
+			if (56 != Modem2Gate.Write(dsvt.title, 56)) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
 			if (log_qso)
-				printf("Sent DSTR streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+				printf("Sent DSVT streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 		} else if (21 == len) {	// ambe
-			dstr.remaining = 0x16;
-			dstr.vpkt.ctrl = dsrp.header.seq;
-			memcpy(dstr.vpkt.vasd.voice, dsrp.voice.ambe, 12);
+			dsvt.ctrl = dsrp.header.seq;
+			memcpy(dsvt.vasd.voice, dsrp.voice.ambe, 12);
 
-			if (29 != Modem2Gate.Write(dstr.pkt_id, 29)) {
+			if (27 != Modem2Gate.Write(dsvt.title, 27)) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 				return true;
 			}
 
-			if (log_qso && dstr.vpkt.ctrl&0x40)
-				printf("Sent DSTR end of streamid=%04x\n", ntohs(dstr.vpkt.streamid));
+			if (log_qso && dsvt.ctrl&0x40)
+				printf("Sent DSVT end of streamid=%04x\n", ntohs(dsvt.streamid));
 		}
 	} else if (len < 65 && dsrp.tag == 0xAU) {
 //		printf("MMDVM Poll: '%s'\n", (char *)mpkt.poll_msg);

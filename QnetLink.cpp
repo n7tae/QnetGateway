@@ -52,7 +52,7 @@
 #include "QnetConfigure.h"
 #include "QnetLink.h"
 
-#define LINK_VERSION "QnetLink7.0.3"
+#define LINK_VERSION "QnetLink7.1.0"
 
 std::atomic<bool> CQnetLink::keep_running(true);
 

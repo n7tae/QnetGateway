@@ -51,7 +51,7 @@
 #include "UnixDgramSocket.h"
 #include "QnetConfigure.h"
 
-#define DVAP_VERSION "QnetDVAP-6.0.1"
+#define DVAP_VERSION "QnetDVAP-6.1.0"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
