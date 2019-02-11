@@ -70,7 +70,7 @@ typedef struct dsvt_tag {
 	unsigned char config;	//  4   0x10 is hdr 0x20 is vasd
 	unsigned char flaga[3];	//  5   zeros
 	unsigned char id;		//  8   0x20
-	unsigned char flagb[3];	//  9   0x0 0x1 0x1
+	unsigned char flagb[3];	//  9   0x0 0x1 (A:0x3 B:0x1 C:0x2)
 	unsigned short streamid;// 12
 	unsigned char ctrl;		// 14   hdr: 0x80 vsad: framecounter (mod 21)
 	union {

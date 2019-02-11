@@ -26,6 +26,7 @@
 #include "Random.h"
 #include "UnixDgramSocket.h"
 #include "QnetConfigure.h"
+#include "QnetTypeDefs.h"
 
 #define DVRPTR_VERSION "QnetDVRPTR-6.0.3"
 
@@ -50,23 +51,20 @@ short seq_no3 = 0;
 int fd_ser = -1;
 bool busy20000 = false;
 
-static unsigned char S_packet[26];
-static time_t S_ctrl_msg_time = 0;
 static int rqst_count = 6;
-static unsigned streamid[2] = {0x00, 0x00};
+static unsigned short streamid = 0x0;
 static unsigned char start_Header[8]= {0xD0,0x03,0x00,0x16,0x01,0x00,0x00,0x00};
 static unsigned char ptt_off[8]= {0xD0,0x03,0x00,0x1A,0x01,0xff,0x00,0x00};
 
-static bool read_config(const char *cfgFile);
+static bool ReadConfig(const char *cfgFile);
 static void readFrom20000();
 static bool check_serial();
 
-static unsigned char Send_Network_Header[58];
-static unsigned char Send_Network_Audio [29];
+SDSVT Send_Network_Header;
+SDSVT Send_Network_Audio;
 
 static int inactiveMax = 3200;
 
-static unsigned short C_COUNTER = 0;
 static unsigned char Send_Modem_Header[52];
 
 static unsigned char writevoice[24];
@@ -112,64 +110,18 @@ static char myUR[10];
 static char myCall[10];
 static char myCall2[10];
 
-char Ergebnis[250];
+char cbuf[250];
 
-struct hdr {
-	unsigned char flags[3];
-	unsigned char rpt2[8];
-	unsigned char rpt1[8];
-	unsigned char urcall[8];
-	unsigned char mycall[8];
-	unsigned char sfx[4];
-	unsigned char pfcs[2];
-};
-
-struct icm {
-	unsigned char icm_id;
-	unsigned char dst_rptr_id;
-	unsigned char snd_rptr_id;
-	unsigned char snd_term_id;
-	unsigned char streamid[2];
-	unsigned char ctrl;
-};
-struct voice_and_text {
-	unsigned char voice[8];
-	unsigned char text[2];
-};
-
-struct nettext {
-	unsigned char net_text[20];
-};
-
-struct audio {
-	unsigned char buff[sizeof(struct hdr)];
-};
-
-struct pkt {
-	unsigned char pkt_id[4];
-	unsigned char nothing1[2];
-	unsigned char flags[2];
-	unsigned char nothing2[2];
-	struct icm myicm;
-	union {
-		struct audio rf_audio;
-		struct hdr rf_hdr;
-		struct nettext net_text;
-		struct voice_and_text vat;
-	};
-};
-static struct pkt recv_buf;
-typedef unsigned int U32;
-
+static SDSVT recv_buf;
 
 //! 32-bit union.
 typedef union {
-	U32 u32   ;
-	unsigned short u16[2];
-	unsigned char u8[4];
+	uint32_t u32;
+	uint16_t u16[2];
+	uint8_t u8[4];
 } Union32;
 
-static const U32 ENCODING_TABLE_23127[] = {
+static const uint32_t ENCODING_TABLE_23127[] = {
 	0x000000U, 0x0018EAU, 0x00293EU, 0x0031D4U, 0x004A96U, 0x00527CU, 0x0063A8U, 0x007B42U, 0x008DC6U, 0x00952CU,
 	0x00A4F8U, 0x00BC12U, 0x00C750U, 0x00DFBAU, 0x00EE6EU, 0x00F684U, 0x010366U, 0x011B8CU, 0x012A58U, 0x0132B2U,
 	0x0149F0U, 0x01511AU, 0x0160CEU, 0x017824U, 0x018EA0U, 0x01964AU, 0x01A79EU, 0x01BF74U, 0x01C436U, 0x01DCDCU,
@@ -582,7 +534,7 @@ static const U32 ENCODING_TABLE_23127[] = {
 	0xFFAD82U, 0xFFB568U, 0xFFCE2AU, 0xFFD6C0U, 0xFFE714U, 0xFFFFFEU
 };
 
-static const U32 ENCODING_TABLE_24128[] = {
+static const uint32_t ENCODING_TABLE_24128[] = {
 	0x000000U, 0x0018EBU, 0x00293EU, 0x0031D5U, 0x004A97U, 0x00527CU, 0x0063A9U, 0x007B42U, 0x008DC6U, 0x00952DU,
 	0x00A4F8U, 0x00BC13U, 0x00C751U, 0x00DFBAU, 0x00EE6FU, 0x00F684U, 0x010367U, 0x011B8CU, 0x012A59U, 0x0132B2U,
 	0x0149F0U, 0x01511BU, 0x0160CEU, 0x017825U, 0x018EA1U, 0x01964AU, 0x01A79FU, 0x01BF74U, 0x01C436U, 0x01DCDDU,
@@ -996,7 +948,7 @@ static const U32 ENCODING_TABLE_24128[] = {
 };
 
 
-static const U32 DECODING_TABLE_23127[] = {
+static const uint32_t DECODING_TABLE_23127[] = {
 	0x000000U, 0x000001U, 0x000002U, 0x000003U, 0x000004U, 0x000005U, 0x000006U, 0x000007U, 0x000008U, 0x000009U,
 	0x00000AU, 0x00000BU, 0x00000CU, 0x00000DU, 0x00000EU, 0x024020U, 0x000010U, 0x000011U, 0x000012U, 0x000013U,
 	0x000014U, 0x000015U, 0x000016U, 0x412000U, 0x000018U, 0x000019U, 0x00001AU, 0x180800U, 0x00001CU, 0x200300U,
@@ -1219,9 +1171,9 @@ static const U32 DECODING_TABLE_23127[] = {
  * obtain its syndrome in decoding.
  */
 
-static U32 get_syndrome_23127(U32 pattern)
+static uint32_t get_syndrome_23127(uint32_t pattern)
 {
-	U32 aux = GORLAY_X22;
+	uint32_t aux = GORLAY_X22;
 	if (pattern >= GORLAY_X11) {
 		while (pattern & GORLAY_MASK12) {
 			while ((aux & pattern)==0) aux >>= 1;
@@ -1239,8 +1191,8 @@ __inline unsigned int gorlay_encode23127(unsigned int data)
 
 unsigned int gorlay_decode23127(unsigned int code)
 {
-	U32 syndrome = get_syndrome_23127(code);
-	U32 error_pattern = DECODING_TABLE_23127[syndrome];
+	uint32_t syndrome = get_syndrome_23127(code);
+	uint32_t error_pattern = DECODING_TABLE_23127[syndrome];
 	code ^= error_pattern;
 	return code >> 11;
 }
@@ -1255,7 +1207,7 @@ __inline unsigned int gorlay_decode24128(unsigned int code)
 	return gorlay_decode23127(code >> 1);
 }
 
-static const U32 PRNG_TABLE[] = {
+static const uint32_t PRNG_TABLE[] = {
 	0x42CC47U, 0x19D6FEU, 0x304729U, 0x6B2CD0U, 0x60BF47U, 0x39650EU, 0x7354F1U, 0xEACF60U, 0x819C9FU, 0xDE25CEU,
 	0xD7B745U, 0x8CC8B8U, 0x8D592BU, 0xF71257U, 0xBCA084U, 0xA5B329U, 0xEE6AFAU, 0xF7D9A7U, 0xBCC21CU, 0x4712D9U,
 	0x4F2922U, 0x14FA37U, 0x5D43ECU, 0x564115U, 0x299A92U, 0x20A9EBU, 0x7B707DU, 0x3BE3A4U, 0x20D95BU, 0x6B085AU,
@@ -1676,7 +1628,7 @@ typedef unsigned char tambevoice[6];
 
 static void ambefec_deinterleave(tambevoicefec result, const tambevoicefec voice)
 {
-	U32 bitpos, bytcnt;
+	uint32_t bitpos, bytcnt;
 	memset(result, 0, sizeof(tambevoicefec));		// init result
 	bitpos = 0;
 	for (bytcnt = 0; bytcnt < sizeof(tambevoicefec); bytcnt++) {
@@ -1702,7 +1654,7 @@ static void ambefec_deinterleave(tambevoicefec result, const tambevoicefec voice
 
 static void ambefec_interleave(tambevoicefec result, const tambevoicefec raw_voice)
 {
-	U32 bitpos, bytcnt;
+	uint32_t bitpos, bytcnt;
 	bitpos = 0;
 	for (bytcnt = 0; bytcnt < sizeof(tambevoicefec); bytcnt++) {
 		char voice_dsr = (raw_voice[bitpos>>3] & (0x80 >> (bitpos&7)))?0x80:0x00;
@@ -1728,7 +1680,7 @@ static void ambefec_interleave(tambevoicefec result, const tambevoicefec raw_voi
 void ambefec_regenerate(tambevoicefec voice)
 {
 	tambevoicefec decoded;
-	U32 data, datb, encoded_dat;
+	uint32_t data, datb, encoded_dat;
 	ambefec_deinterleave(decoded, voice);
 	data        = gorlay_decode24128((decoded[0]<<16) | (decoded[1]<<8) | decoded[2]);
 	encoded_dat = gorlay_encode24128(data);
@@ -1809,7 +1761,7 @@ static void calcPFCS(unsigned char packet[58])//Netzwerk CRC
 }
 
 /* process configuration file */
-static bool read_config(const char *cfgFile)
+static bool ReadConfig(const char *cfgFile)
 {
 	CQnetConfigure cfg;
 
@@ -1914,26 +1866,24 @@ static bool read_config(const char *cfgFile)
 
 char *cleanstr (char *Text)
 {
-	unsigned int x = 0;
-	strcpy (Ergebnis,"");
+	static char cbuf[250];
+	memset(cbuf, 0U, 250U);
 
-	for (x = 0; x < strlen (Text); x++) {
-		if ((Text[x] > 0x1F) &&  (Text[x] < 0x7F)) {
-			if (Text[x] == 0x27) {
-				strncat (Ergebnis,"\\",1);
+	for (unsigned int x=0; x < strlen(Text); x++) {
+		if ((Text[x] > 0x1F) && (Text[x] < 0x7F)) {
+			if (Text[x] == '\'') {
+				strncat(cbuf, "\\", 1);
 			}
-			strncat (Ergebnis,&Text[x],1);
+			strncat(cbuf, &Text[x], 1);
 		}
 	}
 
-	for (x = 0; x < strlen(Ergebnis); x++) {
-		if (!isdigit(Ergebnis[x]) &&
-		        !isupper(Ergebnis[x]) &&
-		        (Ergebnis[x] != '/'))
-			Ergebnis[x] = ' ';
+	for (unsigned int x=0; x < strlen(cbuf); x++) {
+		if (!isdigit(cbuf[x]) && !isupper(cbuf[x]) && (cbuf[x] != '/'))
+			cbuf[x] = ' ';
 	}
 
-	return (Ergebnis);
+	return (cbuf);
 }
 
 int open_port(char *dvrptr_device)
@@ -2169,46 +2119,43 @@ static void readFrom20000()
 		FD_SET (fd, &readfd);
 		select(fd + 1, &readfd, NULL, NULL, &tv);
 		if (FD_ISSET(fd, &readfd)) {
-			len = Gate2Modem.Read(recv_buf.pkt_id, 58);
-			if (len == 58) {
+			len = Gate2Modem.Read(recv_buf.title, 56);
+			if (len == 56) {
 				if (busy20000) {
 					FD_CLR (fd, &readfd);
 					continue;
 				}
 
 				/* check the module and gateway */
-				if (recv_buf.rf_hdr.rpt2[7] != DVRPTR_MOD) {
+				if (recv_buf.hdr.rpt2[7] != DVRPTR_MOD) {
 					FD_CLR (fd, &readfd);
 					break;
 				}
-				memcpy(recv_buf.rf_hdr.rpt1, DVCALL_and_G, 8);
+				memcpy(recv_buf.hdr.rpt1, DVCALL_and_G, 8);
 
 				if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
-					memcpy(recv_buf.rf_hdr.rpt1, RPTR, 7);
-					memcpy(recv_buf.rf_hdr.rpt2, RPTR, 7);
+					memcpy(recv_buf.hdr.rpt1, RPTR, 7);
+					memcpy(recv_buf.hdr.rpt2, RPTR, 7);
 
 					/*
 					   Do not change the user callsign if it is NOT an ack back from g2,
 					   because we want to know who is talking on remote net
 					*/
-					if (memcmp(recv_buf.rf_hdr.mycall, DVCALL, 7) == 0)
-						memcpy(recv_buf.rf_hdr.mycall, RPTR, 7);
+					if (memcmp(recv_buf.hdr.mycall, DVCALL, 7) == 0)
+						memcpy(recv_buf.hdr.mycall, RPTR, 7);
 				}
 
-				if ((recv_buf.rf_hdr.flags[0] != 0x00) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x01) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x08) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x20) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x28) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x40)) {
+				if ((recv_buf.hdr.flag[0] != 0x00) &&
+				        (recv_buf.hdr.flag[0] != 0x01) &&
+				        (recv_buf.hdr.flag[0] != 0x08) &&
+				        (recv_buf.hdr.flag[0] != 0x20) &&
+				        (recv_buf.hdr.flag[0] != 0x28) &&
+				        (recv_buf.hdr.flag[0] != 0x40)) {
 					FD_CLR (fd, &readfd);
 					break;
 				}
 
-				if ((memcmp(recv_buf.pkt_id, "DSTR", 4) != 0) ||
-				        (recv_buf.flags[0] != 0x73) ||
-				        (recv_buf.flags[1] != 0x12) ||
-				        (recv_buf.myicm.icm_id != 0x20)) {
+				if ((memcmp(recv_buf.title, "DSVT", 4) != 0) || (recv_buf.id != 0x20)) {
 					FD_CLR (fd, &readfd);
 					break;
 				}
@@ -2218,8 +2165,7 @@ static void readFrom20000()
 				ctrl_in = 0x80;
 				written_to_q = true;
 
-				streamid[0] = recv_buf.myicm.streamid[0];
-				streamid[1] = recv_buf.myicm.streamid[1];
+				streamid = recv_buf.streamid;
 
 				Send_Modem_Header[0] =0xd0;
 				Send_Modem_Header[1] =0x2f;
@@ -2230,27 +2176,25 @@ static void readFrom20000()
 				Send_Modem_Header[6] =0x00;
 				Send_Modem_Header[7] =0x00;
 
-				if (recv_buf.rf_hdr.flags[0] != 0x01) {
-					if (recv_buf.rf_hdr.flags[0] == 0x00)
-						recv_buf.rf_hdr.flags[0] = 0x40;
-					else if (recv_buf.rf_hdr.flags[0] == 0x08)
-						recv_buf.rf_hdr.flags[0] = 0x48;
-					else if (recv_buf.rf_hdr.flags[0] == 0x20)
-						recv_buf.rf_hdr.flags[0] = 0x60;
-					else if (recv_buf.rf_hdr.flags[0] == 0x28)
-						recv_buf.rf_hdr.flags[0] = 0x68;
+				if (recv_buf.hdr.flag[0] != 0x1U) {
+					if (recv_buf.hdr.flag[0] == 0x0U)
+						recv_buf.hdr.flag[0] = 0x40U;
+					else if (recv_buf.hdr.flag[0] == 0x8U)
+						recv_buf.hdr.flag[0] = 0x48U;
+					else if (recv_buf.hdr.flag[0] == 0x20U)
+						recv_buf.hdr.flag[0] = 0x60U;
+					else if (recv_buf.hdr.flag[0] == 0x28U)
+						recv_buf.hdr.flag[0] = 0x68U;
 					else
-						recv_buf.rf_hdr.flags[0] = 0x40;
+						recv_buf.hdr.flag[0] = 0x40U;
 				}
-				recv_buf.rf_hdr.flags[1] = 0x00;
-				recv_buf.rf_hdr.flags[2] = 0x00;
-
-				memcpy(Send_Modem_Header + 8, recv_buf.rf_hdr.flags, 3);
-				memcpy(Send_Modem_Header + 11, recv_buf.rf_hdr.rpt1, 8);
-				memcpy(Send_Modem_Header + 19, recv_buf.rf_hdr.rpt2, 8);
-				memcpy(Send_Modem_Header + 27, recv_buf.rf_hdr.urcall, 8);
-				memcpy(Send_Modem_Header + 35, recv_buf.rf_hdr.mycall, 8);
-				memcpy(Send_Modem_Header + 43, recv_buf.rf_hdr.sfx, 4);
+				recv_buf.hdr.flag[1] = recv_buf.hdr.flag[2] = 0x0;
+				memcpy(Send_Modem_Header + 8, recv_buf.hdr.flag, 3);
+				memcpy(Send_Modem_Header + 11, recv_buf.hdr.rpt1, 8);
+				memcpy(Send_Modem_Header + 19, recv_buf.hdr.rpt2, 8);
+				memcpy(Send_Modem_Header + 27, recv_buf.hdr.urcall, 8);
+				memcpy(Send_Modem_Header + 35, recv_buf.hdr.mycall, 8);
+				memcpy(Send_Modem_Header + 43, recv_buf.hdr.sfx, 4);
 				Send_Modem_Header[47] =0xE1;
 				Send_Modem_Header[48] =0x00;
 				Send_Modem_Header[49] =0x00;
@@ -2259,11 +2203,7 @@ static void readFrom20000()
 				// printf("\nNetwork Header ID: %2.2x\n",seq_no2);
 				block = 0;
 
-				printf("From G2: streamid=%d,%d, flags=%02x:%02x:%02x, myCall=%.8s/%.4s, yrCall=%.8s, rpt1=%.8s, rpt2=%.8s\n",
-				        recv_buf.myicm.streamid[0], recv_buf.myicm.streamid[1],
-				        recv_buf.rf_hdr.flags[0], recv_buf.rf_hdr.flags[1], recv_buf.rf_hdr.flags[2],
-				        recv_buf.rf_hdr.mycall, recv_buf.rf_hdr.sfx, recv_buf.rf_hdr.urcall,
-				        recv_buf.rf_hdr.rpt2, recv_buf.rf_hdr.rpt1);
+				printf("From G2: streamid=%04x, flags=%02x:%02x:%02x, myCall=%.8s/%.4s, yrCall=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(recv_buf.streamid), recv_buf.hdr.flag[0], recv_buf.hdr.flag[1], recv_buf.hdr.flag[2], recv_buf.hdr.mycall, recv_buf.hdr.sfx, recv_buf.hdr.urcall, recv_buf.hdr.rpt2, recv_buf.hdr.rpt1);
 
 				ptt_off[4] = seq_no2;
 				start_Header[4]=seq_no2;
@@ -2275,8 +2215,8 @@ static void readFrom20000()
 				write(fd_ser, Send_Modem_Header, sizeof (Send_Modem_Header));
 				inactive = 0;
 				seq_no = 0;
-			} else if (len == 29) {
-				seq_no = recv_buf.myicm.ctrl & 0x1f;
+			} else if (len == 27) {
+				seq_no = recv_buf.ctrl & 0x1f;
 				if ((seq_no < 3) && (old_seq_no > 17)) {
 					block ++;
 					if (block >= 12)
@@ -2286,12 +2226,12 @@ static void readFrom20000()
 				seq_no = block * 21 + seq_no;
 
 				if (busy20000) {
-					if ((recv_buf.myicm.streamid[0] == streamid[0]) && (recv_buf.myicm.streamid[1] == streamid[1])) {
-						if ((recv_buf.myicm.ctrl <= ctrl_in) && (ctrl_in != 0x80)) {
+					if (recv_buf.streamid == streamid) {
+						if ((recv_buf.ctrl <= ctrl_in) && (ctrl_in != 0x80)) {
 							/* do not update written_to_q, ctrl_in */
 							; // printf("dup\n");
 						} else {
-							ctrl_in = recv_buf.myicm.ctrl;
+							ctrl_in = recv_buf.ctrl;
 							if (ctrl_in == 0x14)
 								ctrl_in = 0x80;
 
@@ -2305,8 +2245,8 @@ static void readFrom20000()
 							writevoice[5] =seq_no;
 							writevoice[6] =0x00;
 							writevoice[7] =0x00;
-							ambefec_regenerate((recv_buf.rf_audio.buff));
-							memcpy(writevoice + 8, recv_buf.rf_audio.buff, 12);
+							ambefec_regenerate(recv_buf.vasd.voice);
+							memcpy(writevoice + 8, recv_buf.vasd.voice, 12);
 							writevoice[20] =0x00;
 							writevoice[21] =0x00;
 							writevoice[22] =0x00;
@@ -2316,15 +2256,14 @@ static void readFrom20000()
 							write(fd_ser, writevoice, sizeof (writevoice));
 							inactive = 1;
 
-							if ((recv_buf.myicm.ctrl & 0x40) != 0) {
-								printf("End G2: streamid=%d,%d\n",recv_buf.myicm.streamid[0], recv_buf.myicm.streamid[1]);
+							if ((recv_buf.ctrl & 0x40) != 0) {
+								printf("End G2: streamid=%04x\n",ntohs(recv_buf.streamid));
 
 								ptt_off[4] = Send_Modem_Header[4];
 								write(fd_ser, ptt_off, 8);
 								busy20000 = false;
 
-								streamid[0] = 0x00;
-								streamid[1] = 0x00;
+								streamid = 0x0U;
 
 								inactive = 0;
 								FD_CLR (fd, &readfd);
@@ -2357,8 +2296,7 @@ static void readFrom20000()
 					write(fd_ser, ptt_off, 8);
 					busy20000 = false;
 
-					streamid[0] = 0x00;
-					streamid[1] = 0x00;
+					streamid = 0x0U;
 
 					inactive = 0;
 					break;
@@ -2533,7 +2471,7 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
-	if (read_config(argv[1])) {
+	if (ReadConfig(argv[1])) {
 		fprintf(stderr, "Failed to process config file %s\n", argv[2]);
 		return 1;
 	}
@@ -2553,11 +2491,11 @@ int main(int argc, const char **argv)
 	}
 
 	if (DVRPTR_MOD == 'A')
-		SND_TERM_ID = 0x03;
+		SND_TERM_ID = 0x3;
 	else if (DVRPTR_MOD == 'B')
-		SND_TERM_ID = 0x01;
+		SND_TERM_ID = 0x1;
 	else if (DVRPTR_MOD == 'C')
-		SND_TERM_ID = 0x02;
+		SND_TERM_ID = 0x2;
 
 	strcpy(DVCALL_and_G, DVCALL);
 	DVCALL_and_G[7] = 'G';
@@ -2580,14 +2518,6 @@ int main(int argc, const char **argv)
 			Modem_Init2[6]=0x02;
 	}
 
-	memcpy(S_packet, "DSTR", 4);
-	S_packet[4] = 0x00;
-	S_packet[5] = 0x00;
-	S_packet[6] = 0x73;
-	S_packet[7] = 0x21;
-	S_packet[8] = 0x00;
-	S_packet[9] = 0x10;
-
 	dstar_dv_init();
 
 	time(&tNow);
@@ -2609,19 +2539,6 @@ int main(int argc, const char **argv)
 				close(fd_ser);
 				break;
 			}
-		}
-
-		/* send the S packet if needed */
-		if ((tNow - S_ctrl_msg_time) > 60) {
-			S_packet[5] = (unsigned char)(C_COUNTER & 0xff);
-			S_packet[4] = ((C_COUNTER >> 8) & 0xff);
-			memcpy(S_packet + 10, DVCALL, 8);
-			S_packet[17] = 'S';
-			memcpy(S_packet + 18, DVCALL, 8);
-			S_packet[25] = 'S';
-			Modem2Gate.Write(S_packet, sizeof(S_packet));
-			C_COUNTER ++;
-			S_ctrl_msg_time = tNow;
 		}
 
 		// init Modem
@@ -2808,19 +2725,6 @@ int main(int argc, const char **argv)
 					}
 				}
 
-				S_packet[5] = (unsigned char)(C_COUNTER & 0xff);
-				S_packet[4] = ((C_COUNTER >> 8) & 0xff);
-				memcpy(S_packet + 10, myCall, 8);
-				memcpy(S_packet + 18, DVCALL, 8);
-				S_packet[25] = DVRPTR_MOD;
-
-				if (ok) {
-					if (IS_ENABLED) {
-						Modem2Gate.Write(S_packet, sizeof(S_packet));
-						C_COUNTER ++;
-					}
-				}
-
 				/*
 				   Before we send the data to the local gateway,
 				   set RPT1, RPT2 to be the local gateway
@@ -2829,48 +2733,41 @@ int main(int argc, const char **argv)
 				if (myRPT2[7] != ' ')
 					memcpy(myRPT2, DVCALL, 7);
 
-				memcpy(Send_Network_Header , "DSTR", 4);
-				Send_Network_Header[4] = ((C_COUNTER >> 8) & 0xff);
-				Send_Network_Header[5] = (unsigned char)(C_COUNTER & 0xff);
-				Send_Network_Header[6] =  0x73;
-				Send_Network_Header[7] =  0x12;
-				Send_Network_Header[8] =  0x00;
-				Send_Network_Header[9] =  0x30;
-				Send_Network_Header[10] =  0x20;
-				Send_Network_Header[11] =  0x00;
-				Send_Network_Header[12] =  0x01;
-				Send_Network_Header[13] =  SND_TERM_ID;
+				memcpy(Send_Network_Header.title , "DSVT", 4);
+				Send_Network_Header.config = 0x10U;
+				memset(Send_Network_Header.flaga, 0U, 3U);
+				Send_Network_Header.id = 0x20U;
+				Send_Network_Header.flagb[0] = 0x0U;
+				Send_Network_Header.flagb[1] = 0x1U;
+				Send_Network_Header.flagb[2] = SND_TERM_ID;
 				streamid_raw = Random.NewStreamID();
-				Send_Network_Header[14] = streamid_raw / 256U;
-				Send_Network_Header[15] = streamid_raw % 256U;
-				Send_Network_Header[16] =  0x80;
+				Send_Network_Header.streamid = streamid_raw;
+				Send_Network_Header.ctrl = 0x80U;
 				seq_no = 0;
 
-				if (puffer[8] == 0x40)
-					Send_Network_Header[17] = 0x00;
-				else if (puffer[8] == 0x48)
-					Send_Network_Header[17] = 0x08;
-				else if (puffer[8] == 0x60)
-					Send_Network_Header[17] = 0x20;
-				else if (puffer[8] == 0x68)
-					Send_Network_Header[17] = 0x28;
+				if (puffer[8] == 0x40U)
+					Send_Network_Header.hdr.flag[0] = 0x0U;
+				else if (puffer[8] == 0x48U)
+					Send_Network_Header.hdr.flag[0] = 0x8U;
+				else if (puffer[8] == 0x60U)
+					Send_Network_Header.hdr.flag[0] = 0x20U;
+				else if (puffer[8] == 0x68U)
+					Send_Network_Header.hdr.flag[0] = 0x28U;
 				else
-					Send_Network_Header[17] = 0x00;
+					Send_Network_Header.hdr.flag[0] = 0x00;
 
-				Send_Network_Header[18] = puffer[9];
-				Send_Network_Header[19] = puffer[10];
-				memcpy(Send_Network_Header + 20, myRPT2, 8);
-				memcpy(Send_Network_Header + 28, myRPT1, 8);
-				memcpy(Send_Network_Header + 36, myUR, 8);
-				memcpy(Send_Network_Header + 44, myCall, 8);
-				memcpy(Send_Network_Header + 52, myCall2, 4);
-				calcPFCS(Send_Network_Header);
+				Send_Network_Header.hdr.flag[1] = puffer[9];
+				Send_Network_Header.hdr.flag[2] = puffer[10];
+				memcpy(Send_Network_Header.hdr.rpt1, myRPT2, 8);
+				memcpy(Send_Network_Header.hdr.rpt2, myRPT1, 8);
+				memcpy(Send_Network_Header.hdr.urcall, myUR, 8);
+				memcpy(Send_Network_Header.hdr.mycall, myCall, 8);
+				memcpy(Send_Network_Header.hdr.sfx, myCall2, 4);
+				calcPFCS(Send_Network_Header.title);
 
 				if (ok) {
-					if (IS_ENABLED) {
-						Modem2Gate.Write(Send_Network_Header, 58);
-						C_COUNTER++;
-					}
+					if (IS_ENABLED)
+						Modem2Gate.Write(Send_Network_Header.title, 56);
 				}
 
 				seq_no3 = 0;
@@ -2917,28 +2814,22 @@ int main(int argc, const char **argv)
 				if (last_RF_time > 0)
 					time(&last_RF_time);
 
-				memcpy(Send_Network_Audio , "DSTR", 4);
-				Send_Network_Audio[4] = ((C_COUNTER >> 8) & 0xff);
-				Send_Network_Audio[5] = (unsigned char)(C_COUNTER & 0xff);
-				Send_Network_Audio[6] = 0X73;
-				Send_Network_Audio[7] = 0X12;
-				Send_Network_Audio[8] = 0X00;
-				Send_Network_Audio[9] = 0X13;
-				Send_Network_Audio[10] = 0X20;
-				Send_Network_Audio[11] = 0X00;
-				Send_Network_Audio[12] = 0X01;
-				Send_Network_Audio[13] = SND_TERM_ID;
-				Send_Network_Audio[14] = streamid_raw / 256U;
-				Send_Network_Audio[15] = streamid_raw % 256U;
-				Send_Network_Audio[16] = seq_no;
-				memcpy(Send_Network_Audio + 17 , puffer + 8, 12);
+				memcpy(Send_Network_Audio.title , "DSVT", 4);
+				Send_Network_Audio.config = 0x20U;
+				memset(Send_Network_Audio.flaga, 0U, 3U);
+				Send_Network_Audio.id = 0x20U;
+				Send_Network_Audio.flagb[0] = 0X00;
+				Send_Network_Audio.flagb[1] = 0X01;
+				Send_Network_Audio.flagb[2] = SND_TERM_ID;
+				Send_Network_Audio.streamid = streamid_raw;
+				Send_Network_Audio.ctrl = seq_no;
+				memcpy(Send_Network_Audio.vasd.voice , puffer + 8, 12);
 
 				if (IS_ENABLED) {
-					Modem2Gate.Write(Send_Network_Audio, 29);
-					ber_errs = dstar_dv_decode((unsigned char *)&Send_Network_Audio + 17, ber_data);
+					Modem2Gate.Write(Send_Network_Audio.title, 27);
+					ber_errs = dstar_dv_decode(Send_Network_Audio.vasd.voice, ber_data);
 					num_bit_errors += ber_errs;
 					num_dv_frames++;
-					C_COUNTER++;
 				}
 
 				seq_no ++;
@@ -2989,10 +2880,7 @@ int main(int argc, const char **argv)
 			}
 		}
 
-		if ((puffer[0] == 0xD0) &&
-		        (puffer[1] == 0x17) &&
-		        (puffer[2] == 0x00) &&
-		        (puffer[3] == 0x91)) {
+		if ((puffer[0] == 0xD0) && (puffer[1] == 0x17) && (puffer[2] == 0x00) && (puffer[3] == 0x91)) {
 			rqst_count = RQST_COUNT;
 
 			printf("DVRPTR Hardware ver: %.20s\n",puffer+6 );
@@ -3007,14 +2895,11 @@ int main(int argc, const char **argv)
 			if ((fw_version & 0x0f) > 0)
 				fw_string[4] = (fw_version & 0x0f) + 'a' - 1;
 
-			printf("DVRPTR Firmware ver: %.5s\n",fw_string );
+			printf("DVRPTR Firmware ver: %.5s\n",fw_string);
 			puffer[1] = 0x00;
 		}
 
-		if ((puffer[0] == 0xD0) &&
-		        ((puffer[1] == 0x07) || (puffer[1] == 0x08)) &&
-		        (puffer[2] == 0x00) &&
-		        (puffer[3] == 0x90)) {
+		if ((puffer[0] == 0xD0) && ((puffer[1] == 0x07) || (puffer[1] == 0x08)) && (puffer[2] == 0x00) && (puffer[3] == 0x90)) {
 			rqst_count = RQST_COUNT;
 
 			printf("\n------- STATUS READ FROM MODEM ---------\n");
@@ -3030,10 +2915,7 @@ int main(int argc, const char **argv)
 		}
 
 		/* serial */
-		if ((puffer[0] == 0xD0) &&
-		        (puffer[1] == 0x05) &&
-		        (puffer[2] == 0x00) &&
-		        (puffer[3] == 0x92)) {
+		if ((puffer[0] == 0xD0) && (puffer[1] == 0x05) && (puffer[2] == 0x00) && (puffer[3] == 0x92)) {
 			rqst_count = RQST_COUNT;
 			puffer[1] = 0x00;
 		}
@@ -3046,49 +2928,40 @@ int main(int argc, const char **argv)
 		/* If an RF user TXed and disappeared after that */
 		if ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) {
 			printf("End RF(Timeout), ber=%.02f\n",
-			        (num_dv_frames == 0)?0.00:100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
+			        (num_dv_frames == 0) ? 0.0 : 100.0 * ((float)num_bit_errors / (float)(num_dv_frames * 24.0)) );
 			ptt_off[4] = Send_Modem_Header[4];
 			write(fd_ser, ptt_off, 8);
 		}
 
-		if ( ((puffer[0] == 0xD0) &&
-		        (puffer[1] == 0x03) &&
-		        (puffer[2] == 0x00) &&
-		        (puffer[3] == 0x1A)) ||
-		        ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) ) {
+		if ( ((puffer[0] == 0xD0) && (puffer[1] == 0x03) && (puffer[2] == 0x00) && (puffer[3] == 0x1A)) || ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) ) {
 			puffer[0] = 0x00;
 			if (last_RF_time > 0) {
-				memcpy(Send_Network_Header , "DSTR", 4);
-				Send_Network_Header[4] = ((C_COUNTER >> 8) & 0xff);
-				Send_Network_Header[5] = (unsigned char)(C_COUNTER & 0xff);
-				Send_Network_Header[6] =  0x73;
-				Send_Network_Header[7] =  0x12;
-				Send_Network_Header[8] =  0x00;
-				Send_Network_Header[9] =  0x13;
-				Send_Network_Header[10] =  0x20;
-				Send_Network_Header[11] =  0x00;
-				Send_Network_Header[12] =  0x01;
-				Send_Network_Header[13] =  0x01;
-				Send_Network_Header[16] =  seq_no | 0x40;
-				Send_Network_Header[17] =  0x40;
-				Send_Network_Header[18] =  0x55;
-				Send_Network_Header[19] =  0xc8;
+				const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
+				const unsigned char silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
+				memcpy(Send_Network_Audio.title , "DSVT", 4);
+				Send_Network_Audio.config =  0x20U;
+				memset(Send_Network_Audio.flaga, 0U, 3U);
+				Send_Network_Audio.id =  0x20U;
+				Send_Network_Audio.flagb[0] =  0x0U;
+				Send_Network_Audio.flagb[1] =  0x1U;
+				Send_Network_Audio.flagb[2] =  SND_TERM_ID;
+				Send_Network_Audio.ctrl =  seq_no | 0x40U;
+				memcpy(Send_Network_Audio.vasd.voice, seq_no ? silsync : silence, 12U);
 
 				if (ok) {
 					if (IS_ENABLED) {
-						Modem2Gate.Write(Send_Network_Header, 29);
-						C_COUNTER++;
+						Modem2Gate.Write(Send_Network_Audio.title, 27);
 					}
 				}
 
 				ptt_off[4] = Send_Modem_Header[4];
 				write(fd_ser, ptt_off, 8);
 
-				printf("End RF, ber=%.02f\n", (num_dv_frames == 0) ? 0.00 : 100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
+				printf("End RF, ber=%.02f\n", (num_dv_frames == 0) ? 0.0 : 100.0 * ((float)num_bit_errors / (float)(num_dv_frames * 24.0)) );
 				last_RF_time = 0;
 
 				if (IS_ENABLED && RPTR_ACK)
-					send_ack(ok ? myCall : RPTR, (num_dv_frames == 0) ? 0.00 : 100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
+					send_ack(ok ? myCall : RPTR, (num_dv_frames == 0) ? 0.0 : 100.0 * ((float)num_bit_errors / (float)(num_dv_frames * 24.0)) );
 				ok = false;
 			}
 		}
