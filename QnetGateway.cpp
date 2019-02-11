@@ -57,7 +57,7 @@
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
 
-#define IRCDDB_VERSION "QnetGateway-8.1.1"
+#define IRCDDB_VERSION "QnetGateway-9.0.0"
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -679,18 +679,11 @@ void CQnetGateway::ProcessTimeouts()
 
 				// Send end_of_audio to local repeater.
 				// Let the repeater re-initialize
-				end_of_audio.counter = toRptr[i].G2_COUNTER++;
-				if (i == 0)
-					end_of_audio.vpkt.snd_term_id = 0x03;
-				else if (i == 1)
-					end_of_audio.vpkt.snd_term_id = 0x01;
-				else
-					end_of_audio.vpkt.snd_term_id = 0x02;
-				end_of_audio.vpkt.streamid = toRptr[i].streamid;
-				end_of_audio.vpkt.ctrl = toRptr[i].sequence | 0x40;
+				end_of_audio.streamid = toRptr[i].streamid;
+				end_of_audio.ctrl = toRptr[i].sequence | 0x40;
 
 				for (int j=0; j<2; j++)
-					Gate2Modem[i].Write(end_of_audio.pkt_id, 29);
+					Gate2Modem[i].Write(end_of_audio.title, 29);
 
 
 				toRptr[i].streamid = 0;
@@ -1053,7 +1046,6 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 // is_from_g2==true  means it's coming from external port 40000
 // is_from_g2==false means it's coming from the link2gate Unix socket
 {
-	SDSTR dstr;
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
 			// Find out the local repeater module IP/port to send the data to
@@ -1070,33 +1062,13 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 						else
 							printf("UnixSock=%s\n", link2gate.c_str());
 					}
-					memcpy(dstr.pkt_id, "DSTR", 4);
-					dstr.counter = htons(toRptr[i].G2_COUNTER++);	// bump the counter
-					dstr.flag[0] = 0x73U;
-					dstr.flag[1] = 0x12U;
-					dstr.flag[2] = 0x00U;
-					dstr.remaining = 0x30U;
-					dstr.vpkt.icm_id = 0x20U;
-					//memcpy(&dstr.vpkt.dst_rptr_id, g2buf.flagb, 47);
-					dstr.vpkt.dst_rptr_id = g2buf.flagb[0];
-					dstr.vpkt.snd_rptr_id = g2buf.flagb[1];
-					dstr.vpkt.snd_term_id = g2buf.flagb[2];
-					dstr.vpkt.streamid    = g2buf.streamid;
-					dstr.vpkt.ctrl        = g2buf.ctrl;
-					memcpy(dstr.vpkt.hdr.flag, g2buf.hdr.flag,   3);
-					memcpy(dstr.vpkt.hdr.r1,   g2buf.hdr.rpt2,   8);
-					memcpy(dstr.vpkt.hdr.r2,   g2buf.hdr.rpt1,   8);
-					memcpy(dstr.vpkt.hdr.ur,   g2buf.hdr.urcall, 8);
-					memcpy(dstr.vpkt.hdr.my,   g2buf.hdr.mycall, 8);
-					memcpy(dstr.vpkt.hdr.nm,   g2buf.hdr.sfx,    4);
-					memcpy(dstr.vpkt.hdr.pfcs, g2buf.hdr.pfcs,   2);
 
-					Gate2Modem[i].Write(dstr.pkt_id, 58);
+					Gate2Modem[i].Write(g2buf.title, 56);
 
 					/* save the header */
 					if (! is_from_g2)
 						fromDst4.sin_addr.s_addr = (unsigned long)i;
-					memcpy(toRptr[i].saved_hdr.pkt_id, dstr.pkt_id, 58);
+					memcpy(toRptr[i].saved_hdr.title, g2buf.title, 56);
 					toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
 
 					/* This is the active streamid */
@@ -1106,7 +1078,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					/* time it, in case stream times out */
 					time(&toRptr[i].last_time);
 
-					toRptr[i].sequence = dstr.vpkt.ctrl;
+					toRptr[i].sequence = g2buf.ctrl;
 				}
 			}
 		} else {	// g2buflen == 27
@@ -1119,26 +1091,18 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					if (is_from_g2)
 						match = match && (toRptr[i].adr == fromDst4.sin_addr.s_addr);
 					if (match) {
-						memcpy(dstr.pkt_id, "DSTR", 4);
-						dstr.counter = htons(toRptr[i].G2_COUNTER++);
-						dstr.flag[0] = 0x73U;
-						dstr.flag[1] = 0x12U;
-						dstr.flag[2] = 0x00U;
-						dstr.remaining= 0x13U;
-						dstr.vpkt.icm_id = 0x20U;
-						memcpy(&dstr.vpkt.dst_rptr_id, g2buf.flagb, 18);
 
-						Gate2Modem[i].Write(dstr.pkt_id, 29);
+						Gate2Modem[i].Write(g2buf.title, 27);
 
 						/* timeit */
 						time(&toRptr[i].last_time);
 
-						toRptr[i].sequence = dstr.vpkt.ctrl;
+						toRptr[i].sequence = g2buf.ctrl;
 
 						/* End of stream ? */
 						if (g2buf.ctrl & 0x40U) {
 							/* clear the saved header */
-							memset(toRptr[i].saved_hdr.pkt_id, 0, 58);
+							memset(toRptr[i].saved_hdr.title, 0U, 56U);
 							toRptr[i].saved_adr = 0;
 
 							toRptr[i].last_time = 0;
@@ -1164,7 +1128,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 						if (! rptr.mod[i].defined)
 							continue;
 						/* match saved stream ? */
-						bool match = (toRptr[i].saved_hdr.vpkt.streamid == g2buf.streamid);
+						bool match = (toRptr[i].saved_hdr.streamid == g2buf.streamid);
 						if (is_from_g2)
 							match = match && (toRptr[i].saved_adr == fromDst4.sin_addr.s_addr);
 						if (match) {
@@ -1172,22 +1136,11 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
 								printf("Re-generating header for streamID=%04x\n", ntohs(g2buf.streamid));
 
-								toRptr[i].saved_hdr.counter = htons(toRptr[i].G2_COUNTER++);
-
 								/* re-generate/send the header */
-								Gate2Modem[i].Write(toRptr[i].saved_hdr.pkt_id, 58);
+								Gate2Modem[i].Write(toRptr[i].saved_hdr.title, 56);
 
 								/* send this audio packet to repeater */
-								memcpy(dstr.pkt_id, "DSTR", 4);
-								dstr.counter = htons(toRptr[i].G2_COUNTER++);
-								dstr.flag[0] = 0x73;
-								dstr.flag[1] = 0x12;
-								dstr.flag[2] = 0x00;
-								dstr.remaining = 0x13;
-								dstr.vpkt.icm_id = 0x20;
-								memcpy(&dstr.vpkt.dst_rptr_id, g2buf.flagb, 18);
-
-								Gate2Modem[i].Write(dstr.pkt_id, 29);
+								Gate2Modem[i].Write(g2buf.title, 27);
 
 								/* make sure that any more audio arriving will be accepted */
 								toRptr[i].streamid = g2buf.streamid;
@@ -1196,7 +1149,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 								/* time it, in case stream times out */
 								time(&toRptr[i].last_time);
 
-								toRptr[i].sequence = dstr.vpkt.ctrl;
+								toRptr[i].sequence = g2buf.ctrl;
 
 							}
 							break;
@@ -1218,22 +1171,21 @@ void CQnetGateway::ProcessModem()
 	char ip[IP_SIZE + 1];
 	char tempfile[FILENAME_MAX + 1];
 
-	SDSVT g2buf;
-	SDSTR dstr;
+	SDSVT dsvt;
 
-	int recvlen = Modem2Gate.Read(dstr.pkt_id, 58);
+	int recvlen = Modem2Gate.Read(dsvt.title, 56);
 
-	if (0 == memcmp(dstr.pkt_id, "DSTR", 4)) {
-		if ( (recvlen==58 || recvlen==29 || recvlen==32) && dstr.flag[0]==0x73 && dstr.flag[1]==0x12 && dstr.flag[2]==0x0 && dstr.vpkt.icm_id==0x20 && (dstr.remaining==0x30 || dstr.remaining==0x13 || dstr.remaining==0x16) ) {
+	if (0 == memcmp(dsvt.title, "DSVT", 4)) {
+		if ( (recvlen==56 || recvlen==27) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U) ) {
 
-			if (recvlen == 58) {
+			if (recvlen == 56) {
 				vPacketCount = 0U;
 				if (LOG_QSO)
-					printf("id=%04x cntr=%04x start RPTR flag=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dstr.vpkt.streamid), ntohs(dstr.counter), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm);
+					printf("id=%04x start RPTR flag=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
-				if (0==memcmp(dstr.vpkt.hdr.r1, OWNER.c_str(), 7) &&	Flag_is_ok(dstr.vpkt.hdr.flag[0])) {
+				if (0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) &&	Flag_is_ok(dsvt.hdr.flag[0])) {
 
-					int i = dstr.vpkt.hdr.r1[7] - 'A';
+					int i = dsvt.hdr.rpt1[7] - 'A';
 
 					if (i>=0  && i<3) {
 						if (LOG_DTMF)
@@ -1245,23 +1197,23 @@ void CQnetGateway::ProcessModem()
 
 						/* Initialize the LAST HEARD data for the band */
 
-						band_txt[i].streamID = dstr.vpkt.streamid;
+						band_txt[i].streamID = dsvt.streamid;
 
-						memcpy(band_txt[i].flags, dstr.vpkt.hdr.flag, 3);
+						memcpy(band_txt[i].flags, dsvt.hdr.flag, 3);
 
-						memcpy(band_txt[i].lh_mycall, dstr.vpkt.hdr.my, 8);
+						memcpy(band_txt[i].lh_mycall, dsvt.hdr.mycall, 8);
 						band_txt[i].lh_mycall[8] = '\0';
 
-						memcpy(band_txt[i].lh_sfx, dstr.vpkt.hdr.nm, 4);
+						memcpy(band_txt[i].lh_sfx, dsvt.hdr.sfx, 4);
 						band_txt[i].lh_sfx[4] = '\0';
 
-						memcpy(band_txt[i].lh_yrcall, dstr.vpkt.hdr.ur, 8);
+						memcpy(band_txt[i].lh_yrcall, dsvt.hdr.urcall, 8);
 						band_txt[i].lh_yrcall[8] = '\0';
 
-						memcpy(band_txt[i].lh_rpt1, dstr.vpkt.hdr.r1, 8);
+						memcpy(band_txt[i].lh_rpt1, dsvt.hdr.rpt1, 8);
 						band_txt[i].lh_rpt1[8] = '\0';
 
-						memcpy(band_txt[i].lh_rpt2, dstr.vpkt.hdr.r2, 8);
+						memcpy(band_txt[i].lh_rpt2, dsvt.hdr.rpt2, 8);
 						band_txt[i].lh_rpt2[8] = '\0';
 
 						time(&band_txt[i].last_time);
@@ -1290,13 +1242,13 @@ void CQnetGateway::ProcessModem()
 
 						/* select the band for aprs processing, and lock on the stream ID */
 						if (APRS_ENABLE)
-							aprs->SelectBand(i, ntohs(dstr.vpkt.streamid));
+							aprs->SelectBand(i, ntohs(dsvt.streamid));
 					}
 				}
 
 				/* Is MYCALL valid ? */
 				memset(temp_radio_user, ' ', 8);
-				memcpy(temp_radio_user, dstr.vpkt.hdr.my, 8);
+				memcpy(temp_radio_user, dsvt.hdr.mycall, 8);
 				temp_radio_user[8] = '\0';
 
 				int mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
@@ -1312,24 +1264,24 @@ void CQnetGateway::ProcessModem()
 
 				/* send data qnlink */
 				if (mycall_valid == REG_NOERROR)
-					Gate2Link.Write(dstr.pkt_id, recvlen);
+					Gate2Link.Write(dsvt.title, recvlen);
 
 				if ( mycall_valid==REG_NOERROR &&
-						memcmp(dstr.vpkt.hdr.ur, "XRF", 3) &&	// not a reflector
-						memcmp(dstr.vpkt.hdr.ur, "REF", 3) &&
-						memcmp(dstr.vpkt.hdr.ur, "DCS", 3) &&
-						dstr.vpkt.hdr.ur[0]!=' ' && 				// must have something
-						memcmp(dstr.vpkt.hdr.ur, "CQCQCQ", 6) )	// urcall is NOT CQCQCQ
+						memcmp(dsvt.hdr.urcall, "XRF", 3) &&	// not a reflector
+						memcmp(dsvt.hdr.urcall, "REF", 3) &&
+						memcmp(dsvt.hdr.urcall, "DCS", 3) &&
+						dsvt.hdr.urcall[0]!=' ' && 				// must have something
+						memcmp(dsvt.hdr.urcall, "CQCQCQ", 6) )	// urcall is NOT CQCQCQ
 				{
-					if ( dstr.vpkt.hdr.ur[0]=='/' &&										// repeater routing!
-							0==memcmp(dstr.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 this repeater
-							(dstr.vpkt.hdr.r1[7]>='A' && dstr.vpkt.hdr.r1[7]<='C') &&	// with a valid module
-							0==memcmp(dstr.vpkt.hdr.r2, OWNER.c_str(), 7) && 			// rpt2 is this repeater
-							dstr.vpkt.hdr.r2[7]=='G' &&									// local Gateway
-							Flag_is_ok(dstr.vpkt.hdr.flag[0]) )
+					if ( dsvt.hdr.urcall[0]=='/' &&								// repeater routing!
+							0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) &&	// rpt1 this repeater
+							(dsvt.hdr.rpt1[7]>='A' && dsvt.hdr.rpt1[7]<='C') &&	// with a valid module
+							0==memcmp(dsvt.hdr.rpt2, OWNER.c_str(), 7) && 	// rpt2 is this repeater
+							dsvt.hdr.rpt2[7]=='G' &&						// local Gateway
+							Flag_is_ok(dsvt.hdr.flag[0]) )
 					{
-						if (memcmp(dstr.vpkt.hdr.ur+1, OWNER.c_str(), 6)) {	// the value after the slash is NOT this repeater
-							int i = dstr.vpkt.hdr.r1[7] - 'A';
+						if (memcmp(dsvt.hdr.urcall+1, OWNER.c_str(), 6)) {	// the value after the slash is NOT this repeater
+							int i = dsvt.hdr.rpt1[7] - 'A';
 
 							if (i>=0 && i<3) {
 								/* one radio user on a repeater module at a time */
@@ -1338,9 +1290,9 @@ void CQnetGateway::ProcessModem()
 									/* YRCALL=/KJ4NHFB */
 
 									memset(temp_radio_user, ' ', 8);
-									memcpy(temp_radio_user, dstr.vpkt.hdr.ur+1, 6);
+									memcpy(temp_radio_user, dsvt.hdr.urcall+1, 6);
 									temp_radio_user[6] = ' ';
-									temp_radio_user[7] = dstr.vpkt.hdr.ur[7];
+									temp_radio_user[7] = dsvt.hdr.urcall[7];
 									if (temp_radio_user[7] == ' ')
 										temp_radio_user[7] = 'A';
 									temp_radio_user[CALL_SIZE] = '\0';
@@ -1349,7 +1301,7 @@ void CQnetGateway::ProcessModem()
 									if (result) { /* it is a repeater */
 										uint32_t address;
 										/* set the destination */
-										to_remote_g2[i].streamid = dstr.vpkt.streamid;
+										to_remote_g2[i].streamid = dsvt.streamid;
 										memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 										to_remote_g2[i].toDst4.sin_family = AF_INET;
 										to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
@@ -1357,44 +1309,32 @@ void CQnetGateway::ProcessModem()
 										auto theAddress = portmap.find(address);
 										to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end()) ? g2_external.port : theAddress->second);
 
-										memcpy(g2buf.title, "DSVT", 4);
-										g2buf.config = 0x10;
-										g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-										g2buf.id =  dstr.vpkt.icm_id;
-										g2buf.flagb[0] = dstr.vpkt.dst_rptr_id;
-										g2buf.flagb[1] = dstr.vpkt.snd_rptr_id;
-										g2buf.flagb[2] = dstr.vpkt.snd_term_id;
-										g2buf.streamid = dstr.vpkt.streamid;
-										g2buf.ctrl = dstr.vpkt.ctrl;
-										memcpy(g2buf.hdr.flag, dstr.vpkt.hdr.flag, 3);
 										/* set rpt1 */
-										memset(g2buf.hdr.rpt1, ' ', 8);
-										memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
-										g2buf.hdr.rpt1[7] = temp_mod;
+										memset(dsvt.hdr.rpt1, ' ', 8);
+										memcpy(dsvt.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+										dsvt.hdr.rpt1[7] = temp_mod;
 										/* set rpt2 */
-										memset(g2buf.hdr.rpt2, ' ', 8);
-										memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
-										g2buf.hdr.rpt2[7] = 'G';
+										memset(dsvt.hdr.rpt2, ' ', 8);
+										memcpy(dsvt.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+										dsvt.hdr.rpt2[7] = 'G';
 										/* set yrcall, can NOT let it be slash and repeater + module */
-										memcpy(g2buf.hdr.urcall, "CQCQCQ  ", 8);
-										memcpy(g2buf.hdr.mycall, dstr.vpkt.hdr.my, 8);
-										memcpy(g2buf.hdr.sfx, dstr.vpkt.hdr.nm, 4);
+										memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
 
 										/* set PFCS */
-										calcPFCS(g2buf.title, 56);
+										calcPFCS(dsvt.title, 56);
 
 										// The remote repeater has been set, lets fill in the dest_rptr
 										// so that later we can send that to the LIVE web site
-										memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
+										memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt1, 8);
 										band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
 										// send to remote gateway
 										for (int j=0; j<5; j++)
-											sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+											sendto(g2_sock, dsvt.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 										printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
-										ntohs(g2buf.streamid), inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
-										g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
+										ntohs(dsvt.streamid), inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
+										dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
 										time(&(to_remote_g2[i].last_time));
 									}
@@ -1402,29 +1342,29 @@ void CQnetGateway::ProcessModem()
 							}
 						}
 					}
-					else if (memcmp(dstr.vpkt.hdr.ur, OWNER.c_str(), 7) &&				// urcall is not this repeater
-							0==memcmp(dstr.vpkt.hdr.r1, OWNER.c_str(), 7) &&				// rpt1 is this repeater
-							(dstr.vpkt.hdr.r1[7]>='A'&& dstr.vpkt.hdr.r1[7]<='C') &&	// mod is A,B,C
-							0==memcmp(dstr.vpkt.hdr.r2, OWNER.c_str(), 7) &&				// rpt2 is this repeater
-							dstr.vpkt.hdr.r2[7]=='G' &&									// local Gateway
-							Flag_is_ok(dstr.vpkt.hdr.flag[0])) {
+					else if (memcmp(dsvt.hdr.urcall, OWNER.c_str(), 7) &&		// urcall is not this repeater
+							0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) &&		// rpt1 is this repeater
+							(dsvt.hdr.rpt1[7]>='A'&& dsvt.hdr.rpt1[7]<='C') &&	// mod is A,B,C
+							0==memcmp(dsvt.hdr.rpt2, OWNER.c_str(), 7) &&		// rpt2 is this repeater
+							dsvt.hdr.rpt2[7]=='G' &&							// local Gateway
+							Flag_is_ok(dsvt.hdr.flag[0])) {
 
 
 						memset(temp_radio_user, ' ', 8);
-						memcpy(temp_radio_user, dstr.vpkt.hdr.ur, 8);
+						memcpy(temp_radio_user, dsvt.hdr.urcall, 8);
 						temp_radio_user[8] = '\0';
 						bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
 						if (result) {
 							/* destination is a remote system */
 							if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
-								int i = dstr.vpkt.hdr.r1[7] - 'A';
+								int i = dsvt.hdr.rpt1[7] - 'A';
 
 								if (i>=0 && i<3) {
 									/* one radio user on a repeater module at a time */
 									if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
 										uint32_t address;
 										/* set the destination */
-										to_remote_g2[i].streamid = dstr.vpkt.streamid;
+										to_remote_g2[i].streamid = dsvt.streamid;
 										memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
 										to_remote_g2[i].toDst4.sin_family = AF_INET;
 										to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
@@ -1432,41 +1372,27 @@ void CQnetGateway::ProcessModem()
 										auto theAddress = portmap.find(address);
 										to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
 
-										memcpy(g2buf.title, "DSVT", 4);
-										g2buf.config = 0x10;
-										g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0x00;
-										g2buf.id = dstr.vpkt.icm_id;
-										g2buf.flagb[0] = dstr.vpkt.dst_rptr_id;
-										g2buf.flagb[1] = dstr.vpkt.snd_rptr_id;
-										g2buf.flagb[2] = dstr.vpkt.snd_term_id;
-										g2buf.streamid = dstr.vpkt.streamid;
-										g2buf.ctrl = dstr.vpkt.ctrl;
-										memcpy(g2buf.hdr.flag, dstr.vpkt.hdr.flag, 3);
 										/* set rpt1 */
-										memset(g2buf.hdr.rpt1, ' ', 8);
-										memcpy(g2buf.hdr.rpt1, arearp_cs, strlen(arearp_cs));
-										g2buf.hdr.rpt1[7] = temp_mod;
+										memset(dsvt.hdr.rpt1, ' ', 8);
+										memcpy(dsvt.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+										dsvt.hdr.rpt1[7] = temp_mod;
 										/* set rpt2 */
-										memset(g2buf.hdr.rpt2, ' ', 8);
-										memcpy(g2buf.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
-										g2buf.hdr.rpt2[7] = 'G';
+										memset(dsvt.hdr.rpt2, ' ', 8);
+										memcpy(dsvt.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+										dsvt.hdr.rpt2[7] = 'G';
 										/* set PFCS */
-										memcpy(g2buf.hdr.urcall, dstr.vpkt.hdr.ur, 8);
-										memcpy(g2buf.hdr.mycall, dstr.vpkt.hdr.my, 8);
-										memcpy(g2buf.hdr.sfx, dstr.vpkt.hdr.nm, 4);
-										calcPFCS(g2buf.title, 56);
-
+										calcPFCS(dsvt.title, 56);
 
 										// The remote repeater has been set, lets fill in the dest_rptr
 										// so that later we can send that to the LIVE web site
-										memcpy(band_txt[i].dest_rptr, g2buf.hdr.rpt1, 8);
+										memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt1, 8);
 										band_txt[i].dest_rptr[CALL_SIZE] = '\0';
 
 										/* send to remote gateway */
 										for (int j=0; j<5; j++)
-											sendto(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+											sendto(g2_sock, dsvt.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
-										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port), ntohs(g2buf.streamid), g2buf.hdr.mycall, g2buf.hdr.sfx, g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2);
+										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
 										time(&(to_remote_g2[i].last_time));
 									}
@@ -1474,17 +1400,17 @@ void CQnetGateway::ProcessModem()
 							}
 							else
 							{
-								int i = dstr.vpkt.hdr.r1[7] - 'A';
+								int i = dsvt.hdr.rpt1[7] - 'A';
 
 								if (i>=0 && i<3) {
 									/* the user we are trying to contact is on our gateway */
 									/* make sure they are on a different module */
-									if (temp_mod != dstr.vpkt.hdr.r1[7]) {
+									if (temp_mod != dsvt.hdr.rpt1[7]) {
 										/*
 										   The remote repeater has been set, lets fill in the dest_rptr
 										   so that later we can send that to the LIVE web site
 										*/
-										memcpy(band_txt[i].dest_rptr, dstr.vpkt.hdr.r2, 8);
+										memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt2, 8);
 										band_txt[i].dest_rptr[7] = temp_mod;
 										band_txt[i].dest_rptr[8] = '\0';
 
@@ -1497,41 +1423,38 @@ void CQnetGateway::ProcessModem()
 											   band_txt[i] :  local RF is talking.
 											*/
 											if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-												printf("CALLmode cross-banding from mod %c to %c\n",  dstr.vpkt.hdr.r1[7], temp_mod);
+												printf("CALLmode cross-banding from mod %c to %c\n",  dsvt.hdr.rpt1[7], temp_mod);
 
-												dstr.vpkt.hdr.r2[7] = temp_mod;
-												dstr.vpkt.hdr.r1[7] = 'G';
-												calcPFCS(dstr.pkt_id, 58);
+												dsvt.hdr.rpt2[7] = temp_mod;
+												dsvt.hdr.rpt1[7] = 'G';
+												calcPFCS(dsvt.title, 56);
 
-												Gate2Modem[i].Write(dstr.pkt_id, 58);
+												Gate2Modem[i].Write(dsvt.title, 56);
 
 												/* This is the active streamid */
-												toRptr[i].streamid = dstr.vpkt.streamid;
+												toRptr[i].streamid = dsvt.streamid;
 
 												/* time it, in case stream times out */
 												time(&toRptr[i].last_time);
 
-												/* bump the G2 counter */
-												toRptr[i].G2_COUNTER++;
-
-												toRptr[i].sequence = dstr.vpkt.ctrl;
+												toRptr[i].sequence = dsvt.ctrl;
 											}
 										}
 									}
 									else
-										printf("icom rule: no routing from %.8s to %s%c\n", dstr.vpkt.hdr.r1, arearp_cs, temp_mod);
+										printf("icom rule: no routing from %.8s to %s%c\n", dsvt.hdr.rpt1, arearp_cs, temp_mod);
 								}
 							}
 						}
 						else
 						{
-							if ('L' != dstr.vpkt.hdr.ur[7]) // as long as this doesn't look like a linking command
+							if ('L' != dsvt.hdr.urcall[7]) // as long as this doesn't look like a linking command
 								playNotInCache = true; // we need to wait until user's transmission is over
 						}
 					}
 				}
-				else if (0 == memcmp(dstr.vpkt.hdr.ur, "      C0", 8)) {
-					int i = dstr.vpkt.hdr.r1[7] - 'A';
+				else if (0 == memcmp(dsvt.hdr.urcall, "      C0", 8)) {
+					int i = dsvt.hdr.rpt1[7] - 'A';
 
 					if (i>=0 && i<3) {
 						/* voicemail file is closed */
@@ -1543,8 +1466,8 @@ void CQnetGateway::ProcessModem()
 							printf("No voicemail to clear or still recording\n");
 					}
 				}
-				else if (0 == memcmp(dstr.vpkt.hdr.ur, "      R0", 8)) {
-					int i = dstr.vpkt.hdr.r1[7] - 'A';
+				else if (0 == memcmp(dsvt.hdr.urcall, "      R0", 8)) {
+					int i = dsvt.hdr.rpt1[7] - 'A';
 
 					if (i>=0 && i<3) {
 						/* voicemail file is closed */
@@ -1559,37 +1482,28 @@ void CQnetGateway::ProcessModem()
 							printf("No voicemail to recall or still recording\n");
 					}
 				}
-				else if (0 == memcmp(dstr.vpkt.hdr.ur, "      S0", 8)) {
-					int i = dstr.vpkt.hdr.r1[7] - 'A';
+				else if (0 == memcmp(dsvt.hdr.urcall, "      S0", 8)) {
+					int i = dsvt.hdr.rpt1[7] - 'A';
 
 					if (i>=0 && i<3) {
 						if (vm[i].fd >= 0)
 							printf("Already recording for voicemail on mod %d\n", i);
 						else {
 							memset(tempfile, '\0', sizeof(tempfile));
-							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), dstr.vpkt.hdr. r1[7], "voicemail.dat");
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), dsvt.hdr.rpt1[7], "voicemail.dat");
 
 							vm[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 							if (vm[i].fd < 0)
 								printf("Failed to create file %s for voicemail\n", tempfile);
 							else {
 								strcpy(vm[i].file, tempfile);
-								printf("Recording mod %c for voicemail into file:[%s]\n", dstr.vpkt.hdr.r1[7], vm[i].file);
+								printf("Recording mod %c for voicemail into file:[%s]\n", dsvt.hdr.rpt1[7], vm[i].file);
 
 								time(&vm[i].last_time);
-								vm[i].streamid = dstr.vpkt.streamid;
-
-								memcpy(recbuf.title, "DSVT", 4);
-								recbuf.config = 0x10;
-								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-								recbuf.id =  dstr.vpkt.icm_id;
-								recbuf.flagb[0] = dstr.vpkt.dst_rptr_id;
-								recbuf.flagb[1] = dstr.vpkt.snd_rptr_id;
-								recbuf.flagb[2] = dstr.vpkt.snd_term_id;
-								memcpy(&recbuf.streamid, &dstr.vpkt.streamid, 44);
+								memcpy(recbuf.title, dsvt.title, 56);
 								memset(recbuf.hdr.rpt1, ' ', 8);
 								memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.size());
-								recbuf.hdr.rpt1[7] = dstr.vpkt.hdr.r1[7];
+								recbuf.hdr.rpt1[7] = dsvt.hdr.rpt1[7];
 								memset(recbuf.hdr.rpt2, ' ', 8);
 								memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.size());
 								recbuf.hdr.rpt2[7] = 'G';
@@ -1602,37 +1516,30 @@ void CQnetGateway::ProcessModem()
 						}
 					}
 				}
-				else if (0 == memcmp(dstr.vpkt.hdr.ur, "       E", 8)) {
-					int i = dstr.vpkt.hdr.r1[7] - 'A';
+				else if (0 == memcmp(dsvt.hdr.urcall, "       E", 8)) {
+					int i = dsvt.hdr.rpt1[7] - 'A';
 
 					if (i>=0 && i<3) {
 						if (recd[i].fd >= 0)
 							printf("Already recording for echotest on mod %d\n", i);
 						else {
 							memset(tempfile, '\0', sizeof(tempfile));
-							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), dstr.vpkt.hdr.r1[7], "echotest.dat");
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), dsvt.hdr.rpt1[7], "echotest.dat");
 
 							recd[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_EXCL | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 							if (recd[i].fd < 0)
 								printf("Failed to create file %s for echotest\n", tempfile);
 							else {
 								strcpy(recd[i].file, tempfile);
-								printf("Recording mod %c for echotest into file:[%s]\n", dstr.vpkt.hdr.r1[7], recd[i].file);
+								printf("Recording mod %c for echotest into file:[%s]\n", dsvt.hdr.rpt1[7], recd[i].file);
 								snprintf(recd[i].message, 21, "ECHO ON MODULE %c    ", 'A' + i);
 								time(&recd[i].last_time);
-								recd[i].streamid = dstr.vpkt.streamid;
+								recd[i].streamid = dsvt.streamid;
 
-								memcpy(recbuf.title, "DSVT", 4);
-								recbuf.config = 0x10;
-								recbuf.id =  dstr.vpkt.icm_id;
-								recbuf.flaga[0] = recbuf.flaga[1] = recbuf.flaga[2] = 0;
-								recbuf.flagb[0] = dstr.vpkt.dst_rptr_id;
-								recbuf.flagb[1] = dstr.vpkt.snd_rptr_id;
-								recbuf.flagb[2] = dstr.vpkt.snd_term_id;
-								memcpy(&recbuf.streamid, &dstr.vpkt.streamid, 44);
+								memcpy(recbuf.title, dsvt.title, 56);
 								memset(recbuf.hdr.rpt1, ' ', 8);
 								memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.length());
-								recbuf.hdr.rpt1[7] = dstr.vpkt.hdr.r1[7];
+								recbuf.hdr.rpt1[7] = dsvt.hdr.rpt1[7];
 								memset(recbuf.hdr.rpt2, ' ', 8);
 								memcpy(recbuf.hdr.rpt2,  OWNER.c_str(), OWNER.length());
 								recbuf.hdr.rpt2[7] = 'G';
@@ -1646,45 +1553,42 @@ void CQnetGateway::ProcessModem()
 					}
 				/* check for cross-banding */
 				}
-				else if ( 0==memcmp(dstr.vpkt.hdr.ur, "CQCQCQ", 6) &&		// yrcall is CQCQCQ
-							0==memcmp(dstr.vpkt.hdr.r2, OWNER.c_str(), 7) &&	// rpt1 is this repeater
-							0==memcmp(dstr.vpkt.hdr.r1, OWNER.c_str(), 7) &&	// rpt2 is this repeater
-						(dstr.vpkt.hdr.r1[7]>='A' && dstr.vpkt.hdr.r1[7]<='C') &&	// mod of rpt1 is A,B,C
-						(dstr.vpkt.hdr.r2[7]>='A' && dstr.vpkt.hdr.r2[7]<='C') &&	// !!! usually G on rpt2, but we see A,B,C with
-						dstr.vpkt.hdr.r2[7]!=dstr.vpkt.hdr.r1[7] ) {				// cross-banding? make sure NOT the same
-					int i = dstr.vpkt.hdr.r1[7] - 'A';
+				else if ( 0==memcmp(dsvt.hdr.urcall, "CQCQCQ", 6) &&		// yrcall is CQCQCQ
+							0==memcmp(dsvt.hdr.rpt2, OWNER.c_str(), 7) &&	// rpt1 is this repeater
+							0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) &&	// rpt2 is this repeater
+						(dsvt.hdr.rpt1[7]>='A' && dsvt.hdr.rpt1[7]<='C') &&	// mod of rpt1 is A,B,C
+						(dsvt.hdr.rpt2[7]>='A' && dsvt.hdr.rpt2[7]<='C') &&	// !!! usually G on rpt2, but we see A,B,C with
+						dsvt.hdr.rpt2[7]!=dsvt.hdr.rpt1[7] ) {				// cross-banding? make sure NOT the same
+					int i = dsvt.hdr.rpt1[7] - 'A';
 
 					if (i>=0 && i<3) {
 						// The remote repeater has been set, lets fill in the dest_rptr
 						// so that later we can send that to the LIVE web site
-						memcpy(band_txt[i].dest_rptr, dstr.vpkt.hdr.r2, 8);
+						memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt2, 8);
 						band_txt[i].dest_rptr[8] = '\0';
 					}
 
-					i = dstr.vpkt.hdr.r2[7] - 'A';
+					i = dsvt.hdr.rpt2[7] - 'A';
 
 					// valid destination repeater module?
 					if (i>=0 && i<3) {
 						// toRptr[i] :    receiving from a remote system or cross-band
 						// band_txt[i] :  local RF is talking.
 						if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-							printf("ZONEmode cross-banding from mod %c to %c\n",  dstr.vpkt.hdr.r1[7], dstr.vpkt.hdr.r2[7]);
+							printf("ZONEmode cross-banding from mod %c to %c\n",  dsvt.hdr.rpt1[7], dsvt.hdr.rpt2[7]);
 
-							dstr.vpkt.hdr.r1[7] = 'G';
-							calcPFCS(dstr.pkt_id, 58);
+							dsvt.hdr.rpt1[7] = 'G';
+							calcPFCS(dsvt.title, 56);
 
-							Gate2Modem[i].Write(dstr.pkt_id, 58);
+							Gate2Modem[i].Write(dsvt.title, 56);
 
 							/* This is the active streamid */
-							toRptr[i].streamid = dstr.vpkt.streamid;
+							toRptr[i].streamid = dsvt.streamid;
 
 							/* time it, in case stream times out */
 							time(&toRptr[i].last_time);
 
-							/* bump the G2 counter */
-							toRptr[i].G2_COUNTER ++;
-
-							toRptr[i].sequence = dstr.vpkt.ctrl;
+							toRptr[i].sequence = dsvt.ctrl;
 						}
 					}
 				}
@@ -1692,10 +1596,10 @@ void CQnetGateway::ProcessModem()
 			else
 			{	// recvlen is 29 or 32
 				for (int i=0; i<3; i++) {
-					if (band_txt[i].streamID == dstr.vpkt.streamid) {
+					if (band_txt[i].streamID == dsvt.streamid) {
 						time(&band_txt[i].last_time);
 
-						if (dstr.vpkt.ctrl & 0x40) {	// end of voice data
+						if (dsvt.ctrl & 0x40) {	// end of voice data
 							if (dtmf_buf_count[i] > 0) {
 								std::string dtmf_file(FILE_DTMF);
 								dtmf_file.push_back('/');
@@ -1764,7 +1668,7 @@ void CQnetGateway::ProcessModem()
 						else
 						{	// not the end of the voice stream
 							int ber_data[3];
-							int ber_errs = dstar_dv_decode(dstr.vpkt.vasd.voice, ber_data);
+							int ber_errs = dstar_dv_decode(dsvt.vasd.voice, ber_data);
 							if (ber_data[0] == 0xf85)
 								band_txt[i].num_dv_silent_frames++;
 							band_txt[i].num_bit_errors += ber_errs;
@@ -1787,10 +1691,7 @@ void CQnetGateway::ProcessModem()
 									}
 								}
 								const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
-								if (recvlen == 29)
-									memcpy(dstr.vpkt.vasd.voice, silence, 9);
-								else
-									memcpy(dstr.vpkt.vasd1.voice, silence, 9);
+								memcpy(dsvt.vasd.voice, silence, 9);
 							} else
 								dtmf_counter[i] = 0;
 						}
@@ -1798,56 +1699,41 @@ void CQnetGateway::ProcessModem()
 					}
 				}
 				vPacketCount++;
-				if (recvlen == 29)	// process the slow data from every voice packet
-					ProcessSlowData(dstr.vpkt.vasd.text,  dstr.vpkt.streamid);
-				else
-					ProcessSlowData(dstr.vpkt.vasd1.text, dstr.vpkt.streamid);
+				ProcessSlowData(dsvt.vasd.text,  dsvt.streamid);
 
 				/* send data to qnlink */
-				Gate2Link.Write(dstr.pkt_id, recvlen);
+				Gate2Link.Write(dsvt.title, 27);
 
 				/* aprs processing */
 				if (APRS_ENABLE)
-					//                             streamID               seq                audio+text
-					aprs->ProcessText(ntohs(dstr.vpkt.streamid), dstr.vpkt.ctrl, dstr.vpkt.vasd.voice);
+					aprs->ProcessText(ntohs(dsvt.streamid), dsvt.ctrl, dsvt.vasd.voice);
 
 				for (int i=0; i<3; i++) {
 					/* find out if data must go to the remote G2 */
-					if (to_remote_g2[i].streamid == dstr.vpkt.streamid) {
-						memcpy(g2buf.title, "DSVT", 4);
-						g2buf.config = 0x20;
-						g2buf.flaga[0] = g2buf.flaga[1] = g2buf.flaga[2] = 0;
-						memcpy(&g2buf.id, &dstr.vpkt.icm_id, 7);
-						if (recvlen == 29)
-							memcpy(g2buf.vasd.voice, dstr.vpkt.vasd.voice, 12);
-						else
-							memcpy(g2buf.vasd.voice, dstr.vpkt.vasd1.voice, 12);
+					if (to_remote_g2[i].streamid == dsvt.streamid) {
 
 						uint32_t address = to_remote_g2[i].toDst4.sin_addr.s_addr;
 						// if the address is in the portmap, we'll use that port instead of the default
 						auto theAddress = portmap.find(address);
 						to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
-						sendto(g2_sock, g2buf.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+						sendto(g2_sock, dsvt.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 
 						time(&(to_remote_g2[i].last_time));
 
 						/* Is this the end-of-stream */
-						if (dstr.vpkt.ctrl & 0x40) {
+						if (dsvt.ctrl & 0x40) {
 							memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
 							to_remote_g2[i].streamid = 0;
 							to_remote_g2[i].last_time = 0;
 						}
 						break;
 					}
-					else if (recd[i].fd>=0 && recd[i].streamid==dstr.vpkt.streamid) {	// Is the data to be recorded for echotest
+					else if (recd[i].fd>=0 && recd[i].streamid==dsvt.streamid) {	// Is the data to be recorded for echotest
 						time(&recd[i].last_time);
 
-						if (recvlen == 29)
-							(void)write(recd[i].fd, dstr.vpkt.vasd.voice, 9);
-						else
-							(void)write(recd[i].fd, dstr.vpkt.vasd1.voice, 9);
+						write(recd[i].fd, dsvt.vasd.voice, 9);
 
-						if ((dstr.vpkt.ctrl & 0x40) != 0) {
+						if ((dsvt.ctrl & 0x40) != 0) {
 							recd[i].streamid = 0;
 							recd[i].last_time = 0;
 							close(recd[i].fd);
@@ -1866,15 +1752,12 @@ void CQnetGateway::ProcessModem()
 						}
 						break;
 					}
-					else if ((vm[i].fd >= 0) && (vm[i].streamid==dstr.vpkt.streamid)) {	// Is the data to be recorded for voicemail
+					else if ((vm[i].fd >= 0) && (vm[i].streamid==dsvt.streamid)) {	// Is the data to be recorded for voicemail
 						time(&vm[i].last_time);
 
-						if (recvlen == 29)
-							(void)write(vm[i].fd, dstr.vpkt.vasd.voice, 9);
-						else
-							(void)write(vm[i].fd, dstr.vpkt.vasd1.voice, 9);
+						write(vm[i].fd, dsvt.vasd.voice, 9);
 
-						if ((dstr.vpkt.ctrl & 0x40) != 0) {
+						if ((dsvt.ctrl & 0x40) != 0) {
 							vm[i].streamid = 0;
 							vm[i].last_time = 0;
 							close(vm[i].fd);
@@ -1883,19 +1766,16 @@ void CQnetGateway::ProcessModem()
 						}
 						break;
 					}
-					else if (toRptr[i].streamid == dstr.vpkt.streamid) {	// or maybe this is cross-banding data
-						Gate2Modem[i].Write(dstr.pkt_id, 29);
+					else if (toRptr[i].streamid == dsvt.streamid) {	// or maybe this is cross-banding data
+						Gate2Modem[i].Write(dsvt.title, 27);
 
 						/* timeit */
 						time(&toRptr[i].last_time);
 
-						/* bump G2 counter */
-						toRptr[i].G2_COUNTER ++;
-
-						toRptr[i].sequence = dstr.vpkt.ctrl;
+						toRptr[i].sequence = dsvt.ctrl;
 
 						/* End of stream ? */
-						if (dstr.vpkt.ctrl & 0x40) {
+						if (dsvt.ctrl & 0x40) {
 							toRptr[i].last_time = 0;
 							toRptr[i].streamid = 0;
 							toRptr[i].adr = 0;
@@ -1904,8 +1784,8 @@ void CQnetGateway::ProcessModem()
 					}
 				}
 
-				if (LOG_QSO && dstr.vpkt.ctrl&0x40U)
-					printf("id=%04x cntr=%04x END RPTR\n", ntohs(dstr.vpkt.streamid), ntohs(dstr.counter));
+				if (LOG_QSO && dsvt.ctrl&0x40U)
+					printf("id=%04x END RPTR\n", ntohs(dsvt.streamid));
 			}
 		}
 	}
@@ -1970,9 +1850,9 @@ void CQnetGateway::Process()
 
 		// process packets coming from remote G2
 		if (keep_running && FD_ISSET(g2_sock, &fdset)) {
-			SDSVT g2buf;
+			SDSVT dsvt;
 			socklen_t fromlen = sizeof(struct sockaddr_in);
-			ssize_t g2buflen = recvfrom(g2_sock, g2buf.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
+			ssize_t g2buflen = recvfrom(g2_sock, dsvt.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
 
 			// save incoming port for mobile systems
 			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
@@ -1984,15 +1864,15 @@ void CQnetGateway::Process()
 					portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
 				}
 			}
-			ProcessG2(g2buflen, g2buf, true);
+			ProcessG2(g2buflen, dsvt, true);
 			FD_CLR(g2_sock, &fdset);
 		}
 
 		// process packets from qnlink
 		if (keep_running && FD_ISSET(Link2Gate.GetFD(), &fdset)) {
-			SDSVT g2buf;
-			ssize_t g2buflen = Link2Gate.Read(g2buf.title, 56);
-			ProcessG2(g2buflen, g2buf, false);
+			SDSVT dsvt;
+			ssize_t g2buflen = Link2Gate.Read(dsvt.title, 56);
+			ProcessG2(g2buflen, dsvt, false);
 			FD_CLR(Link2Gate.GetFD(), &fdset);
 		}
 
@@ -2228,7 +2108,7 @@ void CQnetGateway::APRSBeaconThread()
 
 void CQnetGateway::PlayFileThread(SECHO &edata)
 {
-	SDSTR dstr;
+	SDSVT dsvt;
 	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
 	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 
@@ -2276,89 +2156,72 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 	sleep(TIMING_PLAY_WAIT);
 
 	// reformat the header and send it
-	memcpy(dstr.pkt_id, "DSTR", 4);
-	dstr.counter = htons(toRptr[mod].G2_COUNTER++);
-	dstr.flag[0] = 0x73;
-	dstr.flag[1] = 0x12;
-	dstr.flag[2] = 0x00;
-	dstr.remaining = 0x30;
-	dstr.vpkt.icm_id = 0x20;
-	dstr.vpkt.dst_rptr_id = edata.header.flagb[0];
-	dstr.vpkt.snd_rptr_id = edata.header.flagb[1];
-	dstr.vpkt.snd_term_id = edata.header.flagb[2];
-	dstr.vpkt.streamid    = edata.header.streamid;
-	dstr.vpkt.ctrl        = 0x80u;
-	memcpy(dstr.vpkt.hdr.flag, edata.header.hdr.flag,   3);
-	memcpy(dstr.vpkt.hdr.r1,   edata.header.hdr.rpt1,   8);
-	memcpy(dstr.vpkt.hdr.r2,   edata.header.hdr.rpt2,   8);
-	memcpy(dstr.vpkt.hdr.ur,   "CQCQCQ  ",              8);
-	memcpy(dstr.vpkt.hdr.my,   edata.header.hdr.mycall, 8);
-	memcpy(dstr.vpkt.hdr.nm,   edata.header.hdr.sfx,    4);
-	calcPFCS(dstr.pkt_id, 58);
+	memcpy(dsvt.title, edata.header.title, 56);
+	memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
+	calcPFCS(dsvt.title, 56);
 
-	Gate2Modem[mod].Write(dstr.pkt_id, 58);
+	Gate2Modem[mod].Write(dsvt.title, 56);
 
-	dstr.remaining = 0x13U;
+	dsvt.config = 0x20U;
 
 	for (int i=0; i<ambeblocks; i++) {
 
-		int nread = fread(dstr.vpkt.vasd.voice, 9, 1, fp);
+		int nread = fread(dsvt.vasd.voice, 9, 1, fp);
 		if (nread == 1) {
-			dstr.counter = htons(toRptr[mod].G2_COUNTER++);
-			dstr.vpkt.ctrl = (unsigned char)(i % 21);
-			if (0x0U == dstr.vpkt.ctrl) {
-				memcpy(dstr.vpkt.vasd.text, sdsync, 3);
+			dsvt.ctrl = (unsigned char)(i % 21);
+			if (0x0U == dsvt.ctrl) {
+				memcpy(dsvt.vasd.text, sdsync, 3);
 			} else {
 				switch (i) {
 					case 1:
-						dstr.vpkt.vasd.text[0] = '@' ^ 0x70;
-						dstr.vpkt.vasd.text[1] = edata.message[0] ^ 0x4f;
-						dstr.vpkt.vasd.text[2] = edata.message[1] ^ 0x93;
+						dsvt.vasd.text[0] = '@' ^ 0x70;
+						dsvt.vasd.text[1] = edata.message[0] ^ 0x4f;
+						dsvt.vasd.text[2] = edata.message[1] ^ 0x93;
 						break;
 					case 2:
-						dstr.vpkt.vasd.text[0] = edata.message[2] ^ 0x70;
-						dstr.vpkt.vasd.text[1] = edata.message[3] ^ 0x4f;
-						dstr.vpkt.vasd.text[2] = edata.message[4] ^ 0x93;
+						dsvt.vasd.text[0] = edata.message[2] ^ 0x70;
+						dsvt.vasd.text[1] = edata.message[3] ^ 0x4f;
+						dsvt.vasd.text[2] = edata.message[4] ^ 0x93;
 						break;
 					case 3:
-						dstr.vpkt.vasd.text[0] = 'A' ^ 0x70;
-						dstr.vpkt.vasd.text[1] = edata.message[5] ^ 0x4f;
-						dstr.vpkt.vasd.text[2] = edata.message[6] ^ 0x93;
+						dsvt.vasd.text[0] = 'A' ^ 0x70;
+						dsvt.vasd.text[1] = edata.message[5] ^ 0x4f;
+						dsvt.vasd.text[2] = edata.message[6] ^ 0x93;
 						break;
 					case 4:
-						dstr.vpkt.vasd.text[0] = edata.message[7] ^ 0x70;
-						dstr.vpkt.vasd.text[1] = edata.message[8] ^ 0x4f;
-						dstr.vpkt.vasd.text[2] = edata.message[9] ^ 0x93;
+						dsvt.vasd.text[0] = edata.message[7] ^ 0x70;
+						dsvt.vasd.text[1] = edata.message[8] ^ 0x4f;
+						dsvt.vasd.text[2] = edata.message[9] ^ 0x93;
 						break;
 					case 5:
-						dstr.vpkt.vasd.text[0] = 'B' ^ 0x70;
-						dstr.vpkt.vasd.text[1] = edata.message[10] ^ 0x4f;
-						dstr.vpkt.vasd.text[2] = edata.message[11] ^ 0x93;
+						dsvt.vasd.text[0] = 'B' ^ 0x70;
+						dsvt.vasd.text[1] = edata.message[10] ^ 0x4f;
+						dsvt.vasd.text[2] = edata.message[11] ^ 0x93;
 						break;
 					case 6:
-						dstr.vpkt.vasd.text[0] = edata.message[12] ^ 0x70;
-						dstr.vpkt.vasd.text[1] = edata.message[13] ^ 0x4f;
-						dstr.vpkt.vasd.text[2] = edata.message[14] ^ 0x93;
+						dsvt.vasd.text[0] = edata.message[12] ^ 0x70;
+						dsvt.vasd.text[1] = edata.message[13] ^ 0x4f;
+						dsvt.vasd.text[2] = edata.message[14] ^ 0x93;
 						break;
 					case 7:
-						dstr.vpkt.vasd.text[0] = 'C' ^ 0x70;
-						dstr.vpkt.vasd.text[1] = edata.message[15] ^ 0x4f;
-						dstr.vpkt.vasd.text[2] = edata.message[16] ^ 0x93;
+						dsvt.vasd.text[0] = 'C' ^ 0x70;
+						dsvt.vasd.text[1] = edata.message[15] ^ 0x4f;
+						dsvt.vasd.text[2] = edata.message[16] ^ 0x93;
 						break;
 					case 8:
-						dstr.vpkt.vasd.text[0] = edata.message[17] ^ 0x70;
-						dstr.vpkt.vasd.text[1] = edata.message[18] ^ 0x4f;
-						dstr.vpkt.vasd.text[2] = edata.message[19] ^ 0x93;
+						dsvt.vasd.text[0] = edata.message[17] ^ 0x70;
+						dsvt.vasd.text[1] = edata.message[18] ^ 0x4f;
+						dsvt.vasd.text[2] = edata.message[19] ^ 0x93;
 						break;
 					default:
-						memcpy(dstr.vpkt.vasd.text, sdsilence, 3);
+						memcpy(dsvt.vasd.text, sdsilence, 3);
 						break;
 				}
 			}
 			if (i+1 == ambeblocks)
-				dstr.vpkt.ctrl |= 0x40U;
+				dsvt.ctrl |= 0x40U;
 
-			Gate2Modem[mod].Write(dstr.pkt_id, 29);
+			Gate2Modem[mod].Write(dsvt.title, 27);
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(TIMING_PLAY_DELAY));
 		}
@@ -2557,7 +2420,7 @@ bool CQnetGateway::Init(char *cfgfile)
 		// the repeater modules run on these ports
 		memset(&toRptr[i],0,sizeof(toRptr[i]));
 
-		memset(toRptr[i].saved_hdr.pkt_id, 0, 58);
+		memset(toRptr[i].saved_hdr.title, 0, 56);
 		toRptr[i].saved_adr = 0;
 
 		toRptr[i].streamid = 0;
@@ -2568,7 +2431,6 @@ bool CQnetGateway::Init(char *cfgfile)
 		toRptr[i].band_addr.sin_port = htons(rptr.mod[i].portip.port);
 
 		toRptr[i].last_time = 0;
-		toRptr[i].G2_COUNTER = 0;
 
 		toRptr[i].sequence = 0x0;
 	}
@@ -2577,18 +2439,9 @@ bool CQnetGateway::Init(char *cfgfile)
 	   Initialize the end_of_audio that will be sent to the local repeater
 	   when audio from remote G2 has timed out
 	*/
-	memcpy(end_of_audio.pkt_id, "DSTR", 4);
-	end_of_audio.flag[0] = 0x73U;
-	end_of_audio.flag[1] = 0x12U;
-	end_of_audio.flag[2] = 0x00U;
-	end_of_audio.remaining = 0x13U;
-	end_of_audio.vpkt.icm_id = 0x20U;
-	end_of_audio.vpkt.dst_rptr_id = 0x0U;
-	end_of_audio.vpkt.snd_rptr_id = 0x01U;
-	memset(end_of_audio.vpkt.vasd.voice, 0x0U, 9);
-	end_of_audio.vpkt.vasd.text[0] = 0x70U;
-	end_of_audio.vpkt.vasd.text[1] = 0x4FU;
-	end_of_audio.vpkt.vasd.text[2] = 0x93U;
+	memset(end_of_audio.title, 0U, 27U);
+	memcpy(end_of_audio.title, "DSVT", 4U);
+	end_of_audio.id = end_of_audio.config = 0x20U;
 
 	/* to remote systems */
 	for (i = 0; i < 3; i++) {

@@ -91,7 +91,7 @@ void CUnixDgramWriter::SetUp(const char *path)	// returns true on failure
 	strncpy(addr.sun_path+1, path, sizeof(addr.sun_path)-2);
 }
 
-ssize_t CUnixDgramWriter::Write(void *buf, size_t size)
+ssize_t CUnixDgramWriter::Write(const void *buf, size_t size)
 {
 	// open the socket
 	int fd = socket(AF_UNIX, SOCK_DGRAM, 0);

@@ -60,7 +60,7 @@ typedef struct dstr_tag {
 			};
 		} vpkt;
 	};
-} SDSTR;
+} OBSOLETE;
 #pragma pack(pop)
 
 // for the g2 external port

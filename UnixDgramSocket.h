@@ -39,7 +39,7 @@ public:
 	CUnixDgramWriter();
 	~CUnixDgramWriter();
 	void SetUp(const char *path);
-	ssize_t Write(void *buf, size_t size);
+	ssize_t Write(const void *buf, size_t size);
 private:
 	struct sockaddr_un addr;
 };

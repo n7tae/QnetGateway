@@ -37,14 +37,13 @@ typedef struct to_remote_g2_tag {
 
 typedef struct torepeater_tag {
 	// help with header re-generation
-	SDSTR saved_hdr; // repeater format
+	SDSVT saved_hdr; // repeater format
 	uint32_t saved_adr;
 
 	unsigned short streamid;
 	uint32_t adr;
 	struct sockaddr_in band_addr;
 	time_t last_time;
-	std::atomic<unsigned short> G2_COUNTER;
 	unsigned char sequence;
 } STOREPEATER;
 
@@ -130,7 +129,7 @@ private:
 	// must be fed into our local repeater modules.
 	STOREPEATER toRptr[3]; // 0=A, 1=B, 2=C
 
-	SDSTR end_of_audio;
+	SDSVT end_of_audio;
 
 	// send packets to g2_link
 	struct sockaddr_in plug;
