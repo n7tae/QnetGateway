@@ -2674,31 +2674,31 @@ void CQnetLink::Process()
 		}
 
 		if (keep_running && FD_ISSET(Gate2Link.GetFD(), &fdset)) {
-			SDSTR dstr;
-			int length = Gate2Link.Read(dstr.pkt_id, 100);
+			SDSVT dsvt;
+			int length = Gate2Link.Read(dsvt.title, 56);
 
-			if ((length==58 || length==29 || length==32) && dstr.flag[0]==0x73 && dstr.flag[1] == 0x12 && dstr.flag[2] ==0x0 && (0==memcmp(dstr.pkt_id,"DSTR", 4) || 0==memcmp(dstr.pkt_id,"CCS_", 4)) && dstr.vpkt.icm_id==0x20 && (dstr.remaining==0x30 || dstr.remaining==0x13 || dstr.remaining==0x16)) {
+			if ((length==56 || length==27) && 0==memcmp(dsvt.title,"DSVT", 4U) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U)) {
 
-				if (length == 58) {
+				if (length == 56) {
 					if (qso_details)
-						printf("START from local g2: cntr=%04x, streamID=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes on %s\n", ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), dstr.vpkt.hdr.flag[0], dstr.vpkt.hdr.flag[1], dstr.vpkt.hdr.flag[2], dstr.vpkt.hdr.my, dstr.vpkt.hdr.nm, dstr.vpkt.hdr.ur, dstr.vpkt.hdr.r1, dstr.vpkt.hdr.r2, length, gate2link.c_str());
+						printf("START from local g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s/%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes on %s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, gate2link.c_str());
 
 					// save mycall
-					memcpy(call, dstr.vpkt.hdr.my, 8);
+					memcpy(call, dsvt.hdr.mycall, 8);
 					call[8] = '\0';
 
 					int i = -1;
-					if (dstr.vpkt.hdr.r1[7] == 'A')
+					if (dsvt.hdr.rpt1[7] == 'A')
 						i = 0;
-					else if (dstr.vpkt.hdr.r1[7] == 'B')
+					else if (dsvt.hdr.rpt1[7] == 'B')
 						i = 1;
-					else if (dstr.vpkt.hdr.r1[7] == 'C')
+					else if (dsvt.hdr.rpt1[7] == 'C')
 						i = 2;
 
 					if (i >= 0) {
 						// save the first char of urcall
-						your[i] = dstr.vpkt.hdr.ur[0];	// used by rptr_ack
-						memcpy(dtmf_mycall[i], dstr.vpkt.hdr.my, 8);
+						your[i] = dsvt.hdr.urcall[0];	// used by rptr_ack
+						memcpy(dtmf_mycall[i], dsvt.hdr.mycall, 8);
 						dtmf_mycall[i][8] = '\0';
 
 						new_group[i] = true;
@@ -2706,7 +2706,7 @@ void CQnetLink::Process()
 
 						/* Last Heard */
 						//put user into tmp1
-						memcpy(tmp1, dstr.vpkt.hdr.my, 8);
+						memcpy(tmp1, dsvt.hdr.mycall, 8);
 						tmp1[8] = '\0';
 
 						// delete the user if exists
@@ -2723,20 +2723,15 @@ void CQnetLink::Process()
 						}
 						/* add user */
 						time(&tnow);
-						if (0 == memcmp(dstr.pkt_id,"CCS_", 4))
-							sprintf(tmp2, "%ld=r%.7s%c", tnow, "-->CCS ", dstr.vpkt.hdr.r1[7]);
-						else
-							sprintf(tmp2, "%ld=l%.8s", tnow, dstr.vpkt.hdr.r1);
+						sprintf(tmp2, "%ld=l%.8s", tnow, dsvt.hdr.rpt1);
 						dt_lh_list[tmp2] = tmp1;
 
-						memcpy(dstr.pkt_id, "DSTR", 4);
-
-						tracing[i].streamid = dstr.vpkt.streamid;
+						tracing[i].streamid = dsvt.streamid;
 						tracing[i].last_time = time(NULL);
 					}
 
-					if (memcmp(dstr.vpkt.hdr.ur, "CQCQCQ", 6) && i>=0) {
-						if (memcmp(dstr.vpkt.hdr.ur, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.ur[7] == 'L' && 0==memcmp(dstr.vpkt.hdr.r2, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.r2[7] == 'G' && (dstr.vpkt.hdr.flag[0]==0x00 || dstr.vpkt.hdr.flag[0]==0x08 || dstr.vpkt.hdr.flag[0]==0x20 || dstr.vpkt.hdr.flag[0]==0x28)) {
+					if (memcmp(dsvt.hdr.urcall, "CQCQCQ", 6) && i>=0) {
+						if (memcmp(dsvt.hdr.urcall, owner.c_str(), CALL_SIZE-1) && dsvt.hdr.urcall[7] == 'L' && 0==memcmp(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE-1) && dsvt.hdr.rpt2[7] == 'G' && (dsvt.hdr.flag[0]==0x00 || dsvt.hdr.flag[0]==0x08 || dsvt.hdr.flag[0]==0x20 || dsvt.hdr.flag[0]==0x28)) {
 							if (
 									// if there is a black list, is he in the blacklist?
 									(link_blacklist.size() && link_blacklist.end()!=link_blacklist.find(call)) ||
@@ -2747,14 +2742,14 @@ void CQnetLink::Process()
 							} else {
 								char temp_repeater[CALL_SIZE + 1];
 								memset(temp_repeater, ' ', CALL_SIZE);
-								memcpy(temp_repeater, dstr.vpkt.hdr.ur, CALL_SIZE - 2);
+								memcpy(temp_repeater, dsvt.hdr.urcall, CALL_SIZE - 2);
 								temp_repeater[CALL_SIZE] = '\0';
 
 								if ((to_remote_g2[i].to_call[0] == '\0') ||   /* not linked */
 								        ((to_remote_g2[i].to_call[0] != '\0') &&  /* waiting for a link reply that may never arrive */
 								         !to_remote_g2[i].is_connected))
 
-									g2link(dstr.vpkt.hdr.r1[7], temp_repeater, dstr.vpkt.hdr.ur[6]);
+									g2link(dsvt.hdr.rpt1[7], temp_repeater, dsvt.hdr.urcall[6]);
 								else if (to_remote_g2[i].is_connected) {
 									strcpy(linked_remote_system, to_remote_g2[i].to_call);
 									space_p = strchr(linked_remote_system, ' ');
@@ -2763,7 +2758,7 @@ void CQnetLink::Process()
 									sprintf(notify_msg[i], "%c_already_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 								}
 							}
-						} else if (0==memcmp(dstr.vpkt.hdr.ur, "       U", CALL_SIZE)) {
+						} else if (0==memcmp(dsvt.hdr.urcall, "       U", CALL_SIZE)) {
 							if (
 									// if there is a black list, is he in the blacklist?
 									(link_blacklist.size() && link_blacklist.end()!=link_blacklist.find(call)) ||
@@ -2826,11 +2821,11 @@ void CQnetLink::Process()
 
 									print_status_file();
 								} else {
-									sprintf(notify_msg[i], "%c_already_unlinked.dat_UNLINKED", dstr.vpkt.hdr.r1[7]);
+									sprintf(notify_msg[i], "%c_already_unlinked.dat_UNLINKED", dsvt.hdr.rpt1[7]);
 								}
 							}
 						}
-						else if (0 == memcmp(dstr.vpkt.hdr.ur, "       I", CALL_SIZE)) {
+						else if (0 == memcmp(dsvt.hdr.urcall, "       I", CALL_SIZE)) {
 							if (to_remote_g2[i].is_connected) {
 								strcpy(linked_remote_system, to_remote_g2[i].to_call);
 								space_p = strchr(linked_remote_system, ' ');
@@ -2838,11 +2833,11 @@ void CQnetLink::Process()
 									*space_p = '\0';
 								sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
 							} else {
-								sprintf(notify_msg[i], "%c_id.dat_%s_NOT_LINKED", dstr.vpkt.hdr.r1[7], owner.c_str());
+								sprintf(notify_msg[i], "%c_id.dat_%s_NOT_LINKED", dsvt.hdr.rpt1[7], owner.c_str());
 							}
 						}
-						else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[7]=='X') {	// execute a script
-							if (dstr.vpkt.hdr.ur[6] != ' ') {	// there has to be a char here
+						else if (0==memcmp(dsvt.hdr.urcall, "      ", 6) && dsvt.hdr.urcall[7]=='X') {	// execute a script
+							if (dsvt.hdr.urcall[6] != ' ') {	// there has to be a char here
 								bool user_ok = true;
 								if (admin.size()>0 && admin.end()==admin.find(call)) { // only admins (if defined) can execute scripts
 									printf("%s not found in the link_admin list!\n", call);
@@ -2850,23 +2845,23 @@ void CQnetLink::Process()
 								}
 								if (user_ok) {
 									memset(system_cmd, '\0', sizeof(system_cmd));
-									snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &", announce_dir.c_str(), dstr.vpkt.hdr.ur[6], call, dstr.vpkt.hdr.r1[7]);
+									snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &", announce_dir.c_str(), dsvt.hdr.urcall[6], call, dsvt.hdr.rpt1[7]);
 									printf("Executing %s\n", system_cmd);
 									system(system_cmd);
 								}
 							}
 						}
-						else if (0==memcmp(dstr.vpkt.hdr.ur, "      ", 6) && dstr.vpkt.hdr.ur[6]=='D' && admin.find(call)!=admin.end()) { // only ADMIN can block dongle users
-							if (dstr.vpkt.hdr.ur[7] == '1') {
+						else if (0==memcmp(dsvt.hdr.urcall, "      ", 6) && dsvt.hdr.urcall[6]=='D' && admin.find(call)!=admin.end()) { // only ADMIN can block dongle users
+							if (dsvt.hdr.urcall[7] == '1') {
 								max_dongles = saved_max_dongles;
 								printf("Dongle connections are now allowed\n");
-							} else if (dstr.vpkt.hdr.ur[7] == '0') {
+							} else if (dsvt.hdr.urcall[7] == '0') {
 								inbound_list.clear();
 								max_dongles = 0;
 								printf("Dongle connections are now disallowed\n");
 							}
 						}
-						else if (0==memcmp(dstr.vpkt.hdr.ur, "       F", CALL_SIZE) && admin.find(call)!=admin.end()) { // only ADMIN can reload gwys.txt
+						else if (0==memcmp(dsvt.hdr.urcall, "       F", CALL_SIZE) && admin.find(call)!=admin.end()) { // only ADMIN can reload gwys.txt
 							gwy_list.clear();
 							load_gwys(gwys);
 						}
@@ -2875,20 +2870,14 @@ void CQnetLink::Process()
 					/* send data to the donglers */
 					SREFDSVT rdsvt;
 					if (inbound_list.size() > 0) {
+						memset(rdsvt.head, 0U, 58U);
 						rdsvt.head[0] = (unsigned char)(58 & 0xFF);
 						rdsvt.head[1] = (unsigned char)(58 >> 8 & 0x1F);
 						rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
 
-						memcpy(rdsvt.dsvt.title, "DSVT", 4);
-						rdsvt.dsvt.config = 0x10;
-						rdsvt.dsvt.flaga[0] = rdsvt.dsvt.flaga[1] = rdsvt.dsvt.flaga[2] = 0x00;
-						rdsvt.dsvt.id = dstr.vpkt.icm_id;
-						rdsvt.dsvt.flagb[0] = dstr.vpkt.dst_rptr_id;
-						rdsvt.dsvt.flagb[1] = dstr.vpkt.snd_rptr_id;
-						rdsvt.dsvt.flagb[2] = dstr.vpkt.snd_term_id;
-						memcpy(&rdsvt.dsvt.streamid, &dstr.vpkt.streamid, 44);
+						memcpy(rdsvt.dsvt.title, dsvt.title, 56);
 						memcpy(rdsvt.dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
-						rdsvt.dsvt.hdr.rpt1[7] = dstr.vpkt.hdr.r1[7];
+						rdsvt.dsvt.hdr.rpt1[7] = dsvt.hdr.rpt1[7];
 						memcpy(rdsvt.dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE);
 						rdsvt.dsvt.hdr.rpt2[7] = 'G';
 						memcpy(rdsvt.dsvt.hdr.urcall, "CQCQCQ  ", 8);
@@ -2904,20 +2893,13 @@ void CQnetLink::Process()
 					if (i >= 0) {
 						/* do we have to broadcast ? */
 						/* make sure the source is linked to xrf */
-						if (to_remote_g2[i].is_connected && 0==memcmp(to_remote_g2[i].to_call, "XRF", 3) && 0==memcmp(dstr.vpkt.hdr.r2, owner.c_str(), CALL_SIZE-1) && dstr.vpkt.hdr.r2[7]=='G' && 0==memcmp(dstr.vpkt.hdr.ur, "CQCQCQ", 6)) {
+						if (to_remote_g2[i].is_connected && 0==memcmp(to_remote_g2[i].to_call, "XRF", 3) && 0==memcmp(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE-1) && dsvt.hdr.rpt2[7]=='G' && 0==memcmp(dsvt.hdr.urcall, "CQCQCQ", 6)) {
 							brd_from_rptr_idx = 0;
-							streamid_raw = ntohs(dstr.vpkt.streamid);
+							streamid_raw = ntohs(dsvt.streamid);
 
 							for (int j=0; j<3; j++) {
 								if (j!=i && to_remote_g2[j].is_connected && 0==memcmp(to_remote_g2[j].to_call, to_remote_g2[i].to_call, 8) && to_remote_g2[j].to_mod==to_remote_g2[i].to_mod && to_remote_g2[j].to_mod!='E') {
-									memcpy(fromrptr_torptr_brd.title, "DSVT", 4);
-									fromrptr_torptr_brd.config = 0x10;
-									fromrptr_torptr_brd.flaga[0] = fromrptr_torptr_brd.flaga[1] = fromrptr_torptr_brd.flaga[2] = 0x0;
-									fromrptr_torptr_brd.id = dstr.vpkt.icm_id;
-									fromrptr_torptr_brd.flagb[0] = dstr.vpkt.dst_rptr_id;
-									fromrptr_torptr_brd.flagb[1] = dstr.vpkt.snd_rptr_id;
-									fromrptr_torptr_brd.flagb[2] = dstr.vpkt.snd_term_id;
-									memcpy(&fromrptr_torptr_brd.streamid, &dstr.vpkt.streamid, 44);
+									memcpy(fromrptr_torptr_brd.title, dsvt.title, 56);
 
 									if (++streamid_raw == 0)
 										streamid_raw++;
@@ -2934,7 +2916,7 @@ void CQnetLink::Process()
 
 									Link2Gate.Write(fromrptr_torptr_brd.title, 56);
 
-									brd_from_rptr.from_rptr_streamid = dstr.vpkt.streamid;
+									brd_from_rptr.from_rptr_streamid = dsvt.streamid;
 									brd_from_rptr.to_rptr_streamid[brd_from_rptr_idx] = fromrptr_torptr_brd.streamid;
 									brd_from_rptr_idx ++;
 								}
@@ -2942,8 +2924,8 @@ void CQnetLink::Process()
 						}
 
 						if (to_remote_g2[i].is_connected) {
-							if (0==memcmp(dstr.vpkt.hdr.r2, owner.c_str(), 7) && 0==memcmp(dstr.vpkt.hdr.ur, "CQCQCQ", 6) && dstr.vpkt.hdr.r2[7] == 'G') {
-								to_remote_g2[i].out_streamid = dstr.vpkt.streamid;
+							if (0==memcmp(dsvt.hdr.rpt2, owner.c_str(), 7) && 0==memcmp(dsvt.hdr.urcall, "CQCQCQ", 6) && dsvt.hdr.rpt2[7] == 'G') {
+								to_remote_g2[i].out_streamid = dsvt.streamid;
 
 								if (to_remote_g2[i].toDst4.sin_port==htons(rmt_xrf_port) || to_remote_g2[i].toDst4.sin_port== htons(rmt_ref_port)) {
 									SREFDSVT rdsvt;
@@ -2951,14 +2933,7 @@ void CQnetLink::Process()
 									rdsvt.head[1] = (unsigned char)(58 >> 8 & 0x1F);
 									rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
 
-									memcpy(rdsvt.dsvt.title, "DSVT", 4);
-									rdsvt.dsvt.config = 0x10;
-									rdsvt.dsvt.flaga[0] = rdsvt.dsvt.flaga[1] = rdsvt.dsvt.flaga[2] = 0x0;
-									rdsvt.dsvt.id = dstr.vpkt.icm_id;
-									rdsvt.dsvt.flagb[0] = dstr.vpkt.dst_rptr_id;
-									rdsvt.dsvt.flagb[1] = dstr.vpkt.snd_rptr_id;
-									rdsvt.dsvt.flagb[2] = dstr.vpkt.snd_term_id;
-									memcpy(&rdsvt.dsvt.streamid, &dstr.vpkt.streamid, 44);
+									memcpy(rdsvt.dsvt.title, dsvt.title, 56);
 									memset(rdsvt.dsvt.hdr.rpt1, ' ', CALL_SIZE);
 									memcpy(rdsvt.dsvt.hdr.rpt1, to_remote_g2[i].to_call, strlen(to_remote_g2[i].to_call));
 									rdsvt.dsvt.hdr.rpt1[7] = to_remote_g2[i].to_mod;
@@ -2979,33 +2954,22 @@ void CQnetLink::Process()
 											sendto(ref_g2_sock, rdsvt.head, 58, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
 									}
 								} else if (to_remote_g2[i].toDst4.sin_port == htons(rmt_dcs_port)) {
-									memcpy(rptr_2_dcs[i].mycall, dstr.vpkt.hdr.my, CALL_SIZE);
-									memcpy(rptr_2_dcs[i].sfx, dstr.vpkt.hdr.nm, 4);
+									memcpy(rptr_2_dcs[i].mycall, dsvt.hdr.mycall, CALL_SIZE);
+									memcpy(rptr_2_dcs[i].sfx, dsvt.hdr.sfx, 4);
 									rptr_2_dcs[i].dcs_rptr_seq = 0;
 								}
 							}
 						}
 					}
 				}
-				else { // length is 29 or 32
+				else { // length is 27
 					if (inbound_list.size() > 0) {
 						SREFDSVT rdsvt;
 						rdsvt.head[0] = (unsigned char)(29 & 0xFF);
 						rdsvt.head[1] = (unsigned char)(29 >> 8 & 0x1F);
 						rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
 
-						memcpy(rdsvt.dsvt.title, "DSVT", 4);
-						rdsvt.dsvt.config = 0x20;
-						rdsvt.dsvt.flaga[0] = rdsvt.dsvt.flaga[1] = rdsvt.dsvt.flaga[2] = 0x0;
-						rdsvt.dsvt.id = dstr.vpkt.icm_id;
-						rdsvt.dsvt.flagb[0] = dstr.vpkt.dst_rptr_id;
-						rdsvt.dsvt.flagb[1] = dstr.vpkt.snd_rptr_id;
-						rdsvt.dsvt.flagb[2] = dstr.vpkt.snd_term_id;
-						memcpy(&rdsvt.dsvt.streamid, &dstr.vpkt.streamid, 3);
-						if (length == 29)
-							memcpy(rdsvt.dsvt.vasd.voice, dstr.vpkt.vasd.voice, 12);
-						else
-							memcpy(rdsvt.dsvt.vasd.voice, dstr.vpkt.vasd1.voice, 12);
+						memcpy(rdsvt.dsvt.title, dsvt.title, 27);
 
 						for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 							SINBOUND *inbound = (SINBOUND *)pos->second;
@@ -3014,23 +2978,10 @@ void CQnetLink::Process()
 					}
 
 					for (int i=0; i<3; i++) {
-						if (to_remote_g2[i].is_connected && to_remote_g2[i].out_streamid==dstr.vpkt.streamid) {
+						if (to_remote_g2[i].is_connected && to_remote_g2[i].out_streamid==dsvt.streamid) {
 							/* check for broadcast */
-							if (brd_from_rptr.from_rptr_streamid == dstr.vpkt.streamid) {
-								memcpy(fromrptr_torptr_brd.title, "DSVT", 4);
-								fromrptr_torptr_brd.config = 0x10;
-								fromrptr_torptr_brd.flaga[0] = fromrptr_torptr_brd.flaga[1] = fromrptr_torptr_brd.flaga[2] = 0x0;
-								fromrptr_torptr_brd.id = dstr.vpkt.icm_id;
-								fromrptr_torptr_brd.flagb[0] = dstr.vpkt.dst_rptr_id;
-								fromrptr_torptr_brd.flagb[1] = dstr.vpkt.snd_rptr_id;
-								fromrptr_torptr_brd.flagb[2] = dstr.vpkt.snd_term_id;
-								memcpy(&fromrptr_torptr_brd.streamid, &dstr.vpkt.streamid, 3);
-
-								if (length == 29)
-									memcpy(fromrptr_torptr_brd.vasd.voice, dstr.vpkt.vasd.voice, 12);
-								else
-									memcpy(fromrptr_torptr_brd.vasd.voice, dstr.vpkt.vasd1.voice, 12);
-
+							if (brd_from_rptr.from_rptr_streamid == dsvt.streamid) {
+								memcpy(fromrptr_torptr_brd.title, dsvt.title, 27);
 								if (brd_from_rptr.to_rptr_streamid[0]) {
 									fromrptr_torptr_brd.streamid = brd_from_rptr.to_rptr_streamid[0];
 									Link2Gate.Write(fromrptr_torptr_brd.title, 27);
@@ -3041,7 +2992,7 @@ void CQnetLink::Process()
 									Link2Gate.Write(fromrptr_torptr_brd.title, 27);
 								}
 
-								if (dstr.vpkt.ctrl & 0x40U) {
+								if (dsvt.ctrl & 0x40U) {
 									brd_from_rptr.from_rptr_streamid = brd_from_rptr.to_rptr_streamid[0] = brd_from_rptr.to_rptr_streamid[1] = 0x0;
 									brd_from_rptr_idx = 0;
 								}
@@ -3053,18 +3004,7 @@ void CQnetLink::Process()
 								rdsvt.head[1] = (unsigned char)(29 >> 8 & 0x1F);
 								rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
 
-								memcpy(rdsvt.dsvt.title, "DSVT", 4);
-								rdsvt.dsvt.config = 0x20;
-								rdsvt.dsvt.flaga[0] = rdsvt.dsvt.flaga[1] = rdsvt.dsvt.flaga[2] = 0x00;
-								rdsvt.dsvt.id =  dstr.vpkt.icm_id;
-								rdsvt.dsvt.flagb[0] = dstr.vpkt.dst_rptr_id;
-								rdsvt.dsvt.flagb[1] = dstr.vpkt.snd_rptr_id;
-								rdsvt.dsvt.flagb[2] = dstr.vpkt.snd_term_id;
-								memcpy(&rdsvt.dsvt.streamid, &dstr.vpkt.streamid, 3);
-								if (length == 29)
-									memcpy(rdsvt.dsvt.vasd.voice, dstr.vpkt.vasd.voice, 12);
-								else
-									memcpy(rdsvt.dsvt.vasd.voice, dstr.vpkt.vasd1.voice, 12);
+								memcpy(rdsvt.dsvt.title, dsvt.title, 27);
 
 								if (to_remote_g2[i].toDst4.sin_port == htons(rmt_xrf_port)) {
 									/* inform XRF about the source */
@@ -3085,9 +3025,9 @@ void CQnetLink::Process()
 								memcpy(dcs_buf + 23, "CQCQCQ  ", 8);
 								memcpy(dcs_buf + 31, rptr_2_dcs[i].mycall, 8);
 								memcpy(dcs_buf + 39, rptr_2_dcs[i].sfx, 4);
-								memcpy(dcs_buf + 43, &dstr.vpkt.streamid, 2);
-								dcs_buf[45] = dstr.vpkt.ctrl;  /* cycle sequence */
-								memcpy(dcs_buf + 46, dstr.vpkt.vasd.voice, 12);
+								memcpy(dcs_buf + 43, &dsvt.streamid, 2);
+								dcs_buf[45] = dsvt.ctrl;  /* cycle sequence */
+								memcpy(dcs_buf + 46, dsvt.vasd.voice, 12);
 
 								dcs_buf[58] = (rptr_2_dcs[i].dcs_rptr_seq >> 0)  & 0xff;
 								dcs_buf[59] = (rptr_2_dcs[i].dcs_rptr_seq >> 8)  & 0xff;
@@ -3101,7 +3041,7 @@ void CQnetLink::Process()
 								sendto(dcs_g2_sock, dcs_buf, 100, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(to_remote_g2[i].toDst4));
 							}
 
-							if (dstr.vpkt.ctrl & 0x40U) {
+							if (dsvt.ctrl & 0x40U) {
 								to_remote_g2[i].out_streamid = 0x0;
 							}
 							break;
@@ -3109,13 +3049,13 @@ void CQnetLink::Process()
 					}
 
 					for (int i=0; i<3; i++) {
-						if (tracing[i].streamid == dstr.vpkt.streamid) {
+						if (tracing[i].streamid == dsvt.streamid) {
 							/* update the last time RF user talked */
 							tracing[i].last_time = time(NULL);
 
-							if (dstr.vpkt.ctrl & 0x40U) {
+							if (dsvt.ctrl & 0x40U) {
 								if (qso_details)
-									printf("END from local g2: cntr=%04x, streamID=%04x, %d bytes\n", ntohs(dstr.counter), ntohs(dstr.vpkt.streamid), length);
+									printf("END from local g2: streamID=%04x, %d bytes\n", ntohs(dsvt.streamid), length);
 
 								if ('\0' == notify_msg[i][0]) {
 									if (bool_rptr_ack && ' ' != your[i])
@@ -3129,10 +3069,7 @@ void CQnetLink::Process()
 								tracing[i].streamid = 0x0;
 							} else {
 								if (!GPS_seen[i]) {
-									if (length == 29)
-										memcpy(tmp_txt, dstr.vpkt.vasd.text, 3);
-									else
-										memcpy(tmp_txt, dstr.vpkt.vasd1.text, 3);
+									memcpy(tmp_txt, dsvt.vasd.text, 3);
 
 									if (tmp_txt[0]!=0x55 || tmp_txt[1]!=0x2d || tmp_txt[2]!=0x16) {
 										if (new_group[i]) {
