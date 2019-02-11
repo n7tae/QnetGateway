@@ -683,7 +683,7 @@ void CQnetGateway::ProcessTimeouts()
 				end_of_audio.ctrl = toRptr[i].sequence | 0x40;
 
 				for (int j=0; j<2; j++)
-					Gate2Modem[i].Write(end_of_audio.title, 29);
+					Gate2Modem[i].Write(end_of_audio.title, 27);
 
 
 				toRptr[i].streamid = 0;

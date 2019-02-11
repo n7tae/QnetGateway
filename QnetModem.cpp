@@ -728,7 +728,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			}
 			first_voice_packet = in_stream = false;
 		}
-		if (29 != Modem2Gate.Write(dsvt.title, 27)) {
+		if (27 != Modem2Gate.Write(dsvt.title, 27)) {
 			printf("ERROR: ProcessModem: Could not write gateway voice packet\n");
 			return true;
 		}
