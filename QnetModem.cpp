@@ -592,13 +592,8 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 			frame.length = 44U;
 			frame.type = TYPE_HEADER;
 			memcpy(frame.header.flag, dsvt.hdr.flag,   3);
-			if (RPTR_MOD == dsvt.hdr.rpt2[7]) {
-				memcpy(frame.header.r1, dsvt.hdr.rpt2, 8);
-				memcpy(frame.header.r2, dsvt.hdr.rpt1, 8);
-			} else {
-				memcpy(frame.header.r1, dsvt.hdr.rpt1, 8);
-				memcpy(frame.header.r2, dsvt.hdr.rpt2, 8);
-			}
+			memcpy(frame.header.r1,   dsvt.hdr.rpt2,   8);
+			memcpy(frame.header.r2,   dsvt.hdr.rpt1,   8);
 			memcpy(frame.header.ur,   dsvt.hdr.urcall, 8);
 			memcpy(frame.header.my,   dsvt.hdr.mycall, 8);
 			memcpy(frame.header.nm,   dsvt.hdr.sfx,    4);
@@ -607,7 +602,7 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 			PacketWait.start();
 			g2_is_active = true;
 			if (LOG_QSO)
-				printf("Queued to %s flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.flag[0], frame.header.flag[1], frame.header.flag[2], frame.header.ur, frame.header.r1, frame.header.r2, frame.header.my, frame.header.nm);
+				printf("Queued to %s flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.flag[0], frame.header.flag[1], frame.header.flag[2], frame.header.ur, frame.header.r2, frame.header.r1, frame.header.my, frame.header.nm);
 		} else {	// write a voice data packet
 			if (g2_is_active) {
 				//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
