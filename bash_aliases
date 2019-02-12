@@ -15,6 +15,7 @@ function stop () {
 		sudo make uninstallbase && sudo make uninstall${1}
 	else
 		echo "usage: stop module_name"
+	fi
 }
 
 function watch () {
