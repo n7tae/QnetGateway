@@ -1104,7 +1104,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 								superframe[i].append(1, (ctrl<27U) ? ch[ctrl] : '%' );
 							}
 							if (superframe[i].size() > 65U && ctrl == 20U) {
-								printf("Frame[%d]: %s\n", i, superframe[i].c_str());
+								printf("Frame[%c]: %s\n", 'A'+i, superframe[i].c_str());
 								superframe[i].clear();
 							}
 						}
@@ -1125,7 +1125,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							toRptr[i].streamid = 0;
 							toRptr[i].adr = 0;
 							if (LOG_DEBUG && superframe[i].size()) {
-								printf("Final[%i]: %s\n", i, superframe[i].c_str());
+								printf("Final[%c]: %s\n", 'A'+i, superframe[i].c_str());
 								superframe[i].clear();
 							}
 							if (LOG_QSO)
