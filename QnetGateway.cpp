@@ -1046,6 +1046,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 // is_from_g2==true  means it's coming from external port 40000
 // is_from_g2==false means it's coming from the link2gate Unix socket
 {
+	static std::string superframe[3];
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
 			// Find out the local repeater module IP/port to send the data to
@@ -1055,6 +1056,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 				// toRptr[i] is active if a remote system is talking to it or
 				// toRptr[i] is receiving data from a cross-band
 				if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
+					superframe[i].clear();
 					if (LOG_QSO) {
 						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
 						if (is_from_g2)
@@ -1091,7 +1093,21 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					if (is_from_g2)
 						match = match && (toRptr[i].adr == fromDst4.sin_addr.s_addr);
 					if (match) {
-
+						if (LOG_DEBUG) {
+							const unsigned int ctrl = g2buf.ctrl & 0x3FU;
+							const unsigned char sync_data[3] = { 0x55U, 0x2DU, 0x16U };
+							if (memcmp(sync_data, g2buf.vasd.text, 3U)) {
+								const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+								superframe[i].append(1, (ctrl<27U) ? ch[ctrl] : '*' );
+							} else {
+								const char *ch = "#abcdefghijklmnopqrstuvwxyz";
+								superframe[i].append(1, (ctrl<27U) ? ch[ctrl] : '%' );
+							}
+							if (superframe[i].size() > 65U && ctrl == 20U) {
+								printf("Frame[%d]: %s\n", i, superframe[i].c_str());
+								superframe[i].clear();
+							}
+						}
 						Gate2Modem[i].Write(g2buf.title, 27);
 
 						/* timeit */
@@ -1108,6 +1124,10 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							toRptr[i].last_time = 0;
 							toRptr[i].streamid = 0;
 							toRptr[i].adr = 0;
+							if (LOG_DEBUG && superframe[i].size()) {
+								printf("Final[%i]: %s\n", i, superframe[i].c_str());
+								superframe[i].clear();
+							}
 							if (LOG_QSO)
 								printf("id=%04x END\n", ntohs(g2buf.streamid));
 						}

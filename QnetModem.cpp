@@ -620,15 +620,16 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 					memcpy(frame.voice.ambe, dsvt.vasd.voice, 12);
 					if (LOG_DEBUG) {
 						if (VoicePacketIsSync(dsvt.vasd.text)) {
-							if (0 == superframe.size()) {
-								printf("There were no previous voice frames.\n");
-							} else if (superframe.size() > 65) {
+							if (superframe.size() > 65) {
 								printf("Frame order: %s\n", superframe.c_str());
 								superframe.clear();
 							}
 							superframe.append(1, '#');
-						} else
-							superframe.append(1, (dsvt.ctrl<27U) ? '@' + dsvt.ctrl : '*');
+						} else {
+							const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+							const unsigned int ctrl = dsvt.ctrl & 0x3FU;
+							superframe.append(1, (ctrl<53U) ? ch[ctrl] : '*');
+						}
 					}
 				}
 				queue.push(CFrame(&frame.start));

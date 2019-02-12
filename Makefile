@@ -85,6 +85,11 @@ clean:
 
 -include $(DEPS)
 
+aliases : bash_aliases
+	/bin/cp -f bash_aliases ~/.bash_aliases
+	# aliases have been installed in ~/.bash_alises
+	# You can do 'source bash_aliases' to use them now
+
 installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
