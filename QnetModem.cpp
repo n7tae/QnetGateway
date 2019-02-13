@@ -408,6 +408,8 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 			offset += ret;
 	}
 
+	if (LOG_DEBUG && junk_count)
+		fprintf(stderr, "Extra bytes: ");
 	while (junk_count) {
 		unsigned char junk[8];
 		ret = read(serfd, junk, (junk_count > 8U) ? 8U : junk_count);
@@ -416,8 +418,12 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 			return ERROR_RESPONSE;
 		} else if (ret == 0) {
 			printf("READ junk RETURNED A ZERO!\n");
-		} else
+		} else {
 			junk_count -= (unsigned int)ret;
+			if (LOG_DEBUG)
+				for (int i=0; i<ret; i++)
+					fprintf(stderr, "%02x ", junk[i]);
+		}
 	}
 
 	switch (buf[2]) {
