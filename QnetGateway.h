@@ -158,6 +158,7 @@ private:
 	int dtmf_last_frame[3];
 	unsigned int dtmf_counter[3];
 
+	bool VoicePacketIsSync(const unsigned char *text);
 	void AddFDSet(int &max, int newfd, fd_set *set);
 	int open_port(const SPORTIP &pip);
 	void calcPFCS(unsigned char *packet, int len);

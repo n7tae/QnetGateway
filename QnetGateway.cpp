@@ -64,6 +64,8 @@ extern int dstar_dv_decode(const unsigned char *d, int data[3]);
 
 static std::atomic<bool> keep_running(true);
 
+
+
 /* signal catching function */
 static void sigCatch(int signum)
 {
@@ -74,6 +76,10 @@ static void sigCatch(int signum)
 	return;
 }
 
+bool CQnetGateway::VoicePacketIsSync(const unsigned char *text)
+{
+	return *text==0x55U && *(text+1)==0x2DU && *(text+2)==0x16U;
+}
 
 void CQnetGateway::UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters)
 {
@@ -1095,17 +1101,16 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					if (match) {
 						if (LOG_DEBUG) {
 							const unsigned int ctrl = g2buf.ctrl & 0x3FU;
-							const unsigned char sync_data[3] = { 0x55U, 0x2DU, 0x16U };
-							if (memcmp(sync_data, g2buf.vasd.text, 3U)) {
-								const char *ch = "!1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-								superframe[i].append(1, (ctrl<37U) ? ch[ctrl] : '*' );
-							} else {
+							if (VoicePacketIsSync(g2buf.vasd.text)) {
+								if (superframe[i].size() > 65U) {
+									printf("Frame[%c]: %s\n", 'A'+i, superframe[i].c_str());
+									superframe[i].clear();
+								}
 								const char *ch = "#abcdefghijklmnopqrstuvwxyz";
 								superframe[i].append(1, (ctrl<27U) ? ch[ctrl] : '%' );
-							}
-							if (superframe[i].size() > 65U && ctrl == 20U) {
-								printf("Frame[%c]: %s\n", 'A'+i, superframe[i].c_str());
-								superframe[i].clear();
+							} else {
+								const char *ch = "!1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+								superframe[i].append(1, (ctrl<37U) ? ch[ctrl] : '*' );
 							}
 						}
 						Gate2Modem[i].Write(g2buf.title, 27);
