@@ -408,14 +408,6 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 			offset += ret;
 	}
 
-	if (LOG_DEBUG && TYPE_DATA==buf[2] && length>15U) {
-		fprintf(stderr, "Extra Data bytes: ");
-		for (unsigned int i=15U; i<length && i<size; i++)
-			fprintf(stderr, "%02x ", buf[i]);
-	}
-
-	if (LOG_DEBUG && junk_count)
-		fprintf(stderr, "Extra Header bytes: ");
 	while (junk_count) {
 		unsigned char junk[8];
 		ret = read(serfd, junk, (junk_count > 8U) ? 8U : junk_count);
@@ -426,9 +418,6 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 			printf("READ junk RETURNED A ZERO!\n");
 		} else {
 			junk_count -= (unsigned int)ret;
-			if (LOG_DEBUG)
-				for (int i=0; i<ret; i++)
-					fprintf(stderr, "%02x ", junk[i]);
 		}
 	}
 
@@ -438,12 +427,8 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 		case TYPE_NACK:
 			return NACK_RESPONSE;
 		case TYPE_HEADER:
-			if (LOG_DEBUG && length!=44U)
-				fprintf(stderr, "Warning: Got an MMDVM header type with size=%u\n", length);
 			return HEADER_RESPONSE;
 		case TYPE_DATA:
-			if (LOG_DEBUG && length!=15U)
-				fprintf(stderr, "Warning: Got an MMDVM data type with size=%u\n", length);
 			return DATA_RESPONSE;
 		case TYPE_LOST:
 			return LOST_RESPONSE;
@@ -731,12 +716,13 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		} else {
 			if (frame.type == TYPE_LOST)
 				printf("Got a TYPE_LOST packet.\n");
-			const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
-			const unsigned char silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
-			if (0U == dsvt.ctrl)
+			if (0U == dsvt.ctrl) {
+				const unsigned char silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
 				memcpy(dsvt.vasd.voice, silsync, 12);
-			else
+			} else {
+				const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 				memcpy(dsvt.vasd.voice, silence, 12);
+			}
 			dsvt.ctrl |= 0x40U;
 			if (LOG_QSO) {
 				if (frame.type == TYPE_EOT)
