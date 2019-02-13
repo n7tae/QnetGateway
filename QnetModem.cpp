@@ -622,16 +622,17 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 					frame.type = TYPE_DATA;
 					memcpy(frame.voice.ambe, dsvt.vasd.voice, 12);
 					if (LOG_DEBUG) {
+						const unsigned int ctrl = dsvt.ctrl & 0x3FU;
 						if (VoicePacketIsSync(dsvt.vasd.text)) {
 							if (superframe.size() > 65) {
 								printf("Frame order: %s\n", superframe.c_str());
 								superframe.clear();
 							}
-							superframe.append(1, '#');
+							const char *ch = "#abcdefghijklmnopqrstuvwxyz";
+							superframe.append(1, (ctrl<27U) ? ch[ctrl] : '%');
 						} else {
-							const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-							const unsigned int ctrl = dsvt.ctrl & 0x3FU;
-							superframe.append(1, (ctrl<53U) ? ch[ctrl] : '*');
+							const char *ch = "!1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+							superframe.append(1, (ctrl<37U) ? ch[ctrl] : '*');
 						}
 					}
 				}
@@ -718,8 +719,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			}
 
 			if (nextctrl > 20U) {
-				if (LOG_DEBUG)
-					printf("Warning: nextctrl=%u, inserting missing sync frame\n", nextctrl);
+				fprintf(stderr, "Warning: nextctrl=%u, inserting missing sync frame\n", nextctrl);
 				dsvt.ctrl = 0U;
 				memcpy(dsvt.vasd.voice, sync, 12U);
 				Modem2Gate.Write(dsvt.title, 27);

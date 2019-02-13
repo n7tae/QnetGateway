@@ -1097,8 +1097,8 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							const unsigned int ctrl = g2buf.ctrl & 0x3FU;
 							const unsigned char sync_data[3] = { 0x55U, 0x2DU, 0x16U };
 							if (memcmp(sync_data, g2buf.vasd.text, 3U)) {
-								const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-								superframe[i].append(1, (ctrl<27U) ? ch[ctrl] : '*' );
+								const char *ch = "!1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+								superframe[i].append(1, (ctrl<37U) ? ch[ctrl] : '*' );
 							} else {
 								const char *ch = "#abcdefghijklmnopqrstuvwxyz";
 								superframe[i].append(1, (ctrl<27U) ? ch[ctrl] : '%' );
