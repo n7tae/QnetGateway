@@ -404,6 +404,7 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 		}
 		if (ret == 0) {
 			printf("READ DATA RETURNED A ZERO!\n");
+			return(TIMEOUT_RESPONSE);
 		} else
 			offset += ret;
 	}
@@ -416,6 +417,7 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 			return ERROR_RESPONSE;
 		} else if (ret == 0) {
 			printf("READ junk RETURNED A ZERO!\n");
+			return(TIMEOUT_RESPONSE);
 		} else {
 			junk_count -= (unsigned int)ret;
 		}
