@@ -426,8 +426,12 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 		case TYPE_NACK:
 			return NACK_RESPONSE;
 		case TYPE_HEADER:
+			if (LOG_DEBUG && length!=44U)
+				fprintf(stderr, "Warning: Got an MMDVM header type with size=%u\n", length);
 			return HEADER_RESPONSE;
 		case TYPE_DATA:
+			if (LOG_DEBUG && length!=15U)
+				fprintf(stderr, "Warning: Got an MMDVM data type with size=%u\n", length);
 			return DATA_RESPONSE;
 		case TYPE_LOST:
 			return LOST_RESPONSE;
