@@ -408,8 +408,14 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 			offset += ret;
 	}
 
+	if (LOG_DEBUG && TYPE_DATA==buf[2] && length>15U) {
+		fprintf(stderr, "Extra Data bytes: ");
+		for (unsigned int i=15U; i<length && i<size; i++)
+			fprintf(stderr, "%02x ", buf[i]);
+	}
+
 	if (LOG_DEBUG && junk_count)
-		fprintf(stderr, "Extra bytes: ");
+		fprintf(stderr, "Extra Header bytes: ");
 	while (junk_count) {
 		unsigned char junk[8];
 		ret = read(serfd, junk, (junk_count > 8U) ? 8U : junk_count);
