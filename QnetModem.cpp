@@ -649,8 +649,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	static bool in_stream = false;
 	static bool first_voice_packet = false;
 	static short stream_id = 0U;
-	static unsigned char ctrl = 0U;
-	static unsigned int super_frame_count = 0U;
+	static unsigned char nextctrl = 21U;
 
 	// create a stream id if this is a header
 	if (frame.type == TYPE_HEADER)
@@ -659,7 +658,6 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	SDSVT dsvt;	// destination
 	// sets most of the params
 	memcpy(dsvt.title, "DSVT", 4);
-	dsvt.config = 0x20U;	// voice packet
 	memset(dsvt.flaga, 0U, 3U);
 	dsvt.id = 0x20U;
 	dsvt.flagb[0] = 0x0U;
@@ -668,9 +666,8 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	dsvt.streamid = htons(stream_id);
 
 	if (frame.type == TYPE_HEADER) {	// header
+		nextctrl = 21U;
 		in_stream = first_voice_packet = true;
-		ctrl = 0U;
-		super_frame_count = 21U;
 		dsvt.config = 0x10U;
 		dsvt.ctrl = 0x80U;
 
@@ -690,48 +687,62 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		if (LOG_QSO)
 			printf("Sent DSVT to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 	} else if (in_stream && (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST)) {	// ambe
+		const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
+		const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 		dsvt.config = 0x20U;
-		dsvt.ctrl = ctrl++;
 		if (frame.type == TYPE_DATA) {
-			if (first_voice_packet) {
-				if (! VoicePacketIsSync(frame.voice.text)) { // create a quite sync voice packet, if needed
+
+			if (first_voice_packet) {	// make sure the first voice packet is a sync frame
+				if (! VoicePacketIsSync(frame.voice.text)) { // create a quite sync voice packet
 					if (LOG_DEBUG)
 						printf("Warning: Inserting missing frame sync after header\n");
-					const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
 					dsvt.ctrl = 0U;
 					memcpy(dsvt.vasd.voice, sync, 12U);
 					Modem2Gate.Write(dsvt.title, 27);
-					ctrl = super_frame_count = 1U;
+					nextctrl = 0x1U;
 				}
 				first_voice_packet = false;
 			}
+
 			if (VoicePacketIsSync(frame.voice.text)) {
-				if (LOG_DEBUG && super_frame_count!=21U)
-					printf("Warning: got a frame sync but frame count is %u\n", super_frame_count);
-				dsvt.ctrl = super_frame_count = 0U;	// re-sync!
-				ctrl = 1U;	// the frame after the sync
+				if (nextctrl < 21U)
+					fprintf(stderr, "Warning: The last superframe had %u frames, inserting missing frame(s)\n", nextctrl);
+				memcpy(dsvt.vasd.voice, silence, 12U);
+				while (nextctrl < 21U) {
+					dsvt.ctrl = nextctrl++;
+					Modem2Gate.Write(dsvt.title, 27);
+				}
+				nextctrl = 0x0U;
 			}
+
+			if (nextctrl > 20U) {
+				if (LOG_DEBUG)
+					printf("Warning: nextctrl=%u, inserting missing sync frame\n", nextctrl);
+				dsvt.ctrl = 0U;
+				memcpy(dsvt.vasd.voice, sync, 12U);
+				Modem2Gate.Write(dsvt.title, 27);
+				nextctrl = 0x1U;
+			}
+
 			memcpy(dsvt.vasd.voice, frame.voice.ambe, 12);
-			super_frame_count++;
 		} else {
 			if (frame.type == TYPE_LOST)
 				printf("Got a TYPE_LOST packet.\n");
-			if (0U == dsvt.ctrl) {
-				const unsigned char silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
-				memcpy(dsvt.vasd.voice, silsync, 12);
+			if (0U == nextctrl) {
+				memcpy(dsvt.vasd.voice, sync, 12);
 			} else {
-				const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 				memcpy(dsvt.vasd.voice, silence, 12);
 			}
-			dsvt.ctrl |= 0x40U;
+			nextctrl |= 0x40U;
 			if (LOG_QSO) {
 				if (frame.type == TYPE_EOT)
 					printf("Sent DSVT end of streamid=%04x\n", ntohs(dsvt.streamid));
 				else
 					printf("Sent LOST end of streamid=%04x\n", ntohs(dsvt.streamid));
 			}
-			first_voice_packet = in_stream = false;
+			in_stream = false;
 		}
+		dsvt.ctrl = nextctrl++;
 		if (27 != Modem2Gate.Write(dsvt.title, 27)) {
 			printf("ERROR: ProcessModem: Could not write gateway voice packet\n");
 			return true;
