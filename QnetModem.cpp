@@ -689,6 +689,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		if (LOG_QSO)
 			printf("Sent DSVT to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 	} else if (in_stream && (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST)) {	// ambe
+		dsvt.config = 0x20U;
 		dsvt.ctrl = ctrl++;
 		if (frame.type == TYPE_DATA) {
 			if (first_voice_packet) {
