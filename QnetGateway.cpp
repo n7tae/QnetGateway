@@ -1118,7 +1118,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 
 						int diff = int(0x3FU & g2buf.ctrl) - int(lastctrl);
 						if (diff < 0)
-							diff = 21 + diff;
+							diff += 21;
 						if (diff > 1 && diff < 4) {	// fill up to 3 missing voice frames
 							if (LOG_DEBUG)
 								fprintf(stderr, "Warning: inserting %d missing voice frame(s)\n", diff - 1);
