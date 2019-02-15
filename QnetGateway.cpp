@@ -1052,6 +1052,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 // is_from_g2==true  means it's coming from external port 40000
 // is_from_g2==false means it's coming from the link2gate Unix socket
 {
+	static unsigned char lastctrl = 20U;
 	static std::string superframe[3];
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
@@ -1072,6 +1073,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					}
 
 					Gate2Modem[i].Write(g2buf.title, 56);
+					lastctrl = 20U;
 
 					/* save the header */
 					if (! is_from_g2)
@@ -1109,10 +1111,34 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 								const char *ch = "#abcdefghijklmnopqrstuvwxyz";
 								superframe[i].append(1, (ctrl<27U) ? ch[ctrl] : '%' );
 							} else {
-								const char *ch = "!1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-								superframe[i].append(1, (ctrl<37U) ? ch[ctrl] : '*' );
+								const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+								superframe[i].append(1, (ctrl<27U) ? ch[ctrl] : '*' );
 							}
 						}
+
+						int diff = int(0x3FU & g2buf.ctrl) - int(lastctrl);
+						if (diff < 0)
+							diff = 21 - diff;
+						if (diff > 1 && diff < 4) {	// fill up to 3 missing voice frames
+							if (LOG_DEBUG)
+								fprintf(stderr, "Warining: inserting %d missing voice frames\n", diff - 1);
+							SDSVT dsvt;
+							memcpy(dsvt.title, g2buf.title, 14U);	// everything but the ctrl and voice data
+							while (--diff > 0) {
+								lastctrl = (lastctrl + 1U) % 21U;
+								dsvt.ctrl = lastctrl;
+								if (dsvt.ctrl) {
+									const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
+									memcpy(dsvt.vasd.voice, silence, 12U);
+								} else {
+									const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
+									memcpy(dsvt.vasd.voice, sync, 12U);
+								}
+								Gate2Modem[i].Write(dsvt.title, 27);
+							}
+						}
+
+						lastctrl = (0x3F & g2buf.ctrl);
 						Gate2Modem[i].Write(g2buf.title, 27);
 
 						/* timeit */

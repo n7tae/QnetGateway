@@ -631,8 +631,8 @@ bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
 							const char *ch = "#abcdefghijklmnopqrstuvwxyz";
 							superframe.append(1, (ctrl<27U) ? ch[ctrl] : '%');
 						} else {
-							const char *ch = "!1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-							superframe.append(1, (ctrl<37U) ? ch[ctrl] : '*');
+							const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+							superframe.append(1, (ctrl<27U) ? ch[ctrl] : '*');
 						}
 					}
 				}
