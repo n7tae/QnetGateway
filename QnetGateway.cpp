@@ -1121,7 +1121,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							diff = 21 - diff;
 						if (diff > 1 && diff < 4) {	// fill up to 3 missing voice frames
 							if (LOG_DEBUG)
-								fprintf(stderr, "Warining: inserting %d missing voice frames\n", diff - 1);
+								fprintf(stderr, "Warning: inserting %d missing voice frames\n", diff - 1);
 							SDSVT dsvt;
 							memcpy(dsvt.title, g2buf.title, 14U);	// everything but the ctrl and voice data
 							while (--diff > 0) {
