@@ -20,7 +20,7 @@ function stop () {
 
 function watch () {
 	if [ -n "$1" ]; then
-		sudo journalctl -u ${1} -f
+		sudo journalctl -u qn${1} -f
 	else
 		echo "usage: watch service_name"
 	fi
