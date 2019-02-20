@@ -547,7 +547,7 @@ void CQnetModem::Run(const char *cfgfile)
 					dstarSpace -= (type==TYPE_HEADER) ? 4U : 1U;
 				}
 			}
-			if (statusTimer.time()>0.2) {
+			if (statusTimer.time()>0.25) {
 				// request a status update every 200 milliseconds
 				frame.length = 3U;
 				frame.type = TYPE_STATUS;
