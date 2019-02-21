@@ -1138,8 +1138,13 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							}
 						}
 
-						lastctrl = (0x3F & g2buf.ctrl);
-						Gate2Modem[i].Write(g2buf.title, 27);
+						if (lastctrl == (0x3FU && g2buf.ctrl)) {
+							if (LOG_DEBUG)
+								fprintf(stderr, "Warning: Duplicate voice packet, ignoring\n");
+						} else {
+							lastctrl = (0x3FU & g2buf.ctrl);
+							Gate2Modem[i].Write(g2buf.title, 27);
+						}
 
 						/* timeit */
 						time(&toRptr[i].last_time);
