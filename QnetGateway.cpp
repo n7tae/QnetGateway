@@ -17,14 +17,6 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/* by KI4LKF, N7TAE */
-/*
-   QnetGateway is a dstar G2 gateway, using irc routing
-       adapted from the OpenG2 G2 gateway
-   Version 2.61 or higher will use ONLY the irc mechanism of routing
-     and it will NOT use any local Postgres databases or any TRUST(s)
-*/
-
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
