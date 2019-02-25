@@ -157,8 +157,8 @@ dvrptr_rx_level=80    # see the DVRPTR V1 manual
 dvrptr_duplex=false   # set to true if the module is duplex
 dvrptr_tx_delay=250   # milliseconds to allow for switching from rx to tx
 dvrptr_rqst_count=10  # number of 2-sec intervals before the an unresponsive system is killed
-dvrptr_invert_rx=true # if your system isn't hearing you, try false
-dvrptr_invert_tx=true # if you're not hearing your system, try false
+dvrptr_rx_invert=true # if your system isn't hearing you, try false
+dvrptr_tx_invert=true # if you're not hearing your system, try false
 
 ##########################################################################################################################
 #
