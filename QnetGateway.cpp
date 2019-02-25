@@ -723,7 +723,7 @@ void CQnetGateway::ProcessTimeouts()
 		if (to_remote_g2[i].toDst4.sin_addr.s_addr != 0) {
 			time(&t_now);
 			if ((t_now - to_remote_g2[i].last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
-				printf("Inactivity from local rptr mod %d, removing stream id %04x\n", i, to_remote_g2[i].streamid);
+				printf("Inactivity from local rptr mod %c, removing stream id %04x\n", 'A'+i, ntohs(to_remote_g2[i].streamid));
 
 				memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
 				to_remote_g2[i].streamid = 0;
