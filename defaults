@@ -148,17 +148,17 @@ dvap_serial_number='APXXXXXX' # The serial number of your DVAP is visible throug
 # DVRPTR - Special parameters when: module_x='dvrptr'
 #
 # if you don't know what your DVRPTR serial number is, look in the log file after running qndvrptr
-dvrptr_tx_frequency=0  # in MHz, not required
-dvrptr_rx_frequency=0  # in MHz, also not required
+dvrptr_tx_frequency=0 # in MHz, not required
+dvrptr_rx_frequency=0 # in MHz, also not required
 dvrptr_serial_number='00.00.00.00' # the DVRPTR serial number
-dvrptr_rf_on='RFON'    # put this in YRCALL to disable the channel
-dvrptr_rf_off='RFOFF'  # put this in YRCALL to enable the channel
-dvrptr_rx_level=80     # see the DVRPTR V1 manual
-dvrptr_duplex=false    # set to true if the module is duplex
-dvrptr_tx_delay=250    # milliseconds to allow for switching from rx to tx
-dvrptr_rqst_count=10   # number of 2-sec intervals before the an unresponsive system is killed
-dvrptr_inverse_rx=true # if your system isn't hearing you, try false
-dvrptr_inverse_tx=true # if you're not hearing your system, try false
+dvrptr_rf_on='RFON'   # put this in YRCALL to disable the channel
+dvrptr_rf_off='RFOFF' # put this in YRCALL to enable the channel
+dvrptr_rx_level=80    # see the DVRPTR V1 manual
+dvrptr_duplex=false   # set to true if the module is duplex
+dvrptr_tx_delay=250   # milliseconds to allow for switching from rx to tx
+dvrptr_rqst_count=10  # number of 2-sec intervals before the an unresponsive system is killed
+dvrptr_invert_rx=true # if your system isn't hearing you, try false
+dvrptr_invert_tx=true # if you're not hearing your system, try false
 
 ##########################################################################################################################
 #
