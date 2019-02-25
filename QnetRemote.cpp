@@ -39,7 +39,7 @@
 #include "QnetConfigure.h"
 #include "UnixDgramSocket.h"
 
-#define VERSION "v2.1"
+#define VERSION "v2.2"
 
 int module;
 time_t tNow = 0;
@@ -77,14 +77,13 @@ bool ReadCfgFile()
 	std::string type;
 	std::string path = "module_";
 	path.append(1, 'a'+module);
-	if (cfg.GetValue(path, estr, type, 1, 16)) {
-		fprintf(stderr, "%s not found!\n", path.c_str());
+
+	if (! cfg.KeyExists(path)) {
+		fprintf(stderr, "%s not defined!\n", path.c_str());
 		return true;
 	}
-	if (type.compare("dvap") && type.compare("dvrptr") && type.compare("mmdvm") && type.compare("itap")) {
-		fprintf(stderr, "module type '%s' is invalid!\n", type.c_str());
-		return true;
-	}
+	cfg.GetValue(path, estr, type, 1, 16);
+
 	cfg.GetValue(path+"_callsign", type, REPEATER, 0, 6);
 	if (REPEATER.length() < 4) {
 		if (cfg.GetValue("ircddb_login", estr, REPEATER, 3, 6)) {
