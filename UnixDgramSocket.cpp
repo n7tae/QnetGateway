@@ -62,9 +62,12 @@ bool CUnixDgramReader::Open(const char *path)	// returns true on failure
 
 ssize_t CUnixDgramReader::Read(void *buf, size_t size)
 {
-	if (fd >= 0)
-		return read(fd, buf, size);
-	return -1;
+	if (fd < 0)
+		return -1;
+	ssize_t len = read(fd, buf, size);
+	if (len < 1)
+		fprintf(stderr, "CUnixDgramReader::Read read() returned %d: %s\n", int(len), strerror(errno));
+	return len;
 }
 
 void CUnixDgramReader::Close()

@@ -42,10 +42,9 @@
 #include <chrono>
 
 #include "QnetModem.h"
-#include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-0.1.1"
+#define MODEM_VERSION "QnetModem-0.1.2"
 #define MAX_RESPONSES 30
 
 std::atomic<bool> CQnetModem::keep_running(true);
@@ -513,18 +512,21 @@ void CQnetModem::Run(const char *cfgfile)
 		}
 
 		if (keep_running && FD_ISSET(ug2m, &readfds)) {
-			unsigned char buf[100];
-			ssize_t len = Gate2Modem.Read(buf, 100);
+			SDSVT dsvt;
+			ssize_t len = Gate2Modem.Read(dsvt.title, sizeof(SDSVT));
 
-			if (len < 0) {
-				printf("ERROR: Run: recvfrom(gsock) returned error %d, %s\n", errno, strerror(errno));
+			if (len <= 0) {
 				break;
 			}
 
-			if (0 == memcmp(buf, "DSVT", 4)) {
-				//printf("read %d bytes from QnetGateway\n", (int)len);
-				if (ProcessGateway(len, buf))
-					break;
+			if (0 == memcmp(dsvt.title, "DSVT", 4) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U) && (len==56 || len==27)) {
+				ProcessGateway(dsvt);
+			} else {
+				fprintf(stderr, "Unexpected data, returned %d bytes from the gateway: %02x", int(len), *dsvt.title);
+				for (ssize_t i=1; i<len; i++)
+					fprintf(stderr, " %02x", *(dsvt.title + int(i)));
+				fprintf(stderr, "\n");
+				break;
 			}
 			FD_CLR(ug2m, &readfds);
 		}
@@ -581,70 +583,61 @@ int CQnetModem::SendToModem(const unsigned char *buf)
 	return length;
 }
 
-bool CQnetModem::ProcessGateway(const int len, const unsigned char *raw)
+void CQnetModem::ProcessGateway(const SDSVT &dsvt)
 {
 	static std::string superframe;
-	if (27==len || 56==len) { //here is dstar data
-		SDSVT dsvt;
-		memcpy(dsvt.title, raw, len);	// transfer raw data to SDSVT struct
-
-		SMODEM frame;	// destination
-		frame.start = FRAME_START;
-		if (56 == len) {			// write a Header packet
-			superframe.clear();
-			frame.length = 44U;
-			frame.type = TYPE_HEADER;
-			memcpy(frame.header.flag, dsvt.hdr.flag,   3);
-			memcpy(frame.header.r1,   dsvt.hdr.rpt2,   8);
-			memcpy(frame.header.r2,   dsvt.hdr.rpt1,   8);
-			memcpy(frame.header.ur,   dsvt.hdr.urcall, 8);
-			memcpy(frame.header.my,   dsvt.hdr.mycall, 8);
-			memcpy(frame.header.nm,   dsvt.hdr.sfx,    4);
-			memcpy(frame.header.pfcs, dsvt.hdr.pfcs,   2);
-			queue.push(CFrame(&frame.start));
-			PacketWait.start();
-			g2_is_active = true;
-			if (LOG_QSO)
-				printf("Queued to %s flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.flag[0], frame.header.flag[1], frame.header.flag[2], frame.header.ur, frame.header.r2, frame.header.r1, frame.header.my, frame.header.nm);
-		} else {	// write a voice data packet
-			if (g2_is_active) {
-				//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
-				if (dsvt.ctrl & 0x40U) {
-					if (LOG_DEBUG && superframe.size())
-						printf("Final order: %s\n", superframe.c_str());
-					frame.length = 3U;
-					frame.type = TYPE_EOT;
-					g2_is_active = false;
-					if (LOG_QSO)
-						printf("Queued modem end of transmission\n");
-				} else {
-					frame.length = 15U;
-					frame.type = TYPE_DATA;
-					memcpy(frame.voice.ambe, dsvt.vasd.voice, 12);
-					if (LOG_DEBUG) {
-						const unsigned int ctrl = dsvt.ctrl & 0x3FU;
-						if (VoicePacketIsSync(dsvt.vasd.text)) {
-							if (superframe.size() > 65) {
-								printf("Frame order: %s\n", superframe.c_str());
-								superframe.clear();
-							}
-							const char *ch = "#abcdefghijklmnopqrstuvwxyz";
-							superframe.append(1, (ctrl<27U) ? ch[ctrl] : '%');
-						} else {
-							const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-							superframe.append(1, (ctrl<27U) ? ch[ctrl] : '*');
+	SMODEM frame;	// destination
+	frame.start = FRAME_START;
+	if (0x10U == dsvt.config) {			// write a Header packet
+		superframe.clear();
+		frame.length = 44U;
+		frame.type = TYPE_HEADER;
+		memcpy(frame.header.flag, dsvt.hdr.flag,   3);
+		memcpy(frame.header.r1,   dsvt.hdr.rpt2,   8);
+		memcpy(frame.header.r2,   dsvt.hdr.rpt1,   8);
+		memcpy(frame.header.ur,   dsvt.hdr.urcall, 8);
+		memcpy(frame.header.my,   dsvt.hdr.mycall, 8);
+		memcpy(frame.header.nm,   dsvt.hdr.sfx,    4);
+		memcpy(frame.header.pfcs, dsvt.hdr.pfcs,   2);
+		queue.push(CFrame(&frame.start));
+		PacketWait.start();
+		g2_is_active = true;
+		if (LOG_QSO)
+			printf("Queued to %s flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.flag[0], frame.header.flag[1], frame.header.flag[2], frame.header.ur, frame.header.r2, frame.header.r1, frame.header.my, frame.header.nm);
+	} else {	// write a voice data packet
+		if (g2_is_active) {
+			//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
+			if (dsvt.ctrl & 0x40U) {
+				if (LOG_DEBUG && superframe.size())
+					printf("Final order: %s\n", superframe.c_str());
+				frame.length = 3U;
+				frame.type = TYPE_EOT;
+				g2_is_active = false;
+				if (LOG_QSO)
+					printf("Queued modem end of transmission\n");
+			} else {
+				frame.length = 15U;
+				frame.type = TYPE_DATA;
+				memcpy(frame.voice.ambe, dsvt.vasd.voice, 12);
+				if (LOG_DEBUG) {
+					const unsigned int ctrl = dsvt.ctrl & 0x3FU;
+					if (VoicePacketIsSync(dsvt.vasd.text)) {
+						if (superframe.size() > 65) {
+							printf("Frame order: %s\n", superframe.c_str());
+							superframe.clear();
 						}
+						const char *ch = "#abcdefghijklmnopqrstuvwxyz";
+						superframe.append(1, (ctrl<27U) ? ch[ctrl] : '%');
+					} else {
+						const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+						superframe.append(1, (ctrl<27U) ? ch[ctrl] : '*');
 					}
 				}
-				queue.push(CFrame(&frame.start));
-				PacketWait.start();
 			}
+			queue.push(CFrame(&frame.start));
+			PacketWait.start();
 		}
-	} else {
-		if (LOG_DEBUG)
-			printf("From gateway: unusual packet size len=%d\n", len);
 	}
-	return false;
 }
 
 bool CQnetModem::ProcessModem(const SMODEM &frame)

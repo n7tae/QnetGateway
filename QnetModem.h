@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 #include "Random.h"	// for streamid generation
 #include "UnixDgramSocket.h"
+#include "QnetTypeDefs.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -213,7 +214,7 @@ private:
 	bool VoicePacketIsSync(const unsigned char *);
 	bool Initialize(const char *cfgfile);
 	static void SignalCatch(const int signum);
-	bool ProcessGateway(const int len, const unsigned char *raw);
+	void ProcessGateway(const SDSVT &dsvt);
 	bool ProcessModem(const SMODEM &frame);
 	int OpenModem();
 	int SendToModem(const unsigned char *buf);
