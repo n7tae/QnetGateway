@@ -2651,15 +2651,21 @@ int main(int argc, const char **argv)
 					        (myRPT2[7] == 'C') ||
 					        (myRPT2[7] == 'G'))
 						memcpy(myRPT2, DVCALL, 7);
-					else
+					else {
+						printf("myRPT2=%.8s not A, B, C or G, blanking it\n", myRPT2);
 						memset(myRPT2, ' ', 8);
+					}
 
-					if ((memcmp(myUR, "CQCQCQ", 6) != 0) && (myRPT2[0] != ' '))
+					if ((memcmp(myUR, "CQCQCQ", 6) != 0) && (myRPT2[0] != ' ')) {
 						memcpy(myRPT2, DVCALL_and_G, 8);
+						printf("reset myRPT2 to '%.8s' because UR!=CQCQCQ and myRPT2 not blank\n", myRPT2);
+					}
 
 					/* 8th in rpt1, rpt2 must be diff */
-					if (myRPT2[7] == myRPT1[7])
+					if (myRPT2[7] == myRPT1[7]) {
 						memset(myRPT2, ' ', 8);
+						printf("%.8s==%.8s, blanking myRPT2\n", myRPT2, myRPT1);
+					}
 
 					/*
 					   Are we restricting the RF user ?
