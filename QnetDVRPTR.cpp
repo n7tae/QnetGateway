@@ -28,7 +28,7 @@
 #include "QnetConfigure.h"
 #include "QnetTypeDefs.h"
 
-#define DVRPTR_VERSION "QnetDVRPTR-6.0.3"
+#define DVRPTR_VERSION "QnetDVRPTR-6.0.4"
 
 #define BAUD B115200
 #define CALL_SIZE 8
@@ -1805,7 +1805,7 @@ static bool ReadConfig(const char *cfgFile)
 		}
 	}
 	DVRPTR_MOD = 'A' + assigned_module;
-	cfg.GetValue("gateway_gate2modem"+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue(std::string("gateway_gate2modem")+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
 	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
 
 	std::string call;
@@ -2758,16 +2758,18 @@ int main(int argc, const char **argv)
 
 				Send_Network_Header.hdr.flag[1] = puffer[9];
 				Send_Network_Header.hdr.flag[2] = puffer[10];
-				memcpy(Send_Network_Header.hdr.rpt1, myRPT2, 8);
-				memcpy(Send_Network_Header.hdr.rpt2, myRPT1, 8);
+				memcpy(Send_Network_Header.hdr.rpt1, myRPT1, 8);
+				memcpy(Send_Network_Header.hdr.rpt2, myRPT2, 8);
 				memcpy(Send_Network_Header.hdr.urcall, myUR, 8);
 				memcpy(Send_Network_Header.hdr.mycall, myCall, 8);
 				memcpy(Send_Network_Header.hdr.sfx, myCall2, 4);
 				calcPFCS(Send_Network_Header.title);
 
 				if (ok) {
-					if (IS_ENABLED)
+					if (IS_ENABLED) {
+						printf("Sent to gateway: %.36s\n", Send_Network_Header.hdr.rpt1);
 						Modem2Gate.Write(Send_Network_Header.title, 56);
+					}
 				}
 
 				seq_no3 = 0;
