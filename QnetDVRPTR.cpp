@@ -2190,8 +2190,8 @@ static void readFrom20000()
 				}
 				recv_buf.hdr.flag[1] = recv_buf.hdr.flag[2] = 0x0;
 				memcpy(Send_Modem_Header + 8, recv_buf.hdr.flag, 3);
-				memcpy(Send_Modem_Header + 11, recv_buf.hdr.rpt1, 8);
-				memcpy(Send_Modem_Header + 19, recv_buf.hdr.rpt2, 8);
+				memcpy(Send_Modem_Header + 11, recv_buf.hdr.rpt2, 8);
+				memcpy(Send_Modem_Header + 19, recv_buf.hdr.rpt1, 8);
 				memcpy(Send_Modem_Header + 27, recv_buf.hdr.urcall, 8);
 				memcpy(Send_Modem_Header + 35, recv_buf.hdr.mycall, 8);
 				memcpy(Send_Modem_Header + 43, recv_buf.hdr.sfx, 4);
