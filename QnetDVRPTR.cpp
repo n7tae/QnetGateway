@@ -2659,7 +2659,6 @@ int main(int argc, const char **argv)
 
 					if ((memcmp(myUR, "CQCQCQ", 6) != 0) && (myRPT2[0] != ' ')) {
 						memcpy(myRPT2, DVCALL_and_G, 8);
-						printf("reset myRPT2 to '%.8s' because UR!=CQCQCQ and myRPT2 not blank\n", myRPT2);
 					}
 
 					/* 8th in rpt1, rpt2 must be diff */
@@ -2774,7 +2773,6 @@ int main(int argc, const char **argv)
 
 				if (ok) {
 					if (IS_ENABLED) {
-						printf("Sent to gateway: %.36s\n", Send_Network_Header.hdr.rpt1);
 						Modem2Gate.Write(Send_Network_Header.title, 56);
 					}
 				}
