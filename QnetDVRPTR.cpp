@@ -28,7 +28,7 @@
 #include "QnetConfigure.h"
 #include "QnetTypeDefs.h"
 
-#define DVRPTR_VERSION "QnetDVRPTR-6.0.4"
+#define DVRPTR_VERSION "QnetDVRPTR-6.0.5"
 
 #define BAUD B115200
 #define CALL_SIZE 8
@@ -2204,7 +2204,7 @@ static void readFrom20000()
 				// printf("\nNetwork Header ID: %2.2x\n",seq_no2);
 				block = 0;
 
-				printf("From G2: streamid=%04x, flags=%02x:%02x:%02x, myCall=%.8s/%.4s, yrCall=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(recv_buf.streamid), recv_buf.hdr.flag[0], recv_buf.hdr.flag[1], recv_buf.hdr.flag[2], recv_buf.hdr.mycall, recv_buf.hdr.sfx, recv_buf.hdr.urcall, recv_buf.hdr.rpt2, recv_buf.hdr.rpt1);
+				printf("From G2: streamid=%04x, flags=%02x:%02x:%02x, myCall=%.8s/%.4s, yrCall=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(recv_buf.streamid), recv_buf.hdr.flag[0], recv_buf.hdr.flag[1], recv_buf.hdr.flag[2], recv_buf.hdr.mycall, recv_buf.hdr.sfx, recv_buf.hdr.urcall, recv_buf.hdr.rpt1, recv_buf.hdr.rpt2);
 
 				ptt_off[4] = seq_no2;
 				start_Header[4]=seq_no2;
