@@ -1135,7 +1135,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							Gate2Modem[i].Write(g2buf.title, 27);
 						} else {
 							if (LOG_DEBUG)
-								fprintf(stderr, "Warning: Ignoring packet because its ctrl=0x%02uU and lastctrl=0x%02uU\n", g2buf.ctrl, lastctrl);
+								fprintf(stderr, "Warning: Ignoring packet because its ctrl=0x%02xU and lastctrl=0x%02xU\n", g2buf.ctrl, lastctrl);
 						}
 
 						/* timeit */
