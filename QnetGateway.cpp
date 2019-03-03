@@ -1130,7 +1130,8 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 							}
 						}
 
-						if ((lastctrl + 1U) % 21U == (0x3FU & g2buf.ctrl)) {
+						if (((lastctrl + 1U) % 21U == (0x3FU & g2buf.ctrl)) || (0x40U & g2buf.ctrl)) {
+							// no matter what, we will send this on if it is the closing frame
 							lastctrl = (0x3FU & g2buf.ctrl);
 							Gate2Modem[i].Write(g2buf.title, 27);
 						} else {
