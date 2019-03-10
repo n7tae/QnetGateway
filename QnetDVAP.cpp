@@ -328,7 +328,7 @@ static void readFrom20000()
 					break;
 				}
 
-				if (memcmp(dsvt.title, "DSVT", 4) || dsvt.id!=0x20) || dsvt.config!=0x10) {
+				if (memcmp(dsvt.title, "DSVT", 4) || dsvt.id!=0x20 || dsvt.config!=0x10) {
 					FD_CLR(fd, &readfd);
 					break;
 				}
