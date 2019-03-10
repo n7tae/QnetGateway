@@ -276,7 +276,7 @@ static void readFrom20000()
 
 	while (keep_running) {
 		written_to_q = false;
-
+		len = 0;
 		tv.tv_sec = 0;
 		tv.tv_usec = WAIT_FOR_PACKETS;
 		FD_ZERO (&readfd);
