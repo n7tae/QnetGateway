@@ -51,7 +51,7 @@
 #include "UnixDgramSocket.h"
 #include "QnetConfigure.h"
 
-#define DVAP_VERSION "QnetDVAP-6.1.0"
+#define DVAP_VERSION "QnetDVAP-6.1.1"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -258,7 +258,7 @@ static int open_sock()
 
 static void readFrom20000()
 {
-	int len;
+	int len = 0;
 	fd_set readfd;
 	struct timeval tv;
 	int inactive = 0;
@@ -328,7 +328,7 @@ static void readFrom20000()
 					break;
 				}
 
-				if ((memcmp(dsvt.title, "DSVT", 4) != 0) || (dsvt.id != 0x20)) { /* voice type */
+				if (memcmp(dsvt.title, "DSVT", 4) || dsvt.id!=0x20) || dsvt.config!=0x10) {
 					FD_CLR(fd, &readfd);
 					break;
 				}
@@ -445,7 +445,7 @@ static void readFrom20000()
 							}
 						}
 					}
-				} else { // dsvt.sreamid != streamid
+				} else { // busy20000 == false
 					FD_CLR (fd, &readfd);
 					break;
 				}
@@ -460,9 +460,9 @@ static void readFrom20000()
 
 		// If we received a dup or select() timed out or streamids dont match,
 		// then written_to_q is false
-		if (!written_to_q) {
+		if (!written_to_q) {	// we could also end up here if we are busy and we received a non-standard packet size
 			if (busy20000) {
-				if (++inactive == inactiveMax) {
+				if (++inactive >= inactiveMax) {
 					printf("G2 Timeout...\n");
 
 					streamid = 0;
@@ -473,6 +473,7 @@ static void readFrom20000()
 					busy20000 = false;
 					break;
 				} else {
+					fprintf(stderr, "sending silent frame where: len=%d, inactive=%d\n", len, inactive);
 					if (space == 127) {
 						if (seq_no == 0) {
 							silence[9]  = 0x55;
