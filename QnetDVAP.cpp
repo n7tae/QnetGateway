@@ -263,7 +263,7 @@ static void readFrom20000()
 	struct timeval tv;
 	int inactive = 0;
 	short seq_no = 0;
-	uint16_t streamid;
+	uint16_t streamid = 0U;
 	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
 	SDSVT dsvt;
 	unsigned short stream_id_to_dvap = 0;
@@ -338,11 +338,7 @@ static void readFrom20000()
 				ctrl_in = 0x80;
 				written_to_q = true;
 
-				printf("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n",
-				        dsvt.streamid,
-				        dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2],
-				        dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall,
-				        dsvt.hdr.rpt1, dsvt.hdr.rpt2);
+				printf("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
 				/* save the streamid that is winning */
 				streamid = dsvt.streamid;
@@ -432,7 +428,7 @@ static void readFrom20000()
 								seq_no = 0;
 
 							if ((dsvt.ctrl & 0x40) != 0) {
-								printf("End G2: streamid=%04x\n", dsvt.streamid);
+								printf("End G2: streamid=%04x\n", ntohs(dsvt.streamid));
 
 								streamid = 0;
 
@@ -473,7 +469,7 @@ static void readFrom20000()
 					busy20000 = false;
 					break;
 				} else {
-					fprintf(stderr, "sending silent frame where: len=%d, inactive=%d\n", len, inactive);
+					fprintf(stderr, "sending silent frame where: len=%d, inactive=%d, streamid=%04x\n", len, inactive, ntohs(stream_id_to_dvap));
 					if (space == 127) {
 						if (seq_no == 0) {
 							silence[9]  = 0x55;
