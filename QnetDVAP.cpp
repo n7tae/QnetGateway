@@ -42,7 +42,6 @@
 #include <future>
 #include <exception>
 #include <thread>
-#include <chrono>
 #include <string>
 
 #include "DVAPDongle.h"
@@ -50,6 +49,7 @@
 #include "Random.h"
 #include "UnixDgramSocket.h"
 #include "QnetConfigure.h"
+#include "Timer.h"
 
 #define DVAP_VERSION "QnetDVAP-6.1.1"
 
@@ -82,6 +82,7 @@ static int REMOTE_TIMEOUT;  /* 1 second */
 static int DELAY_BETWEEN;
 static int DELAY_BEFORE;
 static bool RPTR_ACK;
+static double TIMING_TIMEOUT_LOCAL_RPTR;
 static int inactiveMax = 25;
 
 /* helper data */
@@ -93,7 +94,6 @@ static bool busy20000 = false;
 std::atomic<bool> keep_running(true);
 
 static unsigned int space = 0;
-static unsigned int aseed = 0;
 
 /* helper routines */
 static bool ReadConfig(const char *cfgFile);
@@ -232,9 +232,10 @@ static bool ReadConfig(const char *cfgFile)
 	cfg.GetValue(dvap_path+"_packet_wait", type, WAIT_FOR_PACKETS, 6, 100);
 	cfg.GetValue(dvap_path+"_acknowledge", type, RPTR_ACK);
 
-	dvap_path.assign("timing_");
-	cfg.GetValue(dvap_path+"timeout_remote_g2", estr, REMOTE_TIMEOUT, 1, 10);
-	dvap_path.append("play_");
+	dvap_path.assign("timing_timeout_");
+	cfg.GetValue(dvap_path+"remote_g2", estr, REMOTE_TIMEOUT, 1, 10);
+	cfg.GetValue(dvap_path+"local_rptr", estr, TIMING_TIMEOUT_LOCAL_RPTR, 1.0, 10.0);
+	dvap_path.assign("timing_play_");
 	cfg.GetValue(dvap_path+"delay", estr, DELAY_BETWEEN, 9, 25);
 	cfg.GetValue(dvap_path+"wait", estr, DELAY_BEFORE, 1, 10);
 
@@ -517,7 +518,6 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	memcpy(RADIO_ID, "BER%", 4);
 
 	struct sigaction act;
-	time_t tnow = 0;
 	unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 
 	act.sa_handler = sig_catch;
@@ -537,16 +537,14 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 
 	sleep(DELAY_BEFORE);
 
-	time(&tnow);
-
-	uint16_t stream_id_to_dvap = Random.NewStreamID();
+	uint16_t sid = Random.NewStreamID();
 
 	// HEADER
 	while ((space < 1) && keep_running)
 		usleep(5);
 	SDVAP_REGISTER dr;
 	dr.header = 0xa02fu;
-	dr.frame.streamid = stream_id_to_dvap;
+	dr.frame.streamid = sid;
 	dr.frame.framepos = 0x80;
 	dr.frame.seq = 0;
 	dr.frame.hdr.flag[0] = 0x01;
@@ -562,7 +560,7 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 
 	// SYNC
 	dr.header = 0xc012u;
-	dr.frame.streamid = stream_id_to_dvap;
+	dr.frame.streamid = sid;
 	for (int i=0; i<10; i++) {
 		while ((space < 1) && keep_running)
 			usleep(5);
@@ -636,8 +634,7 @@ static void ReadDVAPThread()
 	REPLY_TYPE reply;
 	SDSVT dsvt;
 	SDVAP_REGISTER dr;
-	time_t tnow = 0;
-	time_t last_RF_time = 0;
+	CTimer last_RF_time;
 	struct sigaction act;
 	bool dvap_busy = false;
 	// bool ptt = false;
@@ -671,12 +668,10 @@ static void ReadDVAPThread()
 	}
 
 	while (keep_running) {
-		time(&tnow);
 
 		// local RF user went away ?
 		if (dvap_busy) {
-			time(&tnow);
-			if ((tnow - last_RF_time) > 1)
+			if (last_RF_time.time() > TIMING_TIMEOUT_LOCAL_RPTR)
 				dvap_busy = false;
 		}
 
@@ -821,7 +816,7 @@ static void ReadDVAPThread()
 
 				// local RF user keying up, start timer
 				dvap_busy = true;
-				time(&last_RF_time);
+				last_RF_time.start();
 
 				// save mycall for the ack later
 				memcpy(mycall, dr.frame.hdr.mycall, 8);
@@ -850,7 +845,7 @@ static void ReadDVAPThread()
 					sequence = 0;
 
 				// local RF user still talking, update timer
-				time(&last_RF_time);
+				last_RF_time.start();
 				if (the_end) {
 					// local RF user stopped talking
 					dvap_busy = false;
@@ -889,8 +884,6 @@ int main(int argc, const char **argv)
 {
 	struct sigaction act;
 	int rc = -1;
-	time_t tnow = 0;
-	time_t ackpoint = 0;
 	short cnt = 0;
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
@@ -960,8 +953,7 @@ int main(int argc, const char **argv)
 	strcpy(RPTR_and_MOD, RPTR.c_str());
 	RPTR_and_MOD[7] = RPTR_MOD;
 
-	time(&tnow);
-	aseed = tnow + getpid();
+	CTimer ackpoint;
 
 	act.sa_handler = sig_catch;
 	sigemptyset(&act.sa_mask);
@@ -1001,8 +993,7 @@ int main(int argc, const char **argv)
 	printf("Started ReadDVAPThread()\n");
 
 	while (keep_running) {
-		time(&tnow);
-		if ((tnow - ackpoint) > 2) {
+		if (ackpoint.time() > 2.5) {
 			rc = dongle.KeepAlive();
 			if (rc < 0) {
 				cnt ++;
@@ -1012,13 +1003,13 @@ int main(int argc, const char **argv)
 				}
 			} else
 				cnt = 0;
-			ackpoint = tnow;
+			ackpoint.start();
 		}
 		readFrom20000();
 	}
 
 	readthread.get();
 	Gate2Modem.Close();
-	printf("dvap_rptr exiting\n");
+	printf("QnetDVAP exiting\n");
 	return 0;
 }

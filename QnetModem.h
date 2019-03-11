@@ -27,6 +27,7 @@
 #include "Random.h"	// for streamid generation
 #include "UnixDgramSocket.h"
 #include "QnetTypeDefs.h"
+#include "Timer.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -176,22 +177,6 @@ public:
 
 private:
 	SMODEM frame;
-};
-
-class CTimer
-{
-public:
-	CTimer() { start(); }
-	~CTimer() {}
-	void start() {
-		starttime = std::chrono::steady_clock::now();
-	}
-	double time() {
-		std::chrono::steady_clock::duration elapsed = std::chrono::steady_clock::now() - starttime;
-		return double(elapsed.count()) * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
-	}
-private:
-	std::chrono::steady_clock::time_point starttime;
 };
 
 class CQnetModem

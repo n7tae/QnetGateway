@@ -43,8 +43,9 @@
 #include "QnetITAP.h"
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
+#include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-2.1.0"
+#define ITAP_VERSION "QnetITAP-2.1.1"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -215,7 +216,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	unsigned poll_counter = 0;
 	bool is_alive = false;
 	acknowledged = true;
-	std::chrono::steady_clock::time_point lastdata = std::chrono::steady_clock::now();
+	CTimer lastdata;
 
 	while (keep_running) {
 
@@ -238,8 +239,7 @@ void CQnetITAP::Run(const char *cfgfile)
 		}
 
 		// check for a dead or disconnected radio
-		std::chrono::steady_clock::duration sincelastdata = std::chrono::steady_clock::now() - lastdata;
-		double deadtime = sincelastdata.count() * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
+		double deadtime = lastdata.time();
 		if (10.0 < deadtime) {
 			printf("no activity from radio for 10 sec. Exiting...\n");
 			break;
@@ -261,7 +261,7 @@ void CQnetITAP::Run(const char *cfgfile)
 		unsigned char buf[100];
 
 		if (keep_running && FD_ISSET(serfd, &readfds)) {
-			lastdata = std::chrono::steady_clock::now();
+			lastdata.start();
 			switch (GetITAPData(buf)) {
 				case RT_ERROR:
 					keep_running = false;
