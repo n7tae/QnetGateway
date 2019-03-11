@@ -478,7 +478,7 @@ static void ReadFromGateway()
 				} else {	// inactive too long
 					if (space == 127) {
 						if (LOG_DEBUG)
-							fprintf(stderr, "sending silent frame where: len=%d, inactive=%d, streamid=%04x\n", len, inactive, ntohs(streamid));
+							fprintf(stderr, "sending silent frame where: len=%d, inactive=%d\n", len, inactive);
 						if (seq_no == 0) {
 							silence[9]  = 0x55;
 							silence[10] = 0x2d;
