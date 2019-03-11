@@ -369,7 +369,7 @@ static void ReadFromGateway()
 					usleep(5);
 				SDVAP_REGISTER dr;
 				dr.header = 0xa02f;
-				dr.frame.streamid = streamid = dvst.streamid;
+				dr.frame.streamid = streamid = dsvt.streamid;
 				dr.frame.framepos = 0x80;
 				dr.frame.seq = 0;
 				//memset(dvp_buf + 6, ' ', 41);
