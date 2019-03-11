@@ -72,17 +72,19 @@ static CUnixDgramWriter Modem2Gate;
 static std::string RPTR;
 static std::string OWNER;
 static char RPTR_MOD;
-static std::string DVP_SERIAL; /* APxxxxxx */
-static int DVP_FREQ; /* between 144000000 and 148000000 */
-static int DVP_PWR; /* between  -12 and 10 */
-static int DVP_SQL; /* between  -128 and -45 */
-static int DVP_OFF; /* between -2000 and 2000 */
-static int WAIT_FOR_PACKETS;   /* wait 25 ms in reading from local G2 */
-static int REMOTE_TIMEOUT;  /* 1 second */
-static int DELAY_BETWEEN;
-static int DELAY_BEFORE;
-static bool RPTR_ACK;
+static std::string MODULE_SERIAL_NUMBER; /* APxxxxxx */
+static int MODULE_FREQUENCY; /* between 144000000 and 148000000 */
+static int MODULE_POWER; /* between  -12 and 10 */
+static int MODULE_SQUELCH; /* between  -128 and -45 */
+static int MODULE_OFFSET; /* between -2000 and 2000 */
+static int MODULE_PACKET_WAIT;   /* wait 25 ms in reading from local G2 */
+static int TIMING_TIMEOUT_REMOTE_G2;  /* 1 second */
+static int TIMING_PLAY_DELAY;
+static int TIMING_PLAY_WAIT;
+static bool MODULE_ACKNOWLEDGE;
 static double TIMING_TIMEOUT_LOCAL_RPTR;
+static bool LOG_DEBUG;
+static bool LOG_QSO;
 static int inactiveMax = 25;
 
 /* helper data */
@@ -222,29 +224,33 @@ static bool ReadConfig(const char *cfgFile)
 	RPTR.resize(CALL_SIZE, ' ');
 	OWNER.resize(CALL_SIZE, ' ');
 
-	cfg.GetValue(dvap_path+"_serial_number", type, DVP_SERIAL, 8, 10);
+	cfg.GetValue(dvap_path+"_serial_number", type, MODULE_SERIAL_NUMBER, 8, 10);
 	double f;
 	cfg.GetValue(dvap_path+"_frequency", type, f, 100.0, 1400.0);
-	DVP_FREQ = (int)(1.0e6*f);
-	cfg.GetValue(dvap_path+"_power", type, DVP_PWR, -12, 10);
-	cfg.GetValue(dvap_path+"_squelch", type, DVP_SQL, -128, -45);
-	cfg.GetValue(dvap_path+"_offset", type, DVP_OFF, -2000, 2000);
-	cfg.GetValue(dvap_path+"_packet_wait", type, WAIT_FOR_PACKETS, 6, 100);
-	cfg.GetValue(dvap_path+"_acknowledge", type, RPTR_ACK);
+	MODULE_FREQUENCY = (int)(1.0e6*f);
+	cfg.GetValue(dvap_path+"_power", type, MODULE_POWER, -12, 10);
+	cfg.GetValue(dvap_path+"_squelch", type, MODULE_SQUELCH, -128, -45);
+	cfg.GetValue(dvap_path+"_offset", type, MODULE_OFFSET, -2000, 2000);
+	cfg.GetValue(dvap_path+"_packet_wait", type, MODULE_PACKET_WAIT, 6, 100);
+	cfg.GetValue(dvap_path+"_acknowledge", type, MODULE_ACKNOWLEDGE);
 
 	dvap_path.assign("timing_timeout_");
-	cfg.GetValue(dvap_path+"remote_g2", estr, REMOTE_TIMEOUT, 1, 10);
+	cfg.GetValue(dvap_path+"remote_g2", estr, TIMING_TIMEOUT_REMOTE_G2, 1, 10);
 	cfg.GetValue(dvap_path+"local_rptr", estr, TIMING_TIMEOUT_LOCAL_RPTR, 1.0, 10.0);
 	dvap_path.assign("timing_play_");
-	cfg.GetValue(dvap_path+"delay", estr, DELAY_BETWEEN, 9, 25);
-	cfg.GetValue(dvap_path+"wait", estr, DELAY_BEFORE, 1, 10);
+	cfg.GetValue(dvap_path+"delay", estr, TIMING_PLAY_DELAY, 9, 25);
+	cfg.GetValue(dvap_path+"wait", estr, TIMING_PLAY_WAIT, 1, 10);
 
 
-	inactiveMax = (REMOTE_TIMEOUT * 1000) / WAIT_FOR_PACKETS;
+	inactiveMax = (TIMING_TIMEOUT_REMOTE_G2 * 1000) / MODULE_PACKET_WAIT;
 	printf("Max loops = %d\n", inactiveMax);
 
 	/* convert to Microseconds */
-	WAIT_FOR_PACKETS *= 1000;
+	MODULE_PACKET_WAIT *= 1000;
+
+	dvap_path.assign("log_");
+	cfg.GetValue(dvap_path+"qso", estr, LOG_QSO);
+	cfg.GetValue(dvap_path+"debug", estr, LOG_DEBUG);
 
 	return false;
 }
@@ -279,7 +285,7 @@ static void readFrom20000()
 		written_to_q = false;
 		len = 0;
 		tv.tv_sec = 0;
-		tv.tv_usec = WAIT_FOR_PACKETS;
+		tv.tv_usec = MODULE_PACKET_WAIT;
 		FD_ZERO (&readfd);
 		int fd = Gate2Modem.GetFD();
 		FD_SET (fd, &readfd);
@@ -338,8 +344,8 @@ static void readFrom20000()
 
 				ctrl_in = 0x80;
 				written_to_q = true;
-
-				printf("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
+				if (LOG_QSO)
+					printf("Start G2: streamid=%04x, flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
 				/* save the streamid that is winning */
 				streamid = dsvt.streamid;
@@ -429,7 +435,8 @@ static void readFrom20000()
 								seq_no = 0;
 
 							if ((dsvt.ctrl & 0x40) != 0) {
-								printf("End G2: streamid=%04x\n", ntohs(dsvt.streamid));
+								if (LOG_QSO)
+									printf("End G2: streamid=%04x\n", ntohs(dsvt.streamid));
 
 								streamid = 0;
 
@@ -442,7 +449,7 @@ static void readFrom20000()
 							}
 						}
 					}
-				} else { // busy20000 == false
+				} else { // busy20000 is false
 					FD_CLR (fd, &readfd);
 					break;
 				}
@@ -460,7 +467,8 @@ static void readFrom20000()
 		if (!written_to_q) {	// we could also end up here if we are busy and we received a non-standard packet size
 			if (busy20000) {
 				if (++inactive >= inactiveMax) {
-					printf("G2 Timeout...\n");
+					if (LOG_QSO)
+						printf("G2 Timeout...\n");
 
 					streamid = 0;
 
@@ -469,8 +477,9 @@ static void readFrom20000()
 
 					busy20000 = false;
 					break;
-				} else {
-					fprintf(stderr, "sending silent frame where: len=%d, inactive=%d, streamid=%04x\n", len, inactive, ntohs(stream_id_to_dvap));
+				} else {	// inactive too long
+					if (LOG_DEBUG)
+						fprintf(stderr, "sending silent frame where: len=%d, inactive=%d, streamid=%04x\n", len, inactive, ntohs(stream_id_to_dvap));
 					if (space == 127) {
 						if (seq_no == 0) {
 							silence[9]  = 0x55;
@@ -499,7 +508,7 @@ static void readFrom20000()
 							seq_no = 0;
 					}
 				}
-			} else
+			} else	// busy20000 is false
 				break;
 		}
 	}
@@ -535,7 +544,7 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 		return;
 	}
 
-	sleep(DELAY_BEFORE);
+	sleep(TIMING_PLAY_WAIT);
 
 	uint16_t sid = Random.NewStreamID();
 
@@ -556,7 +565,7 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	memcpy(dr.frame.hdr.sfx, (unsigned char *)"DVAP", 4);
 	calcPFCS(dr.frame.hdr.flag, dr.frame.hdr.pfcs);
 	dongle.SendRegister(dr);
-	std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_BETWEEN));
+	std::this_thread::sleep_for(std::chrono::milliseconds(TIMING_PLAY_DELAY));
 
 	// SYNC
 	dr.header = 0xc012u;
@@ -624,7 +633,7 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 		memcpy(&dr.frame.vad.voice, silence, 12);
 		dongle.SendRegister(dr);
 		if (i < 9)
-			std::this_thread::sleep_for(std::chrono::milliseconds(DELAY_BETWEEN));
+			std::this_thread::sleep_for(std::chrono::milliseconds(TIMING_PLAY_DELAY));
 	}
 	return;
 }
@@ -696,7 +705,8 @@ static void ReadDVAPThread()
 			num_dv_frames = 0;
 			num_bit_errors = 0;
 
-			printf("From DVAP: flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n", dr.frame.hdr.flag[0], dr.frame.hdr.flag[1], dr.frame.hdr.flag[2], dr.frame.hdr.mycall, dr.frame.hdr.sfx, dr.frame.hdr.urcall, dr.frame.hdr.rpt1, dr.frame.hdr.rpt2);
+			if (LOG_QSO)
+				printf("From DVAP: flags=%02x:%02x:%02x, my=%.8s, sfx=%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s\n", dr.frame.hdr.flag[0], dr.frame.hdr.flag[1], dr.frame.hdr.flag[2], dr.frame.hdr.mycall, dr.frame.hdr.sfx, dr.frame.hdr.urcall, dr.frame.hdr.rpt1, dr.frame.hdr.rpt2);
 
 			ok = true;
 
@@ -851,9 +861,10 @@ static void ReadDVAPThread()
 					dvap_busy = false;
 					static SDVAP_ACK_ARG dvap_ack_arg;
 					dvap_ack_arg.ber = (num_dv_frames==0) ? 0.f : 100.f * (float)num_bit_errors / (float)(num_dv_frames * 24);
-					printf("End of dvap audio,  ber=%.02f\n", dvap_ack_arg.ber);
+					if (LOG_QSO)
+						printf("End of dvap audio,  ber=%.02f\n", dvap_ack_arg.ber);
 
-					if (RPTR_ACK && !busy20000) {
+					if (MODULE_ACKNOWLEDGE && !busy20000) {
 						memcpy(dvap_ack_arg.mycall, mycall, 8);
 						try {
 							std::async(std::launch::async, RptrAckThread, &dvap_ack_arg);
@@ -971,7 +982,7 @@ int main(int argc, const char **argv)
 	}
 
 	/* open dvp */
-	if (!dongle.Initialize(DVP_SERIAL.c_str(), DVP_FREQ, DVP_OFF, DVP_PWR, DVP_SQL))
+	if (!dongle.Initialize(MODULE_SERIAL_NUMBER.c_str(), MODULE_FREQUENCY, MODULE_OFFSET, MODULE_POWER, MODULE_SQUELCH))
 		return 1;
 
 	rc = open_sock();
