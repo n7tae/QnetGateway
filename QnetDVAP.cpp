@@ -478,9 +478,9 @@ static void readFrom20000()
 					busy20000 = false;
 					break;
 				} else {	// inactive too long
-					if (LOG_DEBUG)
-						fprintf(stderr, "sending silent frame where: len=%d, inactive=%d, streamid=%04x\n", len, inactive, ntohs(stream_id_to_dvap));
 					if (space == 127) {
+						if (LOG_DEBUG)
+							fprintf(stderr, "sending silent frame where: len=%d, inactive=%d, streamid=%04x\n", len, inactive, ntohs(stream_id_to_dvap));
 						if (seq_no == 0) {
 							silence[9]  = 0x55;
 							silence[10] = 0x2d;

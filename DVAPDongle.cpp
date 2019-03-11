@@ -301,10 +301,10 @@ bool CDVAPDongle::get_ser(const char *dvp, const char *dvap_serial_number)
 	} while (reply != RT_SER);
 
 	if (0 == strcmp(dvapreg.param.sstr, dvap_serial_number)) {
-		printf("Using %s:  %s, because serial number matches your dvap_rptr.cfg\n", dvp, dvap_serial_number);
+		printf("Using %s:  %s, because serial number matches your configuration file\n", dvp, dvap_serial_number);
 		return true;
 	}
-	printf("Device %s has serial %s, but does not match your config value %s\n", dvp, dvapreg.param.sstr, dvap_serial_number);
+	printf("Device %s has serial %s, but does not match your configuration value %s\n", dvp, dvapreg.param.sstr, dvap_serial_number);
 	return false;
 }
 
