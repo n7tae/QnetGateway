@@ -266,10 +266,10 @@ static int open_sock()
 static void ReadFromGateway()
 {
 	static unsigned short streamid = 0U;
+	static int inactive = 0;
 	int len = 0;
 	fd_set readfd;
 	struct timeval tv;
-	int inactive = 0;
 	short seq_no = 0;
 	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
 	SDSVT dsvt;
