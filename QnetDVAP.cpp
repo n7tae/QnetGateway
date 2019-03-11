@@ -101,7 +101,7 @@ static unsigned int space = 0;
 static bool ReadConfig(const char *cfgFile);
 static void sig_catch(int signum);
 static int open_sock();
-static void readFrom20000();
+static void ReadFromGateway();
 static void calcPFCS(unsigned char *packet, unsigned char *pfcs);
 static void ReadDVAPThread();
 static void RptrAckThread(SDVAP_ACK_ARG *parg);
@@ -263,17 +263,16 @@ static int open_sock()
 	return 0;
 }
 
-static void readFrom20000()
+static void ReadFromGateway()
 {
+	static unsigned short streamid = 0U;
 	int len = 0;
 	fd_set readfd;
 	struct timeval tv;
 	int inactive = 0;
 	short seq_no = 0;
-	uint16_t streamid = 0U;
 	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
 	SDSVT dsvt;
-	unsigned short stream_id_to_dvap = 0;
 	unsigned char frame_pos_to_dvap = 0;
 	unsigned char seq_to_dvap = 0;
 	unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
@@ -369,9 +368,8 @@ static void readFrom20000()
 				while ((space < 1) && keep_running)
 					usleep(5);
 				SDVAP_REGISTER dr;
-				stream_id_to_dvap = Random.NewStreamID();
 				dr.header = 0xa02f;
-				dr.frame.streamid = stream_id_to_dvap;
+				dr.frame.streamid = streamid = dvst.streamid;
 				dr.frame.framepos = 0x80;
 				dr.frame.seq = 0;
 				//memset(dvp_buf + 6, ' ', 41);
@@ -418,7 +416,7 @@ static void readFrom20000()
 							dr.header = 0xc012u;
 							if (memcmp(dsvt.vasd.text, sync_codes, 3) == 0)
 								frame_pos_to_dvap = 0;
-							dr.frame.streamid = stream_id_to_dvap;
+							dr.frame.streamid = streamid;
 							dr.frame.framepos = frame_pos_to_dvap;
 							if ((dsvt.ctrl & 0x40) != 0)
 								dr.frame.framepos |= 0x40U;
@@ -480,7 +478,7 @@ static void readFrom20000()
 				} else {	// inactive too long
 					if (space == 127) {
 						if (LOG_DEBUG)
-							fprintf(stderr, "sending silent frame where: len=%d, inactive=%d, streamid=%04x\n", len, inactive, ntohs(stream_id_to_dvap));
+							fprintf(stderr, "sending silent frame where: len=%d, inactive=%d, streamid=%04x\n", len, inactive, ntohs(streamid));
 						if (seq_no == 0) {
 							silence[9]  = 0x55;
 							silence[10] = 0x2d;
@@ -495,7 +493,7 @@ static void readFrom20000()
 						dr.header = 0xc012u;
 						if (memcmp(silence + 9, sync_codes, 3) == 0)
 							frame_pos_to_dvap = 0;
-						dr.frame.streamid = stream_id_to_dvap;
+						dr.frame.streamid = streamid;
 						dr.frame.framepos = frame_pos_to_dvap;
 						dr.frame.seq = seq_to_dvap;
 						memcpy(&dr.frame.vad.voice, silence, 12);
@@ -1016,7 +1014,7 @@ int main(int argc, const char **argv)
 				cnt = 0;
 			ackpoint.start();
 		}
-		readFrom20000();
+		ReadFromGateway();
 	}
 
 	readthread.get();
