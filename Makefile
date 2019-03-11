@@ -51,28 +51,28 @@ modem  : qnmodem
 qngateway : QnetGateway.o aprs.o UnixDgramSocket.o QnetConfigure.o $(IRCOBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
-qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o Random.o UnixDgramSocket.o QnetConfigure.o
+qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixDgramSocket.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
 qnrelay : QnetRelay.o UnixDgramSocket.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qnitap : QnetITAP.o Random.o UnixDgramSocket.o QnetConfigure.o
+qnitap : QnetITAP.o UnixDgramSocket.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qnmodem : QnetModem.o Random.o UnixDgramSocket.o QnetConfigure.o
+qnmodem : QnetModem.o UnixDgramSocket.o QnetConfigure.o
 		g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qndvap : QnetDVAP.o DVAPDongle.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
+qndvap : QnetDVAP.o DVAPDongle.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
-qndvrptr : QnetDVRPTR.o Random.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
+qndvrptr : QnetDVRPTR.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qnremote : QnetRemote.o Random.o UnixDgramSocket.o QnetConfigure.o
+qnremote : QnetRemote.o UnixDgramSocket.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qnvoice : QnetVoice.o Random.o QnetConfigure.o
+qnvoice : QnetVoice.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.o : %.cpp
