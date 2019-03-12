@@ -664,7 +664,7 @@ do
 	if [ -n "$em" ]; then
 		echo "d : Debugging/Files/Timings - miscellaneous parameters"
 	else
-		echo "d : Debuging                - additional log entries"
+		echo "d : Debugging               - additional log entries"
 	fi
 	echo
 	if [ -n $module_a ] || [ -n $module_b ] || [ -n $module_c ] && [ -n $ircddb_login ]; then
