@@ -3491,14 +3491,14 @@ void CQnetLink::Shutdown()
 int main(int argc, char **argv)
 {
 	if (argc != 2) {
-		printf("Usage: ./g2_link g2_link.cfg\n");
+		printf("Usage: %s configuration_file\n", argv[0]);
 		return 1;
 	}
 	CQnetLink qnlink;
 	if (qnlink.Init(argv[1]))
 		return 1;
-	printf("g2_link %s initialized...entering processing loop\n", LINK_VERSION);
+	printf("QnetLink %s initialized...entering processing loop\n", LINK_VERSION);
 	qnlink.Process();
-	printf("g2_link exiting\n");
+	printf("QnetLink exiting\n");
 	qnlink.Shutdown();
 }
