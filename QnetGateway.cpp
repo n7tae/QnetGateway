@@ -2508,6 +2508,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 CQnetGateway::CQnetGateway()
 {
+	ii = NULL;
 }
 
 CQnetGateway::~CQnetGateway()
@@ -2537,8 +2538,10 @@ CQnetGateway::~CQnetGateway()
 		}
 	}
 
-	ii->close();
-	delete ii;
+	if (ii) {
+		ii->close();
+		delete ii;
+	}
 
 	printf("QnetGateway exiting\n");
 }

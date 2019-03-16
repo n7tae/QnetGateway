@@ -140,28 +140,28 @@ FileMenu () {
 		fi
 		echo
 		echo    "     Additional entries in log files (in /usr/local/var)"
-		echo -n "cl : Call(QSO) logging        :"; EvaluateVar log_qso{,_d}
-		echo -n "il : IRC logging              :"; EvaluateVar log_irc{,_d}
-		echo -n "dl : DTMF logging             :"; EvaluateVar log_dtmf{,_d}
-		echo -n "xl : Debug logging            :"; EvaluateVar log_debug{,_d}
+		echo -n "cl : Call(QSO) logging        = "; EvaluateVar log_qso{,_d}
+		echo -n "il : IRC logging              = "; EvaluateVar log_irc{,_d}
+		echo -n "dl : DTMF logging             = "; EvaluateVar log_dtmf{,_d}
+		echo -n "xl : Debug logging            = "; EvaluateVar log_debug{,_d}
 		echo    "     WARNING debug logging can produce large log file!"
 		if [ -n "$em" ]; then
 			echo
 			echo    "     Files and directories"
-			echo -n "sf : Repeater status file     :"; EvaluateVar file_status{,_d}
-			echo -n "ed : Echo/Voicemail directory :"; EvaluateVar file_echotest{,_d}
-			echo -n "dd : DTMF directory           :"; EvaluateVar file_dtmf{,_d}
-			echo -n "vf : QnetVoice filename       :"; EvaluateVar file_qnvoicefile{,_d}
-			echo -n "gf : Gateways filename        :"; EvaluateVar file_gwys{,_d}
-			echo -n "ad : Announce directory       :"; EvaluateVar file_announce_dir{,_d}
+			echo -n "sf : Repeater status file     = "; EvaluateVar file_status{,_d}
+			echo -n "ed : Echo/Voicemail directory = "; EvaluateVar file_echotest{,_d}
+			echo -n "dd : DTMF directory           = "; EvaluateVar file_dtmf{,_d}
+			echo -n "vf : QnetVoice filename       = "; EvaluateVar file_qnvoicefile{,_d}
+			echo -n "gf : Gateways filename        = "; EvaluateVar file_gwys{,_d}
+			echo -n "ad : Announce directory       = "; EvaluateVar file_announce_dir{,_d}
 			echo
 			echo    "     Timing controls"
-			echo -n "et : Echo timeout (sec)       :"; EvaluateVar timing_timeout_echo{,_d}
-			echo -n "vt : Voicemail timeout (sec)  :"; EvaluateVar timing_timeout_voicemail{,_d}
-			echo -n "gt : G2 timeout (sec)         :"; EvaluateVar timing_timeout_remote_g2{,_d}
-			echo -n "rt : Repeater timeout (sec)   :"; EvaluateVar timing_timeout_local_rptr{,_d}
-			echo -n "pw : Echo play wait (sec)     :"; EvaluateVar timing_play_wait{,_d}
-			echo -n "pd : Echo play delay (msec)   :"; EvaluateVar timing_play_delay{,_d}
+			echo -n "et : Echo timeout (sec)       = "; EvaluateVar timing_timeout_echo{,_d}
+			echo -n "vt : Voicemail timeout (sec)  = "; EvaluateVar timing_timeout_voicemail{,_d}
+			echo -n "gt : G2 timeout (sec)         = "; EvaluateVar timing_timeout_remote_g2{,_d}
+			echo -n "rt : Repeater timeout (sec)   = "; EvaluateVar timing_timeout_local_rptr{,_d}
+			echo -n "pw : Echo play wait (sec)     = "; EvaluateVar timing_play_wait{,_d}
+			echo -n "pd : Echo play delay (msec)   = "; EvaluateVar timing_play_delay{,_d}
 		fi
 		EndMenu
 

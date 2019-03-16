@@ -7,13 +7,9 @@ The Qnet Gateway program now includes support for Icom's new Terminal Mode and A
 
 QnetGateway now supports MMDVM modems directly, without the need for MMDVMHost. This is for hams that want to use their MMDVM devices and create a hot-spot for D-Star mode only. (You still can talk to your friends on other modes by gathering at multi-mode reflectors, like the QuadNet Array!)
 
-For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To build QnetGateway that uses a DVAP Dongle or DVRPTR V1, see the CONFIG+INSTALL file. To build QnetGateway for an Icom Repeater Stack, switch to another branch after cloning the repository:
+For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To build QnetGateway that uses a DVAP Dongle or DVRPTR V1, see the CONFIG+INSTALL file. To build QnetGateway for an Icom Repeater Stack, I have another repo at QnetIcomGateway. Detailed information is available there.
 
-```
-git checkout lastudp
-```
-
-To get started, clone the software to your Linux device:
+To get started with an MMDVM-modem, DVAP, DVRPTR or Icom Terminal and/or Access Point system, clone this software to your Linux device:
 
 ```
 git clone git://github.com/n7tae/QnetGateway.git
