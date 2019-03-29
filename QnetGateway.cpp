@@ -1230,9 +1230,9 @@ void CQnetGateway::ProcessModem()
 			if (recvlen == 56) {
 				vPacketCount = 0U;
 				if (LOG_QSO)
-					printf("id=%04x start RPTR flag=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
+					printf("id=%04x start RPTR flag0=%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0],  dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
-				if (0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) &&	Flag_is_ok(dsvt.hdr.flag[0])) {
+				if (0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) && Flag_is_ok(dsvt.hdr.flag[0])) {
 
 					int i = dsvt.hdr.rpt1[7] - 'A';
 
