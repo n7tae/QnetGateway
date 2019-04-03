@@ -69,8 +69,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 	::memcpy(buffer+28, "W7IB2", 5);
 	::memcpy(buffer+40, "DHS0257", 7);
 
-	int ret = client.write(buffer, 56U);
-	if (ret != 56) {
+	if (client.write(buffer, 56U)) {
 		fprintf(stderr, "ERROR: could not write opening phrase\n");
 		client.close();
 		delete[] buffer;
@@ -119,7 +118,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 	}
 
 	printf("Probably authorized DPlus with %s using callsign %s\n", m_address.c_str(), callsign.c_str());
-	printf("Added %lu DPlus gateways\n", gwy_map.size() - sofar);
+	printf("Added %u DPlus gateways\n", (unsigned int)(gwy_map.size() - sofar));
 	client.close();
 
 	delete[] buffer;
