@@ -70,7 +70,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 	::memcpy(buffer+40, "DHS0257", 7);
 
 	int ret = client.write(buffer, 56U);
-	if (ret <= 0) {
+	if (ret != 56) {
 		fprintf(stderr, "ERROR: could not write opening phrase\n");
 		client.close();
 		delete[] buffer;
@@ -85,8 +85,8 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 
 		// Ensure that we get exactly len - 2U bytes from the TCP stream
 		ret = client.read(buffer + 2U, len - 2U);
-		if (ret <= 0) {
-			fprintf(stderr, "Short read\n");
+		if (ret != int(len)-2) {
+			fprintf(stderr, "Short read, wanted %d, it returned %d\n", int(len-2U), ret);
 			return true;
 		}
 
