@@ -84,7 +84,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 
 		// Ensure that we get exactly len - 2U bytes from the TCP stream
 		ret = client.read(buffer + 2U, len - 2U);
-		if (ret != int(len)-2) {
+		if (ret<=0) {
 			fprintf(stderr, "Short read, wanted %d, it returned %d\n", int(len-2U), ret);
 			return true;
 		}
