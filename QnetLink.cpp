@@ -315,9 +315,9 @@ bool CQnetLink::load_gwys(const std::string &filename)
 	if (dplus_authorize && !dplus_priority) {
 		CDPlusAuthenticator auth(login_call, std::string("auth.dstargateway.org"));
 		if (auth.Process(gwy_list, dplus_reflectors, dplus_repeaters))
-			fprintf(stdout, "DPlus Authorization complete.\n");
+			fprintf(stdout, "DPlus Authorization failed.\n");
 		else
-			fprintf(stderr, "DPlus Authorization failed!\n");
+			fprintf(stderr, "DPlus Authorization complete!\n");
 	}
 
 	char inbuf[1024];
@@ -411,9 +411,9 @@ bool CQnetLink::load_gwys(const std::string &filename)
 	if (dplus_authorize && dplus_priority) {
 		CDPlusAuthenticator auth(login_call, std::string("auth.dstargateway.org"));
 		if (auth.Process(gwy_list, dplus_reflectors, dplus_repeaters))
-			fprintf(stdout, "DPlus Authorization complete.\n");
+			fprintf(stdout, "DPlus Authorization failed.\n");
 		else
-			fprintf(stderr, "DPlus Authorization failed!\n");
+			fprintf(stderr, "DPlus Authorization completed!\n");
 	}
 
 	for (auto it=gwy_list.begin(); it!=gwy_list.end(); it++)

@@ -3,6 +3,7 @@
 /* end of inma once */
 /*
  *   Copyright (C) 2010,2011,2012,2013 by Jonathan Naylor G4KLX
+ *   Copyright (C) 2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -29,28 +30,29 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <string>
+#include <thread>
+#include <chrono>
 
 class CTCPReaderWriterClient {
 public:
-	CTCPReaderWriterClient(const std::string &address, unsigned int port, const std::string &localAddress = std::string(""));
-	CTCPReaderWriterClient(int fd);
+	CTCPReaderWriterClient(const std::string &address, int family, const std::string &port);
 	CTCPReaderWriterClient();
 	~CTCPReaderWriterClient();
 
-	bool open(const std::string &address, unsigned int port, const std::string &localAddress = std::string(""));
+	bool open(const std::string &address, int family, const std::string &port);
 	bool open();
 
-	int  read(unsigned char *buffer, unsigned int length, unsigned int secs, unsigned int msecs = 0U);
-	int readLine(std::string &line, unsigned int secs);
+	int  read(unsigned char *buffer, unsigned int length);
+	int readLine(std::string &line);
 	bool write(const unsigned char* buffer, unsigned int length);
 	bool writeLine(const std::string &line);
-	in_addr lookup(const std::string &hostname);
+	int GetFD() { return m_fd; }
 
 	void close();
 
 private:
 	std::string m_address;
-	unsigned short m_port;
-	std::string m_localAddress;
+	int m_family;
+	std::string m_port;
 	int m_fd;
 };

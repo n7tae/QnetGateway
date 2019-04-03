@@ -123,7 +123,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 		        (errno == ENETUNREACH) ||
 		        (errno == EHOSTDOWN) ||
 		        (errno == ENOTCONN)) {
-			printf("CAPRS::ProcessText(): APRS_HOST closed connection,error=%d\n",errno);
+			printf("CAPRS::ProcessText(): APRS_HOST closed connection, error=%d\n",errno);
 			close(aprs_sock);
 			aprs_sock = -1;
 		} else /* if it is WOULDBLOCK, we will not go into a loop here */

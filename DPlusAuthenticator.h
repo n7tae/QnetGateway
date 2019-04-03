@@ -1,7 +1,7 @@
 #pragma once
 /*
  *   Copyright (C) 2010-2013 by Jonathan Naylor G4KLX
- *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@ public:
 private:
 	std::string m_loginCallsign;
 	std::string m_address;
+	CTCPReaderWriterClient client;
 
 	void Trim(std::string &s);
-	bool authenticate(const std::string &callsign, const std::string &hostname, std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters);
-	bool read(CTCPReaderWriterClient &socket, unsigned char *buffer, unsigned int len) const;
+	bool authenticate(const std::string &callsign, std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters);
 };

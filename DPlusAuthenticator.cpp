@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010-2015 by Jonathan Naylor G4KLX
- *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -29,9 +29,6 @@
 #include <netdb.h>
 
 #include "DPlusAuthenticator.h"
-//#include "DStarDefines.h"
-//#include "Utils.h"
-//#include "Defs.h"
 
 CDPlusAuthenticator::CDPlusAuthenticator(const std::string &loginCallsign, const std::string &address) :
 m_loginCallsign(loginCallsign),
@@ -49,48 +46,16 @@ CDPlusAuthenticator::~CDPlusAuthenticator()
 bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters)
 // return true if everything went okay
 {
-	struct addrinfo hints, *infoptr;
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_INET; // AF_INET means IPv4 only addresses
-    hints.ai_socktype = SOCK_STREAM;
-
-    int result = EAI_AGAIN;
-	int count = 0;
-    while (EAI_AGAIN==result && 20>count++) {	// we'll wait up to 60 seconds for this to work
-        result = getaddrinfo(m_address.c_str(), NULL, &hints, &infoptr);
-		if (EAI_AGAIN == result) {
-			fprintf(stdout, "getaddrinfo not ready: please wait...\n");
-			std::this_thread::sleep_for(std::chrono::seconds(3));
-		}
-    }
+	int result = client.open(m_address, AF_UNSPEC, "20001");
 	if (result) {
-		fprintf(stderr, "DPlus Authroization failed: %s\n", gai_strerror(result));
-		return false;
+		fprintf(stderr, "DPlus Authorization failed: %s\n", gai_strerror(result));
+		return true;
 	}
-
-    struct addrinfo *p;
-    char host[256];
-
-	bool success = false;
-
-    for (p = infoptr; p != NULL && !success; p = p->ai_next) {
-        getnameinfo(p->ai_addr, p->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
-        printf("Trying %s from %s\n", host, m_address.c_str());
-		success = authenticate(m_loginCallsign, std::string(host), gwy_map, reflectors, repeaters);
-    }
-
-    freeaddrinfo(infoptr);
-    return success;
+	return authenticate(m_loginCallsign, gwy_map, reflectors, repeaters);
 }
 
-bool CDPlusAuthenticator::authenticate(const std::string &callsign, const std::string &hostname, std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters)
+bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters)
 {
-	CTCPReaderWriterClient socket(hostname, 20001U);
-
-	bool ret = socket.open();
-	if (!ret)
-		return false;
-
 	unsigned char* buffer = new unsigned char[4096U];
 	::memset(buffer, ' ', 56U);
 
@@ -104,28 +69,30 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, const std::s
 	::memcpy(buffer+28, "W7IB2", 5);
 	::memcpy(buffer+40, "DHS0257", 7);
 
-	ret = socket.write(buffer, 56U);
-	if (!ret) {
-		socket.close();
+	int ret = client.write(buffer, 56U);
+	if (ret <= 0) {
+		fprintf(stderr, "ERROR: could not write opening phrase\n");
+		client.close();
 		delete[] buffer;
-		return false;
+		return true;
 	}
 
-	ret = read(socket, buffer, 2U);
+	ret = client.read(buffer, 2U);
+	size_t sofar = gwy_map.size();
 
-	while (ret) {
+	while (ret == 2) {
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
 
 		// Ensure that we get exactly len - 2U bytes from the TCP stream
-		ret = read(socket, buffer + 2U, len - 2U);
-		if (!ret) {
-			fprintf(stderr, "Short read from %s:20001", hostname.c_str());
-			return false;
+		ret = client.read(buffer + 2U, len - 2U);
+		if (ret <= 0) {
+			fprintf(stderr, "Short read\n");
+			return true;
 		}
 
 		if ((buffer[1U] & 0xC0U) != 0xC0U || buffer[2U] != 0x01U) {
-			fprintf(stderr, "Invalid packet received from %s:20001", hostname.c_str());
-			return false;
+			fprintf(stderr, "Invalid packet received from 20001\n");
+			return true;
 		}
 
 		for (unsigned int i = 8U; (i + 25U) < len; i += 26U) {
@@ -148,16 +115,16 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, const std::s
 			}
 		}
 
-		ret = read(socket, buffer, 2U);
+		ret = client.read(buffer, 2U);
 	}
 
-	printf("Authorized DPlus with %s using callsign %s\n", hostname.c_str(), callsign.c_str());
-	printf("Added %d DPlus gateways\n", (int)gwy_map.size());
-	socket.close();
+	printf("Probably authorized DPlus with %s using callsign %s\n", m_address.c_str(), callsign.c_str());
+	printf("Added %lu DPlus gateways\n", gwy_map.size() - sofar);
+	client.close();
 
 	delete[] buffer;
 
-	return true;
+	return false;
 }
 
 void CDPlusAuthenticator::Trim(std::string &s)
@@ -170,19 +137,4 @@ void CDPlusAuthenticator::Trim(std::string &s)
 		s.resize(s.size() - 1);
         rit = s.rbegin();
     }
-}
-
-bool CDPlusAuthenticator::read(CTCPReaderWriterClient &socket, unsigned char *buffer, unsigned int len) const
-{
-	unsigned int offset = 0U;
-
-	do {
-		int n = socket.read(buffer + offset, len - offset, 10U);
-		if (n < 0)
-			return false;
-
-		offset += n;
-	} while ((len - offset) > 0U);
-
-	return true;
 }
