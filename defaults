@@ -64,11 +64,11 @@ gateway_find_route_d=''           # CSV list of route(s) to load on boot-up (pre
 #
 # APRS - for tracking users and also this repeater.
 #
-aprs_enable_d=true            # send info to APRS
-aprs_host_d='rotate.aprs.net' # the APRS network server
-aprs_port_d=14580             # and port
-aprs_interval_d=40            # keep-alive in minutes
-aprs_filter_d=''              # advanced feature
+aprs_enable_d=true             # send info to APRS
+aprs_host_d='rotate.aprs2.net' # the APRS network server
+aprs_port_d=14580              # and port
+aprs_interval_d=40             # keep-alive in minutes
+aprs_filter_d=''               # advanced feature
 
 ##########################################################################################################################
 #
