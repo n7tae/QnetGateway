@@ -76,7 +76,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 		return true;
 	}
 
-	ret = client.read(buffer, 2U);
+	int ret = client.read(buffer, 2U);
 	size_t sofar = gwy_map.size();
 
 	while (ret == 2) {
