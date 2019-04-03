@@ -120,8 +120,8 @@ int CTCPReaderWriterClient::read(unsigned char* buffer, unsigned int length)
 	assert(m_fd != -1);
 
 	ssize_t len = recv(m_fd, buffer, length, 0);
-	if (int(len) != int(length)) {
-		fprintf(stderr, "Error read returned %d from recv, err=%d\n", int(len), errno);
+	if (-1 == len) {
+		fprintf(stderr, "Error returned from recv, err=%d\n", errno);
 		return -1;
 	}
 
