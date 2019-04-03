@@ -61,7 +61,7 @@ bool CTCPReaderWriterClient::open()
 		return true;
 	}
 
-	if (AF_INET!=m_family || AF_INET6!=m_family || AF_UNSPEC!=m_family) {
+	if (AF_INET!=m_family && AF_INET6!=m_family &&_UNSPEC!=m_family) {
 		fprintf(stderr, "ERROR: family must be AF_INET, AF_INET6 or AF_UNSPEC\n");
 		return true;
 	}
