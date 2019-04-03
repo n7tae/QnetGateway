@@ -416,9 +416,9 @@ bool CQnetLink::load_gwys(const std::string &filename)
 			fprintf(stderr, "DPlus Authorization completed!\n");
 	}
 
-	for (auto it=gwy_list.begin(); it!=gwy_list.end(); it++)
-		printf("%s %s\n", it->first.c_str(), it->second.c_str());
-	printf("Added %d gateways\n", (int)gwy_list.size());
+	//for (auto it=gwy_list.begin(); it!=gwy_list.end(); it++)
+	//	printf("%s %s\n", it->first.c_str(), it->second.c_str());
+	printf("Added %d gateways from gwys.txt\n", (int)gwy_list.size());
 	return true;
 }
 
@@ -537,7 +537,7 @@ bool CQnetLink::read_config(const char *cfgFile)
 			modules++;
 			cfg.GetValue(key+"_inactivity", modem_type, rf_inactivity_timer[i], 0, 300);
 			rf_inactivity_timer[i] *= 60;
-			cfg.GetValue(key+"_link_at_start", modem_type, link_at_startup[i], 8, 8);
+			cfg.GetValue(key+"_link_at_start", modem_type, link_at_startup[i], 0, 8);
 		}
 	}
 	if (0 == modules) {
