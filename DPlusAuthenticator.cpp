@@ -82,7 +82,6 @@ bool CDPlusAuthenticator::authenticate(std::map<std::string, std::string> &gwy_m
 
 	while (ret == 2) {
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
-		printf("next len = %u\n", len);
 		// Ensure that we get exactly len - 2U bytes from the TCP stream
 		ret = client.ReadExact(buffer + 2U, len - 2U);
 		if (0 > ret) {
@@ -120,7 +119,7 @@ bool CDPlusAuthenticator::authenticate(std::map<std::string, std::string> &gwy_m
 	}
 
 	printf("Probably authorized DPlus on %s using callsign %s\n", m_address.c_str(), m_loginCallsign.c_str());
-	printf("%s returned %u system\n", m_address.c_str(), returned);
+	printf("%s returned %u systems\n", m_address.c_str(), returned);
 	printf("The gateway map increased by %u additional DPlus gateways\n", (unsigned int)(gwy_map.size() - sofar));
 	client.Close();
 
