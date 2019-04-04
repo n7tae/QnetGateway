@@ -113,6 +113,21 @@ bool CTCPReaderWriterClient::open()
 	return false;
 }
 
+int readExact(unsigned char *buf, unsigned int length)
+{
+	unsigned int offset = 0U;
+
+	do {
+		int n = socket.read(buffer + offset, len - offset, 10U);
+		if (n < 0)
+			return n;
+
+		offset += n;
+	} while ((len - offset) > 0U);
+
+	return true;
+}
+
 int CTCPReaderWriterClient::read(unsigned char* buffer, unsigned int length)
 {
 	assert(buffer != NULL);
@@ -120,23 +135,23 @@ int CTCPReaderWriterClient::read(unsigned char* buffer, unsigned int length)
 	assert(m_fd != -1);
 
 	// Check that the recv() won't block
-	fd_set readFds;
-	FD_ZERO(&readFds);
-	FD_SET(m_fd, &readFds);
+	//fd_set readFds;
+	//FD_ZERO(&readFds);
+	//FD_SET(m_fd, &readFds);
 
 	// Return after timeout
 	//timeval tv;
 	//tv.tv_sec  = secs;
 	//tv.tv_usec = msecs * 1000;
 
-	int ret = select(m_fd + 1, &readFds, NULL, NULL, NULL);	// wait until it's ready
-	if (ret < 0) {
-		fprintf(stderr, "Error returned from TCP client select, err=%d\n", errno);
-		return -1;
-	}
+	//int ret = select(m_fd + 1, &readFds, NULL, NULL, NULL);	// wait until it's ready
+	//if (ret < 0) {
+	//	fprintf(stderr, "Error returned from TCP client select, err=%d\n", errno);
+	//	return -1;
+	//}
 
 	ssize_t len = recv(m_fd, buffer, length, 0);
-	if (-1 == len) {
+	if (0 > len) {
 		fprintf(stderr, "Error returned from recv, err=%d\n", errno);
 		return -1;
 	}
@@ -156,11 +171,11 @@ int CTCPReaderWriterClient::readLine(std::string& line)
 	do
 	{
 		resultCode = read(&c, 1);
-		if(resultCode == 1){
+		if(resultCode == 1) {
 			line += c;
 			len++;
 		}
-	}while(c != '\n' && resultCode == 1);
+	} while(c != '\n' && resultCode == 1);
 
 	return resultCode <= 0 ? resultCode : len;
 }
@@ -171,7 +186,7 @@ bool CTCPReaderWriterClient::write(const unsigned char* buffer, unsigned int len
 	assert(length > 0U);
 	assert(m_fd != -1);
 
-	ssize_t ret = ::send(m_fd, (char *)buffer, length, 0);
+	ssize_t ret = send(m_fd, (char *)buffer, length, 0);
 	if (ret != ssize_t(length)) {
 		if (ret < 0)
 			fprintf(stderr, "Error returned from send, err=%d\n", errno);

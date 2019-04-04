@@ -76,15 +76,15 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 		return true;
 	}
 
-	int ret = client.read(buffer, 2U);
+	int ret = client.readExact(buffer, 2U);
 	size_t sofar = gwy_map.size();
 
 	while (ret == 2) {
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
 		printf("next len = %u\n", len);
 		// Ensure that we get exactly len - 2U bytes from the TCP stream
-		ret = client.read(buffer + 2U, len - 2U);
-		if (ret<=0) {
+		ret = client.readExact(buffer + 2U, len - 2U);
+		if (0 > ret) {
 			fprintf(stderr, "Problem reading line, it returned %d\n", errno);
 			return true;
 		}

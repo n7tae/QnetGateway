@@ -42,6 +42,7 @@ public:
 	bool open(const std::string &address, int family, const std::string &port);
 	bool open();
 
+	int readExact(unsigned buf *char, unsigned int length);
 	int  read(unsigned char *buffer, unsigned int length);
 	int readLine(std::string &line);
 	bool write(const unsigned char* buffer, unsigned int length);
