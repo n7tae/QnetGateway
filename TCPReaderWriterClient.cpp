@@ -134,25 +134,10 @@ int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int lengt
 	assert(length > 0U);
 	assert(m_fd != -1);
 
-	// Check that the recv() won't block
-	//fd_set readFds;
-	//FD_ZERO(&readFds);
-	//FD_SET(m_fd, &readFds);
-
-	// Return after timeout
-	//timeval tv;
-	//tv.tv_sec  = secs;
-	//tv.tv_usec = msecs * 1000;
-
-	//int ret = select(m_fd + 1, &readFds, NULL, NULL, NULL);	// wait until it's ready
-	//if (ret < 0) {
-	//	fprintf(stderr, "Error returned from TCP client select, err=%d\n", errno);
-	//	return -1;
-	//}
-
 	ssize_t len = recv(m_fd, buffer, length, 0);
-	if (0 > len) {
-		fprintf(stderr, "Error returned from recv, err=%d\n", errno);
+	if (len <= 0) {
+		if (len < 0)
+			fprintf(stderr, "Error returned from recv, err=%d\n", errno);
 		return -1;
 	}
 
