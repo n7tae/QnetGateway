@@ -125,7 +125,7 @@ int CTCPReaderWriterClient::ReadExact(unsigned char *buf, const unsigned int len
 		offset += n;
 	} while ((length - offset) > 0U);
 
-	return true;
+	return length;
 }
 
 int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int length)
