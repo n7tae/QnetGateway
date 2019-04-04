@@ -585,6 +585,7 @@ bool CQnetLink::read_config(const char *cfgFile)
 	cfg.GetValue(key+"link2gate", estr, link2gate, 1, FILENAME_MAX);
 
 	cfg.GetValue("log_qso", estr, qso_details);
+	cfg.GetValue("log_debug", estr, log_debug);
 
 	key.assign("file_");
 	cfg.GetValue(key+"gwys", estr, gwys, 2, FILENAME_MAX);
@@ -1786,6 +1787,8 @@ void CQnetLink::Process()
 				}
 			/* linked repeaters request */
 			} else if (length==4 && buf[0]==4 && buf[1]==192 && buf[2]==5 && buf[3]==0) {
+				if (log_debug)
+					printf("Got a linked repeater request!\n");
 				unsigned short i_idx = 0;
 				unsigned short j_idx = 0;
 				unsigned short k_idx = 0;
@@ -1870,6 +1873,8 @@ void CQnetLink::Process()
 				}
 			/* connected user list request */
 			} else if (length==4 && buf[0]==4 && buf[1]==192 && buf[2]==6 && buf[3]==0) {
+				if (log_debug)
+					printf("Got a linked dongle request!!\n");
 				unsigned short i_idx = 0;
 				unsigned short j_idx = 0;
 				unsigned short k_idx = 0;
@@ -1949,6 +1954,8 @@ void CQnetLink::Process()
 				}
 			/* date request */
 			} else if (length== 4 && buf[0]==4 && buf[1]==192 && buf[2]==8 && buf[3]==0) {
+				if (log_debug)
+					printf("Got a dongle time request!!\n");
 				time_t ltime;
 				struct tm tm;
 
@@ -1973,6 +1980,8 @@ void CQnetLink::Process()
 				}
 			/* version request */
 			} else if (length== 4 && buf[0]==4 && buf[1]==192 && buf[2]==3 && buf[3]==0) {
+				if (log_debug)
+					printf("Got a version request!!\n");
 				auto pos = inbound_list.find(ip);
 				if (pos != inbound_list.end()) {
 					//SINBOUND *inbound = (SINBOUND *)pos->second;
@@ -1986,6 +1995,8 @@ void CQnetLink::Process()
 				}
 			}
 			else if (length==5 && buf[0]==5 && buf[1]==0 && buf[2]==24 && buf[3]==0 && buf[4]==0) {
+				if (log_debug)
+					printf("Got a disconnect request!!\n");
 				/* reply with the same DISCONNECT */
 				sendto(ref_g2_sock, buf, 5, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));
 

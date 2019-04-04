@@ -51,10 +51,10 @@ bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, c
 		fprintf(stderr, "DPlus Authorization failed: %s\n", gai_strerror(result));
 		return true;
 	}
-	return authenticate(m_loginCallsign, gwy_map, reflectors, repeaters);
+	return authenticate(gwy_map, reflectors, repeaters);
 }
 
-bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters)
+bool CDPlusAuthenticator::authenticate(std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters)
 {
 	unsigned char* buffer = new unsigned char[4096U];
 	::memset(buffer, ' ', 56U);
@@ -64,7 +64,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 	buffer[2U] = 0x01U;
 	buffer[3U] = 0x00U;
 
-	::memcpy(buffer+4, callsign.c_str(), callsign.size());
+	::memcpy(buffer+4, m_loginCallsign.c_str(), m_loginCallsign.size());
 	::memcpy(buffer+12, "DV019999", 8);
 	::memcpy(buffer+28, "W7IB2", 5);
 	::memcpy(buffer+40, "DHS0257", 7);
@@ -78,6 +78,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 
 	int ret = client.ReadExact(buffer, 2U);
 	size_t sofar = gwy_map.size();
+	unsigned int returned = 0;
 
 	while (ret == 2) {
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
@@ -107,6 +108,7 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 
 			// An empty name or IP address or an inactive gateway/reflector is not added
 			if (address.size()>0U && name.size()>0U && active) {
+				returned++;
 				if (reflectors && 0==name.compare(0, 3, "REF"))
 					gwy_map[name] = address.append(" 20001");
 				else if (repeaters && name.compare(0, 3, "REF"))
@@ -117,8 +119,9 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 		ret = client.ReadExact(buffer, 2U);
 	}
 
-	printf("Probably authorized DPlus with %s using callsign %s\n", m_address.c_str(), callsign.c_str());
-	printf("Added %u DPlus gateways\n", (unsigned int)(gwy_map.size() - sofar));
+	printf("Probably authorized DPlus on %s using callsign %s\n", m_address.c_str(), m_loginCallsign.c_str());
+	printf("%s returned %u system\n", m_address.c_str(), returned);
+	printf("The gateway map increased by %u additional DPlus gateways\n", (unsigned int)(gwy_map.size() - sofar));
 	client.Close();
 
 	delete[] buffer;

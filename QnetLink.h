@@ -84,7 +84,7 @@ private:
 
 	/* configuration data */
 	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, status_file, qnvoice_file, announce_dir;
-	bool only_admin_login, only_link_unlink, qso_details, bool_rptr_ack, announce;
+	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
 	bool dplus_authorize, dplus_reflectors, dplus_repeaters, dplus_priority;
 	int rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port, delay_between, delay_before;
 	std::string link_at_startup[3];

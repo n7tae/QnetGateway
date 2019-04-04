@@ -36,5 +36,5 @@ private:
 	CTCPReaderWriterClient client;
 
 	void Trim(std::string &s);
-	bool authenticate(const std::string &callsign, std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters);
+	bool authenticate(std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters);
 };
