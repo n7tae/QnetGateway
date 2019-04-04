@@ -40,16 +40,16 @@ CTCPReaderWriterClient::~CTCPReaderWriterClient()
 {
 }
 
-bool CTCPReaderWriterClient::open(const std::string &address, int family, const std::string &port)
+bool CTCPReaderWriterClient::Open(const std::string &address, int family, const std::string &port)
 {
 	m_address	= address;
 	m_family	= family;
 	m_port		= port;
 
-	return open();
+	return Open();
 }
 
-bool CTCPReaderWriterClient::open()
+bool CTCPReaderWriterClient::Open()
 {
 	if (m_fd != -1) {
 		fprintf(stderr, "ERROR: port for '%s' is already open!\n", m_address.c_str());
@@ -93,7 +93,7 @@ bool CTCPReaderWriterClient::open()
 			continue;
 
 		if (connect(m_fd, rp->ai_addr, rp->ai_addrlen)) {
-			close();
+			Close();
 			continue;
 		} else {
 			char buf[INET6_ADDRSTRLEN];
@@ -113,22 +113,22 @@ bool CTCPReaderWriterClient::open()
 	return false;
 }
 
-int readExact(unsigned char *buf, unsigned int length)
+int CTCPReaderWriterClient::ReadExact(unsigned char *buf, const unsigned int length)
 {
 	unsigned int offset = 0U;
 
 	do {
-		int n = socket.read(buffer + offset, len - offset, 10U);
+		int n = Read(buf + offset, length - offset);
 		if (n < 0)
 			return n;
 
 		offset += n;
-	} while ((len - offset) > 0U);
+	} while ((length - offset) > 0U);
 
 	return true;
 }
 
-int CTCPReaderWriterClient::read(unsigned char* buffer, unsigned int length)
+int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int length)
 {
 	assert(buffer != NULL);
 	assert(length > 0U);
@@ -159,7 +159,7 @@ int CTCPReaderWriterClient::read(unsigned char* buffer, unsigned int length)
 	return len;
 }
 
-int CTCPReaderWriterClient::readLine(std::string& line)
+int CTCPReaderWriterClient::ReadLine(std::string& line)
 {
 	//maybe there is a better way to do this like reading blocks, pushing them for later calls
 	//Nevermind, we'll read one char at a time for the time being.
@@ -170,7 +170,7 @@ int CTCPReaderWriterClient::readLine(std::string& line)
 
 	do
 	{
-		resultCode = read(&c, 1);
+		resultCode = Read(&c, 1);
 		if(resultCode == 1) {
 			line += c;
 			len++;
@@ -180,7 +180,7 @@ int CTCPReaderWriterClient::readLine(std::string& line)
 	return resultCode <= 0 ? resultCode : len;
 }
 
-bool CTCPReaderWriterClient::write(const unsigned char* buffer, unsigned int length)
+bool CTCPReaderWriterClient::Write(const unsigned char* buffer, const unsigned int length)
 {
 	assert(buffer != NULL);
 	assert(length > 0U);
@@ -198,7 +198,7 @@ bool CTCPReaderWriterClient::write(const unsigned char* buffer, unsigned int len
 	return false;
 }
 
-bool CTCPReaderWriterClient::writeLine(const std::string& line)
+bool CTCPReaderWriterClient::WriteLine(const std::string& line)
 {
 	std::string lineCopy(line);
 	if(lineCopy.size() > 0 && lineCopy.at(lineCopy.size() - 1) != '\n')
@@ -208,16 +208,16 @@ bool CTCPReaderWriterClient::writeLine(const std::string& line)
 	bool result = true;
 	for(size_t i = 0; i < len && result; i++){
 		unsigned char c = lineCopy.at(i);
-		result = write(&c , 1);
+		result = Write(&c , 1);
 	}
 
 	return result;
 }
 
-void CTCPReaderWriterClient::close()
+void CTCPReaderWriterClient::Close()
 {
 	if (m_fd != -1) {
-		::close(m_fd);
+		close(m_fd);
 		m_fd = -1;
 	}
 }

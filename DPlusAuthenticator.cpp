@@ -46,7 +46,7 @@ CDPlusAuthenticator::~CDPlusAuthenticator()
 bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters)
 // return true if everything went okay
 {
-	int result = client.open(m_address, AF_UNSPEC, "20001");
+	int result = client.Open(m_address, AF_UNSPEC, "20001");
 	if (result) {
 		fprintf(stderr, "DPlus Authorization failed: %s\n", gai_strerror(result));
 		return true;
@@ -69,21 +69,21 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 	::memcpy(buffer+28, "W7IB2", 5);
 	::memcpy(buffer+40, "DHS0257", 7);
 
-	if (client.write(buffer, 56U)) {
+	if (client.Write(buffer, 56U)) {
 		fprintf(stderr, "ERROR: could not write opening phrase\n");
-		client.close();
+		client.Close();
 		delete[] buffer;
 		return true;
 	}
 
-	int ret = client.readExact(buffer, 2U);
+	int ret = client.ReadExact(buffer, 2U);
 	size_t sofar = gwy_map.size();
 
 	while (ret == 2) {
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
 		printf("next len = %u\n", len);
 		// Ensure that we get exactly len - 2U bytes from the TCP stream
-		ret = client.readExact(buffer + 2U, len - 2U);
+		ret = client.ReadExact(buffer + 2U, len - 2U);
 		if (0 > ret) {
 			fprintf(stderr, "Problem reading line, it returned %d\n", errno);
 			return true;
@@ -114,12 +114,12 @@ bool CDPlusAuthenticator::authenticate(const std::string &callsign, std::map<std
 			}
 		}
 
-		ret = client.read(buffer, 2U);
+		ret = client.ReadExact(buffer, 2U);
 	}
 
 	printf("Probably authorized DPlus with %s using callsign %s\n", m_address.c_str(), callsign.c_str());
 	printf("Added %u DPlus gateways\n", (unsigned int)(gwy_map.size() - sofar));
-	client.close();
+	client.Close();
 
 	delete[] buffer;
 

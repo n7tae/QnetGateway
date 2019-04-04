@@ -39,17 +39,17 @@ public:
 	CTCPReaderWriterClient();
 	~CTCPReaderWriterClient();
 
-	bool open(const std::string &address, int family, const std::string &port);
-	bool open();
+	bool Open(const std::string &address, int family, const std::string &port);
+	bool Open();
 
-	int readExact(unsigned char *buf, unsigned int length);
-	int  read(unsigned char *buffer, unsigned int length);
-	int readLine(std::string &line);
-	bool write(const unsigned char* buffer, unsigned int length);
-	bool writeLine(const std::string &line);
+	int ReadExact(unsigned char *buffer, const unsigned int length);
+	int Read(unsigned char *buffer, const unsigned int length);
+	int ReadLine(std::string &line);
+	bool Write(const unsigned char* buffer, const unsigned int length);
+	bool WriteLine(const std::string &line);
 	int GetFD() { return m_fd; }
 
-	void close();
+	void Close();
 
 private:
 	std::string m_address;
