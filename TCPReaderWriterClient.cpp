@@ -79,11 +79,11 @@ bool CTCPReaderWriterClient::Open()
 	while (EAI_AGAIN==s and count++<20) {
 		// connecting to a server, so we can wait until it's ready
 		s = getaddrinfo(m_address.c_str(), m_port.c_str(), &hints, &res);
+		if (s && s != EAI_AGAIN) {
+			fprintf(stderr, "ERROR: getaddrinfo for %s: %s\n", m_address.c_str(), gai_strerror(s));
+			return true;
+		}
 		std::this_thread::sleep_for(std::chrono::seconds(3));
-	}
-	if (s != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-		return true;
 	}
 
 	struct addrinfo *rp;
