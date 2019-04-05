@@ -2007,9 +2007,9 @@ void CQnetGateway::APRSBeaconThread()
 	time_t last_beacon_time = 0;
 	/* This thread is also saying to the APRS_HOST that we are ALIVE */
 	while (keep_running) {
-		if (aprs->GetSock() == -1) {
+		if (aprs->aprs_sock.GetFD() == -1) {
 			aprs->Open(OWNER);
-			if (aprs->GetSock() == -1)
+			if (aprs->aprs_sock.GetFD() == -1)
 				sleep(1);
 			else
 				THRESHOLD_COUNTDOWN = 15;
@@ -2058,14 +2058,14 @@ void CQnetGateway::APRSBeaconThread()
 					strcat(snd_buf, "\r\n");
 
 					while (keep_running) {
-						if (aprs->GetSock() == -1) {
+						if (aprs->aprs_sock.GetFD() == -1) {
 							aprs->Open(OWNER);
-							if (aprs->GetSock() == -1)
+							if (aprs->aprs_sock.GetFD() == -1)
 								sleep(1);
 							else
 								THRESHOLD_COUNTDOWN = 15;
 						} else {
-							int rc = aprs->WriteSock(snd_buf, strlen(snd_buf));
+							int rc = aprs->aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
 							if (rc < 0) {
 								if ((errno == EPIPE) ||
 								        (errno == ECONNRESET) ||
@@ -2079,8 +2079,7 @@ void CQnetGateway::APRSBeaconThread()
 								        (errno == EHOSTDOWN) ||
 								        (errno == ENOTCONN)) {
 									printf("send_aprs_beacon: APRS_HOST closed connection,error=%d\n",errno);
-									close(aprs->GetSock());
-									aprs->SetSock( -1 );
+									aprs->aprs_sock.Close();
 								} else if (errno == EWOULDBLOCK) {
 									std::this_thread::sleep_for(std::chrono::milliseconds(100));
 								} else {
@@ -2093,12 +2092,12 @@ void CQnetGateway::APRSBeaconThread()
 								break;
 							}
 						}
-						int rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
+						int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 						if (rc > 0)
 							THRESHOLD_COUNTDOWN = 15;
 					}
 				}
-				int rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
+				int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 				if (rc > 0)
 					THRESHOLD_COUNTDOWN = 15;
 			}
@@ -2107,7 +2106,7 @@ void CQnetGateway::APRSBeaconThread()
 		/*
 		   Are we still receiving from APRS host ?
 		*/
-		int rc = recv(aprs->GetSock(), rcv_buf, sizeof(rcv_buf), 0);
+		int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 		if (rc < 0) {
 			if ((errno == EPIPE) ||
 			        (errno == ECONNRESET) ||
@@ -2121,13 +2120,11 @@ void CQnetGateway::APRSBeaconThread()
 			        (errno == EHOSTDOWN) ||
 			        (errno == ENOTCONN)) {
 				printf("send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n",errno);
-				close(aprs->GetSock());
-				aprs->SetSock( -1 );
+				aprs->aprs_sock.Close();
 			}
 		} else if (rc == 0) {
 			printf("send_aprs_beacon: recv: APRS shutdown\n");
-			close(aprs->GetSock());
-			aprs->SetSock( -1 );
+			aprs->aprs_sock.Close();
 		} else
 			THRESHOLD_COUNTDOWN = 15;
 
@@ -2137,14 +2134,13 @@ void CQnetGateway::APRSBeaconThread()
 		time(&tnow);
 		if ((tnow - last_keepalive_time) > 20) {
 			/* we should be receving keepalive packets ONLY if the connection is alive */
-			if (aprs->GetSock() >= 0) {
+			if (aprs->aprs_sock.GetFD() >= 0) {
 				if (THRESHOLD_COUNTDOWN > 0)
 					THRESHOLD_COUNTDOWN--;
 
 				if (THRESHOLD_COUNTDOWN == 0) {
 					printf("APRS host keepalive timeout\n");
-					close(aprs->GetSock());
-					aprs->SetSock( -1 );
+					aprs->aprs_sock.Close();
 				}
 			}
 			/* reset timer */
@@ -2522,8 +2518,8 @@ CQnetGateway::~CQnetGateway()
 	}
 
 	if (APRS_ENABLE) {
-		if (aprs->GetSock() != -1) {
-			close(aprs->GetSock());
+		if (aprs->aprs_sock.GetFD() != -1) {
+			aprs->aprs_sock.Close();
 			printf("Closed APRS\n");
 		}
 		delete aprs;
@@ -2711,13 +2707,12 @@ void CQnetGateway::build_aprs_from_gps_and_send(short int rptr_idx)
 	// printf("Built APRS from old GPS mode=[%s]\n", buf);
 	strcat(buf, "\r\n");
 
-	if (-1 == aprs->WriteSock(buf, strlen(buf))) {
+	if (aprs->aprs_sock.Write((unsigned char *)buf, strlen(buf))) {
 		if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) ||
 		    (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) ||
 		    (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
 			printf("build_aprs_from_gps_and_send: APRS_HOST closed connection, error=%d\n", errno);
-			close(aprs->GetSock());
-			aprs->SetSock( -1 );
+			aprs->aprs_sock.Close();
 		} else
 			printf("build_aprs_from_gps_and_send: send error=%d\n", errno);
 	}

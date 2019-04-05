@@ -89,7 +89,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 	if ((tnow - aprs_streamID[rptr_idx].last_time) < 30)
 		return;
 
-	if (aprs_sock == -1)
+	if (aprs_sock.GetFD() == -1)
 		return;
 
 	char *p = strchr((char*)aprs_data, ':');
@@ -110,7 +110,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 
 	sprintf(aprs_buf, "%s,qAR,%s:%s\r\n", hdr, m_rptr->mod[rptr_idx].call.c_str(), aud);
 	// printf("GPS-A=%s", aprs_buf);
-	int rc = WriteSock(aprs_buf, strlen(aprs_buf));
+    int rc = aprs_sock.Write((unsigned char *)aprs_buf, strlen(aprs_buf));
 	if (rc == -1) {
 		if ((errno == EPIPE) ||
 		        (errno == ECONNRESET) ||
@@ -124,8 +124,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 		        (errno == EHOSTDOWN) ||
 		        (errno == ENOTCONN)) {
 			printf("CAPRS::ProcessText(): APRS_HOST closed connection, error=%d\n",errno);
-			close(aprs_sock);
-			aprs_sock = -1;
+			aprs_sock.Close();
 		} else /* if it is WOULDBLOCK, we will not go into a loop here */
 			printf("CAPRS::ProcessText(): send error=%d\n", errno);
 	}
@@ -152,21 +151,7 @@ void CAPRS::Init()
 		aprs_streamID[i].last_time = 0;
 	}
 
-	/* Initialize the APRS host */
-	memset(&aprs_addr,0,sizeof(struct sockaddr_in));
-	aprs_addr_len = sizeof(aprs_addr);
-
 	return;
-}
-
-int CAPRS::GetSock()
-{
-	return aprs_sock;
-}
-
-void CAPRS::SetSock(int value)
-{
-	aprs_sock = value;
 }
 
 bool CAPRS::WriteData(short int rptr_idx, unsigned char *data)
@@ -252,90 +237,12 @@ unsigned int CAPRS::GetData(short int rptr_idx, unsigned char *data, unsigned in
 
 void CAPRS::Open(const std::string OWNER)
 {
-	fd_set fdset;
-	struct timeval tv;
-	short int MAX_WAIT = 15; /* 15 seconds wait time MAX */
-	int val = 1;
-	socklen_t val_len;
 	char snd_buf[512];
 	char rcv_buf[512];
-
-	bool ok = ResolveRmt(m_rptr->aprs.ip.c_str(), SOCK_STREAM, &aprs_addr);
-	if (!ok) {
-		printf("Can't resolve APRS_HOST %s\n", m_rptr->aprs.ip.c_str());
-		return;
-	}
-
-	/* fill it in */
-	aprs_addr.sin_family = AF_INET;
-	aprs_addr.sin_port = htons(m_rptr->aprs.port);
-
-	aprs_addr_len = sizeof(aprs_addr);
-
-	aprs_sock = socket(PF_INET, SOCK_STREAM, 0);
-	if (aprs_sock == -1) {
-		printf("Failed to create aprs socket,error=%d\n",errno);
-		return;
-	}
-	fcntl(aprs_sock,F_SETFL,O_NONBLOCK);
-
-	val = 1;
-	if (setsockopt(aprs_sock,IPPROTO_TCP,TCP_NODELAY,(char *)&val, sizeof(val)) == -1) {
-		printf("setsockopt TCP_NODELAY TCP for aprs socket failed,error=%d\n",errno);
-		close(aprs_sock);
-		aprs_sock = -1;
-		return;
-	}
-
-	printf("Trying to connect to APRS...\n");
-	int rc = connect(aprs_sock, (struct sockaddr *)&aprs_addr, aprs_addr_len);
-	if (rc != 0) {
-		if (errno == EINPROGRESS) {
-			printf("Waiting for up to %d seconds for APRS_HOST\n", MAX_WAIT);
-			while (MAX_WAIT > 0) {
-				tv.tv_sec = 0;
-				tv.tv_usec = 0;
-				FD_ZERO(&fdset);
-				FD_SET(aprs_sock, &fdset);
-				rc = select(aprs_sock + 1, NULL,  &fdset, NULL, &tv);
-
-				if (rc < 0) {
-					printf("Failed to connect to APRS...select,error=%d\n", errno);
-					close(aprs_sock);
-					aprs_sock = -1;
-					return;
-				} else if (rc == 0) { /* timeout */
-					MAX_WAIT--;
-					sleep(1);
-				} else {
-					val = 1; /* Assume it fails */
-					val_len = sizeof(val);
-					if (getsockopt(aprs_sock, SOL_SOCKET, SO_ERROR, (char *) &val, &val_len) < 0) {
-						printf("Failed to connect to APRS...getsockopt, error=%d\n", errno);
-						close(aprs_sock);
-						aprs_sock = -1;
-						return;
-					} else if (val == 0)
-						break;
-
-					MAX_WAIT--;
-					sleep(1);
-				}
-			}
-			if (MAX_WAIT == 0) {
-				printf("Failed to connect to APRS...timeout\n");
-				close(aprs_sock);
-				aprs_sock = -1;
-				return;
-			}
-		} else {
-			printf("Failed to connect to APRS, error=%d\n", errno);
-			close(aprs_sock);
-			aprs_sock = -1;
-			return;
-		}
-	}
-	printf("Connected to APRS %s:%d\n", m_rptr->aprs.ip.c_str(), m_rptr->aprs.port);
+    while (aprs_sock.Open(m_rptr->aprs.ip, AF_UNSPEC, std::to_string(m_rptr->aprs.port))) {
+        fprintf(stderr, "Failed to open %s, retry in 10 seconds...\n", m_rptr->aprs.ip.c_str());
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
 
 	/* login to aprs */
 	sprintf(snd_buf, "user %s pass %d vers qngateway 2.99 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
@@ -349,10 +256,10 @@ void CAPRS::Open(const std::string OWNER)
 	strcat(snd_buf, "\r\n");
 
 	while (true) {
-		rc = WriteSock(snd_buf, strlen(snd_buf));
+        int rc = aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
 		if (rc < 0) {
 			if (errno == EWOULDBLOCK) {
-				recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
+                aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			} else {
 				printf("APRS login command failed, error=%d\n", errno);
@@ -363,7 +270,7 @@ void CAPRS::Open(const std::string OWNER)
 			break;
 		}
 	}
-	recv(aprs_sock, rcv_buf, sizeof(rcv_buf), 0);
+    aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 
 	return;
 }
@@ -491,55 +398,6 @@ unsigned int CAPRS::CalcCRC(unsigned char* buf, unsigned int len)
 	return (~my_crc & 0xffff);
 }
 
-ssize_t CAPRS::WriteSock(char *buffer, size_t n)
-{
-	ssize_t num_written = 0;
-	size_t tot_written = 0;
-	char *buf = buffer;
-
-	for (tot_written = 0; tot_written < n;) {
-		num_written = write(aprs_sock, buf, n - tot_written);
-		if (num_written <= 0) {
-			if ((num_written == -1) && (errno == EINTR))
-				continue;
-			else
-				return num_written;
-		}
-		tot_written += num_written;
-		buf += num_written;
-	}
-	return tot_written;
-}
-
-bool CAPRS::ResolveRmt(const char *name, int type, struct sockaddr_in *addr)
-{
-	struct addrinfo hints;
-	struct addrinfo *res;
-	struct addrinfo *rp;
-	bool found = false;
-
-	memset(&hints, 0x00, sizeof(struct addrinfo));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = type;
-
-	int rc = getaddrinfo(name, NULL, &hints, &res);
-	if (rc != 0) {
-		printf("getaddrinfo return error code %d for [%s]\n", rc, name);
-		return false;
-	}
-
-	for (rp = res; rp != NULL; rp = rp->ai_next) {
-		if ((rp->ai_family == AF_INET) &&
-		        (rp->ai_socktype == type)) {
-			memcpy(addr, rp->ai_addr, sizeof(struct sockaddr_in));
-			found = true;
-			break;
-		}
-	}
-	freeaddrinfo(res);
-	return found;
-}
-
 CAPRS::CAPRS(SRPTR *prptr)
 {
 	m_rptr = prptr;
@@ -547,4 +405,10 @@ CAPRS::CAPRS(SRPTR *prptr)
 
 CAPRS::~CAPRS()
 {
+    aprs_sock.Close();
+}
+
+void CAPRS::CloseSock()
+{
+    aprs_sock.Close();
 }

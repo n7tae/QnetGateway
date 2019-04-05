@@ -146,8 +146,6 @@ int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int lengt
 
 int CTCPReaderWriterClient::ReadLine(std::string& line)
 {
-	//maybe there is a better way to do this like reading blocks, pushing them for later calls
-	//Nevermind, we'll read one char at a time for the time being.
 	unsigned char c;
 	int resultCode;
 	int len = 0;
@@ -165,7 +163,7 @@ int CTCPReaderWriterClient::ReadLine(std::string& line)
 	return resultCode <= 0 ? resultCode : len;
 }
 
-bool CTCPReaderWriterClient::Write(const unsigned char* buffer, const unsigned int length)
+bool CTCPReaderWriterClient::Write(const unsigned char *buffer, const unsigned int length)
 {
 	assert(buffer != NULL);
 	assert(length > 0U);

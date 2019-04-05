@@ -48,7 +48,7 @@ dvrptr : qndvrptr
 itap   : qnitap
 modem  : qnmodem
 
-qngateway : QnetGateway.o aprs.o UnixDgramSocket.o QnetConfigure.o $(IRCOBJS)
+qngateway : QnetGateway.o aprs.o UnixDgramSocket.o TCPReaderWriterClient.o QnetConfigure.o $(IRCOBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
 qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixDgramSocket.o QnetConfigure.o
