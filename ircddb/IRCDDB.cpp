@@ -9,8 +9,7 @@ struct CIRCDDBPrivate {
 	IRCDDBApp *app;
 };
 
-
-CIRCDDB::CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, const std::string &localAddr)
+CIRCDDB::CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo)
     : d(new CIRCDDBPrivate)
 
 {
@@ -18,7 +17,7 @@ CIRCDDB::CIRCDDB(const std::string &hostName, unsigned int port, const std::stri
 
 	d->app = new IRCDDBApp(update_channel);
 
-	d->client = new IRCClient(d->app, update_channel, hostName, port, callsign, password, versionInfo, localAddr);
+	d->client = new IRCClient(d->app, update_channel, hostName, port, callsign, password, versionInfo);
 }
 
 CIRCDDB::~CIRCDDB()

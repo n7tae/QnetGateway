@@ -275,7 +275,6 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 
 	// gateway
 	path.assign("gateway_");
-	cfg.GetValue(path+"local_irc_ip", estr, GATEWAY_LOCAL_IRC_IP, 7, IP_SIZE);
 	cfg.GetValue(path+"ip", estr, g2_external.ip, 7, IP_SIZE);
 	cfg.GetValue(path+"port", estr, g2_external.port, 1024, 65535);
 	cfg.GetValue(path+"header_regen", estr, GATEWAY_HEADER_REGEN);
@@ -2397,7 +2396,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 	compute_aprs_hash();
 
-	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, IRCDDB_PASSWORD, IRCDDB_VERSION, GATEWAY_LOCAL_IRC_IP);
+	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, IRCDDB_PASSWORD, IRCDDB_VERSION);
 	bool ok = ii->open();
 	if (!ok) {
 		printf("irc open failed\n");

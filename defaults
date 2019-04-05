@@ -44,7 +44,6 @@ ircddb_password_d='1111111111111' # not needed for rr.openquad.net
 #
 gateway_header_regen_d=true       # regenerate headers from incoming data
 gateway_send_qrgs_maps_d=true     # send frequency, offset, coordinates and url to irc-server
-gateway_local_irc_ip_d='0.0.0.0'  # the local port on the gateway for the IRC TCP socket
 gateway_ip_d='0.0.0.0'            # the g2 port
 gateway_port_d=40000              # don't change
 gateway_gate2link_d='gate2link'   # Unix sockets between qngateway and QnetLink

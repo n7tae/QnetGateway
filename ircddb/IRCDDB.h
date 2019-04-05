@@ -21,7 +21,7 @@ struct CIRCDDBPrivate;
 class CIRCDDB
 {
 public:
-	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, const std::string &localAddr = "");
+	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
 	~CIRCDDB();
 
 	// A false return implies a network error, or unable to log in

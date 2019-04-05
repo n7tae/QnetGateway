@@ -10,8 +10,7 @@
 class IRCClient
 {
 public:
-	IRCClient(IRCApplication *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password,
-	           const std::string &versionInfo, const std::string &localAddr);
+	IRCClient(IRCApplication *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
 
 	virtual ~IRCClient();
 	bool startWork();
