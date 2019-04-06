@@ -24,6 +24,8 @@ public:
 	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
 	~CIRCDDB();
 
+	int GetFamily();
+
 	// A false return implies a network error, or unable to log in
 	bool open();
 

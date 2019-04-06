@@ -27,6 +27,11 @@ CIRCDDB::~CIRCDDB()
 	delete d;
 }
 
+int CIRCDDB::GetFamily()
+{
+	return d->client->GetFamily();
+}
+
 
 // A false return implies a network error, or unable to log in
 bool CIRCDDB::open()
