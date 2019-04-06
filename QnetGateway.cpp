@@ -53,6 +53,7 @@ const std::string IRCDDB_VERSION("QnetGateway-9.0");
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
+extern std::atomic<int> ircsocketfamily;
 
 static std::atomic<bool> keep_running(true);
 
@@ -1879,7 +1880,7 @@ void CQnetGateway::Process()
 	if (keep_running)
 		printf("get_irc_data thread started\n");
 
-	ii->kickWatchdog(IRCDDB_VERSION.c_str());
+	ii->kickWatchdog(IRCDDB_VERSION);
 
 	while (keep_running) {
 		ProcessTimeouts();
@@ -2422,6 +2423,20 @@ bool CQnetGateway::Init(char *cfgfile)
 			break;
 		}
 		rc = ii->getConnectionState();
+	}
+	switch (ircsocketfamily) {
+		case AF_INET:
+			printf("IRC server is using IPV4\n");
+			af_family = AF_INET;
+			break;
+		case AF_INET6:
+			printf("IRC server is using IPV6\n");
+			af_family = AF_INET6;
+			break;
+		default:
+			printf("IRC server is using unknown protocol!\n");
+			af_family = AF_UNSPEC;
+			break;
 	}
 
 	/* udp port 40000 must open first */

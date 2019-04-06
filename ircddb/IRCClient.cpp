@@ -3,13 +3,14 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <string.h>
+#include <atomic>
 
 #include "IRCClient.h"
 #include "IRCutils.h"
 #include "../TCPReaderWriterClient.h"
 
-#include <fcntl.h>
-#include <errno.h>
+std::atomic<int> ircsocketfamily;
+
 
 IRCClient::IRCClient(IRCApplication *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo)
 {
@@ -57,6 +58,7 @@ void IRCClient::Entry()
 
 	int state = 0;
 	int timer = 0;
+	socklen_t optlen = sizeof(int);
 
 	while (true) {
 
@@ -83,6 +85,8 @@ void IRCClient::Entry()
 
 
             case 4:
+
+				getsockopt(ircSock.GetFD(), SOL_SOCKET, SO_DOMAIN, &ircsocketfamily, &optlen);
                 recvQ = new IRCMessageQueue();
                 sendQ = new IRCMessageQueue();
 
