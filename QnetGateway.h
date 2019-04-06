@@ -83,6 +83,8 @@ public:
 	bool Init(char *cfgfile);
 
 private:
+	// network type
+	short int af_family;
 	// text stuff
 	bool new_group[3] = { true, true, true };
 	unsigned char header_type = 0;

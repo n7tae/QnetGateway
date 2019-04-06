@@ -49,7 +49,7 @@
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
 
-#define IRCDDB_VERSION "QnetGateway-8.1.3"
+const std::string IRCDDB_VERSION("QnetGateway-9.0");
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -234,12 +234,12 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			rptr.mod[m].defined = false;
 		} else {
 			printf("Found Module: %s = '%s'\n", path.c_str(), type.c_str());
-			if        (0 == type.compare("dvap"))       { rptr.mod[m].package_version = "QnetDVAP";
-			} else if (0 == type.compare("dvrptr"))     { rptr.mod[m].package_version = "QnetDVRPTR";
-			} else if (0 == type.compare("mmdvmhost"))  { rptr.mod[m].package_version = "QnetRelay";
-			} else if (0 == type.compare("mmdvmmodem")) { rptr.mod[m].package_version = "QnetModem";
-			} else if (0 == type.compare("itap"))       { rptr.mod[m].package_version = "QnetITAP";
-			} else {
+			if      (0 == type.compare("dvap"))       { rptr.mod[m].package_version.assign(VERSION+".DVAP"); }
+			else if (0 == type.compare("dvrptr"))     { rptr.mod[m].package_version.assign(VERSION+".DVRPTR"); }
+			else if (0 == type.compare("mmdvmhost"))  { rptr.mod[m].package_version.assign(VERSION+".Relay"); }
+			else if (0 == type.compare("mmdvmmodem")) { rptr.mod[m].package_version.assign(VERSION+".Modem"); }
+			else if (0 == type.compare("itap"))       { rptr.mod[m].package_version.assign(VERSION+".ITAP"); }
+			else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
@@ -352,11 +352,11 @@ int CQnetGateway::open_port(const SPORTIP &pip)
 	sin.sin_port = htons(pip.port);
 	sin.sin_addr.s_addr = inet_addr(pip.ip.c_str());
 
-	int reuse = 1;
-	if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-		printf("Cannot set the UDP socket (port %u) option, err: %d, %s\n", pip.port, errno, strerror(errno));
-		return -1;
-	}
+	// int reuse = 1;
+	// if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
+	// 	printf("Cannot set the UDP socket (port %u) option, err: %d, %s\n", pip.port, errno, strerror(errno));
+	// 	return -1;
+	// }
 
 	if (bind(sock, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) != 0) {
 		printf("Failed to bind %s:%d, errno=%d, %s\n", pip.ip.c_str(), pip.port, errno, strerror(errno));
