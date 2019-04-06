@@ -234,11 +234,11 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			rptr.mod[m].defined = false;
 		} else {
 			printf("Found Module: %s = '%s'\n", path.c_str(), type.c_str());
-			if      (0 == type.compare("dvap"))       { rptr.mod[m].package_version.assign(VERSION+".DVAP"); }
-			else if (0 == type.compare("dvrptr"))     { rptr.mod[m].package_version.assign(VERSION+".DVRPTR"); }
-			else if (0 == type.compare("mmdvmhost"))  { rptr.mod[m].package_version.assign(VERSION+".Relay"); }
-			else if (0 == type.compare("mmdvmmodem")) { rptr.mod[m].package_version.assign(VERSION+".Modem"); }
-			else if (0 == type.compare("itap"))       { rptr.mod[m].package_version.assign(VERSION+".ITAP"); }
+			if      (0 == type.compare("dvap"))       { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".DVAP"); }
+			else if (0 == type.compare("dvrptr"))     { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".DVRPTR"); }
+			else if (0 == type.compare("mmdvmhost"))  { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".Relay"); }
+			else if (0 == type.compare("mmdvmmodem")) { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".Modem"); }
+			else if (0 == type.compare("itap"))       { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".ITAP"); }
 			else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
@@ -1879,7 +1879,7 @@ void CQnetGateway::Process()
 	if (keep_running)
 		printf("get_irc_data thread started\n");
 
-	ii->kickWatchdog(IRCDDB_VERSION);
+	ii->kickWatchdog(IRCDDB_VERSION.c_str());
 
 	while (keep_running) {
 		ProcessTimeouts();
@@ -2396,7 +2396,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 	compute_aprs_hash();
 
-	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, IRCDDB_PASSWORD, IRCDDB_VERSION);
+	ii = new CIRCDDB(ircddb.ip, ircddb.port, owner, IRCDDB_PASSWORD, IRCDDB_VERSION.c_str());
 	bool ok = ii->open();
 	if (!ok) {
 		printf("irc open failed\n");
@@ -2746,7 +2746,7 @@ bool CQnetGateway::verify_gps_csum(char *gps_text, char *csum_text)
 
 int main(int argc, char **argv)
 {
-	printf("VERSION %s\n", IRCDDB_VERSION);
+	printf("VERSION %s\n", IRCDDB_VERSION.c_str());
 	if (argc != 2) {
 		printf("usage: %s qn.cfg\n", argv[0]);
 		return 1;
