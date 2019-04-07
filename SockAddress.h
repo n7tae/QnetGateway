@@ -43,6 +43,7 @@ public:
 	{
 		Clear();
 		if (AF_INET==family && address) {
+			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_family = AF_INET;
 			addr4->sin_port = port;
 			if (*address=='l' || *address =='L')
@@ -52,6 +53,7 @@ public:
 			else
 				inet_pton(AF_INET, address, &(addr4->sin_addr));
 		} else if (AF_INET6==family && address) {
+			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_family = AF_INET6;
 			addr6->sin6_port = port;
 			if (*address=='l' || *address =='L')
@@ -70,6 +72,7 @@ public:
 		Clear();
 		addr.ss_family = (sa_family_t)family;
 		if (AF_INET == family) {
+			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_port = port;
 			if (address) {
 				if (*address=='l' || *address=='L')
@@ -80,6 +83,7 @@ public:
 					inet_pton(AF_INET, address, &(addr4->sin_addr));
 			}
 		} else {
+			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_port = port;
 			if (address) {
 				if (*address=='l' || *address=='L')
@@ -105,10 +109,11 @@ public:
 	bool operator==(CSockAddress &from)
 	{
 		if (addr.ss_family == from.addr.ss_family) {
-			if (AF_INET == addr.ss_family)
-				return (0==memcmp(addr4, &from, sizeof(struct sockaddr_in)));
-			else
-				return (0==memcmp(addr6, &from, sizeof(struct sockaddr_in6)));
+			if (AF_INET == addr.ss_family) {
+				return (0==memcmp(&addr, &from, sizeof(struct sockaddr_in)));
+			} else {
+				return (0==memcmp(&addr, &from, sizeof(struct sockaddr_in6)));
+			}
 		} else
 			return false;
 	}
@@ -116,8 +121,10 @@ public:
 	bool AddressIsZero()
 	{
 		if (AF_INET == addr.ss_family) {
+			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			return (addr4->sin_addr.s_addr == 0U);
 		} else {
+			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			for (unsigned int i=0; i<16; i++) {
 				if (addr6->sin6_addr.s6_addr[i])
 					return false;
@@ -129,8 +136,10 @@ public:
 	void ClearAddress()
 	{
 		if (AF_INET == addr.ss_family) {
+			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_addr.s_addr = 0U;
 		} else {
+			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			memset(&(addr6->sin6_addr.s6_addr), 0, 16);
 		}
 	}
@@ -138,9 +147,11 @@ public:
 	const char *GetAddress()
 	{
 		if (AF_INET == addr.ss_family) {
+			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			if (NULL == inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN))
 				return "ERROR";
 		} else {
+			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			if (NULL == inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN))
 				return "ERROR";
 		}
@@ -150,10 +161,13 @@ public:
 
 	unsigned short GetPort()
 	{
-		if (AF_INET == addr.ss_family)
+		if (AF_INET == addr.ss_family) {
+			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			return addr4->sin_port;
-		else
+		} else {
+			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			return addr6->sin6_port;
+		}
 	}
 
 	struct sockaddr *GetPointer()
@@ -176,7 +190,5 @@ public:
 
 private:
 	struct sockaddr_storage addr;
-	struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
-	struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 	char straddr[INET6_ADDRSTRLEN];
 };
