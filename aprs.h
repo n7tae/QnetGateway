@@ -48,7 +48,6 @@ typedef struct rptr_tag{
 		std::string band;  /* 23cm ... */
 		double frequency, offset, latitude, longitude, range, agl;
 		std::string desc1, desc2, desc, url, package_version;
-		SPORTIP portip;
 	} mod[3];
 } SRPTR;
 

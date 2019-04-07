@@ -23,26 +23,25 @@
 #include "SEcho.h"
 #include "UnixDgramSocket.h"
 #include "aprs.h"
+#include "SockAddress.h"
 
-#define IP_SIZE 15
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
 #define MAX_DTMF_BUF 32
 
 typedef struct to_remote_g2_tag {
 	unsigned short streamid;
-	struct sockaddr_in toDst4;
+	CSockAddress toDstar;
 	time_t last_time;
 } STOREMOTEG2;
 
 typedef struct torepeater_tag {
 	// help with header re-generation
 	SDSVT saved_hdr; // repeater format
-	uint32_t saved_adr;
+	CSockAddress saved_addr;
 
 	unsigned short streamid;
-	uint32_t adr;
-	struct sockaddr_in band_addr;
+	CSockAddress addr;
 	time_t last_time;
 	unsigned char sequence;
 } STOREPEATER;
@@ -84,7 +83,7 @@ public:
 
 private:
 	// network type
-	short int af_family;
+	int af_family;
 	// text stuff
 	bool new_group[3] = { true, true, true };
 	unsigned char header_type = 0;
@@ -108,7 +107,7 @@ private:
 
 	unsigned int vPacketCount;
 
-	std::map<uint32_t, uint16_t> portmap;
+	std::map<std::string, uint16_t> portmap;
 	std::set<std::string> findRoute;
 
 	// data needed for aprs login and aprs beacon
@@ -125,7 +124,7 @@ private:
 
 	// input from remote G2 gateway
 	int g2_sock = -1;
-	struct sockaddr_in fromDst4;
+	CSockAddress fromDstar;
 
 	// Incoming data from remote systems
 	// must be fed into our local repeater modules.
@@ -165,8 +164,8 @@ private:
 	int open_port(const SPORTIP &pip);
 	void calcPFCS(unsigned char *packet, int len);
 	void GetIRCDataThread();
-	int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
-	bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
+	int get_yrcall_rptr_from_cache(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
+	bool get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
 	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();
 	void APRSBeaconThread();

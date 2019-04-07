@@ -275,7 +275,7 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 
 	// gateway
 	path.assign("gateway_");
-	cfg.GetValue(path+"ip", estr, g2_external.ip, 7, IP_SIZE);
+	cfg.GetValue(path+"ip", estr, g2_external.ip, 7, 64);
 	cfg.GetValue(path+"port", estr, g2_external.port, 1024, 65535);
 	cfg.GetValue(path+"header_regen", estr, GATEWAY_HEADER_REGEN);
 	cfg.GetValue(path+"send_qrgs_maps", estr, GATEWAY_SEND_QRGS_MAP);
@@ -518,27 +518,25 @@ void CQnetGateway::GetIRCDataThread()
 }
 
 /* return codes: 0=OK(found it), 1=TRY AGAIN, 2=FAILED(bad data) */
-int CQnetGateway::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
+int CQnetGateway::get_yrcall_rptr_from_cache(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU)
 {
-	char temp[CALL_SIZE + 1];
+	std::string temp;
 
-	memset(arearp_cs, ' ', CALL_SIZE);
-	arearp_cs[CALL_SIZE] = '\0';
-	memset(zonerp_cs, ' ', CALL_SIZE);
-	zonerp_cs[CALL_SIZE] = '\0';
+	arearp_cs.clear();
+	zonerp_cs.clear();
 	*mod = ' ';
 
 	/* find the user in the CACHE */
 	if (RoU == 'U') {
 		auto user_pos = user2rptr_map.find(call);
 		if (user_pos != user2rptr_map.end()) {
-			memcpy(arearp_cs, user_pos->second.c_str(), 7);
-			*mod = user_pos->second.c_str()[7];
+			arearp_cs = user_pos->second.substr(0, 7);
+			*mod = user_pos->second.at(7);
 		} else
 			return 1;
 	} else if (RoU == 'R') {
-		memcpy(arearp_cs, call, 7);
-		*mod = call[7];
+		arearp_cs = call.substr(0, 7);
+		*mod = call.at(7);
 	} else {
 		printf("Invalid specification %c for RoU\n", RoU);
 		return 2;
@@ -549,19 +547,17 @@ int CQnetGateway::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *
 		return 2;
 	}
 
-	memcpy(temp, arearp_cs, 7);
-	temp[7] = *mod;
-	temp[CALL_SIZE] = '\0';
+	temp.assign(arearp_cs);
+	temp.append(1, *mod);
+	arearp_cs.resize(8, ' ');
 
 	auto rptr_pos = rptr2gwy_map.find(temp);
 	if (rptr_pos != rptr2gwy_map.end()) {
-		memcpy(zonerp_cs, rptr_pos->second.c_str(), CALL_SIZE);
-		zonerp_cs[CALL_SIZE] = '\0';
+		zonerp_cs.assign(rptr_pos->second);
 
 		auto gwy_pos = gwy2ip_map.find(zonerp_cs);
 		if (gwy_pos != gwy2ip_map.end()) {
-			strncpy(ip, gwy_pos->second.c_str(), IP_SIZE);
-			ip[IP_SIZE] = '\0';
+			ip.assign(gwy_pos->second);
 			return 0;
 		} else {
 			/* printf("Could not find IP for Gateway %s\n", zonerp_cs); */
@@ -575,7 +571,7 @@ int CQnetGateway::get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *
 	return 2;
 }
 
-bool CQnetGateway::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU)
+bool CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU)
 {
 	pthread_mutex_lock(&irc_data_mutex);
 	int rc = get_yrcall_rptr_from_cache(call, arearp_cs, zonerp_cs, mod, ip, RoU);
@@ -596,19 +592,19 @@ bool CQnetGateway::get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs,
 
 	/* request data from irc server */
 	if (RoU == 'U') {
-		printf("User [%s] not in local cache, try again\n", call);
+		printf("User [%s] not in local cache, try again\n", call.c_str());
 		/*** YRCALL=KJ4NHFBL ***/
-		if (((call[6] == 'A') || (call[6] == 'B') || (call[6] == 'C')) && (call[7] == 'L'))
+		if (((call.at(6) == 'A') || (call.at(6) == 'B') || (call.at(6) == 'C')) && (call.at(7) == 'L'))
 			printf("If this was a gateway link request, that is ok\n");
 
 		if (!ii->findUser(call)) {
-			printf("findUser(%s): Network error\n", call);
+			printf("findUser(%s): Network error\n", call.c_str());
 			return false;
 		}
 	} else if (RoU == 'R') {
-		printf("Repeater [%s] not in local cache, try again\n", call);
+		printf("Repeater [%s] not in local cache, try again\n", call.c_str());
 		if (!ii->findRepeater(call)) {
-			printf("findRepeater(%s): Network error\n", call);
+			printf("findRepeater(%s): Network error\n", call.c_str());
 			return false;
 		}
 	}
@@ -684,7 +680,7 @@ void CQnetGateway::ProcessTimeouts()
 
 
 				toRptr[i].streamid = 0;
-				toRptr[i].adr = 0;
+				toRptr[i].addr.ClearAddress();
 				toRptr[i].last_time = 0;
 			}
 		}
@@ -694,7 +690,7 @@ void CQnetGateway::ProcessTimeouts()
 			time(&t_now);
 			if ((t_now - band_txt[i].last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
 				/* This local stream never went to a remote system, so trace the timeout */
-				if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0)
+				if (to_remote_g2[i].toDstar.AddressIsZero())
 					printf("Inactivity from local rptr module %c, removing stream id %04x\n", 'A'+i, ntohs(band_txt[i].streamID));
 
 				band_txt[i].streamID = 0;
@@ -719,12 +715,12 @@ void CQnetGateway::ProcessTimeouts()
 		}
 
 		/* any stream from local repeater to a remote gateway timed out ? */
-		if (to_remote_g2[i].toDst4.sin_addr.s_addr != 0) {
+		if (! to_remote_g2[i].toDstar.AddressIsZero()) {
 			time(&t_now);
 			if ((t_now - to_remote_g2[i].last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
 				printf("Inactivity from local rptr mod %c, removing stream id %04x\n", 'A'+i, ntohs(to_remote_g2[i].streamid));
 
-				memset(&(to_remote_g2[i].toDst4),0,sizeof(struct sockaddr_in));
+				to_remote_g2[i].toDstar.Initialize(af_family);
 				to_remote_g2[i].streamid = 0;
 				to_remote_g2[i].last_time = 0;
 			}
@@ -1058,7 +1054,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					if (LOG_QSO) {
 						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
 						if (is_from_g2)
-							printf("IP=%s:%u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
+							printf("IP=%s:%u\n", fromDstar.GetAddress(), ntohs(fromDstar.GetPort()));
 						else
 							printf("UnixSock=%s\n", link2gate.c_str());
 					}
@@ -1067,14 +1063,23 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					lastctrl = 20U;
 
 					/* save the header */
-					if (! is_from_g2)
-						fromDst4.sin_addr.s_addr = (unsigned long)i;
+					if (! is_from_g2) {
+						if (AF_INET == af_family) {
+							char address[16];
+							snprintf(address, 16, "%d.0.0.0", i);
+							fromDstar.Initialize(AF_INET, 40000U, address);
+						} else {
+							char address[8];
+							snprintf(address, 8, "%d::", i);
+							fromDstar.Initialize(AF_INET6, 40000U, address);
+						}
+					}
 					memcpy(toRptr[i].saved_hdr.title, g2buf.title, 56);
-					toRptr[i].saved_adr = fromDst4.sin_addr.s_addr;
+					toRptr[i].saved_addr = fromDstar;
 
 					/* This is the active streamid */
 					toRptr[i].streamid = g2buf.streamid;
-					toRptr[i].adr = fromDst4.sin_addr.s_addr;
+					toRptr[i].addr = fromDstar;;
 
 					/* time it, in case stream times out */
 					time(&toRptr[i].last_time);
@@ -1090,7 +1095,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					/* streamid match ? */
 					bool match = (toRptr[i].streamid == g2buf.streamid);
 					if (is_from_g2)
-						match = match && (toRptr[i].adr == fromDst4.sin_addr.s_addr);
+						match = match && (toRptr[i].addr == fromDstar);
 					if (match) {
 						if (LOG_DEBUG) {
 							const unsigned int ctrl = g2buf.ctrl & 0x3FU;
@@ -1147,11 +1152,11 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 						if (g2buf.ctrl & 0x40U) {
 							/* clear the saved header */
 							memset(toRptr[i].saved_hdr.title, 0U, 56U);
-							toRptr[i].saved_adr = 0;
+							toRptr[i].saved_addr.ClearAddress();
 
 							toRptr[i].last_time = 0;
 							toRptr[i].streamid = 0;
-							toRptr[i].adr = 0;
+							toRptr[i].addr.ClearAddress();
 							if (LOG_DEBUG && superframe[i].size()) {
 								printf("Final[%c]: %s\n", 'A'+i, superframe[i].c_str());
 								superframe[i].clear();
@@ -1178,7 +1183,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 						/* match saved stream ? */
 						bool match = (toRptr[i].saved_hdr.streamid == g2buf.streamid);
 						if (is_from_g2)
-							match = match && (toRptr[i].saved_adr == fromDst4.sin_addr.s_addr);
+							match = match && (toRptr[i].saved_addr == fromDstar);
 						if (match) {
 							/* repeater module is inactive ?  */
 							if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
@@ -1192,7 +1197,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 
 								/* make sure that any more audio arriving will be accepted */
 								toRptr[i].streamid = g2buf.streamid;
-								toRptr[i].adr = fromDst4.sin_addr.s_addr;
+								toRptr[i].addr = fromDstar;
 
 								/* time it, in case stream times out */
 								time(&toRptr[i].last_time);
@@ -1211,13 +1216,10 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 
 void CQnetGateway::ProcessModem()
 {
-	char temp_radio_user[CALL_SIZE + 1];
 	char temp_mod;
-
-	char arearp_cs[CALL_SIZE + 1];
-	char zonerp_cs[CALL_SIZE + 1];
-	char ip[IP_SIZE + 1];
-	char tempfile[FILENAME_MAX + 1];
+	char temp_radio_user[9];
+	char tempfile[FILENAME_MAX];
+	std::string arearp_cs, ip, zonerp_cs;
 
 	SDSVT dsvt;
 
@@ -1295,7 +1297,6 @@ void CQnetGateway::ProcessModem()
 				}
 
 				/* Is MYCALL valid ? */
-				memset(temp_radio_user, ' ', 8);
 				memcpy(temp_radio_user, dsvt.hdr.mycall, 8);
 				temp_radio_user[8] = '\0';
 
@@ -1333,7 +1334,7 @@ void CQnetGateway::ProcessModem()
 
 							if (i>=0 && i<3) {
 								/* one radio user on a repeater module at a time */
-								if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
+								if (to_remote_g2[i].toDstar.AddressIsZero()) {
 									/* YRCALL=/repeater + mod */
 									/* YRCALL=/KJ4NHFB */
 
@@ -1347,23 +1348,19 @@ void CQnetGateway::ProcessModem()
 
 									bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
 									if (result) { /* it is a repeater */
-										uint32_t address;
-										/* set the destination */
 										to_remote_g2[i].streamid = dsvt.streamid;
-										memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
-										to_remote_g2[i].toDst4.sin_family = AF_INET;
-										to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
 										// if the address is in the portmap, we'll use that saved port instead of the default port
-										auto theAddress = portmap.find(address);
-										to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end()) ? g2_external.port : theAddress->second);
+										auto theAddress = portmap.find(ip);
+										uint16_t port = htons((theAddress==portmap.end()) ? (uint16_t)g2_external.port : theAddress->second);
+										to_remote_g2[i].toDstar.Initialize(af_family, port, ip.c_str());
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
-										memcpy(dsvt.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+										memcpy(dsvt.hdr.rpt1, arearp_cs.c_str(), arearp_cs.size());
 										dsvt.hdr.rpt1[7] = temp_mod;
 										/* set rpt2 */
 										memset(dsvt.hdr.rpt2, ' ', 8);
-										memcpy(dsvt.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+										memcpy(dsvt.hdr.rpt2, zonerp_cs.c_str(), zonerp_cs.size());
 										dsvt.hdr.rpt2[7] = 'G';
 										/* set yrcall, can NOT let it be slash and repeater + module */
 										memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
@@ -1378,10 +1375,10 @@ void CQnetGateway::ProcessModem()
 
 										// send to remote gateway
 										for (int j=0; j<5; j++)
-											sendto(g2_sock, dsvt.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+											sendto(g2_sock, dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
 										printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
-										ntohs(dsvt.streamid), inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port),
+										ntohs(dsvt.streamid), to_remote_g2[i].toDstar.GetAddress(), ntohs(to_remote_g2[i].toDstar.GetPort()),
 										dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
 										time(&(to_remote_g2[i].last_time));
@@ -1404,29 +1401,26 @@ void CQnetGateway::ProcessModem()
 						bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
 						if (result) {
 							/* destination is a remote system */
-							if (memcmp(zonerp_cs, OWNER.c_str(), 7) != 0) {
+							if (0 != zonerp_cs.compare(0, 7, OWNER, 0, 7)) {
 								int i = dsvt.hdr.rpt1[7] - 'A';
 
 								if (i>=0 && i<3) {
 									/* one radio user on a repeater module at a time */
-									if (to_remote_g2[i].toDst4.sin_addr.s_addr == 0) {
-										uint32_t address;
+									if (to_remote_g2[i].toDstar.AddressIsZero()) {
 										/* set the destination */
 										to_remote_g2[i].streamid = dsvt.streamid;
-										memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
-										to_remote_g2[i].toDst4.sin_family = AF_INET;
-										to_remote_g2[i].toDst4.sin_addr.s_addr = address = inet_addr(ip);
 										// if the address is in the portmap, we'll use that port instead of the default
-										auto theAddress = portmap.find(address);
-										to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
+										auto theAddress = portmap.find(ip);
+										uint16_t port = htons((theAddress==portmap.end())? (uint16_t)g2_external.port : theAddress->second);
+										to_remote_g2[i].toDstar.Initialize(af_family, port, ip.c_str());
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
-										memcpy(dsvt.hdr.rpt1, arearp_cs, strlen(arearp_cs));
+										memcpy(dsvt.hdr.rpt1, arearp_cs.c_str(), arearp_cs.size());
 										dsvt.hdr.rpt1[7] = temp_mod;
 										/* set rpt2 */
 										memset(dsvt.hdr.rpt2, ' ', 8);
-										memcpy(dsvt.hdr.rpt2, zonerp_cs, strlen(zonerp_cs));
+										memcpy(dsvt.hdr.rpt2, zonerp_cs.c_str(), zonerp_cs.size());
 										dsvt.hdr.rpt2[7] = 'G';
 										/* set PFCS */
 										calcPFCS(dsvt.title, 56);
@@ -1438,9 +1432,9 @@ void CQnetGateway::ProcessModem()
 
 										/* send to remote gateway */
 										for (int j=0; j<5; j++)
-											sendto(g2_sock, dsvt.title, 56, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+											sendto(g2_sock, dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
-										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", inet_ntoa(to_remote_g2[i].toDst4.sin_addr), ntohs(to_remote_g2[i].toDst4.sin_port), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
+										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", to_remote_g2[i].toDstar.GetAddress(), ntohs(to_remote_g2[i].toDstar.GetPort()), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
 										time(&(to_remote_g2[i].last_time));
 									}
@@ -1490,7 +1484,7 @@ void CQnetGateway::ProcessModem()
 										}
 									}
 									else
-										printf("icom rule: no routing from %.8s to %s%c\n", dsvt.hdr.rpt1, arearp_cs, temp_mod);
+										printf("icom rule: no routing from %.8s to %s%c\n", dsvt.hdr.rpt1, arearp_cs.c_str(), temp_mod);
 								}
 							}
 						}
@@ -1760,17 +1754,18 @@ void CQnetGateway::ProcessModem()
 					/* find out if data must go to the remote G2 */
 					if (to_remote_g2[i].streamid == dsvt.streamid) {
 
-						uint32_t address = to_remote_g2[i].toDst4.sin_addr.s_addr;
+						const char *address = to_remote_g2[i].toDstar.GetAddress();
 						// if the address is in the portmap, we'll use that port instead of the default
-						auto theAddress = portmap.find(address);
-						to_remote_g2[i].toDst4.sin_port = htons((theAddress==portmap.end())? g2_external.port : theAddress->second);
-						sendto(g2_sock, dsvt.title, 27, 0, (struct sockaddr *)&(to_remote_g2[i].toDst4), sizeof(struct sockaddr_in));
+						auto it = portmap.find(address);
+						uint16_t port = htons((it==portmap.end())? g2_external.port : it->second);
+						to_remote_g2[i].toDstar.Initialize(af_family, port, address);
+						sendto(g2_sock, dsvt.title, 27, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
 						time(&(to_remote_g2[i].last_time));
 
 						/* Is this the end-of-stream */
 						if (dsvt.ctrl & 0x40) {
-							memset(&to_remote_g2[i].toDst4,0,sizeof(struct sockaddr_in));
+							to_remote_g2[i].toDstar.Initialize(af_family);
 							to_remote_g2[i].streamid = 0;
 							to_remote_g2[i].last_time = 0;
 						}
@@ -1826,7 +1821,7 @@ void CQnetGateway::ProcessModem()
 						if (dsvt.ctrl & 0x40) {
 							toRptr[i].last_time = 0;
 							toRptr[i].streamid = 0;
-							toRptr[i].adr = 0;
+							toRptr[i].addr.Initialize(af_family);
 						}
 						break;
 					}
@@ -1899,17 +1894,19 @@ void CQnetGateway::Process()
 		// process packets coming from remote G2
 		if (keep_running && FD_ISSET(g2_sock, &fdset)) {
 			SDSVT dsvt;
-			socklen_t fromlen = sizeof(struct sockaddr_in);
-			ssize_t g2buflen = recvfrom(g2_sock, dsvt.title, 56, 0, (struct sockaddr *)&fromDst4, &fromlen);
+			socklen_t fromlen = sizeof(struct sockaddr_storage);
+			ssize_t g2buflen = recvfrom(g2_sock, dsvt.title, 56, 0, fromDstar.GetPointer(), &fromlen);
 
 			// save incoming port for mobile systems
-			if (portmap.end() == portmap.find(fromDst4.sin_addr.s_addr)) {
-				printf("New g2 contact at %s on port %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port));
-				portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
+			const char *paddr = fromDstar.GetAddress();
+			uint16_t port = ntohs(fromDstar.GetPort());
+			if (portmap.end() == portmap.find(paddr)) {
+				printf("New g2 contact at %s on port %u\n", paddr, port);
+				portmap[paddr] = port;
 			} else {
-				if (ntohs(fromDst4.sin_port) != portmap[fromDst4.sin_addr.s_addr]) {
-					printf("New g2 port from %s is now %u, it was %u\n", inet_ntoa(fromDst4.sin_addr), ntohs(fromDst4.sin_port), portmap[fromDst4.sin_addr.s_addr]);
-					portmap[fromDst4.sin_addr.s_addr] = ntohs(fromDst4.sin_port);
+				if (port != portmap[paddr]) {
+					printf("New g2 port from %s is now %u, it was %u\n", paddr, port, portmap[paddr]);
+					portmap[paddr] = port;
 				}
 			}
 			ProcessG2(g2buflen, dsvt, true);
@@ -2478,14 +2475,10 @@ bool CQnetGateway::Init(char *cfgfile)
 		memset(&toRptr[i],0,sizeof(toRptr[i]));
 
 		memset(toRptr[i].saved_hdr.title, 0, 56);
-		toRptr[i].saved_adr = 0;
+		toRptr[i].saved_addr.Initialize(af_family);
 
 		toRptr[i].streamid = 0;
-		toRptr[i].adr = 0;
-
-		toRptr[i].band_addr.sin_family = AF_INET;
-		toRptr[i].band_addr.sin_addr.s_addr = inet_addr(rptr.mod[i].portip.ip.c_str());
-		toRptr[i].band_addr.sin_port = htons(rptr.mod[i].portip.port);
+		toRptr[i].addr.Initialize(af_family);
 
 		toRptr[i].last_time = 0;
 
@@ -2502,7 +2495,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 	/* to remote systems */
 	for (i = 0; i < 3; i++) {
-		memset(&to_remote_g2[i].toDst4, 0, sizeof(struct sockaddr_in));
+		to_remote_g2[i].toDstar.Initialize(af_family);
 		to_remote_g2[i].streamid = 0;
 		to_remote_g2[i].last_time = 0;
 	}
