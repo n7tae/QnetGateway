@@ -45,7 +45,7 @@ public:
 		if (AF_INET==family && address) {
 			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_family = AF_INET;
-			addr4->sin_port = port;
+			addr4->sin_port = htons(port);
 			if (*address=='l' || *address =='L')
 				inet_pton(AF_INET, "127.0.0.1", &(addr4->sin_addr));
 			else if (*address=='a' || *address=='A')
@@ -55,7 +55,7 @@ public:
 		} else if (AF_INET6==family && address) {
 			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_family = AF_INET6;
-			addr6->sin6_port = port;
+			addr6->sin6_port = htons(port);
 			if (*address=='l' || *address =='L')
 				inet_pton(AF_INET6, "::1", &(addr6->sin6_addr));
 			else if (*address=='a' || *address=='A')
@@ -73,7 +73,7 @@ public:
 		addr.ss_family = (sa_family_t)family;
 		if (AF_INET == family) {
 			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
-			addr4->sin_port = port;
+			addr4->sin_port = htons(port);
 			if (address) {
 				if (*address=='l' || *address=='L')
 					inet_pton(AF_INET, "127.0.0.1", &(addr4->sin_addr));
@@ -84,7 +84,7 @@ public:
 			}
 		} else {
 			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
-			addr6->sin6_port = port;
+			addr6->sin6_port = htons(port);
 			if (address) {
 				if (*address=='l' || *address=='L')
 					inet_pton(AF_INET6, "::1", &(addr6->sin6_addr));

@@ -80,7 +80,7 @@ bool CTCPReaderWriterClient::Open()
 		// connecting to a server, so we can wait until it's ready
 		s = getaddrinfo(m_address.c_str(), m_port.c_str(), &hints, &res);
 		if (s && s != EAI_AGAIN) {
-			fprintf(stderr, "ERROR: getaddrinfo for %s: %s\n", m_address.c_str(), gai_strerror(s));
+			fprintf(stderr, "ERROR: getaddrinfo of %s: %s\n", m_address.c_str(), gai_strerror(s));
 			return true;
 		}
 		std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -98,7 +98,7 @@ bool CTCPReaderWriterClient::Open()
 		} else {
 			char buf[INET6_ADDRSTRLEN];
 			if (inet_ntop(rp->ai_family, rp->ai_addr, buf, INET6_ADDRSTRLEN))
-				fprintf(stderr, "Successfully connected %s to %s:%s\n", m_address.c_str(), buf, m_port.c_str());
+				fprintf(stderr, "Successfully connected to %s at %s on port %s\n", m_address.c_str(), buf, m_port.c_str());
 			break;
 		}
 	}
