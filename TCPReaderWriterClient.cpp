@@ -97,7 +97,15 @@ bool CTCPReaderWriterClient::Open()
 			continue;
 		} else {
 			char buf[INET6_ADDRSTRLEN];
-			if (inet_ntop(rp->ai_family, &(rp->ai_addr), buf, INET6_ADDRSTRLEN))
+			void *addr;
+			if (AF_INET == rp->ai_family){
+				struct sockaddr_in *addr4 = (struct sockaddr_in *)rp->addr;
+				addr = &(add4->sin_addr);
+			} else {
+				struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)rp->addr;
+				addr = &(add6->sin6_addr);
+			}
+			if (inet_ntop(rp->ai_family, addr, buf, INET6_ADDRSTRLEN))
 				fprintf(stderr, "Successfully connected to %s at %s on port %s\n", m_address.c_str(), buf, m_port.c_str());
 			break;
 		}
