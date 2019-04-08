@@ -394,7 +394,7 @@ void CQnetGateway::GetIRCDataThread()
 	bool not_announced[3];
 	for (int i=0; i<3; i++)
 		not_announced[i] = this->rptr.mod[i].defined;	// announce to all modules that are defined!
-	bool is_quadnet = (0 == ircddb.ip.compare("rr.openquad.net"));
+	bool is_quadnet = (std::string::npos != ircddb.ip.find(".openquad.net"));
 	bool doFind = true;
 	while (keep_running) {
 		int rc = ii->getConnectionState();
