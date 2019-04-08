@@ -1049,7 +1049,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					if (LOG_QSO) {
 						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
 						if (is_from_g2)
-							printf("IP=%s:%u\n", fromDstar.GetAddress(), ntohs(fromDstar.GetPort()));
+							printf("IP=%s-%u\n", fromDstar.GetAddress(), ntohs(fromDstar.GetPort()));
 						else
 							printf("UnixSock=%s\n", link2gate.c_str());
 					}
@@ -1370,7 +1370,7 @@ void CQnetGateway::ProcessModem()
 											sendto(g2_sock, dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
 										printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
-										ntohs(dsvt.streamid), to_remote_g2[i].toDstar.GetAddress(), ntohs(to_remote_g2[i].toDstar.GetPort()),
+										ntohs(dsvt.streamid), to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(),
 										dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
 										time(&(to_remote_g2[i].last_time));
@@ -1423,7 +1423,7 @@ void CQnetGateway::ProcessModem()
 										for (int j=0; j<5; j++)
 											sendto(g2_sock, dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
-										printf("Routing to IP=%s:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", to_remote_g2[i].toDstar.GetAddress(), ntohs(to_remote_g2[i].toDstar.GetPort()), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
+										printf("Routing to IP=%s-%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
 										time(&(to_remote_g2[i].last_time));
 									}
