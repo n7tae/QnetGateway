@@ -572,7 +572,7 @@ bool CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &arearp_
 	int rc = get_yrcall_rptr_from_cache(call, arearp_cs, zonerp_cs, mod, ip, RoU);
 	pthread_mutex_unlock(&irc_data_mutex);
 	if (rc == 0) {
-		printf("get_yrcall_rptr_from_cache: call='%s' arearp_cs='%s' zonerp_cs='%s', mod=%c ip='%s' RoU=%c", call.c_str(), arearp_cs.c_str(), zonerp_cs.c_str(), *mod, ip.c_str(), RoU);
+		printf("get_yrcall_rptr_from_cache: call='%s' arearp_cs='%s' zonerp_cs='%s', mod=%c ip='%s' RoU=%c\n", call.c_str(), arearp_cs.c_str(), zonerp_cs.c_str(), *mod, ip.c_str(), RoU);
 		return true;
 	} else if (rc == 2)
 		return false;
