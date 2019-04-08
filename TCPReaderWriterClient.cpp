@@ -98,7 +98,7 @@ bool CTCPReaderWriterClient::Open()
 		} else {
 			char buf[INET6_ADDRSTRLEN];
 			void *addr;
-			if (AF_INET == rp->ai_family){
+			if (AF_INET == rp->ai_family) {
 				struct sockaddr_in *addr4 = (struct sockaddr_in *)rp->ai_addr;
 				addr = &(addr4->sin_addr);
 			} else {

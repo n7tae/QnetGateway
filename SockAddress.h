@@ -19,6 +19,7 @@
  */
 
 #include <string.h>
+#include <strings.h>
 #include <netinet/in.h>
 #include <string>
 
@@ -46,9 +47,9 @@ public:
 			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_family = AF_INET;
 			addr4->sin_port = htons(port);
-			if (*address=='l' || *address =='L')
+			if (0 == strncasecmp(address, "loc", 3))
 				inet_pton(AF_INET, "127.0.0.1", &(addr4->sin_addr));
-			else if (*address=='a' || *address=='A')
+			else if (0 == strncasecmp(address, "any", 3))
 				inet_pton(AF_INET, "0.0.0.0", &(addr4->sin_addr));
 			else
 				inet_pton(AF_INET, address, &(addr4->sin_addr));
@@ -56,9 +57,9 @@ public:
 			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_family = AF_INET6;
 			addr6->sin6_port = htons(port);
-			if (*address=='l' || *address =='L')
+			if (0 == strncasecmp(address, "loc", 3))
 				inet_pton(AF_INET6, "::1", &(addr6->sin6_addr));
-			else if (*address=='a' || *address=='A')
+			else if (0 == strncasecmp(address, "any", 3))
 				inet_pton(AF_INET6, "::", &(addr6->sin6_addr));
 			else
 				inet_pton(AF_INET6, address, &(addr6->sin6_addr));
@@ -75,9 +76,9 @@ public:
 			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_port = htons(port);
 			if (address) {
-				if (*address=='l' || *address=='L')
+				if (0 == strncasecmp(address, "loc", 3))
 					inet_pton(AF_INET, "127.0.0.1", &(addr4->sin_addr));
-				else if (*address=='a' || *address=='A')
+				else if (0 == strncasecmp(address, "any", 3))
 					inet_pton(AF_INET, "0.0.0.0", &(addr4->sin_addr));
 				else
 					inet_pton(AF_INET, address, &(addr4->sin_addr));
@@ -86,12 +87,12 @@ public:
 			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_port = htons(port);
 			if (address) {
-				if (*address=='l' || *address=='L')
+				if (0 == strncasecmp(address, "loc", 3))
 					inet_pton(AF_INET6, "::1", &(addr6->sin6_addr));
-				else if (*address=='a' || *address=='A')
+				else if (0 == strncasecmp(address, "any", 3))
 					inet_pton(AF_INET6, "::", &(addr6->sin6_addr));
 				else
-					inet_pton(AF_INET, address, &(addr6->sin6_addr));
+					inet_pton(AF_INET6, address, &(addr6->sin6_addr));
 			}
 		}
 	}
