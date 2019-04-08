@@ -97,7 +97,7 @@ bool CTCPReaderWriterClient::Open()
 			continue;
 		} else {
 			char buf[INET6_ADDRSTRLEN];
-			if (inet_ntop(rp->ai_family, rp->ai_addr, buf, INET6_ADDRSTRLEN))
+			if (inet_ntop(rp->ai_family, &(rp->ai_addr), buf, INET6_ADDRSTRLEN))
 				fprintf(stderr, "Successfully connected to %s at %s on port %s\n", m_address.c_str(), buf, m_port.c_str());
 			break;
 		}
