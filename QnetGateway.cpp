@@ -527,18 +527,20 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const std::string &call, std::strin
 		if (user_pos != user2rptr_map.end()) {
 			arearp_cs = user_pos->second.substr(0, 7);
 			*mod = user_pos->second.at(7);
-		} else
+		} else {
+			printf("could not find a repeater for user %s", call.c_str());
 			return 1;
+		}
 	} else if (RoU == 'R') {
 		arearp_cs = call.substr(0, 7);
 		*mod = call.at(7);
 	} else {
-		printf("Invalid specification %c for RoU\n", RoU);
+		fprintf(stderr, "ERROR: Invalid specification %c for RoU\n", RoU);
 		return 2;
 	}
 
 	if (*mod == 'G') {
-		printf("Invalid module %c\n", *mod);
+		fprintf(stderr, "ERROR: Invalid module %c\n", *mod);
 		return 2;
 	}
 
@@ -555,15 +557,13 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const std::string &call, std::strin
 			ip.assign(gwy_pos->second);
 			return 0;
 		} else {
-			/* printf("Could not find IP for Gateway %s\n", zonerp_cs); */
+			printf("Could not find IP for Gateway %s\n", zonerp_cs.c_str());
 			return 1;
 		}
 	} else {
-		/* printf("Could not find Gateway for repeater %s\n", temp); */
+		printf("Could not find Gateway for repeater %s\n", temp.c_str());
 		return 1;
 	}
-
-	return 2;
 }
 
 bool CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU)
@@ -571,9 +571,10 @@ bool CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &arearp_
 	pthread_mutex_lock(&irc_data_mutex);
 	int rc = get_yrcall_rptr_from_cache(call, arearp_cs, zonerp_cs, mod, ip, RoU);
 	pthread_mutex_unlock(&irc_data_mutex);
-	if (rc == 0)
+	if (rc == 0) {
+		printf("get_yrcall_rptr_from_cache: call='%s' arearp_cs='%s' zonerp_cs='%s', mod=%c ip='%s' RoU=%c", call.c_str(), arearp_cs.c_str(), zonerp_cs.c_str(), *mod, ip.c_str(), RoU);
 		return true;
-	else if (rc == 2)
+	} else if (rc == 2)
 		return false;
 
 	/* at this point, the data is not in cache */
@@ -1369,7 +1370,7 @@ void CQnetGateway::ProcessModem()
 										for (int j=0; j<5; j++)
 											sendto(g2_sock, dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
-										printf("id=%04x Routing to IP=%s:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
+										printf("id=%04x zone route to IP=%s on port %u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
 										ntohs(dsvt.streamid), to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(),
 										dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
@@ -1423,7 +1424,7 @@ void CQnetGateway::ProcessModem()
 										for (int j=0; j<5; j++)
 											sendto(g2_sock, dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
-										printf("Routing to IP=%s-%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
+										printf("CS route to IP=%s on port %u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
 										time(&(to_remote_g2[i].last_time));
 									}
