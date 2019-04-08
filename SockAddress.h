@@ -163,10 +163,10 @@ public:
 	{
 		if (AF_INET == addr.ss_family) {
 			struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr;
-			return addr4->sin_port;
+			return ntohs(addr4->sin_port);
 		} else {
 			struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr;
-			return addr6->sin6_port;
+			return ntohs(addr6->sin6_port);
 		}
 	}
 
