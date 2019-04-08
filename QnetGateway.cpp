@@ -1344,10 +1344,7 @@ void CQnetGateway::ProcessModem()
 									bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
 									if (result) { /* it is a repeater */
 										to_remote_g2[i].streamid = dsvt.streamid;
-										// if the address is in the portmap, we'll use that saved port instead of the default port
-										auto theAddress = portmap.find(ip);
-										uint16_t port = htons((theAddress==portmap.end()) ? (uint16_t)g2_external.port : theAddress->second);
-										to_remote_g2[i].toDstar.Initialize(af_family, port, ip.c_str());
+										to_remote_g2[i].toDstar.Initialize(af_family, (uint16_t)g2_external.port, ip.c_str());
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
@@ -1404,10 +1401,7 @@ void CQnetGateway::ProcessModem()
 									if (to_remote_g2[i].toDstar.AddressIsZero()) {
 										/* set the destination */
 										to_remote_g2[i].streamid = dsvt.streamid;
-										// if the address is in the portmap, we'll use that port instead of the default
-										auto theAddress = portmap.find(ip);
-										uint16_t port = htons((theAddress==portmap.end())? (uint16_t)g2_external.port : theAddress->second);
-										to_remote_g2[i].toDstar.Initialize(af_family, port, ip.c_str());
+										to_remote_g2[i].toDstar.Initialize(af_family, (uint16_t)g2_external.port, ip.c_str());
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
@@ -1748,12 +1742,6 @@ void CQnetGateway::ProcessModem()
 				for (int i=0; i<3; i++) {
 					/* find out if data must go to the remote G2 */
 					if (to_remote_g2[i].streamid == dsvt.streamid) {
-
-						const char *address = to_remote_g2[i].toDstar.GetAddress();
-						// if the address is in the portmap, we'll use that port instead of the default
-						auto it = portmap.find(address);
-						uint16_t port = htons((it==portmap.end())? g2_external.port : it->second);
-						to_remote_g2[i].toDstar.Initialize(af_family, port, address);
 						sendto(g2_sock, dsvt.title, 27, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
 						time(&(to_remote_g2[i].last_time));
@@ -1891,19 +1879,6 @@ void CQnetGateway::Process()
 			SDSVT dsvt;
 			socklen_t fromlen = sizeof(struct sockaddr_storage);
 			ssize_t g2buflen = recvfrom(g2_sock, dsvt.title, 56, 0, fromDstar.GetPointer(), &fromlen);
-
-			// save incoming port for mobile systems
-			const char *paddr = fromDstar.GetAddress();
-			uint16_t port = ntohs(fromDstar.GetPort());
-			if (portmap.end() == portmap.find(paddr)) {
-				printf("New g2 contact at %s on port %u\n", paddr, port);
-				portmap[paddr] = port;
-			} else {
-				if (port != portmap[paddr]) {
-					printf("New g2 port from %s is now %u, it was %u\n", paddr, port, portmap[paddr]);
-					portmap[paddr] = port;
-				}
-			}
 			ProcessG2(g2buflen, dsvt, true);
 			FD_CLR(g2_sock, &fdset);
 		}

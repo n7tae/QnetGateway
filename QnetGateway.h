@@ -107,7 +107,6 @@ private:
 
 	unsigned int vPacketCount;
 
-	std::map<std::string, uint16_t> portmap;
 	std::set<std::string> findRoute;
 
 	// data needed for aprs login and aprs beacon
