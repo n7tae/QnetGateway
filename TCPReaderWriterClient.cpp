@@ -57,7 +57,7 @@ bool CTCPReaderWriterClient::Open()
 	}
 
 	if (0 == m_address.size() || 0 == m_port.size() || 0 == std::stoul(m_port)) {
-		fprintf(stderr, "ERROR: '%s:%s' is malformed!\n", m_address.c_str(), m_port.c_str());
+		fprintf(stderr, "ERROR: '[%s]:%s' is malformed!\n", m_address.c_str(), m_port.c_str());
 		return true;
 	}
 
@@ -106,7 +106,7 @@ bool CTCPReaderWriterClient::Open()
 				addr = &(addr6->sin6_addr);
 			}
 			if (inet_ntop(rp->ai_family, addr, buf, INET6_ADDRSTRLEN))
-				fprintf(stderr, "Successfully connected to %s at %s on port %s\n", m_address.c_str(), buf, m_port.c_str());
+				fprintf(stderr, "Successfully connected to %s at [%s]:%s\n", m_address.c_str(), buf, m_port.c_str());
 			break;
 		}
 	}
