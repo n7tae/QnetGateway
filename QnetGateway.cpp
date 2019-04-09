@@ -1050,7 +1050,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const b
 					if (LOG_QSO) {
 						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
 						if (is_from_g2)
-							printf("IP=%s-%u\n", fromDstar.GetAddress(), ntohs(fromDstar.GetPort()));
+							printf("IP=%s-%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
 						else
 							printf("UnixSock=%s\n", link2gate.c_str());
 					}
