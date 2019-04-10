@@ -472,48 +472,8 @@ bool IRCDDBApp::findGateway(const std::string &gwCall)
 	return true;
 }
 
-static void findReflector(const std::string &rptrCall, IRCDDBAppPrivate *d)
-{
-	std::string zonerp_cs;
-	std::string ipAddr;
-
-#define MAXIPV4ADDR 5
-	struct sockaddr_in addr[MAXIPV4ADDR];
-	unsigned int numAddr = 0;
-
-	char host_name[80];
-
-	std::string host = rptrCall.substr(0,6) + ".reflector.ircddb.net";
-
-	safeStringCopy(host_name, host.c_str(), sizeof host_name);
-
-	if (getAllIPV4Addresses(host_name, 0, &numAddr, addr, MAXIPV4ADDR) == 0) {
-		if (numAddr > 0) {
-			unsigned char *a = (unsigned char *) &addr[0].sin_addr;
-			char buf[16];
-			snprintf(buf, 16, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
-			ipAddr = buf;
-			zonerp_cs = rptrCall;
-			zonerp_cs[7] = 'G';
-		}
-	}
-
-
-	IRCMessage *m2 = new IRCMessage("IDRT_REPEATER");
-	m2->addParam(rptrCall);
-	m2->addParam(zonerp_cs);
-	m2->addParam(ipAddr);
-	d->replyQ.putMessage(m2);
-}
-
 bool IRCDDBApp::findRepeater(const std::string &rptrCall)
 {
-
-	if (0==rptrCall.compare(0, 3, "XRF") || 0==rptrCall.compare(0, 3, "REF")) {
-		findReflector(rptrCall, d);
-		return true;
-	}
-
 	std::string arearp_cs = rptrCall;
 	ReplaceChar(arearp_cs, ' ', '_');
 
