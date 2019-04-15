@@ -36,8 +36,8 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <regex.h>
 
+#include <regex>
 #include <future>
 #include <exception>
 #include <string>
@@ -1296,22 +1296,14 @@ void CQnetGateway::ProcessModem()
 				memcpy(temp_radio_user, dsvt.hdr.mycall, 8);
 				temp_radio_user[8] = '\0';
 
-				int mycall_valid = regexec(&preg, temp_radio_user, 0, NULL, 0);
+				bool mycall_valid = std::regex_match(temp_radio_user, preg);
 
-				if (mycall_valid == REG_NOERROR)
-					; // printf("MYCALL [%s] passed IRC expression validation\n", temp_radio_user);
-				else {
-					if (mycall_valid == REG_NOMATCH)
-						printf("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
-					else
-						printf("Failed to validate MYCALL [%s], regexec error=%d\n", temp_radio_user, mycall_valid);
-				}
-
-				/* send data qnlink */
-				if (mycall_valid == REG_NOERROR)
+				if (mycall_valid)
 					Gate2Link.Write(dsvt.title, recvlen);
+				else
+					printf("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
 
-				if ( mycall_valid==REG_NOERROR &&
+				if ( mycall_valid &&
 						memcmp(dsvt.hdr.urcall, "XRF", 3) &&	// not a reflector
 						memcmp(dsvt.hdr.urcall, "REF", 3) &&
 						memcmp(dsvt.hdr.urcall, "DCS", 3) &&
@@ -2272,9 +2264,10 @@ bool CQnetGateway::Init(char *cfgfile)
 
 
 	/* Used to validate MYCALL input */
-	int rc = regcomp(&preg, "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", REG_EXTENDED | REG_NOSUB);
-	if (rc != REG_NOERROR) {
-		printf("The IRC regular expression is NOT valid\n");
+	try {
+		preg = std::regex("^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
+	} catch (std::regex_error &e) {
+		printf("Regular expression error: %s\n", e.what());
 		return true;
 	}
 
@@ -2371,7 +2364,7 @@ bool CQnetGateway::Init(char *cfgfile)
 		return true;
 	}
 
-	rc = ii->getConnectionState();
+	int rc = ii->getConnectionState();
 	printf("Waiting for irc connection status of 2\n");
 	i = 0;
 	while (rc < 2) {

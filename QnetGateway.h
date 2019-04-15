@@ -143,7 +143,7 @@ private:
 	SBANDTXT band_txt[3]; // 0=A, 1=B, 2=C
 
 	/* Used to validate MYCALL input */
-	regex_t preg;
+	std::regex preg;
 
 	// CACHE used to cache users, repeaters,
 	// gateways, IP numbers coming from the irc server
