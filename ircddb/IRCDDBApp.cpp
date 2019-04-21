@@ -253,6 +253,8 @@ IRCDDB_RESPONSE_TYPE IRCDDBApp::getReplyMessageType()
 		return IDRT_REPEATER;
 	} else if (msgType == std::string("IDRT_GATEWAY")) {
 		return IDRT_GATEWAY;
+	} else if (msgType == std::string("IDRT_PING")) {
+		return IDRT_PING;
 	}
 
 	printf("IRCDDBApp::getMessageType: unknown msg type: %s\n", msgType.c_str());
