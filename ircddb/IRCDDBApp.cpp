@@ -447,6 +447,7 @@ void IRCDDBApp::sendPing(const std::string &to, const std::string &from)
 		std::string ircUser = t + std::string("-") + std::to_string(j);
 
 		if (1 == d->user.count(ircUser)) {
+			printf("IRCDDBApp::sendPing: sending ping to %s\n", ircUser.c_str());
 			IRCMessage *rm = new IRCMessage(t, "IDRT_PING");
 			rm->addParam(from);
 			d->sendQ->putMessage(rm);

@@ -1359,6 +1359,9 @@ void CQnetGateway::ProcessModem()
 
 									bool result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
 									if (result) { /* it is a repeater */
+										std::string from = OWNER.substr(0, 7);
+										from.append(1, i+'A');
+										ii->sendPing(temp_radio_user, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
 										to_remote_g2[i].toDstar.Initialize(af_family, (uint16_t)g2_external.port, ip.c_str());
 
@@ -1416,6 +1419,9 @@ void CQnetGateway::ProcessModem()
 									/* one radio user on a repeater module at a time */
 									if (to_remote_g2[i].toDstar.AddressIsZero()) {
 										/* set the destination */
+										std::string from = OWNER.substr(0, 7);
+										from.append(1, i+'A');
+										ii->sendPing(temp_radio_user, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
 										to_remote_g2[i].toDstar.Initialize(af_family, (uint16_t)g2_external.port, ip.c_str());
 
