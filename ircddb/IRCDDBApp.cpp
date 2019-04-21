@@ -450,7 +450,7 @@ void IRCDDBApp::sendPing(const std::string &to, const std::string &from)
 			std::string f(from);
 			ReplaceChar(f, ' ', '_');
 			IRCMessage *rm = new IRCMessage(ircUser, "IDRT_PING");
-			rm->addParam(from);
+			rm->addParam(f);
 			std::string out;
 			rm->composeMessage(out);
 			out.pop_back();
