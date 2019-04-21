@@ -180,7 +180,7 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 				std::string out;
 				m->composeMessage(out);
 				out.pop_back(); out.pop_back();
-				printf("%s\n", out.c_str());
+				printf("# of params=%d: msg:%s\n", m->numParams, out.c_str());
 				if (2 == m->numParams) {
 					if (0 == m->params[0].compare(channel)) {
 						app->msgChannel(m);
