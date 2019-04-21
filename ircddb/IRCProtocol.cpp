@@ -176,6 +176,11 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 				}
 			}
 		} else if (0 == m->command.compare("PRIVMSG")) {
+			std::string out;
+			m->composeMessage(out);
+			out.pop_back();
+			out.pop_back();
+			printf("%s\n", out.c_str());
 			if (app) {
 				if (2 == m->numParams) {
 					if (0 == m->params[0].compare(channel)) {
