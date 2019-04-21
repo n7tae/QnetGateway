@@ -452,7 +452,8 @@ void CQnetGateway::GetIRCDataThread()
 		}
 
 		while (((type = ii->getMessageType()) != IDRT_NONE) && keep_running) {
-			if (type == IDRT_USER) {
+			switch (type) {
+			case IDRT_USER:
 				ii->receiveUser(user, rptr, gateway, ipaddr);
 				if (!user.empty()) {
 					if (!rptr.empty() && !gateway.empty() && !ipaddr.empty()) {
@@ -471,7 +472,8 @@ void CQnetGateway::GetIRCDataThread()
 
 					}
 				}
-			} else if (type == IDRT_REPEATER) {
+				break;
+			case IDRT_REPEATER:
 				ii->receiveRepeater(rptr, gateway, ipaddr, proto);
 				if (!rptr.empty()) {
 					if (!gateway.empty() && !ipaddr.empty()) {
@@ -489,7 +491,8 @@ void CQnetGateway::GetIRCDataThread()
 
 					}
 				}
-			} else if (type == IDRT_GATEWAY) {
+				break;
+			case IDRT_GATEWAY:
 				ii->receiveGateway(gateway, ipaddr, proto);
 				if (!gateway.empty() && !ipaddr.empty()) {
 					if (LOG_IRC)
@@ -504,8 +507,28 @@ void CQnetGateway::GetIRCDataThread()
 					// printf("%d gateways\n", gwy2ip_map.size());
 
 				}
-			}
-		}
+				break;
+			case IDRT_PING:
+				ii->receivePing(rptr);
+				if (! rptr.empty()) {
+					pthread_mutex_lock(&irc_data_mutex);
+					auto git = rptr2gwy_map.find(rptr);
+					if (rptr2gwy_map.end() == git)
+						break;
+					gateway = git->second;
+					auto ait = gwy2ip_map.find(gateway);
+					if (gwy2ip_map.end() != ait)
+						break;
+					ipaddr = ait->second;
+					pthread_mutex_unlock(&irc_data_mutex);
+					CSockAddress to(af_family, (unsigned short)g2_external.port, ipaddr.c_str());
+					sendto(g2_sock, "PONG", 4, 0, to.GetPointer(), to.GetSize());
+				}
+				break;
+			default:
+				break;
+			}	// switch (type)
+		}	// while (keep_running)
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 	printf("GetIRCDataThread exiting...\n");
@@ -572,7 +595,7 @@ bool CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &arearp_
 	int rc = get_yrcall_rptr_from_cache(call, arearp_cs, zonerp_cs, mod, ip, RoU);
 	pthread_mutex_unlock(&irc_data_mutex);
 	if (rc == 0) {
-		//printf("get_yrcall_rptr_from_cache: call='%s' arearp_cs='%s' zonerp_cs='%s', mod=%c ip='%s' RoU=%c\n", call.c_str(), arearp_cs.c_str(), zonerp_cs.c_str(), *mod, ip.c_str(), RoU);
+		printf("get_yrcall_rptr_from_cache: call='%s' arearp_cs='%s' zonerp_cs='%s', mod=%c ip='%s' RoU=%c\n", call.c_str(), arearp_cs.c_str(), zonerp_cs.c_str(), *mod, ip.c_str(), RoU);
 		return true;
 	} else if (rc == 2)
 		return false;
@@ -1872,7 +1895,10 @@ void CQnetGateway::Process()
 			SDSVT dsvt;
 			socklen_t fromlen = sizeof(struct sockaddr_storage);
 			ssize_t g2buflen = recvfrom(g2_sock, dsvt.title, 56, 0, fromDstar.GetPointer(), &fromlen);
-			ProcessG2(g2buflen, dsvt, true);
+			if (4==g2buflen && 0==memcmp(dsvt.title, "PONG", 4))
+				printf("Got a pong from [%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
+			else
+				ProcessG2(g2buflen, dsvt, true);
 			FD_CLR(g2_sock, &fdset);
 		}
 

@@ -176,11 +176,19 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 				}
 			}
 		} else if (0 == m->command.compare("PRIVMSG")) {
-			if ((m->numParams == 2) && (app != NULL)) {
-				if (0 == m->params[0].compare(channel)) {
-					app->msgChannel(m);
-				} else if (0 == m->params[0].compare(currentNick)) {
-					app->msgQuery(m);
+			if (app) {
+				if (2 == m->numParams) {
+					if (0 == m->params[0].compare(channel)) {
+						app->msgChannel(m);
+					} else if (0 == m->params[0].compare(currentNick)) {
+						app->msgQuery(m);
+					}
+				} else if (3 == m->numParams) {
+					// pass this on to the replyQ so the gateway can PONG the sender
+					if (0==m->params[0].compare(currentNick) && 0==m->params[1].compare("IDRT_PING")) {
+						IRCMessage *rm = new IRCMessage(m->params[1], m->params[2]);
+						app->putReplyMessage(rm);
+					}
 				}
 			}
 		} else if (0 == m->command.compare("352")) { // WHO list
@@ -343,5 +351,3 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 
 	return true;
 }
-
-

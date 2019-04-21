@@ -150,8 +150,6 @@ bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &m
 	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3, dest, msg, "");
 }
 
-
-
 bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
                         unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors)
 {
@@ -218,8 +216,6 @@ bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string 
 	return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3, "        ", "", stats);
 }
 
-
-
 // Send query for a gateway/reflector, a false return implies a network error
 bool CIRCDDB::findGateway(const std::string &gatewayCallsign)
 {
@@ -231,7 +227,6 @@ bool CIRCDDB::findGateway(const std::string &gatewayCallsign)
 	ToUpper(gcs);
 	return d->app->findGateway(gcs);
 }
-
 
 bool CIRCDDB::findRepeater(const std::string &repeaterCallsign)
 {
@@ -275,7 +270,7 @@ bool CIRCDDB::receiveRepeater(std::string &repeaterCallsign, std::string &gatewa
 		return false;
 	}
 
-	IRCMessage * m = d->app->getReplyMessage();
+	IRCMessage *m = d->app->getReplyMessage();
 
 	if (m == NULL) {
 		printf("CIRCDDB::receiveRepeater: no message\n");
@@ -312,7 +307,7 @@ bool CIRCDDB::receiveGateway(std::string &gatewayCallsign, std::string &address,
 		return false;
 	}
 
-	IRCMessage * m = d->app->getReplyMessage();
+	IRCMessage *m = d->app->getReplyMessage();
 
 	if (m == NULL) {
 		printf("CIRCDDB::receiveGateway: no message\n");
@@ -354,7 +349,7 @@ bool CIRCDDB::receiveUser(std::string &userCallsign, std::string &repeaterCallsi
 		return false;
 	}
 
-	IRCMessage * m = d->app->getReplyMessage();
+	IRCMessage *m = d->app->getReplyMessage();
 
 	if (m == NULL) {
 		printf("CIRCDDB::receiveUser: no message\n");
@@ -380,6 +375,44 @@ bool CIRCDDB::receiveUser(std::string &userCallsign, std::string &repeaterCallsi
 	delete m;
 
 	return true;
+}
+
+bool CIRCDDB::receivePing(std::string &repeaterCallsign)
+{
+	IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
+
+	if (rt != IDRT_PING) {
+		printf("CIRCDDB::receivePing: unexpected response type\n");
+		return false;
+	}
+
+	IRCMessage *m = d->app->getReplyMessage();
+
+	if (NULL == m) {
+		printf("CIRCDDB::receivePing: no message\n");
+		return false;
+	}
+
+	if (m->getCommand().compare("IDRT_PING")) {
+		printf("CIRCDDB::receivePing: wrong messsage type\n");
+		return false;
+	}
+
+	if (1 != m->getParamCount()) {
+		printf("CIRCDDB::receivePing: unexpected number of message parameters\n");
+		return false;
+	}
+
+	repeaterCallsign = m->getParam(0);
+
+	delete m;
+
+	return true;
+}
+
+void CIRCDDB::sendPing(const std::string &to, const std::string &from)
+{
+	d->app->sendPing(to, from);
 }
 
 void CIRCDDB::close()		// Implictely kills any threads in the IRC code

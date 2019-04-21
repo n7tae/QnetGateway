@@ -265,6 +265,11 @@ IRCMessage *IRCDDBApp::getReplyMessage()
 	return d->replyQ.getMessage();
 }
 
+void IRCDDBApp::putReplyMessage(IRCMessage *m)
+{
+	d->replyQ.putMessage(m);
+}
+
 bool IRCDDBApp::startWork()
 {
 	d->terminateThread = false;
@@ -426,6 +431,30 @@ void IRCDDBApp::userChanOp(const std::string &nick, bool op)
 		d->user[lnick].op = op;
 	}
 	d->userMapMutex.unlock();
+}
+
+void IRCDDBApp::sendPing(const std::string &to, const std::string &from)
+{
+	std::string t = to.substr(0, 7);
+
+	ReplaceChar(t, '_', ' ');
+	while (isspace(t[t.length()-1]))
+		t.pop_back();
+	ToLower(t);
+
+	d->userMapMutex.lock();
+	for (int j=1; j <= 4; j++) {
+		std::string ircUser = t + std::string("-") + std::to_string(j);
+
+		if (1 == d->user.count(ircUser)) {
+			IRCMessage *rm = new IRCMessage(t, "IDRT_PING");
+			rm->addParam(from);
+			d->sendQ->putMessage(rm);
+			break;
+		}
+	}
+	d->userMapMutex.unlock();
+
 }
 
 static const int numberOfTables = 2;

@@ -23,6 +23,9 @@ public:
 	virtual void setSendQ(IRCMessageQueue *s) = 0;
 	virtual IRCMessageQueue *getSendQ(void) = 0;
 
+	virtual void putReplyMessage(IRCMessage *m) = 0;
+	virtual void sendPing(const std::string &to, const std::string &from) = 0;
+
 	virtual ~IRCApplication() {}
 
 };
