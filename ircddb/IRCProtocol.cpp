@@ -185,19 +185,14 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 					if (0 == m->params[0].compare(channel)) {
 						app->msgChannel(m);
 					} else if (0 == m->params[0].compare(currentNick)) {
-						app->msgQuery(m);
-					}
-				} else if (3 == m->numParams) {
-					printf("currentNick=%s 0=%s 1=%s 2=%s\n", currentNick.c_str(), m->params[0].c_str(), m->params[1].c_str(), m->params[2].c_str());
-					// pass this on to the replyQ so the gateway can PONG the sender
-					if (0==m->params[0].compare(currentNick) && 0==m->params[1].compare("IDRT_PING")) {
-						IRCMessage *rm = new IRCMessage(m->params[1], m->params[2]);
-						std::string out;
-						rm->composeMessage(out);
-						out.pop_back();
-						out.pop_back();
-						printf("IRCProtocol::processQueues reply msg sent: %s\n", out.c_str());
-						app->putReplyMessage(rm);
+						printf("currentNick='%s' 1='%s'\n", currentNick.c_str(), m->params[1].c_str());
+						if (0 == m->params[1].find("IDRT_PING")) {
+							std::string from = m->params[1].substr(10);
+							IRCMessage *rm = new IRCMessage("IDRT_PING");
+							rm->addParam(from);
+							app->putReplyMessage(rm);
+						} else
+							app->msgQuery(m);
 					}
 				}
 			}
