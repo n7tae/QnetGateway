@@ -192,6 +192,11 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 					// pass this on to the replyQ so the gateway can PONG the sender
 					if (0==m->params[0].compare(currentNick) && 0==m->params[1].compare("IDRT_PING")) {
 						IRCMessage *rm = new IRCMessage(m->params[1], m->params[2]);
+						std::string out;
+						rm->composeMessage(out);
+						out.pop_back();
+						out.pop_back();
+						printf("IRCProtocol::processQueues reply msg sent: %s\n", out.c_str());
 						app->putReplyMessage(rm);
 					}
 				}
