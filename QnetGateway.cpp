@@ -515,18 +515,21 @@ void CQnetGateway::GetIRCDataThread()
 				if (! rptr.empty()) {
 					pthread_mutex_lock(&irc_data_mutex);
 					auto git = rptr2gwy_map.find(rptr);
-					if (rptr2gwy_map.end() == git)
-						break;
-					gateway = git->second;
-					printf("IDRT_PING gway=%s\n", gateway.c_str());
-					auto ait = gwy2ip_map.find(gateway);
-					if (gwy2ip_map.end() != ait)
-						break;
-					ipaddr = ait->second;
-					printf("IDRT_PING ip=%s\n", ipaddr.c_str());
+					if (rptr2gwy_map.end() != git) {
+						gateway = git->second;
+						auto ait = gwy2ip_map.find(gateway);
+						if (gwy2ip_map.end() != ait) {
+							ipaddr = ait->second;
+							CSockAddress to(af_family, (unsigned short)g2_external.port, ipaddr.c_str());
+							sendto(g2_sock, "PONG", 4, 0, to.GetPointer(), to.GetSize());
+							printf("Sent 'PONG' to %s\n", ipaddr.c_str());
+						} else {
+							printf("Can't find gateway %s in gwy2ip_map\n", gateway.c_str());
+						}
+					} else {
+						printf("Can't find repeater %s in rptr2gwy_map\n", rptr.c_str());
+					}
 					pthread_mutex_unlock(&irc_data_mutex);
-					CSockAddress to(af_family, (unsigned short)g2_external.port, ipaddr.c_str());
-					sendto(g2_sock, "PONG", 4, 0, to.GetPointer(), to.GetSize());
 				}
 				break;
 			default:

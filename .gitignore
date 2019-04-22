@@ -1,6 +1,7 @@
 *.o
 *.d
 *.gch
+.vscode
 qn.cfg
 qndtmf
 gwys.txt
