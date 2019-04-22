@@ -184,7 +184,6 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 					if (0 == m->params[0].compare(channel)) {
 						app->msgChannel(m);
 					} else if (0 == m->params[0].compare(currentNick)) {
-						printf("currentNick='%s' 1='%s'\n", currentNick.c_str(), m->params[1].c_str());
 						if (0 == m->params[1].find("IDRT_PING")) {
 							std::string from = m->params[1].substr(10);
 							IRCMessage *rm = new IRCMessage("IDRT_PING");
