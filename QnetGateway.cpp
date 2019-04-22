@@ -517,7 +517,7 @@ void CQnetGateway::GetIRCDataThread()
 					if (rptr2gwy_map.end() == git)
 						break;
 					gateway = git->second;
-					printf("IDRT_PING gway=%s\n", gateway.c_str()):
+					printf("IDRT_PING gway=%s\n", gateway.c_str());
 					auto ait = gwy2ip_map.find(gateway);
 					if (gwy2ip_map.end() != ait)
 						break;
