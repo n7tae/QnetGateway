@@ -510,6 +510,7 @@ void CQnetGateway::GetIRCDataThread()
 				break;
 			case IDRT_PING:
 				ii->receivePing(rptr);
+				ReplaceChar(prtr, '_', ' ');
 				printf("IDRT_PING rptr=%s\n", rptr.c_str());
 				if (! rptr.empty()) {
 					pthread_mutex_lock(&irc_data_mutex);
