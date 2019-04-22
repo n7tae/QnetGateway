@@ -2475,8 +2475,6 @@ bool CQnetGateway::Init(char *cfgfile)
 			printf("Loaded voicemail file: %s for mod %d\n", vm[i].file, i);
 
 		// the repeater modules run on these ports
-		memset(&toRptr[i],0,sizeof(toRptr[i]));
-
 		memset(toRptr[i].saved_hdr.title, 0, 56);
 		toRptr[i].saved_addr.Initialize(af_family);
 

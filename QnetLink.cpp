@@ -1988,7 +1988,7 @@ void CQnetLink::Process()
 					// printf("Remote station %s %s requested version\n", inbound_ptr->call, ip);
 
 					buf[0] = 9;
-					strncpy((char *)buf + 4, LINK_VERSION, 4);
+					memcpy((char *)buf + 4, "1.00", 4);
 					buf[8] = 0;
 
 					sendto(ref_g2_sock, buf, 9, 0, (struct sockaddr *)&fromDst4, sizeof(struct sockaddr_in));

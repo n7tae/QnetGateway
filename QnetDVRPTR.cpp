@@ -1872,7 +1872,7 @@ char *cleanstr (char *Text)
 	for (unsigned int x=0; x < strlen(Text); x++) {
 		if ((Text[x] > 0x1F) && (Text[x] < 0x7F)) {
 			if (Text[x] == '\'') {
-				strncat(cbuf, "\\", 1);
+				strcat(cbuf, "\\");
 			}
 			strncat(cbuf, &Text[x], 1);
 		}
