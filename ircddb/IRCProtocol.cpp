@@ -180,7 +180,6 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 				std::string out;
 				m->composeMessage(out);
 				out.pop_back(); out.pop_back();
-				printf("# of params=%d: msg:%s\n", m->numParams, out.c_str());
 				if (2 == m->numParams) {
 					if (0 == m->params[0].compare(channel)) {
 						app->msgChannel(m);
@@ -188,7 +187,6 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 						printf("currentNick='%s' 1='%s'\n", currentNick.c_str(), m->params[1].c_str());
 						if (0 == m->params[1].find("IDRT_PING")) {
 							std::string from = m->params[1].substr(10);
-							printf("to replyQ: IDRT_PING %s\n", from.c_str());
 							IRCMessage *rm = new IRCMessage("IDRT_PING");
 							rm->addParam(from);
 							app->putReplyMessage(rm);

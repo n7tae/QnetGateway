@@ -511,7 +511,6 @@ void CQnetGateway::GetIRCDataThread()
 			case IDRT_PING:
 				ii->receivePing(rptr);
 				ReplaceChar(rptr, '_', ' ');
-				printf("IDRT_PING rptr=%s\n", rptr.c_str());
 				if (! rptr.empty()) {
 					pthread_mutex_lock(&irc_data_mutex);
 					auto git = rptr2gwy_map.find(rptr);
@@ -522,12 +521,13 @@ void CQnetGateway::GetIRCDataThread()
 							ipaddr = ait->second;
 							CSockAddress to(af_family, (unsigned short)g2_external.port, ipaddr.c_str());
 							sendto(g2_sock, "PONG", 4, 0, to.GetPointer(), to.GetSize());
-							printf("Sent 'PONG' to %s\n", ipaddr.c_str());
+							if (LOG_QSO)
+								printf("Sent 'PONG' to %s\n", ipaddr.c_str());
 						} else {
-							printf("Can't find gateway %s in gwy2ip_map\n", gateway.c_str());
+							printf("Can't respond to PING, gateway %s not in gwy2ip_map\n", gateway.c_str());
 						}
 					} else {
-						printf("Can't find repeater %s in rptr2gwy_map\n", rptr.c_str());
+						printf("Can't respond to PING, repeater %s not in rptr2gwy_map\n", rptr.c_str());
 					}
 					pthread_mutex_unlock(&irc_data_mutex);
 				}
@@ -1908,7 +1908,7 @@ void CQnetGateway::Process()
 			SDSVT dsvt;
 			socklen_t fromlen = sizeof(struct sockaddr_storage);
 			ssize_t g2buflen = recvfrom(g2_sock, dsvt.title, 56, 0, fromDstar.GetPointer(), &fromlen);
-			if (4==g2buflen && 0==memcmp(dsvt.title, "PONG", 4))
+			if (LOG_QSO && 4==g2buflen && 0==memcmp(dsvt.title, "PONG", 4))
 				printf("Got a pong from [%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
 			else
 				ProcessG2(g2buflen, dsvt, true);
