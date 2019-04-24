@@ -352,11 +352,11 @@ int CQnetGateway::open_port(const SPORTIP &pip, int family)
 	}
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 
-	// int reuse = 1;
-	// if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-	// 	printf("Cannot set the UDP socket (port %u) option, err: %d, %s\n", pip.port, errno, strerror(errno));
-	// 	return -1;
-	// }
+	int reuse = 1;
+	if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
+		printf("Cannot set the UDP socket (port %u) option, err: %d, %s\n", pip.port, errno, strerror(errno));
+		return -1;
+	}
 
 	if (bind(sock, sin.GetPointer(), sizeof(struct sockaddr_storage)) != 0) {
 		printf("Failed to bind %s:%d, errno=%d, %s\n", pip.ip.c_str(), pip.port, errno, strerror(errno));
