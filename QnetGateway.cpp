@@ -207,8 +207,8 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 		return true;
 
 	// ircddb
-	std::string path("ircddb_");
-	if (cfg.GetValue(path+"login", estr, owner, 3, CALL_SIZE-2))
+	std::string path("ircddb_login");
+	if (cfg.GetValue(path, estr, owner, 3, CALL_SIZE-2))
 		return true;
 	OWNER = owner;
 	ToLower(owner);
@@ -216,6 +216,7 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	printf("OWNER='%s'\n", OWNER.c_str());
 	OWNER.resize(CALL_SIZE, ' ');
 
+	path.assign("ircddb");
 	for (int i=0; i<2; i++) {
 		std::string p(path + std::to_string(i) + "_");
 		if (cfg.KeyExists(p+"host")) {
