@@ -218,10 +218,10 @@ IrcddbMenu () {
 			echo -n "oa : IRC TCP port A                  = "; EvaluateVar ircddb0_port{,_d}
 			echo -n "aa : IRC Password A                  = "; EvaluateVar ircddb0_password{,_d}
 		fi
-		echo -n "hb : Hostname for IRC Server B        = "; EvaluateVar ircddb0_host{,_d}
+		echo -n "hb : Hostname for IRC Server B        = "; EvaluateVar ircddb1_host{,_d}
 		if [ -n "$em" ]; then
-			echo -n "ob : IRC TCP port B                  = "; EvaluateVar ircddb0_port{,_d}
-			echo -n "ab : IRC Password B                  = "; EvaluateVar ircddb0_password{,_d}
+			echo -n "ob : IRC TCP port B                  = "; EvaluateVar ircddb1_port{,_d}
+			echo -n "ab : IRC Password B                  = "; EvaluateVar ircddb1_password{,_d}
 		fi
 		EndMenu
 
