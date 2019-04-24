@@ -33,10 +33,13 @@
 #
 # IRCDDB - You MUST use a legal callsign for logging into any IRC network
 #
-#ircddb_login_d=''                # login callsign for the ircDDB network
-ircddb_host_d='rr.openquad.net'   # other irc networks include group1-irc.ircddb.net
-ircddb_port_d=9007                # not a good idea to change!
-ircddb_password_d='1111111111111' # not needed for rr.openquad.net
+#ircddb_login_d=''               # login callsign for the ircDDB network
+ircddb0_host_d='rr.openquad.net' # other irc networks include group1-irc.ircddb.net
+ircddb0_port_d=9007              # not a good idea to change!
+ircddb0_password_d=''            # not needed for rr.openquad.net
+ircddb1_host_d=''                # second irc network
+ircddb1_port_d=9007              # not a good idea to change!
+ircddb1_password_d=''            # not needed for rr.openquad.net
 
 ##########################################################################################################################
 #

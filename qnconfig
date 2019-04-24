@@ -210,22 +210,35 @@ IrcddbMenu () {
 		echo
 		echo "               IRCDDB Menu"
 		echo
+		echo "Routes to other clients using IRC Server A will be searched first"
+		echo
 		echo    "l  : Login - must be a legal callsign = '${ircddb_login}'"
-		echo -n "h  : Hostname for IRC Server          = "; EvaluateVar ircddb_host{,_d}
+		echo -n "ha : Hostname for IRC Server A        = "; EvaluateVar ircddb0_host{,_d}
 		if [ -n "$em" ]; then
-			echo -n "po : IRC TCP port                     = "; EvaluateVar ircddb_port{,_d}
-			echo -n "pa : IRC Password                     = "; EvaluateVar ircddb_password{,_d}
+			echo -n "oa : IRC TCP port A                  = "; EvaluateVar ircddb0_port{,_d}
+			echo -n "aa : IRC Password A                  = "; EvaluateVar ircddb0_password{,_d}
+		fi
+		echo -n "hb : Hostname for IRC Server B        = "; EvaluateVar ircddb0_host{,_d}
+		if [ -n "$em" ]; then
+			echo -n "ob : IRC TCP port B                  = "; EvaluateVar ircddb0_port{,_d}
+			echo -n "ab : IRC Password B                  = "; EvaluateVar ircddb0_password{,_d}
 		fi
 		EndMenu
 
 		if   [[ "$key" == l*  ]]; then ircddb_login="${value^^}"
-		elif [[ "$key" == h*  ]]; then ircddb_host="$value"
-		elif [[ "$key" == po* ]]; then ircddb_port="$value"
-		elif [[ "$key" == pa* ]]; then ircddb_password="$value"
+		elif [[ "$key" == ha* ]]; then ircddb0_host="$value"
+		elif [[ "$key" == oa* ]]; then ircddb0_port="$value"
+		elif [[ "$key" == aa* ]]; then ircddb0_password="$value"
+		elif [[ "$key" == hb* ]]; then ircddb1_host="$value"
+		elif [[ "$key" == ob* ]]; then ircddb1_port="$value"
+		elif [[ "$key" == ab* ]]; then ircddb1_password="$value"
 		elif [[ "$key" == u*  ]]; then
-			if   [[ "$value" == h*  ]]; then unset ircddb_host
-			elif [[ "$value" == po* ]]; then unset ircddb_port
-			elif [[ "$value" == pa* ]]; then unset ircddb_password
+			if   [[ "$value" == ha* ]]; then unset ircddb0_host
+			elif [[ "$value" == oa* ]]; then unset ircddb0_port
+			elif [[ "$value" == aa* ]]; then unset ircddb0_password
+			elif [[ "$value" == hb* ]]; then unset ircddb1_host
+			elif [[ "$value" == ob* ]]; then unset ircddb1_port
+			elif [[ "$value" == ab* ]]; then unset ircddb1_password
 			fi
 		fi
 	done
@@ -499,11 +512,14 @@ WriteCFGFile () {
 	fi
 	outFile='./qn.cfg'
 	echo "# Created on `date`" > $outFile
-	# gateway_ section
-	echo "ircddb_login='$ircddb_login'"                                          >> $outFile
-	[ -z "${ircddb_host+x}"     ] || echo "ircddb_host='${ircddb_host}'"         >> $outFile
-	[ -z "${ircddb_port+x}"     ] || echo "ircddb_host=${ircddb_port}"           >> $outFile
-	[ -z "${ircddb_password+x}" ] || echo "ircddb_password='${ircddb_password}'" >> $outFile
+	# ircddb_ section
+	echo "ircddb_login='$ircddb_login'"                                             >> $outFile
+	[ -z "${ircddb0_host+x}"     ] || echo "ircddb0_host='${ircddb0_host}'"         >> $outFile
+	[ -z "${ircddb0_port+x}"     ] || echo "ircddb0_host=${ircddb0_port}"           >> $outFile
+	[ -z "${ircddb0_password+x}" ] || echo "ircddb0_password='${ircddb0_password}'" >> $outFile
+	[ -z "${ircddb1_host+x}"     ] || echo "ircddb1_host='${ircddb1_host}'"         >> $outFile
+	[ -z "${ircddb1_port+x}"     ] || echo "ircddb1_host=${ircddb1_port}"           >> $outFile
+	[ -z "${ircddb1_password+x}" ] || echo "ircddb1_password='${ircddb1_password}'" >> $outFile
 
 	# module_?_ section
 	for m in a b c
@@ -653,7 +669,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "               Main Menu"
+	echo "           QnConfig Main Menu V#190424"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi

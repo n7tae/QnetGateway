@@ -63,6 +63,8 @@ public:
 				inet_pton(AF_INET6, "::", &(addr6->sin6_addr));
 			else
 				inet_pton(AF_INET6, address, &(addr6->sin6_addr));
+		} else if (AF_UNSPEC == family) {
+			memset(&addr, 0, sizeof(struct sockaddr_storage));
 		}
 	}
 

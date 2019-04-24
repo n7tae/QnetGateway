@@ -83,7 +83,7 @@ public:
 
 private:
 	// network type
-	int af_family;
+	int af_family[2] = { AF_UNSPEC, AF_UNSPEC };
 	// text stuff
 	bool new_group[3] = { true, true, true };
 	unsigned char header_type = 0;
@@ -91,14 +91,14 @@ private:
 	bool ABC_grp[3] = { false, false, false };
 	bool C_seen[3] = { false, false, false };
 
-	SPORTIP g2_external, ircddb;
+	SPORTIP g2_external, ircddb[2];
 
 	CUnixDgramReader Link2Gate, Modem2Gate;
 	CUnixDgramWriter Gate2Link, Gate2Modem[3];
 
 	std::string gate2link, link2gate, gate2modem[3], modem2gate;
 
-	std::string OWNER, owner, FILE_STATUS, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD, FILE_QNVOICE_FILE;
+	std::string OWNER, owner, FILE_STATUS, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE;
 
 	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache;
 	bool LOG_DEBUG, LOG_IRC, LOG_DTMF, LOG_QSO;
@@ -122,7 +122,7 @@ private:
 	STOREMOTEG2 to_remote_g2[3]; // 0=A, 1=B, 2=C
 
 	// input from remote G2 gateway
-	int g2_sock = -1;
+	int g2_sock[2] = { -1, -1 };
 	CSockAddress fromDstar;
 
 	// Incoming data from remote systems
@@ -135,7 +135,7 @@ private:
 	struct sockaddr_in plug;
 
 	// for talking with the irc server
-	CIRCDDB *ii;
+	CIRCDDB *ii[2];
 	// for handling APRS stuff
 	CAPRS *aprs;
 
@@ -148,9 +148,9 @@ private:
 	// CACHE used to cache users, repeaters,
 	// gateways, IP numbers coming from the irc server
 
-	std::map<std::string, std::string> user2rptr_map, rptr2gwy_map, gwy2ip_map;
+	std::map<std::string, std::string> user2rptr_map[2], rptr2gwy_map[2], gwy2ip_map[2];
 
-	pthread_mutex_t irc_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t irc_data_mutex[2] = PTHREAD_MUTEX_INITIALIZER;
 
 	// dtmf stuff
 	int dtmf_buf_count[3];
@@ -160,17 +160,17 @@ private:
 
 	bool VoicePacketIsSync(const unsigned char *text);
 	void AddFDSet(int &max, int newfd, fd_set *set);
-	int open_port(const SPORTIP &pip);
+	int open_port(const SPORTIP &pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
-	void GetIRCDataThread();
-	int get_yrcall_rptr_from_cache(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
-	bool get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
+	void GetIRCDataThread(int i);
+	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
+	int get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
 	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, unsigned short sid);
-	void ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const bool is_from_g2);
+	void ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const int sock_source);
 	void ProcessModem();
 	bool Flag_is_ok(unsigned char flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
