@@ -526,15 +526,15 @@ void CQnetGateway::GetIRCDataThread(const int i)
 						auto ait = gwy2ip_map[i].find(gateway);
 						if (gwy2ip_map[i].end() != ait) {
 							ipaddr = ait->second;
-							CSockAddress to(af_family[i], (unsigned short)g2_external.port, ipaddr.c_str());
+							CSockAddress to(af_family[i], (unsigned short)((AF_INET==af_family[i])?g2_external.port:g2_ipv6_external.port), ipaddr.c_str());
 							sendto(g2_sock[i], "PONG", 4, 0, to.GetPointer(), to.GetSize());
 							if (LOG_QSO)
 								printf("Sent 'PONG' to %s\n", ipaddr.c_str());
-						} else {
-							printf("Can't respond to PING, gateway %s not in gwy2ip_map\n", gateway.c_str());
+						//} else {
+						//	printf("Can't respond to PING, gateway %s not in gwy2ip_map\n", gateway.c_str());
 						}
-					} else {
-						printf("Can't respond to PING, repeater %s not in rptr2gwy_map\n", rptr.c_str());
+					//} else {
+					//	printf("Can't respond to PING, repeater %s not in rptr2gwy_map\n", rptr.c_str());
 					}
 					pthread_mutex_unlock(&irc_data_mutex[i]);
 				}
