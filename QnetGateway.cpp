@@ -545,7 +545,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 		}	// while (keep_running)
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
-	printf("GetIRCDataThread exiting...\n");
+	printf("GetIRCDataThread[%i] exiting...\n", i);
 	return;
 }
 
@@ -604,7 +604,7 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const int i, const std::string &cal
 }
 
 int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU)
-// returns zero if unsuccessful, otherwise returns ii index plus one
+// returns 0 if unsuccessful, otherwise returns ii index plus one
 {
 	for (int i=0; i<2; i++) {
 		if (NULL == ii[i])
@@ -1391,7 +1391,10 @@ void CQnetGateway::ProcessModem()
 										from.append(1, i+'A');
 										ii[result]->sendPing(temp_radio_user, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
-										to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_external.port, ip.c_str());
+										if (ip.npos == ip.find(':'))
+											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_external.port, ip.c_str());
+										else
+											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_ipv6_external.port, ip.c_str());
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
@@ -1451,7 +1454,10 @@ void CQnetGateway::ProcessModem()
 										from.append(1, i+'A');
 										ii[result]->sendPing(temp_radio_user, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
-										to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_external.port, ip.c_str());
+										if (ip.npos == ip.find(':'))
+											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_external.port, ip.c_str());
+										else
+											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_ipv6_external.port, ip.c_str());										
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
