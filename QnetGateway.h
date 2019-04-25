@@ -91,7 +91,7 @@ private:
 	bool ABC_grp[3] = { false, false, false };
 	bool C_seen[3] = { false, false, false };
 
-	SPORTIP g2_external, ircddb[2];
+	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
 	CUnixDgramReader Link2Gate, Modem2Gate;
 	CUnixDgramWriter Gate2Link, Gate2Modem[3];
@@ -160,7 +160,7 @@ private:
 
 	bool VoicePacketIsSync(const unsigned char *text);
 	void AddFDSet(int &max, int newfd, fd_set *set);
-	int open_port(const SPORTIP &pip, int family);
+	int open_port(const SPORTIP *pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
 	void GetIRCDataThread(int i);
 	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);

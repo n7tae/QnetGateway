@@ -282,6 +282,8 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	path.assign("gateway_");
 	cfg.GetValue(path+"ip", estr, g2_external.ip, 7, 64);
 	cfg.GetValue(path+"port", estr, g2_external.port, 1024, 65535);
+	cfg.GetValue(path+"ipv6_ip", estr, g2_ipv6_external.ip, 7, 64);
+	cfg.GetValue(path+"ipv6_port", estr, g2_ipv6_external.port, 1024, 65535);
 	cfg.GetValue(path+"header_regen", estr, GATEWAY_HEADER_REGEN);
 	cfg.GetValue(path+"send_qrgs_maps", estr, GATEWAY_SEND_QRGS_MAP);
 	cfg.GetValue(path+"gate2link", estr, gate2link, 1, FILENAME_MAX);
@@ -341,25 +343,25 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 }
 
 // Create ports
-int CQnetGateway::open_port(const SPORTIP &pip, int family)
+int CQnetGateway::open_port(const SPORTIP *pip, int family)
 {
-	CSockAddress sin(family, pip.port, pip.ip.c_str());
+	CSockAddress sin(family, pip->port, pip->ip.c_str());
 
 	int sock = socket(family, SOCK_DGRAM, 0);
 	if (0 > sock) {
-		printf("Failed to create socket on %s:%d, errno=%d, %s\n", pip.ip.c_str(), pip.port, errno, strerror(errno));
+		printf("Failed to create socket on %s:%d, errno=%d, %s\n", pip->ip.c_str(), pip->port, errno, strerror(errno));
 		return -1;
 	}
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 
-	int reuse = 1;
-	if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-		printf("Cannot set the UDP socket (port %u) option, err: %d, %s\n", pip.port, errno, strerror(errno));
-		return -1;
-	}
+	//int reuse = 1;
+	//if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
+	//	printf("Cannot set the UDP socket (port %u) option, err: %d, %s\n", pip->port, errno, strerror(errno));
+	//	return -1;
+	//}
 
 	if (bind(sock, sin.GetPointer(), sizeof(struct sockaddr_storage)) != 0) {
-		printf("Failed to bind %s:%d, errno=%d, %s\n", pip.ip.c_str(), pip.port, errno, strerror(errno));
+		printf("Failed to bind %s:%d, errno=%d, %s\n", pip->ip.c_str(), pip->port, errno, strerror(errno));
 		close(sock);
 		return -1;
 	}
@@ -2481,22 +2483,25 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 		/* udp port 40000 must open first */
 	if (ii[0]) {
-		g2_sock[0] = open_port(g2_external, af_family[0]);
+		SPORTIP *pip = (AF_INET == af_family[0]) ? &g2_external : & g2_ipv6_external;
+		g2_sock[0] = open_port(pip, af_family[0]);
 		if (0 > g2_sock[0]) {
-			printf("Can't open %s:%d for %s\n", g2_external.ip.c_str(), g2_external.port, ircddb[i].ip.c_str());
+			printf("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[i].ip.c_str());
 			return true;
 		}
-		if (ii[1] && (af_family[0] != af_family[1])) {	// we only need to open a second port if the family for the irc server is different!
-			g2_sock[1] = open_port(g2_external, af_family[1]);
+		if (ii[1] && (af_family[0] != af_family[1])) {	// we only need to open a second port if the family for the irc servers are different!
+			SPORTIP *pip = (AF_INET == af_family[1]) ? &g2_external : & g2_ipv6_external;
+			g2_sock[1] = open_port(pip, af_family[1]);
 			if (0 > g2_sock[1]) {
-				printf("Can't open %s:%d for %s\n", g2_external.ip.c_str(), g2_external.port, ircddb[1].ip.c_str());
+				printf("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[1].ip.c_str());
 				return true;
 			}
 		}
 	} else if (ii[1]) {
-		g2_sock[1] = open_port(g2_external, af_family[1]);
+		SPORTIP *pip = (AF_INET == af_family[1]) ? &g2_external : & g2_ipv6_external;
+		g2_sock[1] = open_port(pip, af_family[1]);
 		if (0 > g2_sock[1]) {
-			printf("Can't open %s:%d for %s\n", g2_external.ip.c_str(), g2_external.port, ircddb[1].ip.c_str());
+			printf("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[1].ip.c_str());
 			return true;
 		}
 	}
