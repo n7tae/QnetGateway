@@ -1944,7 +1944,7 @@ void CQnetGateway::Process()
 				if (LOG_QSO && 4==g2buflen && 0==memcmp(dsvt.title, "PONG", 4))
 					printf("Got a pong from [%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
 				else
-					ProcessG2(g2buflen, dsvt, true);
+					ProcessG2(g2buflen, dsvt, i);
 				FD_CLR(g2_sock[i], &fdset);
 			}
 		}
@@ -1953,7 +1953,7 @@ void CQnetGateway::Process()
 		if (keep_running && FD_ISSET(Link2Gate.GetFD(), &fdset)) {
 			SDSVT dsvt;
 			ssize_t g2buflen = Link2Gate.Read(dsvt.title, 56);
-			ProcessG2(g2buflen, dsvt, false);
+			ProcessG2(g2buflen, dsvt, -1);
 			FD_CLR(Link2Gate.GetFD(), &fdset);
 		}
 
