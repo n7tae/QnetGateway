@@ -162,7 +162,7 @@ private:
 	void AddFDSet(int &max, int newfd, fd_set *set);
 	int open_port(const SPORTIP *pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
-	void GetIRCDataThread(int i);
+	void GetIRCDataThread(const int i);
 	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
 	int get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
 	void PlayFileThread(SECHO &edata);
