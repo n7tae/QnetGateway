@@ -565,7 +565,8 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const int i, const std::string &cal
 			arearp_cs = user_pos->second.substr(0, 7);
 			*mod = user_pos->second.at(7);
 		} else {
-			printf("could not find a repeater for user %s from server %s\n", call.c_str(), ircddb[i].ip.c_str());
+			if (1==i || NULL==ii[1])
+				printf("could not find a repeater for user %s\n", call.c_str());
 			return 1;
 		}
 	} else if (RoU == 'R') {
