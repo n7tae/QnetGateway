@@ -1453,7 +1453,7 @@ void CQnetGateway::ProcessModem()
 										/* set the destination */
 										std::string from = OWNER.substr(0, 7);
 										from.append(1, i+'A');
-										ii[result]->sendPing(temp_radio_user, from);
+										ii[result]->sendPing(arearp_cs, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
 										if (ip.npos == ip.find(':'))
 											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_external.port, ip.c_str());
