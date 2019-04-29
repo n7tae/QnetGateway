@@ -219,11 +219,9 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	path.assign("ircddb");
 	for (int i=0; i<2; i++) {
 		std::string p(path + std::to_string(i) + "_");
-		if (cfg.KeyExists(p+"host")) {
-			cfg.GetValue(p+"host", estr, ircddb[i].ip, 3, MAXHOSTNAMELEN);
-			cfg.GetValue(p+"port", estr, ircddb[i].port, 1000, 65535);
-			cfg.GetValue(p+"password", estr, IRCDDB_PASSWORD[i], 0, 512);
-		}
+		cfg.GetValue(p+"host", estr, ircddb[i].ip, 0, MAXHOSTNAMELEN);
+		cfg.GetValue(p+"port", estr, ircddb[i].port, 1000, 65535);
+		cfg.GetValue(p+"password", estr, IRCDDB_PASSWORD[i], 0, 512);
 	}
 	if (0 == ircddb[0].ip.compare(ircddb[1].ip)) {
 		fprintf(stderr, "IRC networks must be different\n");
