@@ -1390,10 +1390,9 @@ void CQnetGateway::ProcessModem()
 										from.append(1, i+'A');
 										ii[result]->sendPing(temp_radio_user, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
-										if (ip.npos == ip.find(':'))
-											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_external.port, ip.c_str());
-										else
-											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_ipv6_external.port, ip.c_str());
+										if (ip.npos == ip.find(':') && af_family[result] == AF_INET6)
+											fprintf(stderr, "ERROR: IP returned from cache is IPV4 but family is AF_INET6!\n");
+										to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)((af_family[result]==AF_INET6) ? g2_ipv6_external.port : g2_external.port), ip.c_str());
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
@@ -1453,10 +1452,9 @@ void CQnetGateway::ProcessModem()
 										from.append(1, i+'A');
 										ii[result]->sendPing(arearp_cs, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
-										if (ip.npos == ip.find(':'))
-											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_external.port, ip.c_str());
-										else
-											to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)g2_ipv6_external.port, ip.c_str());										
+										if (ip.npos == ip.find(':') && af_family[result] == AF_INET6)
+											fprintf(stderr, "ERROR: IP returned from cache is IPV4 but family is AF_INET6!\n");
+										to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)((af_family[result]==AF_INET6) ? g2_ipv6_external.port : g2_ipv6_external.port), ip.c_str());										
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
