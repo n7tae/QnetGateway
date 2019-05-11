@@ -2825,8 +2825,10 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	CQnetGateway QnetGateway;
-	if (QnetGateway.Init(argv[1]))
+	if (QnetGateway.Init(argv[1])) {
+		keep_running = false;	// shutdown any processes that may have been started
 		return 1;
+	}
 	QnetGateway.Process();
 	printf("Leaving processing loop...\n");
 }
