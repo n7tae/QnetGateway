@@ -1454,7 +1454,7 @@ void CQnetGateway::ProcessModem()
 										to_remote_g2[i].streamid = dsvt.streamid;
 										if (ip.npos == ip.find(':') && af_family[result] == AF_INET6)
 											fprintf(stderr, "ERROR: IP returned from cache is IPV4 but family is AF_INET6!\n");
-										to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)((af_family[result]==AF_INET6) ? g2_ipv6_external.port : g2_ipv6_external.port), ip.c_str());										
+										to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)((af_family[result]==AF_INET6) ? g2_ipv6_external.port : g2_external.port), ip.c_str());										
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
