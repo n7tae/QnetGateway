@@ -957,10 +957,8 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 											band_txt[i].dest_rptr[0] = '\0';
 									}
 									// we have the 20-character message, send it to the server...
-									for (int x=0; x<2; x++) {
-										if (ii[x])
-											ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
-									}
+									if (Index[i] >= 0)
+										ii[Index[i]]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 									band_txt[i].sent_key_on_msg = true;
 								}
 								band_txt[i].txt_cnt = 0;
@@ -1262,7 +1260,6 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 
 void CQnetGateway::ProcessModem()
 {
-	static int result = -1;
 	char temp_mod;
 	char temp_radio_user[9];
 	char tempfile[FILENAME_MAX];
@@ -1284,6 +1281,7 @@ void CQnetGateway::ProcessModem()
 					int i = dsvt.hdr.rpt1[7] - 'A';
 
 					if (i>=0  && i<3) {
+                        Index[i] = -1;
 						if (LOG_DTMF)
 							printf("resetting dtmf[%d] (got a header)\n", i);
 						dtmf_last_frame[i] = 0;
@@ -1384,15 +1382,15 @@ void CQnetGateway::ProcessModem()
 										temp_radio_user[7] = 'A';
 									temp_radio_user[CALL_SIZE] = '\0';
 
-									result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
-									if (result--) { /* it is a repeater */
+									Index[i] = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'R');
+									if (Index[i]--) { /* it is a repeater */
 										std::string from = OWNER.substr(0, 7);
 										from.append(1, i+'A');
-										ii[result]->sendPing(temp_radio_user, from);
+										ii[Index[i]]->sendPing(temp_radio_user, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
-										if (ip.npos == ip.find(':') && af_family[result] == AF_INET6)
+										if (ip.npos == ip.find(':') && af_family[Index[i]] == AF_INET6)
 											fprintf(stderr, "ERROR: IP returned from cache is IPV4 but family is AF_INET6!\n");
-										to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)((af_family[result]==AF_INET6) ? g2_ipv6_external.port : g2_external.port), ip.c_str());
+										to_remote_g2[i].toDstar.Initialize(af_family[Index[i]], (uint16_t)((af_family[Index[i]]==AF_INET6) ? g2_ipv6_external.port : g2_external.port), ip.c_str());
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
@@ -1415,7 +1413,7 @@ void CQnetGateway::ProcessModem()
 
 										// send to remote gateway
 										for (int j=0; j<5; j++)
-											sendto(g2_sock[result], dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
+											sendto(g2_sock[Index[i]], dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
 										printf("id=%04x zone route to [%s]:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
 										ntohs(dsvt.streamid), to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(),
@@ -1438,23 +1436,23 @@ void CQnetGateway::ProcessModem()
 						memset(temp_radio_user, ' ', 8);
 						memcpy(temp_radio_user, dsvt.hdr.urcall, 8);
 						temp_radio_user[8] = '\0';
-						result = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
-						if (result--) {
-							/* destination is a remote system */
-							if (0 != zonerp_cs.compare(0, 7, OWNER, 0, 7)) {
-								int i = dsvt.hdr.rpt1[7] - 'A';
+                        int i = dsvt.hdr.rpt1[7] - 'A';
+                        if (i>=0 && i<3) {
+						    Index[i] = get_yrcall_rptr(temp_radio_user, arearp_cs, zonerp_cs, &temp_mod, ip, 'U');
+                            if (Index[i]--) {
+                                /* destination is a remote system */
+                                if (0 != zonerp_cs.compare(0, 7, OWNER, 0, 7)) {
 
-								if (i>=0 && i<3) {
 									/* one radio user on a repeater module at a time */
 									if (to_remote_g2[i].toDstar.AddressIsZero()) {
 										/* set the destination */
 										std::string from = OWNER.substr(0, 7);
 										from.append(1, i+'A');
-										ii[result]->sendPing(arearp_cs, from);
+										ii[Index[i]]->sendPing(arearp_cs, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
-										if (ip.npos == ip.find(':') && af_family[result] == AF_INET6)
+										if (ip.npos == ip.find(':') && af_family[Index[i]] == AF_INET6)
 											fprintf(stderr, "ERROR: IP returned from cache is IPV4 but family is AF_INET6!\n");
-										to_remote_g2[i].toDstar.Initialize(af_family[result], (uint16_t)((af_family[result]==AF_INET6) ? g2_ipv6_external.port : g2_external.port), ip.c_str());										
+										to_remote_g2[i].toDstar.Initialize(af_family[Index[i]], (uint16_t)((af_family[Index[i]]==AF_INET6) ? g2_ipv6_external.port : g2_external.port), ip.c_str());										
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
@@ -1474,7 +1472,7 @@ void CQnetGateway::ProcessModem()
 
 										/* send to remote gateway */
 										for (int j=0; j<5; j++)
-											sendto(g2_sock[result], dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
+											sendto(g2_sock[Index[i]], dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
 										printf("Callsign route to [%s]:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
@@ -1714,13 +1712,13 @@ void CQnetGateway::ProcessModem()
 										band_txt[i].dest_rptr[0] = '\0';
 								}
 								// we have the 20-character message, send it to the server...
-								if (result >= 0)
-									ii[result]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+								if (Index[i] >= 0)
+									ii[Index[i]]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 								band_txt[i].sent_key_on_msg = true;
 							}
 							// send the "key off" message, this will end up in the openquad.net Last Heard webpage.
-							if (result >= 0)
-								ii[result]->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
+							if (Index[i] >= 0)
+								ii[Index[i]]->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
 
 							if (playNotInCache) {
 								// Not in cache, please try again!
@@ -1796,8 +1794,8 @@ void CQnetGateway::ProcessModem()
 
 				for (int i=0; i<3; i++) {
 					/* find out if data must go to the remote G2 */
-					if (to_remote_g2[i].streamid==dsvt.streamid && result>=0) {
-						sendto(g2_sock[result], dsvt.title, 27, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
+					if (to_remote_g2[i].streamid==dsvt.streamid && Index[i]>=0) {
+						sendto(g2_sock[Index[i]], dsvt.title, 27, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
 
 						time(&(to_remote_g2[i].last_time));
 

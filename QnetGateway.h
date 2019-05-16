@@ -90,6 +90,7 @@ private:
 	short to_print[3] = { 0, 0, 0 };
 	bool ABC_grp[3] = { false, false, false };
 	bool C_seen[3] = { false, false, false };
+    int Index[3] = { -1, -1, -1 };
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
