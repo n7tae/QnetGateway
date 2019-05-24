@@ -87,15 +87,31 @@ bool CQnetLink::resolve_rmt(const char *name, const unsigned short port, CSockAd
 
 	for (rp=res; rp!=NULL; rp=rp->ai_next) {
 		if ((AF_INET==rp->ai_family || AF_INET6==rp->ai_family) && SOCK_DGRAM==rp->ai_socktype) {
-            char saddr[INET6_ADDRSTRLEN];
-            if (inet_ntop(rp->ai_family, &rp->ai_addr, saddr, INET6_ADDRSTRLEN)) {
-                addr.Initialize(rp->ai_family, port, saddr);
-                found = true;
-                break;
+            if (AF_INET == rp->ai_family) {
+                char saddr[INET_ADDRSTRLEN];
+                struct sockaddr_in *addr4 = (struct sockaddr_in *)rp->ai_addr;
+                if (inet_ntop(rp->ai_family, &addr4->sin_addr, saddr, INET_ADDRSTRLEN)) {
+                    addr.Initialize(rp->ai_family, port, saddr);
+                    found = true;
+                    break;
+                }
+            } else if (AF_INET6 == rp->ai_family) {
+                char saddr[INET6_ADDRSTRLEN];
+                struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)rp->ai_addr;
+                if (inet_ntop(rp->ai_family, &addr6->sin6_addr, saddr, INET6_ADDRSTRLEN)) {
+                    addr.Initialize(rp->ai_family, port, saddr);
+                    found = true;
+                    break;
+                }
             }
 		}
 	}
 	freeaddrinfo(res);
+
+    if (found) {
+        printf("%s address %s on port %u resolved to %s\n", (AF_INET==addr.GetFamily()) ? "AF_INET" : "AF_INET6", name, port, addr.GetAddress());
+    }
+    
 	return found;
 }
 
