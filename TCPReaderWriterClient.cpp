@@ -86,6 +86,11 @@ bool CTCPReaderWriterClient::Open()
 		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
+    if (EAI_AGAIN == s) {
+        fprintf(stderr, "ERROR getaddrinfo of %s failed 20 times\n", m_address.c_str());
+        return true;
+    }
+
 	struct addrinfo *rp;
 	for (rp = res; rp != NULL; rp = rp->ai_next) {
 		m_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);

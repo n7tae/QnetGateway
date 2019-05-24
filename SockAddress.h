@@ -162,6 +162,11 @@ public:
 		return straddr;
 	}
 
+    int GetFamily()
+    {
+        return addr.ss_family;
+    }
+
 	unsigned short GetPort()
 	{
 		if (AF_INET == addr.ss_family) {

@@ -30,6 +30,7 @@
 #include "SEcho.h"
 #include "Random.h"
 #include "UnixDgramSocket.h"
+#include "SockAddress.h"
 
 /*** version number must be x.xx ***/
 #define CALL_SIZE 8
@@ -44,11 +45,22 @@ typedef struct refdsvt_tag {
 	SDSVT dsvt;
 } SREFDSVT;
 
+typedef struct to_remote_g2_tag {
+    char to_call[CALL_SIZE + 1];
+    CSockAddress addr;
+    char from_mod;
+    char to_mod;
+    short countdown;
+    bool is_connected;
+    unsigned short in_streamid;  // incoming from remote systems
+    unsigned short out_streamid; // outgoing to remote systems
+} STOREMOTE;
+
 // This is the data payload in the map: inbound_list
 // This is for inbound dongles
 typedef struct inbound_tag {
 	char call[CALL_SIZE + 1];	// the callsign of the remote
-	struct sockaddr_in sin;		// IP and port of remote
+	CSockAddress addr;		// IP and port of remote
 	short countdown;			// if countdown expires, the connection is terminated
 	char mod;					// A B C This user talked on this module
 	char client;				// dvap, dvdongle
@@ -76,7 +88,7 @@ private:
 	void g2link(const char from_mod, const char *call, const char to_mod);
 	void print_status_file();
 	void send_heartbeat();
-	bool resolve_rmt(char *name, int type, struct sockaddr_in *addr);
+	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
 	void rptr_ack(short i);
 	void PlayAudioNotifyThread(char *msg);
 	void AudioNotifyThread(SECHO &edata);
@@ -86,7 +98,8 @@ private:
 	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, status_file, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
 	bool dplus_authorize, dplus_reflectors, dplus_repeaters, dplus_priority;
-	int rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port, delay_between, delay_before;
+	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
+    int delay_between, delay_before;
 	std::string link_at_startup[3];
 	unsigned int max_dongles, saved_max_dongles;
 	int rf_inactivity_timer[3];
@@ -101,16 +114,7 @@ private:
 
 	char notify_msg[3][64];
 
-	struct to_remote_g2_tag {
-		char to_call[CALL_SIZE + 1];
-		struct sockaddr_in toDst4;     // sin_port is in network byte order
-		char from_mod;
-		char to_mod;
-		short countdown;
-		bool is_connected;
-		unsigned short in_streamid;  // incoming from remote systems
-		unsigned short out_streamid; // outgoing to remote systems
-	} to_remote_g2[3];
+	STOREMOTE to_remote_g2[3];
 
 	// broadcast for data arriving from xrf to local rptr
 	struct brd_from_xrf_tag {
@@ -135,7 +139,7 @@ private:
 
 	// input from remote
 	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
-	struct sockaddr_in fromDst4;
+	CSockAddress fromDst4;
 
 	// unix sockets to gateway
 	std::string link2gate, gate2link;
