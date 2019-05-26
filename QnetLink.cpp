@@ -108,10 +108,10 @@ bool CQnetLink::resolve_rmt(const char *name, const unsigned short port, CSockAd
 	}
 	freeaddrinfo(res);
 
-    if (found) {
-        printf("%s address %s on port %u resolved to %s\n", (AF_INET==addr.GetFamily()) ? "AF_INET" : "AF_INET6", name, port, addr.GetAddress());
+    if (found && strcmp(name, addr.GetAddress())) {
+        printf("Node address %s on port %u resolved to %s\n", name, port, addr.GetAddress());
     }
-    
+
 	return found;
 }
 
