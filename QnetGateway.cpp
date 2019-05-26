@@ -1479,59 +1479,61 @@ void CQnetGateway::ProcessModem()
 										time(&(to_remote_g2[i].last_time));
 									}
 								}
-							}
-							else
-							{
-								int i = dsvt.hdr.rpt1[7] - 'A';
+    							else
+	    						{
+		    						int i = dsvt.hdr.rpt1[7] - 'A';
 
-								if (i>=0 && i<3) {
-									/* the user we are trying to contact is on our gateway */
-									/* make sure they are on a different module */
-									if (temp_mod != dsvt.hdr.rpt1[7]) {
-										/*
-										   The remote repeater has been set, lets fill in the dest_rptr
-										   so that later we can send that to the LIVE web site
-										*/
-										memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt2, 8);
-										band_txt[i].dest_rptr[7] = temp_mod;
-										band_txt[i].dest_rptr[8] = '\0';
+			    					if (i>=0 && i<3) {
+				    					/* the user we are trying to contact is on our gateway */
+					    				/* make sure they are on a different module */
+						    			if (temp_mod != dsvt.hdr.rpt1[7]) {
+							    			/*
+								    		   The remote repeater has been set, lets fill in the dest_rptr
+									    	   so that later we can send that to the LIVE web site
+										    */
+    										memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt2, 8);
+	    									band_txt[i].dest_rptr[7] = temp_mod;
+		    								band_txt[i].dest_rptr[8] = '\0';
 
-										i = temp_mod - 'A';
+    										i = temp_mod - 'A';
 
-										/* valid destination repeater module? */
-										if (i>=0 && i<3) {
-											/*
-											   toRptr[i] :    receiving from a remote system or cross-band
-											   band_txt[i] :  local RF is talking.
-											*/
-											if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
-												printf("CALLmode cross-banding from mod %c to %c\n",  dsvt.hdr.rpt1[7], temp_mod);
+	    									/* valid destination repeater module? */
+		    								if (i>=0 && i<3) {
+			    								/*
+				    							   toRptr[i] :    receiving from a remote system or cross-band
+					    						   band_txt[i] :  local RF is talking.
+						    					*/
+							    				if ((toRptr[i].last_time == 0) && (band_txt[i].last_time == 0)) {
+								    				printf("CALLmode cross-banding from mod %c to %c\n",  dsvt.hdr.rpt1[7], temp_mod);
 
-												dsvt.hdr.rpt2[7] = temp_mod;
-												dsvt.hdr.rpt1[7] = 'G';
-												calcPFCS(dsvt.title, 56);
+									    			dsvt.hdr.rpt2[7] = temp_mod;
+										    		dsvt.hdr.rpt1[7] = 'G';
+											    	calcPFCS(dsvt.title, 56);
 
-												Gate2Modem[i].Write(dsvt.title, 56);
+												    Gate2Modem[i].Write(dsvt.title, 56);
 
-												/* This is the active streamid */
-												toRptr[i].streamid = dsvt.streamid;
+    												/* This is the active streamid */
+	    											toRptr[i].streamid = dsvt.streamid;
 
-												/* time it, in case stream times out */
-												time(&toRptr[i].last_time);
+		    										/* time it, in case stream times out */
+			    									time(&toRptr[i].last_time);
 
-												toRptr[i].sequence = dsvt.ctrl;
+				    								toRptr[i].sequence = dsvt.ctrl;
+                                                }
 											}
 										}
 									}
 									else
+                                    {
 										printf("icom rule: no routing from %.8s to %s%c\n", dsvt.hdr.rpt1, arearp_cs.c_str(), temp_mod);
+                                    }
 								}
 							}
-						}
-						else
-						{
-							if ('L' != dsvt.hdr.urcall[7]) // as long as this doesn't look like a linking command
-								playNotInCache = true; // we need to wait until user's transmission is over
+						    else
+						    {
+							    if ('L' != dsvt.hdr.urcall[7]) // as long as this doesn't look like a linking command
+								    playNotInCache = true; // we need to wait until user's transmission is over
+                            }
 						}
 					}
 				}
