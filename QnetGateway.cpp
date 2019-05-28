@@ -56,8 +56,6 @@ extern int dstar_dv_decode(const unsigned char *d, int data[3]);
 
 static std::atomic<bool> keep_running(true);
 
-
-
 /* signal catching function */
 static void sigCatch(int signum)
 {
@@ -66,6 +64,21 @@ static void sigCatch(int signum)
 		keep_running = false;
 
 	return;
+}
+
+int CQnetGateway::FindIndex(const int i) const
+{
+    if (i<0 || i > 2)
+        return -1;
+    int index = Index[i];
+    if (index < 0) {
+        if (AF_INET == link_family[i]) {
+            index = ii[1] ? 1 : 0;
+        } else if (AF_INET6 == link_family[i]) {
+            index = 0;
+        }
+    }
+    return index;
 }
 
 bool CQnetGateway::VoicePacketIsSync(const unsigned char *text)
@@ -920,11 +933,10 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 							if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
 								band_txt[i].dest_rptr[0] = '\0';
 						}
-						// we have the 20-character message, send it to the server...
-						for (int x=0; x<2; x++) {
-							if (ii[x])
-								ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
-						}
+
+						int x = FindIndex(i);
+						if (x >= 0)
+							ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 						band_txt[i].sent_key_on_msg = true;
 					}
 					if (to_print[i] == 3) {
@@ -957,8 +969,9 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 											band_txt[i].dest_rptr[0] = '\0';
 									}
 									// we have the 20-character message, send it to the server...
-									if (Index[i] >= 0)
-										ii[Index[i]]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+                                    int x = FindIndex(i);
+									if (x >= 0)
+										ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 									band_txt[i].sent_key_on_msg = true;
 								}
 								band_txt[i].txt_cnt = 0;
@@ -1713,14 +1726,22 @@ void CQnetGateway::ProcessModem()
 									if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
 										band_txt[i].dest_rptr[0] = '\0';
 								}
-								// we have the 20-character message, send it to the server...
-								if (Index[i] >= 0)
-									ii[Index[i]]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+                                int x = FindIndex(i);
+								if (x >= 0)
+									ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 								band_txt[i].sent_key_on_msg = true;
 							}
 							// send the "key off" message, this will end up in the openquad.net Last Heard webpage.
-							if (Index[i] >= 0)
-								ii[Index[i]]->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
+                            int index = Index[i];
+                            if (index < 0) {
+                                if (AF_INET == link_family[i]) {
+                                    index = ii[1] ? 1 : 0;
+                                } else if (AF_INET6 == link_family[i]) {
+                                    index = 0;
+                                }
+                            }
+							if (index >= 0)
+								ii[index]->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
 
 							if (playNotInCache) {
 								// Not in cache, please try again!
@@ -1956,7 +1977,18 @@ void CQnetGateway::Process()
 		if (keep_running && FD_ISSET(Link2Gate.GetFD(), &fdset)) {
 			SDSVT dsvt;
 			ssize_t g2buflen = Link2Gate.Read(dsvt.title, 56);
-			ProcessG2(g2buflen, dsvt, -1);
+            if (16==g2buflen && 0==memcmp(dsvt.title, "LINK", 4)) {
+                SLINKFAMILY fam;
+                memcpy(fam.title, dsvt.title, 16);
+                printf("Families of linked nodes: A=AF_%s, B=AF_%s, C=AF_%s\n",
+                (AF_UNSPEC==fam.family[0]) ? "UNSPEC" : ((AF_INET==fam.family[0]) ? "INET" : "INET6"),
+                (AF_UNSPEC==fam.family[1]) ? "UNSPEC" : ((AF_INET==fam.family[1]) ? "INET" : "INET6"),
+                (AF_UNSPEC==fam.family[2]) ? "UNSPEC" : ((AF_INET==fam.family[2]) ? "INET" : "INET6")
+                );
+                memcpy(link_family, fam.family, 12);
+            } else {
+			    ProcessG2(g2buflen, dsvt, -1);
+            }
 			FD_CLR(Link2Gate.GetFD(), &fdset);
 		}
 

@@ -123,3 +123,10 @@ typedef struct dsrp_tag {	//									offset	  size
 	};
 } SDSRP;
 #pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct link_family_tag {
+    char title[4];
+    int family[3];
+} SLINKFAMILY;
+#pragma pack(pop)

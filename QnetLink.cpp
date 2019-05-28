@@ -316,11 +316,18 @@ void CQnetLink::print_status_file()
 		}
 
 		/* print linked repeaters-reflectors */
+        SLINKFAMILY fam;
+        memcpy(fam.title, "LINK", 4);
 		for (int i=0; i<3;i++) {
 			if (to_remote_g2[i].is_connected) {
 				fprintf(statusfp, fstr, to_remote_g2[i].from_mod, to_remote_g2[i].to_call, to_remote_g2[i].to_mod, to_remote_g2[i].addr.GetAddress(), tm1.tm_mon+1, tm1.tm_mday ,tm1.tm_year % 100, tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
-			}
-		}
+                // also inform gateway
+                fam.family[i] = to_remote_g2[i].addr.GetFamily();
+			} else {
+                fam.family[i] = AF_UNSPEC;
+            }
+ 		}
+        Link2Gate.Write(fam.title, sizeof(SLINKFAMILY));
 		fclose(statusfp);
 	}
 }

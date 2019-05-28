@@ -82,6 +82,8 @@ public:
 	bool Init(char *cfgfile);
 
 private:
+    // link type
+    int link_family[3] = { AF_UNSPEC, AF_UNSPEC, AF_UNSPEC };
 	// network type
 	int af_family[2] = { AF_UNSPEC, AF_UNSPEC };
 	// text stuff
@@ -176,6 +178,7 @@ private:
 	bool Flag_is_ok(unsigned char flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
+    int FindIndex(const int i) const;
 
 	// read configuration file
 	bool ReadConfig(char *);
