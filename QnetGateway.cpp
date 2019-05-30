@@ -2576,7 +2576,7 @@ bool CQnetGateway::Init(char *cfgfile)
 		vm[i].fd = -1;
 		memset(vm[i].file, 0, sizeof(vm[i].file));
 
-		snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), 'A'+i, "voicemail.dat");
+		snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), 'A'+i, "voicemail.dat2");
 
 		if (access(vm[i].file, F_OK) != 0)
 			memset(vm[i].file, 0, sizeof(vm[i].file));
