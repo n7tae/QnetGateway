@@ -1597,6 +1597,7 @@ void CQnetGateway::ProcessModem()
 								printf("Recording mod %c for voicemail into file:[%s]\n", dsvt.hdr.rpt1[7], vm[i].file);
 
 								time(&vm[i].last_time);
+                                vm[i].streamid = dsvt.streamid;
 								memcpy(recbuf.title, dsvt.title, 56);
 								memset(recbuf.hdr.rpt1, ' ', 8);
 								memcpy(recbuf.hdr.rpt1, OWNER.c_str(), OWNER.size());
