@@ -924,7 +924,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 					}
 				}
 				else { // not a new_group, this is the second of a two-voice-frame pair
-					if (! band_txt[i].sent_key_on_msg && vPacketCount > 100) {
+					if (! band_txt[i].sent_key_on_msg && vPacketCount[i] > 100) {
 						// 100 voice packets received and still no 20-char message!
 						/*** if YRCALL is CQCQCQ, set dest_rptr ***/
 						band_txt[i].txt[0] = '\0';
@@ -1285,7 +1285,6 @@ void CQnetGateway::ProcessModem()
 	if (0 == memcmp(dsvt.title, "DSVT", 4)) {
 		if ( (recvlen==56 || recvlen==27) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U) ) {
 			if (recvlen == 56) {
-				vPacketCount = 0U;
 				if (LOG_QSO)
 					printf("id=%04x start RPTR flag0=%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0],  dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 
@@ -1294,6 +1293,7 @@ void CQnetGateway::ProcessModem()
 					int i = dsvt.hdr.rpt1[7] - 'A';
 
 					if (i>=0  && i<3) {
+                        vPacketCount[i] = 0;
                         Index[i] = -1;
 						if (LOG_DTMF)
 							printf("resetting dtmf[%d] (got a header)\n", i);
@@ -1804,8 +1804,8 @@ void CQnetGateway::ProcessModem()
 						}
 						break;
 					}
+                    vPacketCount[i]++;
 				}
-				vPacketCount++;
 				ProcessSlowData(dsvt.vasd.text,  dsvt.streamid);
 
 				/* send data to qnlink */

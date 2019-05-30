@@ -108,7 +108,7 @@ private:
 
 	int TIMING_PLAY_WAIT, TIMING_PLAY_DELAY, TIMING_TIMEOUT_ECHO, TIMING_TIMEOUT_VOICEMAIL, TIMING_TIMEOUT_REMOTE_G2, TIMING_TIMEOUT_LOCAL_RPTR, dtmf_digit;
 
-	unsigned int vPacketCount;
+	unsigned int vPacketCount[3] = { 0, 0, 0 };
 
 	std::set<std::string> findRoute;
 

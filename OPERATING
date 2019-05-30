@@ -26,41 +26,8 @@ probably will be) then you only need to specify what you need to change.
 
 
 This means that for most users, you will only need to specify a few
-parameters. For example, if you want to set up a 70cm dvap, your working
-configuration file might be:
-
--------------------------------------------------------------------
-# my configuration, using rr.openquad.net with my DVAP Dongle
-# on startup link module b to REF020C
-
-ircddb = {
-    login = "XX0XXX"
-}
-
-module = {
-	 b = {
-		type = "dvap"
-		frequency = 445.474
-		serial_number = "AP123456"
-	}
-}
-
-link = {
-	admin = [ "XX0XXX"]
-}
-
-dplus = {
-    authorize = true
-}
-
--------------------------------------------------------------------
-
-Of course, you can add other parameters, such as latitude and longitude,
-or a URL that will show up on the "User Gateways" page of
-www.openquad.net. This software is highly flexible, so you can have
-different modules running on different computers and these hidden
-configuration parameters to allow that are there, waiting to be defined.
-However, most hams won't have to bother with them!
+parameters. In addtion, there is a new script, qnconfig to help you easily
+build your configuration file, qn.cfg.
 
 Some other features are discussed below and are pretty much directly
 quoted from KI4LKF original documentation.
