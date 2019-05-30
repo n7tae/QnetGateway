@@ -1587,7 +1587,7 @@ void CQnetGateway::ProcessModem()
 							printf("Already recording for voicemail on mod %d\n", i);
 						else {
 							memset(tempfile, '\0', sizeof(tempfile));
-							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), dsvt.hdr.rpt1[7], "voicemail.dat");
+							snprintf(tempfile, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), dsvt.hdr.rpt1[7], "voicemail.dat2");
 
 							vm[i].fd = open(tempfile, O_CREAT | O_WRONLY | O_TRUNC | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 							if (vm[i].fd < 0)

@@ -52,12 +52,12 @@ YRCALL=_ _ _ _ _ _ _E
 For Voice Mail:
 YRCALL=_ _ _ _ _ _ S0
 The above command will Store/create voice mail in a proprietary file
-x_voicemail.dat.
+x_voicemail.dat2.
 YRCALL=_ _ _ _ _ _ R0
 The above command will Recall/playback voice mail from the recorded file
-x_voicemail.dat.
+x_voicemail.dat2.
 YRCALL=_ _ _ _ _ _ C0
-The above command will Clear/delete voice mail. File x_voicemail.dat will be
+The above command will Clear/delete voice mail. File x_voicemail.dat2 will be
 deleted. In all cases, the letter x in the file name x_voicemail is the
 module A,B or C.
 
@@ -235,9 +235,13 @@ the audio:  "This is repeater ...". A simple way to create your own
 recorded "repeater identification file" id.dat is to use your Dstar HT
 and set YRCALL command:   YRCALL=______S0 and key up your repeater.
 Start talking, and the gateway will record your audio into the file
-x_voicemail.dat where x is one of A.B or C. Now copy that file:
-sudo cp -f /tmp/C_voicemail.dat /usr/local/etc/it.dat
+x_voicemail.dat2 where x is one of A.B or C. Now copy that file:
 
+sudo tail -c +56 /tmp/C_voicemail.dat2 > /usr/local/etc/id.dat
+
+See the DTMF+REMOTE+VOICE.README for more information.
+
+============
 You may be thinking why did we put all this source code inside QnetLink
 instead of putting it all inside the Gateway software QnetGateway.
 Having divided the functionality produces a smaller memory and resource
