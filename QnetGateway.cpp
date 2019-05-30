@@ -1608,7 +1608,7 @@ void CQnetGateway::ProcessModem()
 
 								calcPFCS(recbuf.title, 56);
 
-								memcpy(vm[i].header.title, recbuf.title, 56);
+                                write(vm[i].fd, recbuf.title, 56);
 							}
 						}
 					}
@@ -1644,7 +1644,7 @@ void CQnetGateway::ProcessModem()
 
 								calcPFCS(recbuf.title, 56);
 
-								memcpy(recd[i].header.title, recbuf.title, 56);
+                                write (recd[i].fd, recbuf.title, 56);
 							}
 						}
 					}
@@ -1980,11 +1980,13 @@ void CQnetGateway::Process()
             if (16==g2buflen && 0==memcmp(dsvt.title, "LINK", 4)) {
                 SLINKFAMILY fam;
                 memcpy(fam.title, dsvt.title, 16);
-                printf("Families of linked nodes: A=AF_%s, B=AF_%s, C=AF_%s\n",
-                (AF_UNSPEC==fam.family[0]) ? "UNSPEC" : ((AF_INET==fam.family[0]) ? "INET" : "INET6"),
-                (AF_UNSPEC==fam.family[1]) ? "UNSPEC" : ((AF_INET==fam.family[1]) ? "INET" : "INET6"),
-                (AF_UNSPEC==fam.family[2]) ? "UNSPEC" : ((AF_INET==fam.family[2]) ? "INET" : "INET6")
-                );
+                if (LOG_DEBUG) {
+                    printf("Families of linked nodes: A=AF_%s, B=AF_%s, C=AF_%s\n",
+                    (AF_UNSPEC==fam.family[0]) ? "UNSPEC" : ((AF_INET==fam.family[0]) ? "INET" : "INET6"),
+                    (AF_UNSPEC==fam.family[1]) ? "UNSPEC" : ((AF_INET==fam.family[1]) ? "INET" : "INET6"),
+                    (AF_UNSPEC==fam.family[2]) ? "UNSPEC" : ((AF_INET==fam.family[2]) ? "INET" : "INET6")
+                    );
+                }
                 memcpy(link_family, fam.family, 12);
             } else {
 			    ProcessG2(g2buflen, dsvt, -1);
@@ -2252,9 +2254,14 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 		return;
 	}
 
-	if (sbuf.st_size % 9)
-		printf("Warning %s file size is %ld (not a multiple of 9)!\n", edata.file, sbuf.st_size);
-	int ambeblocks = (int)sbuf.st_size / 9;
+    if (sbuf.st_size < 65) {
+        fprintf(stderr, "Error %s file is too small!\n", edata.file);
+        return;
+    }
+
+	if ((sbuf.st_size - 56) % 9)
+		printf("Warning %s file size of %ld is unexpected!\n", edata.file, sbuf.st_size);
+	int ambeblocks = ((int)sbuf.st_size - 56) / 9;
 
 	FILE *fp = fopen(edata.file, "rb");
 	if (!fp) {
@@ -2262,16 +2269,20 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 		return;
 	}
 
-	int mod = edata.header.hdr.rpt1[7] - 'A';
+    if (1 != fread(dsvt.title, 56, 1, fp)) {
+        fprintf(stderr, "PlayFile Error: Can't read header from %s\n", edata.file);
+        fclose(fp);
+        return;
+    }
+	int mod = dsvt.hdr.rpt1[7] - 'A';
 	if (mod<0 || mod>2) {
-		fprintf(stderr, "unknown module suffix '%s'\n", edata.header.hdr.rpt1);
+		fprintf(stderr, "unknown module suffix '%s'\n", dsvt.hdr.rpt1);
 		return;
 	}
 
 	sleep(TIMING_PLAY_WAIT);
 
-	// reformat the header and send it
-	memcpy(dsvt.title, edata.header.title, 56);
+	// reformat and send it
 	memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
 	calcPFCS(dsvt.title, 56);
 

@@ -23,6 +23,6 @@ typedef struct echo_tag {
 	unsigned short streamid;
 	int fd;
 	char message[24];
-	SDSVT header;
+    SDSVT header;   // only used in qnlink (qngateway writes the header to the file)
 	char file[FILENAME_MAX + 1];
 } SECHO;
