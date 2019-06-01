@@ -1569,6 +1569,8 @@ void CQnetGateway::ProcessModem()
 					if (i>=0 && i<3) {
 						/* voicemail file is closed */
 						if ((vm[i].fd == -1) && (vm[i].file[0] != '\0')) {
+                            band_txt[i].last_time = 0;
+                            band_txt[i].streamID = 0U;  // prevent vm timeout
 							snprintf(vm[i].message, 21, "VOICEMAIL ON MOD %c  ", 'A'+i);
 							try {
 								std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(vm[i]));
