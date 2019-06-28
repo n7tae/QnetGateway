@@ -49,7 +49,7 @@
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
 
-const std::string IRCDDB_VERSION("QnetGateway-9.0");
+const std::string IRCDDB_VERSION("QnetGateway-9.1");
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -633,7 +633,7 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &arearp_c
 		} else if (rc == 2)
 			return 0;
 	}
-	
+
 	for (int i=0; i<2; i++) {
 		if (NULL == ii[i])
 			continue;
@@ -1365,7 +1365,8 @@ void CQnetGateway::ProcessModem()
 					printf("MYCALL [%s] failed IRC expression validation\n", temp_radio_user);
 
 				if ( mycall_valid &&
-						memcmp(dsvt.hdr.urcall, "XRF", 3) &&	// not a reflector
+						memcmp(dsvt.hdr.urcall, "XLX", 3) &&	// not a reflector
+						memcmp(dsvt.hdr.urcall, "XRF", 3) &&
 						memcmp(dsvt.hdr.urcall, "REF", 3) &&
 						memcmp(dsvt.hdr.urcall, "DCS", 3) &&
 						dsvt.hdr.urcall[0]!=' ' && 				// must have something
@@ -1465,7 +1466,7 @@ void CQnetGateway::ProcessModem()
 										to_remote_g2[i].streamid = dsvt.streamid;
 										if (ip.npos == ip.find(':') && af_family[Index[i]] == AF_INET6)
 											fprintf(stderr, "ERROR: IP returned from cache is IPV4 but family is AF_INET6!\n");
-										to_remote_g2[i].toDstar.Initialize(af_family[Index[i]], (uint16_t)((af_family[Index[i]]==AF_INET6) ? g2_ipv6_external.port : g2_external.port), ip.c_str());										
+										to_remote_g2[i].toDstar.Initialize(af_family[Index[i]], (uint16_t)((af_family[Index[i]]==AF_INET6) ? g2_ipv6_external.port : g2_external.port), ip.c_str());
 
 										/* set rpt1 */
 										memset(dsvt.hdr.rpt1, ' ', 8);
