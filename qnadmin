@@ -466,22 +466,23 @@ GatewayMenu () {
 		echo
 		read -p "Command: " ans
 		if   [[ "$ans" == ip* ]]; then
-			/usr/bin/wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
-			/usr/bin/wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
-			/usr/bin/wget http://www.pistar.uk/downloads/DCS_Hosts.txt
+			curl -o XLX_Hosts.txt https://ar-dns.net/xlx
+			wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
+			wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
+			wget http://www.pistar.uk/downloads/DCS_Hosts.txt
 			/bin/rm -f gwys.txt
-			echo "# Downloaded from www.pistar.uk `date`" > gwys.txt
-			awk '$1 ~ /^XLX/ { printf "%s %s 30001\n", $1, $2 }' DExtra_Hosts.txt >> gwys.txt
+			echo "# Downloaded from www.pistar.uk and ar-dns.net `date`" > gwys.txt
+			awk '$1 ~ /^XLX/ { printf "%s %s 30001\n", $1, $2 }' XLX_Hosts.txt >> gwys.txt
 			awk '$1 ~ /^XRF/ { printf "%s %s 30001\n", $1, $2 }' DExtra_Hosts.txt >> gwys.txt
 			awk '$1 ~ /^DCS/ { printf "%s %s 30051\n", $1, $2 }' DCS_Hosts.txt >> gwys.txt
 			awk '$1 ~ /^REF/ { printf "%s %s 20001\n", $1, $2 }' DPlus_Hosts.txt >> gwys.txt
-			/bin/rm -f D{Extra,Plus,CS}_Hosts.txt
+			/bin/rm -f D{XLX,Extra,Plus,CS}_Hosts.txt
 		elif [[ "$ans" == iv* ]]; then
 			/bin/rm -f gwys.txt
 			wget http://www.va3uv.com/gwys.txt
 		elif [[ "$ans" == ir* ]]; then
 			/bin/rm -f gwys.txt
-			/usr/bin/wget -nv -O gwys.va3uv.txt http://www.va3uv.com/gwys.txt
+			wget -nv -O gwys.va3uv.txt http://www.va3uv.com/gwys.txt
 			if [ -e gwys.va3uv.txt ]; then
 				echo "# Downloaded from www.va3uv.com `date`" > gwys.txt
 				awk '$1~/^REF/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
