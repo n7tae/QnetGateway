@@ -456,7 +456,7 @@ GatewayMenu () {
 		echo "     $refcount REF, $dcscount DCS, $xrfcount XRF and $repcount Repeaters"
 		echo
 		echo "     All initialization will overwrite any existing file!"
-		echo "ip : Initialize gwys.txt using www.PiStar.uk/downloads"
+		echo "ip : Initialize gwys.txt using www.PiStar.uk/downloads and xlxapi.rlx.lu"
 		echo "iv : Initialize gwys.txt using VA3UV.com (includes a large # of repeaters)"
 		echo "ir : Initialize gwys.txt using VA3UV.com (but just the reflectors)"
 		echo "n  : Edit gwys.txt file with nano"
@@ -466,12 +466,12 @@ GatewayMenu () {
 		echo
 		read -p "Command: " ans
 		if   [[ "$ans" == ip* ]]; then
-			curl -o XLX_Hosts.txt https://ar-dns.net/xlx
+			wget -O XLX_Hosts.txt http://xlxapi.rlx.lu/api.php?do=GetXLXDMRMaster
 			wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
 			wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
 			wget http://www.pistar.uk/downloads/DCS_Hosts.txt
 			/bin/rm -f gwys.txt
-			echo "# Downloaded from www.pistar.uk and ar-dns.net `date`" > gwys.txt
+			echo "# Downloaded from www.pistar.uk and xlxapi.rlx.lu `date`" > gwys.txt
 			awk '$1 ~ /^XLX/ { printf "%s %s 30001\n", $1, $2 }' XLX_Hosts.txt >> gwys.txt
 			awk '$1 ~ /^XRF/ { printf "%s %s 30001\n", $1, $2 }' DExtra_Hosts.txt >> gwys.txt
 			awk '$1 ~ /^DCS/ { printf "%s %s 30051\n", $1, $2 }' DCS_Hosts.txt >> gwys.txt
