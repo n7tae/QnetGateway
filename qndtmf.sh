@@ -18,9 +18,11 @@
 # We set this to spaces, it will be set later
 
 GetLetter () {
+	local i
 	if [[ $1 == +([0-9]) ]]; then
-		if [ $1 -gt 0 ] && [ $1 -le 26 ]; then
-			LETTER=${LETTERS[$1-1]}
+		i=`expr $1 - 1`
+		if [ $i -ge 0 ] && [ $i -lt 26 ]; then
+			LETTER=${LETTERS[$i]}
 			return
 		fi
 	fi
