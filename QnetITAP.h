@@ -126,6 +126,7 @@ private:
 	// config data
 	char RPTR_MOD;
 	std::string ITAP_DEVICE, RPTR;
+	std::string FILE_QNVOICE_FILE;
 	bool log_qso;
 
 	// parameters

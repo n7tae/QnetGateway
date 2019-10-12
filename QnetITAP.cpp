@@ -45,7 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-2.1.1"
+#define ITAP_VERSION "QnetITAP-2.1.2"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -275,6 +275,16 @@ void CQnetITAP::Run(const char *cfgfile)
 					if (! is_alive) {
 						printf("Icom Radio is connected.\n");
 						is_alive = true;
+						struct stat sbuf;
+						if (stat(FILE_QNVOICE_FILE.c_str(), &sbuf)) {
+							// yes, there is no FILE_QNVOICE_FILE, so create it
+							FILE *fp = fopen(FILE_QNVOICE_FILE.c_str(), "w");
+							if (fp) {
+								fprintf(fp, "%c_radio_connected.dat_WELCOME_TO_QUADNET", RPTR_MOD);
+								fclose(fp);
+							} else
+								fprintf(stderr, "could not open %s\n", FILE_QNVOICE_FILE.c_str());
+						}
 					}
 					break;
 				default:
@@ -538,6 +548,7 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	}
 
 	cfg.GetValue("log_qso", estr, log_qso);
+	cfg.GetValue("file_qnvoice_file", estr, FILE_QNVOICE_FILE, 2, FILENAME_MAX);
 
 	return false;
 }
