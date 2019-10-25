@@ -1302,6 +1302,7 @@ void CQnetGateway::ProcessModem()
 					}
 					memcpy(dsvt.hdr.rpt2, OWNER.c_str(), 7);
 					dsvt.hdr.rpt2[7] = 'G';
+					calcPFCS(dsvt.title, 56);
 					if (LOG_QSO)
 						printf("Resetting: r1=%.8s r2=%.8s\n", dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 				}
