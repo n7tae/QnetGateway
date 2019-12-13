@@ -49,7 +49,7 @@
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
 
-const std::string IRCDDB_VERSION("QnetGateway-9.1");
+const std::string IRCDDB_VERSION("QnetGateway-9.2");
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
