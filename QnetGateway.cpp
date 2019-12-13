@@ -1287,6 +1287,25 @@ void CQnetGateway::ProcessModem()
 			if (recvlen == 56) {
 				if (LOG_QSO)
 					printf("id=%04x start RPTR flag0=%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0],  dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
+				if (0==memcmp(dsvt.hdr.rpt1, "DIRECT  ", 8) && 0==memcmp(dsvt.hdr.rpt2, "DIRECT  ", 8)) {	// DIRECT mode???
+					memcpy(dsvt.hdr.rpt1, OWNER.c_str(), 7);
+					switch (dsvt.flagb[2]) {
+						case 0x01U:
+							dsvt.hdr.rpt1[7] = 'B';
+							break;
+						case 0x02U:
+							dsvt.hdr.rpt1[7] = 'C';
+							break;
+						default:
+							dsvt.hdr.rpt1[7] = 'A';
+							break;
+					}
+					memcpy(dsvt.hdr.rpt2, OWNER.c_str(), 7);
+					dsvt.hdr.rpt2[7] = 'G';
+					calcPFCS(dsvt.title, 56);
+					if (LOG_QSO)
+						printf("Resetting: r1=%.8s r2=%.8s\n", dsvt.hdr.rpt1, dsvt.hdr.rpt2);
+				}
 
 				if (0==memcmp(dsvt.hdr.rpt1, OWNER.c_str(), 7) && Flag_is_ok(dsvt.hdr.flag[0])) {
 
