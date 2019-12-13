@@ -45,7 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-2.1.2"
+#define ITAP_VERSION "QnetITAP-2.1.3"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -302,6 +302,7 @@ void CQnetITAP::Run(const char *cfgfile)
 			}
 
 			if (0 == memcmp(buf, "DSVT", 4)) {
+				lastdata.start();	// got a packet, reset the timer
 				//printf("read %d bytes from QnetGateway\n", (int)len);
 				if (ProcessGateway(len, buf))
 					break;
