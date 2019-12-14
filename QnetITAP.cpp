@@ -217,6 +217,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	bool is_alive = false;
 	acknowledged = true;
 	CTimer lastdata;
+	CTimer pingTimer;
 
 	while (keep_running) {
 
@@ -226,8 +227,10 @@ void CQnetITAP::Run(const char *cfgfile)
 		FD_SET(ug2m, &readfds);
 		int maxfs = (serfd > ug2m) ? serfd : ug2m;
 
+		// for the first 18 selects(), we send a poll packet every 100 ms,
+		// then a ping packet gets sent every second
 		struct timeval tv;
-		tv.tv_sec = (poll_counter >= 18) ? 1 : 0;
+		tv.tv_sec  = (poll_counter >= 18) ? 1 :      0;
 		tv.tv_usec = (poll_counter >= 18) ? 0 : 100000;
 
 		// don't care about writefds and exceptfds:
@@ -245,16 +248,16 @@ void CQnetITAP::Run(const char *cfgfile)
 			break;
 		}
 
-		if (0 == ret) {
-			// nothing to read, so do the polling or pinging
-			if (poll_counter++ < 18) {
-				const unsigned char poll[2] = { 0xffu, 0xffu };
-				SendTo(poll);
-			} else {
-				const unsigned char ping[3] = { 0x02u, 0x02u };
+		if (poll_counter++ < 18 ) {
+			const unsigned char poll[2] = { 0xffu, 0xffu };
+			SendTo(poll);
+			pingTimer.start();
+		} else {
+			if (pingTimer.time() >= 1.0) {
+				const unsigned char ping[2] = { 0x02u, 0x02u };
 				SendTo(ping);
+				pingTimer.start();
 			}
-			continue;
 		}
 
 		// there is something to read!
@@ -302,7 +305,6 @@ void CQnetITAP::Run(const char *cfgfile)
 			}
 
 			if (0 == memcmp(buf, "DSVT", 4)) {
-				lastdata.start();	// got a packet, reset the timer
 				//printf("read %d bytes from QnetGateway\n", (int)len);
 				if (ProcessGateway(len, buf))
 					break;
