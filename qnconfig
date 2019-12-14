@@ -233,7 +233,8 @@ IrcddbMenu () {
 		elif [[ "$key" == ob* ]]; then ircddb1_port="$value"
 		elif [[ "$key" == ab* ]]; then ircddb1_password="$value"
 		elif [[ "$key" == u*  ]]; then
-			if   [[ "$value" == ha* ]]; then unset ircddb0_host
+			if   [[ "$value" == l*  ]]; then unset ircddb_login
+			elif [[ "$value" == ha* ]]; then unset ircddb0_host
 			elif [[ "$value" == oa* ]]; then unset ircddb0_port
 			elif [[ "$value" == aa* ]]; then unset ircddb0_password
 			elif [[ "$value" == hb* ]]; then unset ircddb1_host
@@ -322,6 +323,7 @@ GateMenu () {
 			elif [[ "$value" == d1* ]]; then unset gateway_desc1
 			elif [[ "$value" == d2* ]]; then unset gateway_desc2
 			elif [[ "$value" == w*  ]]; then unset gateway_url
+			elif [[ "$value" == fr* ]]; then unset gateway_find_route
 			elif [[ "$value" == e*  ]]; then unset aprs_enable
 			elif [[ "$value" == h*  ]]; then unset aprs_host
 			elif [[ "$value" == ap* ]]; then unset aprs_port
