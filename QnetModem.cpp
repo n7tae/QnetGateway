@@ -44,7 +44,7 @@
 #include "QnetModem.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-0.1.2"
+#define MODEM_VERSION "QnetModem-0.1.3"
 #define MAX_RESPONSES 30
 
 std::atomic<bool> CQnetModem::keep_running(true);
@@ -99,8 +99,8 @@ bool CQnetModem::GetBufferSize()
 
 		for (int count = 0; count < MAX_RESPONSES; count++) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			MODEM_RESPONSE resp = GetModemData(&frame.start, sizeof(SVERSION));
-			if (resp == STATUS_RESPONSE) {
+			EModemResponse resp = GetModemData(&frame.start, sizeof(SVERSION));
+			if (resp == EModemResponse::status) {
 				dstarSpace = frame.status.dsrsize;
 				printf("D-Star buffer will hold %u voice frames\n", dstarSpace);
 				return false;
@@ -129,27 +129,27 @@ bool CQnetModem::GetVersion()
 
 		for (int count = 0; count < MAX_RESPONSES; count++) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			MODEM_RESPONSE resp = GetModemData(&frame.start, sizeof(SVERSION));
-			if (resp == VERSION_RESPONSE && frame.length > 14U) {
+			EModemResponse resp = GetModemData(&frame.start, sizeof(SVERSION));
+			if (resp == EModemResponse::version && frame.length > 14U) {
 				frame.version[frame.length-4U] = '\0';	// just to make sure!
 				if      (0 == memcmp(frame.version, "MMDVM ", 6U))
-					hardwareType = HWT_MMDVM;
+					hardwareType = EHardwareType::mmdvm;
 				else if (0 == memcmp(frame.version, "DVMEGA", 6U))
-					hardwareType = HWT_DVMEGA;
+					hardwareType = EHardwareType::dvmega;
 				else if (0 == memcmp(frame.version, "ZUMspot", 7U))
-					hardwareType = HWT_MMDVM_ZUMSPOT;
+					hardwareType = EHardwareType::zumspot;
 				else if (0 == memcmp(frame.version, "MMDVM_HS_Hat", 12U))
-					hardwareType = HWT_MMDVM_HS_HAT;
+					hardwareType = EHardwareType::hs_hat;
 				else if (0 == memcmp(frame.version, "MMDVM_HS_Dual_Hat", 17U))
-					hardwareType = HWT_MMDVM_HS_DUAL_HAT;
+					hardwareType = EHardwareType::hs_dual_hat;
 				else if (0 == memcmp(frame.version, "Nano_hotSPOT", 12U))
-					hardwareType = HWT_NANO_HOTSPOT;
+					hardwareType = EHardwareType::nano_hs;
 				else if (0 == memcmp(frame.version, "Nano_DV", 7U))
-					hardwareType = HWT_NANO_DV;
+					hardwareType = EHardwareType::nano_dv;
 				else if (0 == memcmp(frame.version, "MMDVM_HS-", 9U))
-					hardwareType = HWT_MMDVM_HS;
+					hardwareType = EHardwareType::mmdvm_hs;
 				else {
-					hardwareType = HWT_UNKNOWN;
+					hardwareType = EHardwareType::unknown;
 				}
 
 				printf("MMDVM protocol version: %u, Modem: %s\n", (unsigned int)frame.protocol, (char *)frame.version);
@@ -171,7 +171,7 @@ bool CQnetModem::SetFrequency()
 	frame.start = FRAME_START;
 	frame.type = TYPE_FREQ;
 
-	if (hardwareType == HWT_DVMEGA)
+	if (hardwareType == EHardwareType::dvmega)
 		frame.length = 12U;
 	else {
 		frame.frequency.level = 255U;
@@ -195,10 +195,10 @@ bool CQnetModem::SetFrequency()
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 		switch (GetModemData(&frame.start, sizeof(SMODEM))) {
-			case ACK_RESPONSE:
+			case EModemResponse::ack:
 				got_ack = true;
 				break;
-			case NACK_RESPONSE:
+			case EModemResponse::nack:
 				fprintf(stderr, "SET_FREQ failed, returned NACK reason %u\n", frame.nack.reason);
 				return true;
 			default:
@@ -294,10 +294,10 @@ bool CQnetModem::SetConfiguration()
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 		switch (GetModemData(&frame.start, sizeof(SMODEM))) {
-			case ACK_RESPONSE:
+			case EModemResponse::ack:
 				got_ack = true;
 				break;
-			case NACK_RESPONSE:
+			case EModemResponse::nack:
 				fprintf(stderr, "SET_CONFIG failed, returned NACK reason %u\n", frame.nack.reason);
 				return true;
 			default:
@@ -353,32 +353,32 @@ int CQnetModem::OpenModem()
 	return fd;
 }
 
-MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
+EModemResponse CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 {
 	if (size < 4U) {
 		fprintf(stderr, "Buffer size, %u is too small\n", size);
-		return ERROR_RESPONSE;
+		return EModemResponse::error;
 	}
 
 	// Get the start byte
 	int ret = read(serfd, buf, 1U);
 	if (ret < 0) {
 		fprintf(stderr, "Error when reading frame start byte: %s\n", strerror(errno));
-		return ERROR_RESPONSE;
+		return EModemResponse::error;
 	} else if (ret == 0) {
 		printf("READ START RETURNED A ZERO!\n");
-		return TIMEOUT_RESPONSE;
+		return EModemResponse::timeout;
 	} else if (buf[0] != FRAME_START)
-		return TIMEOUT_RESPONSE;
+		return EModemResponse::timeout;
 
 	//get the length byte
 	ret = read(serfd, buf+1, 1U);
 	if (ret < 0) {
 		fprintf(stderr, "Error when reading frame length: %s\n", strerror(errno));
-		return ERROR_RESPONSE;
+		return EModemResponse::error;
 	} else if (ret == 0) {
 		printf("READ LENGTH RETURNED A ZERO!\n");
-		return(TIMEOUT_RESPONSE);
+		return(EModemResponse::timeout);
 	}
 	// is the packet size bigger than a D-Star header (44 bytes)?
 	unsigned int junk_count = ((unsigned int)buf[1] > size) ? (unsigned int)buf[1] - size : 0;
@@ -387,10 +387,10 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 	ret = read(serfd, buf+2, 1U);
 	if (ret < 0) {
 		fprintf(stderr, "Error when reading frame type: %s\n", strerror(errno));
-		return ERROR_RESPONSE;
+		return EModemResponse::error;
 	} else if (ret == 0) {
 		printf("READ TYPE RETURNED A ZERO!\n");
-		return(TIMEOUT_RESPONSE);
+		return(EModemResponse::timeout);
 	}
 	// get the data
 	unsigned int length = buf[1];
@@ -399,11 +399,11 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 		ret = read(serfd, buf + offset, length - offset);
 		if (ret < 0) {
 			printf("Error when reading data: %s\n", strerror(errno));
-			return ERROR_RESPONSE;
+			return EModemResponse::error;
 		}
 		if (ret == 0) {
 			printf("READ DATA RETURNED A ZERO!\n");
-			return(TIMEOUT_RESPONSE);
+			return(EModemResponse::timeout);
 		} else
 			offset += ret;
 	}
@@ -413,10 +413,10 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 		ret = read(serfd, junk, (junk_count > 8U) ? 8U : junk_count);
 		if (ret < 0) {
 			printf("Error when reading junk: %s\n", strerror(errno));
-			return ERROR_RESPONSE;
+			return EModemResponse::error;
 		} else if (ret == 0) {
 			printf("READ junk RETURNED A ZERO!\n");
-			return(TIMEOUT_RESPONSE);
+			return(EModemResponse::timeout);
 		} else {
 			junk_count -= (unsigned int)ret;
 		}
@@ -424,23 +424,23 @@ MODEM_RESPONSE CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 
 	switch (buf[2]) {
 		case TYPE_ACK:
-			return ACK_RESPONSE;
+			return EModemResponse::ack;
 		case TYPE_NACK:
-			return NACK_RESPONSE;
+			return EModemResponse::nack;
 		case TYPE_HEADER:
-			return HEADER_RESPONSE;
+			return EModemResponse::header;
 		case TYPE_DATA:
-			return DATA_RESPONSE;
+			return EModemResponse::data;
 		case TYPE_LOST:
-			return LOST_RESPONSE;
+			return EModemResponse::lost;
 		case TYPE_EOT:
-			return EOT_RESPONSE;
+			return EModemResponse::eot;
 		case TYPE_VERSION:
-			return VERSION_RESPONSE;
+			return EModemResponse::version;
 		case TYPE_STATUS:
-			return STATUS_RESPONSE;
+			return EModemResponse::status;
 		default:
-			return ERROR_RESPONSE;
+			return EModemResponse::error;
 	};
 }
 
@@ -487,14 +487,14 @@ void CQnetModem::Run(const char *cfgfile)
 		if (keep_running && FD_ISSET(serfd, &readfds)) {
 			deadTimer.start();
 			switch (GetModemData(&frame.start, sizeof(SMODEM))) {
-				case DATA_RESPONSE:
-				case HEADER_RESPONSE:
-				case EOT_RESPONSE:
-				case LOST_RESPONSE:
+				case EModemResponse::data:
+				case EModemResponse::header:
+				case EModemResponse::eot:
+				case EModemResponse::lost:
 					if (ProcessModem(frame))
 						keep_running = false;
 					break;
-				case STATUS_RESPONSE:
+				case EModemResponse::status:
 					if (frame.status.flags & 0x02U)
 						fprintf(stderr, "Modem ADC levels have overflowed\n");
 					if (frame.status.flags & 0x04U)
@@ -549,8 +549,8 @@ void CQnetModem::Run(const char *cfgfile)
 					dstarSpace -= (type==TYPE_HEADER) ? 4U : 1U;
 				}
 			}
-			if (statusTimer.time()>0.25) {
-				// request a status update every 200 milliseconds
+			if (statusTimer.time() > 0.25) {
+				// request a status update every 250 milliseconds
 				frame.length = 3U;
 				frame.type = TYPE_STATUS;
 				if (3 != SendToModem(&frame.start))
@@ -566,18 +566,18 @@ void CQnetModem::Run(const char *cfgfile)
 int CQnetModem::SendToModem(const unsigned char *buf)
 {
 	ssize_t n;
-	size_t ptr = 0;
+	size_t sent = 0;
 	ssize_t length = buf[1];
 
-	while ((ssize_t)ptr < length) {
-		n = write(serfd, buf + ptr, length - ptr);
+	while ((ssize_t)sent < length) {
+		n = write(serfd, buf + sent, length - sent);
 		if (n < 0) {
 			if (EAGAIN != errno) {
 				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
 				return -1;
 			}
 		}
-		ptr += n;
+		sent += n;
 	}
 
 	return length;

@@ -32,29 +32,29 @@
 #define CALL_SIZE 8
 #define IP_SIZE 15
 
-enum MODEM_RESPONSE {
-	ACK_RESPONSE,
-	NACK_RESPONSE,
-	TIMEOUT_RESPONSE,
-	ERROR_RESPONSE,
-	HEADER_RESPONSE,
-	DATA_RESPONSE,
-	LOST_RESPONSE,
-	EOT_RESPONSE,
-	STATUS_RESPONSE,
-	VERSION_RESPONSE
+enum class EModemResponse {
+	ack,
+	nack,
+	timeout,
+	error,
+	header,
+	data,
+	lost,
+	eot,
+	status,
+	version
 };
 
-enum HARDWARE_TYPE {
-	HWT_MMDVM,
-	HWT_DVMEGA,
-	HWT_MMDVM_ZUMSPOT,
-	HWT_MMDVM_HS_HAT,
-	HWT_MMDVM_HS_DUAL_HAT,
-	HWT_NANO_HOTSPOT,
-	HWT_NANO_DV,
-	HWT_MMDVM_HS,
-	HWT_UNKNOWN
+enum class EHardwareType {
+	mmdvm,
+	dvmega,
+	zumspot,
+	hs_hat,
+	hs_dual_hat,
+	nano_hs,
+	nano_dv,
+	mmdvm_hs,
+	unknown
 };
 
 // Icom Terminal and Access Point Mode data structure
@@ -203,7 +203,7 @@ private:
 	bool ProcessModem(const SMODEM &frame);
 	int OpenModem();
 	int SendToModem(const unsigned char *buf);
-	MODEM_RESPONSE GetModemData(unsigned char *buf, unsigned int size);
+	EModemResponse GetModemData(unsigned char *buf, unsigned int size);
 	bool GetVersion();
 	bool GetBufferSize();
 	bool SetFrequency();
@@ -220,7 +220,7 @@ private:
 	bool DUPLEX, RX_INVERT, TX_INVERT, PTT_INVERT, LOG_QSO, LOG_DEBUG;
 
 	// parameters
-	HARDWARE_TYPE hardwareType;
+	EHardwareType hardwareType;
 	int serfd;
 
 
