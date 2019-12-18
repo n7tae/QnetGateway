@@ -132,7 +132,7 @@ BaseStatus () {
 	else
 		GateState='not installed'
 	fi
-	echo "QetGateway is $GateState"
+	echo "QnetGateway is $GateState"
 	if [[ $LoadLink == 'loaded' ]]; then
 		if [[ $SubLink == 'running' ]]; then
 			LinkState='running'
@@ -142,7 +142,7 @@ BaseStatus () {
 	else
 		LinkState='not installed'
 	fi
-	echo "QetLink is $LinkState"
+	echo "QnetLink is $LinkState"
 	if [[ $LoadDTMF == 'loaded' ]]; then
 		if [[ $SubDTMF == 'running' ]]; then
 			DTMFState='running'
