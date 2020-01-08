@@ -332,8 +332,11 @@ void CQnetITAP::Run(const char *cfgfile)
 					}
 					lastdataTimer.start();
 					break;
+				case RT_TIMEOUT:	// probably a 0xff
+					break;
 				default:
-					DumpSerialPacket("GetITAPData returned ", buf);
+					if (buf[0] != 255)
+						DumpSerialPacket("GetITAPData returned", buf);
 					break;
 			}
 			FD_CLR(serfd, &readfds);
