@@ -157,10 +157,7 @@ void CQnetITAP::DumpSerialPacket(const char *title, const unsigned char *buf)
 			printf("Data acknowledgement seq=%02u code=%02u", itap.header.flag[0], itap.header.flag[1]);
 			break;
 		default:
-			printf("UNKNOWN:");
-			for (int i=0; i<buf[0]; i++)
-				printf(" %02u", buf[i]);
-			printf("\n");
+			printf("UNKNOWN packet buf[0] = 0x%02u\n", buf[0]);
 			break;
 	}
 }
@@ -332,7 +329,7 @@ void CQnetITAP::Run(const char *cfgfile)
 					}
 					lastdataTimer.start();
 					break;
-				case RT_TIMEOUT:	// probably a 0xff
+				case RT_TIMEOUT:	// nothing or 0xff
 					break;
 				default:
 					if (buf[0] != 255)
