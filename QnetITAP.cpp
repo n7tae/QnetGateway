@@ -367,7 +367,7 @@ void CQnetITAP::Run(const char *cfgfile)
 				}
 			} else {	// we are waiting on an acknowledgement
 				if (ackTimer.time() >= 0.06) {
-					fprintf(stderr, "ERROR: packet sent to serial port not acknowledged");
+					fprintf(stderr, "ERROR: packet sent to serial port not acknowledged\n");
 					close(serfd);
 					poll_counter = 0;
 					pingtime = 0.1;
