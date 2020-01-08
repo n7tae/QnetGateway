@@ -358,12 +358,21 @@ void CQnetITAP::Run(const char *cfgfile)
 		// send queued frames
 		if (keep_running) {
 			if (acknowledged) {
-				if (! queue.empty()) {
-					CFrame frame = queue.front();
-					queue.pop();
-					SendTo(frame.data());
-					ackTimer.start();
-					acknowledged = false;
+				if (is_alive) {
+					if (! queue.empty()) {
+						CFrame frame = queue.front();
+						queue.pop();
+						SendTo(frame.data());
+						ackTimer.start();
+						acknowledged = false;
+					}
+				}else {
+					static std::size_t last_count = 0;
+					std::size_t count = queue.size();
+					if (last_count != count) {
+						printf("queue contains %lu packets\n", count);
+						last_count = count;
+					}
 				}
 			} else {	// we are waiting on an acknowledgement
 				if (ackTimer.time() >= 0.06) {
@@ -376,12 +385,16 @@ void CQnetITAP::Run(const char *cfgfile)
 					lastdataTimer.start();
 					pingTimer.start();
 					serfd = OpenITAP();
-					if (serfd < 0)
+					if (serfd < 0) {
 						keep_running = false;
+					} else {
+						while (! queue.empty())
+							queue.pop();
+					}
 				}
 			}
 		}
-}
+	}
 
 	close(serfd);
 	Gate2Modem.Close();
@@ -611,7 +624,7 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	}
 
 	cfg.GetValue("log_qso", estr, log_qso);
-
+log_qso = false;
 	return false;
 }
 
