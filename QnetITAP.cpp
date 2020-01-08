@@ -306,10 +306,12 @@ void CQnetITAP::Run(const char *cfgfile)
 					break;
 				case RT_PONG:
 					if (! is_alive) {
-						auto count = queue.size();
-						if (count)
-							printf("%u packets in queue.", (unsigned int)count);
-						printf("Icom Radio is connected.\n");
+						if (LOG_DEBUG) {
+							auto count = queue.size();
+							if (count)
+								printf("%u packets in queue. Icom radio is connected.", (unsigned int)count);
+						} else
+							printf("Icom Radio is connected.\n");
 						is_alive = true;
 					}
 					lastdataTimer.start();
@@ -372,7 +374,8 @@ void CQnetITAP::Run(const char *cfgfile)
 				}
 			} else {	// we are waiting on an acknowledgement
 				if (ackTimer.time() >= 0.06) {
-					fprintf(stderr, "Serial port communication error, restarting...\n");
+					if (LOG_DEBUG)
+						fprintf(stderr, "Serial port communication error, restarting...\n");
 					close(serfd);
 					poll_counter = 0;
 					pingtime = 0.1;
@@ -451,14 +454,14 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(itap.header.ur, dsvt.hdr.urcall, 8);
 			memcpy(itap.header.my, dsvt.hdr.mycall, 8);
 			memcpy(itap.header.nm, dsvt.hdr.sfx,    4);
-			if (log_qso)
+			if (LOG_QSO)
 				printf("Queued ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(), itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
 		} else {	// write an AMBE packet
 			itap.length = 16U;
 			itap.type = 0x22U;
 			itap.voice.counter = counter++;
 			itap.voice.sequence = dsvt.ctrl;
-			if (log_qso && (dsvt.ctrl & 0x40))
+			if (LOG_QSO && (dsvt.ctrl & 0x40))
 				printf("Queued ITAP end of stream\n");
 			if ((dsvt.ctrl & ~0x40U) > 20)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
@@ -530,7 +533,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 			printf("ERROR: ProcessITAP: Could not write gateway header packet\n");
 			return true;
 		}
-		if (log_qso)
+		if (LOG_QSO)
 			printf("Sent DSVT to gateway, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 	} else if (16 == len) {	// ambe
 		dsvt.ctrl = itap.voice.sequence;
@@ -540,7 +543,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 			return true;
 		}
 
-		if (log_qso && (dsvt.ctrl & 0x40))
+		if (LOG_QSO && (dsvt.ctrl & 0x40))
 			printf("Sent dsvt end of streamid=%04x\n", ntohs(dsvt.streamid));
 	}
 
@@ -619,8 +622,8 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 		RPTR.resize(CALL_SIZE, ' ');
 	}
 
-	cfg.GetValue("log_qso", estr, log_qso);
-log_qso = false;
+	cfg.GetValue("LOG_QSO", estr, LOG_QSO);
+	cfg.GetValue("LOG_DEBUG", estr, LOG_DEBUG);
 	return false;
 }
 
