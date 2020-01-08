@@ -622,8 +622,8 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 		RPTR.resize(CALL_SIZE, ' ');
 	}
 
-	cfg.GetValue("LOG_QSO", estr, LOG_QSO);
-	cfg.GetValue("LOG_DEBUG", estr, LOG_DEBUG);
+	cfg.GetValue("log_qso", estr, LOG_QSO);
+	cfg.GetValue("log_debug", estr, LOG_DEBUG);
 	return false;
 }
 
