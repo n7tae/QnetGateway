@@ -45,7 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-2.1.4"
+#define ITAP_VERSION "QnetITAP-2.1.5"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -236,7 +236,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	CTimer ackTimer;
 	CTimer lastdataTimer;
 	CTimer pingTimer;
-	double pingtime = 0.1;
+	double pingtime = 0.001;
 
 	while (keep_running) {
 
@@ -378,7 +378,7 @@ void CQnetITAP::Run(const char *cfgfile)
 						fprintf(stderr, "Serial port communication error, restarting...\n");
 					close(serfd);
 					poll_counter = 0;
-					pingtime = 0.1;
+					pingtime = 0.001;
 					is_alive = false;
 					acknowledged = true;
 					lastdataTimer.start();
