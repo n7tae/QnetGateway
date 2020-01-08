@@ -119,6 +119,7 @@ private:
 	int SendTo(const unsigned char *buf);
 	REPLY_TYPE GetITAPData(unsigned char *buf);
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
+	void DumpSerialPacket(const char *title, const unsigned char *);
 
 	// read configuration file
 	bool ReadConfig(const char *);
@@ -126,7 +127,6 @@ private:
 	// config data
 	char RPTR_MOD;
 	std::string ITAP_DEVICE, RPTR;
-	std::string FILE_QNVOICE_FILE;
 	bool log_qso;
 
 	// parameters
