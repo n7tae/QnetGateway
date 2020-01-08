@@ -367,11 +367,11 @@ void CQnetITAP::Run(const char *cfgfile)
 						acknowledged = false;
 					}
 				}else {
-					static std::size_t last_count = 0;
-					std::size_t count = queue.size();
+					static unsigned int last_count = 0;
+					auto count = queue.size();
 					if (last_count != count) {
-						printf("queue contains %lu packets\n", count);
 						last_count = count;
+						printf("queue contains %u packets\n", last_count);
 					}
 				}
 			} else {	// we are waiting on an acknowledgement
