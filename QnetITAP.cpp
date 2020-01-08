@@ -306,6 +306,9 @@ void CQnetITAP::Run(const char *cfgfile)
 					break;
 				case RT_PONG:
 					if (! is_alive) {
+						auto count = queue.size();
+						if (count)
+							printf("%u packets in queue.", (unsigned int)count);
 						printf("Icom Radio is connected.\n");
 						is_alive = true;
 					}
@@ -366,17 +369,10 @@ void CQnetITAP::Run(const char *cfgfile)
 						ackTimer.start();
 						acknowledged = false;
 					}
-				}else {
-					static unsigned int last_count = 0;
-					auto count = queue.size();
-					if (last_count != count) {
-						last_count = count;
-						printf("queue contains %u packets\n", last_count);
-					}
 				}
 			} else {	// we are waiting on an acknowledgement
 				if (ackTimer.time() >= 0.06) {
-					fprintf(stderr, "ERROR: packet sent to serial port not acknowledged\n");
+					fprintf(stderr, "Serial port communication error, restarting...\n");
 					close(serfd);
 					poll_counter = 0;
 					pingtime = 0.1;
