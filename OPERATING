@@ -78,6 +78,21 @@ YRCALL=XRFNNNML
 Where XRFNNN is a friendly reflector, M is the reflector's module and L is
 the LINK command.
 
+By default, if the target is unavailable or becomes unavialable, QnetLink
+will attempt to re-link approximately every 50 seconds, at least until
+an unlinking command is sent. You will hear status of the connection attempt
+about every 50 seconds. If the target sends an unlink request, QnetLink will
+honor the request and not attempt to relink until another linking command is
+given. This automatic re-linking can be disabled with:
+
+module_x_auto_link=false
+
+in your configuration file, qn.cfg. Here the "x" is the module, "a", "b"
+or "c". This variable can be set in the qnconfig if executing in
+expert mode:
+
+./qnconfig expert
+
 Note about linking:
 After linking succeeds, set YRCALL=CQCQCQ because your audio will go to the
 remote reflector ONLY if YRCALL=CQCQCQ.
