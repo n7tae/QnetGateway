@@ -95,6 +95,7 @@ link_max_dongles_d=5         # maximum number of linked hot-spots
 # GENERIC MODULE - These will be defined for any and all defined modules
 #
 module_x_link_at_start=''  # For example, set to 'REF001 C' to link module to 1-charlie when the module starts.
+module_x_auto_link=true    # attempt to automatically re-link if the link should time out.
 module_x_inactivity=0      # if no activity for this many minutes unlink reflector. Zero means no timer.
 module_x_callsign=''       # if you operate in a 'restriction mode', use your personal callsign. Usually leave this empty.
 module_x_packet_wait=25    # how many milliseconds to wait on packets in a voicestream

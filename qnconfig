@@ -373,6 +373,9 @@ ModuleMenu () {
 		echo "               Module ${1^^} Menu ($mod=${!mod})"
 		echo
 		echo -n "ls : Link at startup (must be 8 chars)            = "; EvaluateVar {${mod},module_x}_link_at_start
+		if [ -n "$em"]; then
+			echo -n "ar : Auto relink in the case of a timeout         = "; EvaluateVar {${mod}, module_x}_auto_link
+		fi
 		echo -n "cs : Callsign (uses ircddb_login if empty)        = "; EvaluateVar {${mod},module_x}_callsign
 		echo -n "ra : Range (in meters, 1 mile=1609.344 meters)    = "; EvaluateVar {${mod},module_x}_range
 		echo -n "ag : Above ground level (in meters)               = "; EvaluateVar {${mod},module_x}_agl
@@ -434,6 +437,7 @@ ModuleMenu () {
 		elif [[ "$key" == ac* ]]; then SetBooleanValue ${mod}_acknowledge "$value"
 		elif [[ "$key" == ad* ]]; then eval ${mod}_ack_delay="$value"
 		elif [[ "$key" == ag* ]]; then eval ${mod}_agl="$value"
+		elif [[ "$key" == al* ]]; then SetBooleanValue ${mod}_auto_link "$value"
 		elif [[ "$key" == cs* ]]; then eval ${mod}_callsign="${value^^}"
 		elif [[ "$key" == du* ]]; then SetBooleanValue ${mod}_duplex "$value"
 		elif [[ "$key" == dv* ]]; then eval ${mod}_device="$value"
@@ -465,12 +469,13 @@ ModuleMenu () {
 			unset ${mod}_{link_at_start,callsign,{,rx_,tx_}frequency,offset,range,agl}
 			unset ${mod}_{inactivity,packet_wait,acknowledge,ack_delay,power,squelch,serial_number,rf_o{n,ff},{r,t}x_level}
 			unset ${mod}_{duplex,tx_delay,rqst_count,{tx,rx,ptt}_invert,device,internal_ip,{gateway,local}_port}
-			unset ${mod}_{tx_offset,rx_offset}
+			unset ${mod}_{tx_offset,rx_offset,auto_link}
 			unset ${mod}
 			return
 		elif [[ "$key" == u* ]]; then
 			if   [[ "$value" == ac* ]]; then unset ${mod}_acknowledge
 			elif [[ "$value" == ad* ]]; then unset ${mod}_ack_delay
+			elif [[ "$value" == al* ]]; then unset ${mod}_auto_link
 			elif [[ "$value" == ag* ]]; then unset ${mod}_agl
 			elif [[ "$value" == cs* ]]; then unset ${mod}_callsign
 			elif [[ "$value" == du* ]]; then unset ${mod}_duplex

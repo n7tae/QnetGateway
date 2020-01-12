@@ -31,6 +31,7 @@
 #include "Random.h"
 #include "UnixDgramSocket.h"
 #include "SockAddress.h"
+#include "Timer.h"
 
 /*** version number must be x.xx ***/
 #define CALL_SIZE 8
@@ -46,12 +47,11 @@ typedef struct refdsvt_tag {
 } SREFDSVT;
 
 typedef struct to_remote_g2_tag {
-    char to_call[CALL_SIZE + 1];
+    char cs[CALL_SIZE + 1];
     CSockAddress addr;
-    char from_mod;
-    char to_mod;
+    char from_mod, to_mod;
     short countdown;
-    bool is_connected;
+	bool auto_link, is_connected;
     unsigned short in_streamid;  // incoming from remote systems
     unsigned short out_streamid; // outgoing to remote systems
 } STOREMOTE;
@@ -60,7 +60,7 @@ typedef struct to_remote_g2_tag {
 // This is for inbound dongles
 typedef struct inbound_tag {
 	char call[CALL_SIZE + 1];	// the callsign of the remote
-	CSockAddress addr;		// IP and port of remote
+	CSockAddress addr;			// IP and port of remote
 	short countdown;			// if countdown expires, the connection is terminated
 	char mod;					// A B C This user talked on this module
 	char client;				// dvap, dvdongle
