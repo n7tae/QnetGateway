@@ -535,6 +535,7 @@ WriteCFGFile () {
 		if [ -n "${!p}" ]; then
 			echo "${p}=${!p}" >> $outFile
 			q=${p}_link_at_start;  [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+			q=${p}_auto_link;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_callsign;       [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
 			q=${p}_offset;         [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_range;          [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
