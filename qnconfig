@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2019 by Thomas A. Early N7TAE
+# Copyright (c) 2019-2020 by Thomas A. Early N7TAE
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 SetBooleanValue () {
-	local nvname
+	local dvname
 	local cv
 	if [ -z $2 ]; then
 		if [ -z ${!1+x} ]; then
-			dvname=${1}_d
+			if [[ "$1" == module_[abc]_* ]]; then
+				echo matches
+				dvname=${1//_[abc]_/_x_}
+			else
+				echo does not match
+				dvname=${1}_d
+			fi
 			cv=${!dvname}
 		else
 			cv=${!1}
@@ -373,8 +379,8 @@ ModuleMenu () {
 		echo "               Module ${1^^} Menu ($mod=${!mod})"
 		echo
 		echo -n "ls : Link at startup (must be 8 chars)            = "; EvaluateVar {${mod},module_x}_link_at_start
-		if [ -n "$em"]; then
-			echo -n "ar : Auto relink in the case of a timeout         = "; EvaluateVar {${mod}, module_x}_auto_link
+		if [ -n "$em" ]; then
+			echo -n "ar : Auto relink in the case of a timeout         = "; EvaluateVar {${mod},module_x}_auto_link
 		fi
 		echo -n "cs : Callsign (uses ircddb_login if empty)        = "; EvaluateVar {${mod},module_x}_callsign
 		echo -n "ra : Range (in meters, 1 mile=1609.344 meters)    = "; EvaluateVar {${mod},module_x}_range
@@ -437,7 +443,7 @@ ModuleMenu () {
 		elif [[ "$key" == ac* ]]; then SetBooleanValue ${mod}_acknowledge "$value"
 		elif [[ "$key" == ad* ]]; then eval ${mod}_ack_delay="$value"
 		elif [[ "$key" == ag* ]]; then eval ${mod}_agl="$value"
-		elif [[ "$key" == al* ]]; then SetBooleanValue ${mod}_auto_link "$value"
+		elif [[ "$key" == ar* ]]; then SetBooleanValue ${mod}_auto_link "$value"
 		elif [[ "$key" == cs* ]]; then eval ${mod}_callsign="${value^^}"
 		elif [[ "$key" == du* ]]; then SetBooleanValue ${mod}_duplex "$value"
 		elif [[ "$key" == dv* ]]; then eval ${mod}_device="$value"
@@ -475,7 +481,7 @@ ModuleMenu () {
 		elif [[ "$key" == u* ]]; then
 			if   [[ "$value" == ac* ]]; then unset ${mod}_acknowledge
 			elif [[ "$value" == ad* ]]; then unset ${mod}_ack_delay
-			elif [[ "$value" == al* ]]; then unset ${mod}_auto_link
+			elif [[ "$value" == ar* ]]; then unset ${mod}_auto_link
 			elif [[ "$value" == ag* ]]; then unset ${mod}_agl
 			elif [[ "$value" == cs* ]]; then unset ${mod}_callsign
 			elif [[ "$value" == du* ]]; then unset ${mod}_duplex
