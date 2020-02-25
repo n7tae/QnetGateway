@@ -1,10 +1,10 @@
 [Unit]
 Description=MMDVMHost
-After=systemd-user-session.service
+After=systemd-user-session.service qnrelay.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/MMDVMHost /usr/local/etc/MMDVM.qn
+ExecStart=/usr/local/bin/XXX /usr/local/etc/YYY.qn
 Restart=always
 
 [Install]

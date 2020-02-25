@@ -1,0 +1,292 @@
+/*
+ *   Copyright (C) 2010, 2011, 2012 by Scott Lawson KI4LKF
+ *   addition Copyright (C) 2018 by Thomas A. Early N7TAE
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+I have substantially modified (and hopefully simplified) the configuration
+of this software, now, modules QnetGateway, QnetLink, QnetDVAP and QnetDVRPTR
+all use a single configuration file. Further, and this is the exciting
+part, NEARLY ALL of the parameters these modules need have a useful
+default value. If the default value is acceptible to you (and it
+probably will be) then you only need to specify what you need to change.
+
+
+This means that for most users, you will only need to specify a few
+parameters. In addtion, there is a new script, qnconfig to help you easily
+build your configuration file, qn.cfg.
+
+Some other features are discussed below and are pretty much directly
+quoted from KI4LKF original documentation.
+
+Tom Early, n7tae (at) arrl (dot) net
+
+
+G2_ircDDB adapted from the OpenG2
+
+   DESCRIPTION
+=================
+
+QnetGateway supports the following commands in YRCALL
+
+Note: In the commands that folow, _ is a SPACE.
+
+1)
+For Echotest/playback.
+YRCALL=_ _ _ _ _ _ _E
+
+2)
+For Voice Mail:
+YRCALL=_ _ _ _ _ _ S0
+The above command will Store/create voice mail in a proprietary file
+x_voicemail.dat2.
+YRCALL=_ _ _ _ _ _ R0
+The above command will Recall/playback voice mail from the recorded file
+x_voicemail.dat2.
+YRCALL=_ _ _ _ _ _ C0
+The above command will Clear/delete voice mail. File x_voicemail.dat2 will be
+deleted. In all cases, the letter x in the file name x_voicemail is the
+module A,B or C.
+
+3)
+For inquiring the status of the link:
+YRCALL=_ _ _ _ _ _ _I
+
+4)
+For unlinking:
+YRCALL=_ _ _ _ _ _ _U
+
+5)
+For linking:
+YRCALL=XXNYYYML
+Where XXNYYY is a friendly gateway, M is the gateways's module and L is the
+LINK command.
+YRCALL=XRFNNNML
+Where XRFNNN is a friendly reflector, M is the reflector's module and L is
+the LINK command.
+
+By default, if the target is unavailable or becomes unavialable, QnetLink
+will attempt to re-link approximately every 50 seconds, at least until
+an unlinking command is sent. You will hear status of the connection attempt
+about every 50 seconds. If the target sends an unlink request, QnetLink will
+honor the request and not attempt to relink until another linking command is
+given. This automatic re-linking can be disabled with:
+
+module_x_auto_link=false
+
+in your configuration file, qn.cfg. Here the "x" is the module, "a", "b"
+or "c". This variable can be set in the qnconfig if executing in
+expert mode:
+
+./qnconfig expert
+
+Note about linking:
+After linking succeeds, set YRCALL=CQCQCQ because your audio will go to the
+remote reflector ONLY if YRCALL=CQCQCQ.
+
+6)
+For executing scripts:
+YRCALL=_ _ _ _ _ _ nX
+where n can be from 0-9 or A-Z.
+Example: YRCALL=_ _ _ _ _ _1X
+Then the script exec_1.sh will be executed.
+Two scripts, exec_R.sh and exec_H.sh are included to reboot and halt your
+system, respectively. Also note that rpt1 is passed to these scripts\
+so you can use this as an input parameter for your scripts.
+Only admins can execute scripts, so set QnetLink.admin to your callsign
+
+Required software to run QnetGateway correctly:
+--- QnetGateway: The G2 audio gateway. This handle routing using an IRCddb
+          network and also handle echo and voicemail and some audio
+          notifications.
+--- QnetLink: This communicates with QnetGateway to link the local G2 gateway
+          to reflectors.
+--- QnetDVAP, QnetDVRPTR, QNetITAP (can only be used with a compatible
+          Icom radio that supports Terminal mode) or QnetRelay (used with
+          MMDVMHost-compatible modems like the ZUMspot or DVMega).
+
+ROUTING methods
+===============
+Some Dstar routing examples follow. Please do not use the same data because
+KJ4NHF is one of our own Dstar repeaters, and KI4LKF is a personal callsign
+in our group.
+
+Example of ZONE routing:
+ Lets say that your repeater is KJ4NHF, and you are currently on
+ your local repeater module B, your callsign is KI4LKF
+ and you want to reach remote gateway XXNYYY module C
+ In this case, your radio should be programmed like this:
+ MYCALL=KI4LKF
+ YRCALL=/XXNYYYC
+ RPT1=KJ4NHF B
+ RPT2=KJ4NHF G
+
+Example of CALLSIGN routing:
+ Lets say that your repeater is KJ4NHF, and you are currently on
+ your local repeater module B, your callsign is KI4LKF
+ and you want to talk to user XX0XXX
+ In this case, your radio should be programmed like this:
+ MYCALL=KI4LKF
+ YRCALL=XX0XXX
+ RPT1=KJ4NHF B
+ RPT2=KJ4NHF G
+
+Example of GROUP routing:
+ Lets say you want to connect to the DSTAR1 group from your
+ local repeater module:
+ MYCALL=KI4LKF
+ YRCALL=DSTAR1
+ RPT1=KJ4NHF B
+ RPT2=KJ4NHF G
+
+Example of Cross-Band routing:
+ Lets say that your repeater is KJ4NHF, and you are currently on
+ your local repeater module B, your callsign is KI4LKF
+ and you want to talk from your local module B to your local module C
+ In this case, your radio should be programmed like this:
+ MYCALL=KI4LKF
+ YRCALL=CQCQCQ
+ RPT1=KJ4NHF B
+ RPT2=KJ4NHF C
+
+DTMF decoding and processing
+=============================
+Prepare the software to decode and process DTMF tones
+-----------------------------------------------------
+Copy the Shell script qndtmf.sh to qndtmf and make any
+changes/additions/subtractions to the script then install your
+DTMF script with "sudo make installdtmf"
+
+Note:   When local RF user has entered dtmf tones on the Dstar HT
+        and then PTT is released, QnetGateway will print the whole
+        sequence in the QnetGateway.log just before it creates the
+        dtmf file under  /tmp.
+
+How to enter DTMF tones correctly on your Dstar HT
+
+What dtmf tones are being decoded and processed
+-----------------------------------------------
+To link to an XRF reflector:  Example:   B02102
+That says:   link to XRF021  module B. So, we use the # dtmf key
+to mean that we're interested in linking to an XRF reflector. The
+last two digits are the remote module 01 thru 05 (which is
+translated to A thru E).
+
+To link to a DCS reflector:  Example:   D00126
+That says:   link to DCS001  module Z. So, we use the D  dtmf key
+to mean that we're interested in linking to a DCS reflector. The
+last two digits are the remote module 01 thru 26 (which is
+translated to A thru Z).
+
+To link to REF:  Example:    *01601
+That says:  link to REF016 module A. So, we use the *  dtmf key
+to mean that we're interested in linking to a REF reflector. The
+last two digits are the remote module 01 thru 05 (which is
+translated to A thru E).
+
+To unlink (from any reflector xrf or ref):    #
+
+To get the "link status":  0 or 00
+
+Note:
+You can extend your dtmf shell script to do more things.  like force
+your repeater to ID itself. Any YRCALL command that can be executed
+by g2link_test, can be added to the shell script. Basically, the
+Linux shell script proc_QnetGateway_dtmfs.sh converts the decoded
+dtmf tones into YRCALL commands using g2link_test program.
+
+===========
+QnetLink is a small program that is used to link a local RF repeater
+band to a remote reflector. QnetLink software is used by our QnetGateway
+(an IRCddb gateway).
+
+Before we begin, there are some dat files included that are the voice
+prompts used by QnetGateway and QnetLink:
+
+rebooting.dat
+baddtmfcmd.dat
+gatewayrestart.dat
+shutdown.dat
+connected2network.dat
+notincache.dat
+gatewaynotfound.dat
+already_linked.dat
+already_unlinked.dat
+failed_link.dat
+linked.dat
+unlinked.dat
+id.dat
+
+All of the above dat files are special AMBE format files and they are used
+when certain events take place. For example, when the link between your
+gateway and a reflector is established, then the file "linked.dat" will
+be played over RF, so anyone listening on your repeater, will hear the
+announcement that the link has been established. You do not have to
+change these files, unless you want to have your own personal voice
+played over RF. These dat files were created using a computer and they
+are NOT anyone's voice.
+
+The only file most hams will need to change is id.dat. When the gateway
+is not linked and the RF user sets YRCALL=_______I to request the
+status of the link, the file id.dat will be played back over RF. But
+you can create your own id.dat file that should identify your own
+repeater with extra information if you like.
+
+For example, you could create your own dat audio file that contains
+the audio:  "This is repeater ...". A simple way to create your own
+recorded "repeater identification file" id.dat is to use your Dstar HT
+and set YRCALL command:   YRCALL=______S0 and key up your repeater.
+Start talking, and the gateway will record your audio into the file
+x_voicemail.dat2 where x is one of A.B or C. Now copy that file:
+
+sudo tail -c +56 /tmp/C_voicemail.dat2 > /usr/local/etc/id.dat
+
+See the DTMF+REMOTE+VOICE.README for more information.
+
+============
+You may be thinking why did we put all this source code inside QnetLink
+instead of putting it all inside the Gateway software QnetGateway.
+Having divided the functionality produces a smaller memory and resource
+requirement for your computer.
+
+QnetDVAP
+
+The serial number required in the .cfg file is obtained from the label
+that can be seen on the DVAP circuit board. In most cases set the power
+to maximum level.
+
+QnetDVRPTR
+
+The serial number required in the qn.cfg file can most easily be obtained
+by examining the log file once the board has been powered up. Once you
+know the board serial number, edit g2.cfg. After editing g2.cfg file you
+can restart the effected program with "sudo systemctl restart qndvrptr".
+Or you can always just reboot with "sudo reboot" or "sudo shutdown -r now".
+
+Rig specific parameters are in "module.x.rf_rx_level", "module.x.inverse.rx" and
+"module.x.inverse.tx". You need to play with these to work best with your rig.
+With my Kenwood TM-V71, I use the default values.
+
+You can first start with inverse.rx, trying true or false. Use the echo command
+on your radio and look in the logs to see if you are getting into the
+dvprtr. Remember to restart the QnetDVRPTR service anytime you modify
+/usr/local/etc/g2.cfg. Once you are able to get into the QnetDVRPTR,
+then you can work out the inverse.tx paramter. Once you hear anything
+with in the echo mode, move rf_rx_level up or down to get the best
+audio.
+
+Once you have a working system, it's a good idea to back up you qn.cfg
+files.

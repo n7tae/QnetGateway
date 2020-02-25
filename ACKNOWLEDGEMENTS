@@ -1,11 +1,17 @@
-QnetGateway started as g2_ircddb written by Scott Lawson, KI4LKF. Many of Scott's original comments are contained
-in the this package.
+QnetGateway started as g2_ircddb written by Scott Lawson, KI4LKF.
 
-QnetGateway uses IRCDDB software written by Michael Dirska, DL1BFF. Both Scott and Michael published their code under
-version 2 of the GNU General Public License. The current form of QnetGateway would be completely impossible without
-Scott and Michael's contribution. Thank you for a great starting point of this current project!
+QnetGateway uses IRCDDB software written by Michael Dirska, DL1BFF. Both Scott and
+Michael published their code under version 2 of the GNU General Public License. The
+current form of QnetGateway would be completely impossible without Scott and
+Michael's contribution. Thank you for a great starting point of this current
+project!
 
-QnetGateway continues to be published under Version 2 of the GNU General Public License, see the LICENSE file.
+Some parts of some QnetGateway programs are also inspired by ircDDBGateway,
+DStarRepeater and MMDVMHost by Jonathan Naylor G4KLX, and his copyright appears in
+those files that used his ideas and in some cases, use his source code.
+
+QnetGateway continues to be published under Version 2 of the GNU General Public
+License, see the LICENSE file.
 
 Tom
 n7tae (at) arrl (dot) net

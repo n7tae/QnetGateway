@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "TCPReaderWriterClient.h"
 #include "IRCutils.h"
 
 enum aprs_level { al_none, al_$1, al_$2, al_c1, al_r1, al_c2, al_csum1, al_csum2, al_csum3, al_csum4, al_data, al_end };
@@ -47,7 +48,6 @@ typedef struct rptr_tag{
 		std::string band;  /* 23cm ... */
 		double frequency, offset, latitude, longitude, range, agl;
 		std::string desc1, desc2, desc, url, package_version;
-		SPORTIP portip;
 	} mod[3];
 } SRPTR;
 
@@ -58,19 +58,14 @@ public:
 	~CAPRS();
 	SRPTR *m_rptr;
 	void SelectBand(short int rptr_idx, unsigned short streamID);
-	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf, unsigned int len);
-	ssize_t WriteSock(char *buffer, size_t n);
+	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf);
 	void Open(const std::string OWNER);
 	void Init();
-	int GetSock();
-	void SetSock(int value);
+	void CloseSock();
+	CTCPReaderWriterClient aprs_sock;
 
 private:
 	// data
-	// the aprs TCP socket
-	int aprs_sock = -1;
-	struct sockaddr_in aprs_addr;
-	socklen_t aprs_addr_len;
 	struct {
 		aprs_level al;
 		unsigned char data[300];
@@ -93,5 +88,4 @@ private:
 	bool AddData(short int rptr_idx, unsigned char *data);
 	bool CheckData(short int rptr_idx);
 	unsigned int CalcCRC(unsigned char* buf, unsigned int len);
-	bool ResolveRmt(const char *name, int type, struct sockaddr_in *addr);
 };

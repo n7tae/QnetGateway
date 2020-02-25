@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -32,23 +32,20 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <time.h>
-#include <libconfig.h++>
 #include <string>
 
 #include "QnetTypeDefs.h"
+#include "Random.h"
+#include "QnetConfigure.h"
+#include "UnixDgramSocket.h"
 
-using namespace libconfig;
+#define VERSION "v2.2"
 
-#define VERSION "v1.0"
-
-int sockDst = -1;
-struct sockaddr_in toDst;
-
+int module;
 time_t tNow = 0;
 short streamid_raw = 0;
-bool isdefined[3] = { false, false, false };
-std::string REPEATER, IP_ADDRESS;
-int PORT, PLAY_WAIT, PLAY_DELAY;
+std::string REPEATER, togateway;
+int PLAY_WAIT, PLAY_DELAY;
 
 unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 
@@ -72,14 +69,42 @@ unsigned short crc_tabccitt[256] = {
 	0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 };
 
-void calcPFCS(unsigned char rawbytes[58])
-{
+CQnetConfigure cfg;
 
+bool ReadCfgFile()
+{
+	const std::string estr;
+	std::string type;
+	std::string path = "module_";
+	path.append(1, 'a'+module);
+
+	if (! cfg.KeyExists(path)) {
+		fprintf(stderr, "%s not defined!\n", path.c_str());
+		return true;
+	}
+	cfg.GetValue(path, estr, type, 1, 16);
+
+	cfg.GetValue(path+"_callsign", type, REPEATER, 0, 6);
+	if (REPEATER.length() < 4) {
+		if (cfg.GetValue("ircddb_login", estr, REPEATER, 3, 6)) {
+			fprintf(stderr, "no Callsign for the repeater was found!\n");
+			return true;
+		}
+	}
+	cfg.GetValue("gateway_modem2gate", estr, togateway, 1, FILENAME_MAX);
+
+	cfg.GetValue("timing_play_wait", estr, PLAY_WAIT, 1, 10);
+	cfg.GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
+	return false;
+}
+
+void calcPFCS(unsigned char rawbytes[56])
+{
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
 	short int i;
 
-	for (i = 17; i < 56 ; i++) {
+	for (i = 15; i < 54 ; i++) {
 		short_c = 0x00ff & (unsigned short)rawbytes[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
@@ -87,137 +112,9 @@ void calcPFCS(unsigned char rawbytes[58])
 	crc_dstar_ffff =  ~crc_dstar_ffff;
 	tmp = crc_dstar_ffff;
 
-	rawbytes[56] = (unsigned char)(crc_dstar_ffff & 0xff);
-	rawbytes[57] = (unsigned char)((tmp >> 8) & 0xff);
+	rawbytes[54] = (unsigned char)(crc_dstar_ffff & 0xff);
+	rawbytes[55] = (unsigned char)((tmp >> 8) & 0xff);
 	return;
-}
-
-bool dst_open(const char *ip, const int port)
-{
-	int reuse = 1;
-
-	sockDst = socket(PF_INET,SOCK_DGRAM,0);
-	if (sockDst == -1) {
-		printf("Failed to create DSTAR socket\n");
-		return true;
-	}
-	if (setsockopt(sockDst,SOL_SOCKET,SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
-		close(sockDst);
-		sockDst = -1;
-		printf("setsockopt DSTAR REUSE failed\n");
-		return true;
-	}
-	memset(&toDst,0,sizeof(struct sockaddr_in));
-	toDst.sin_family = AF_INET;
-	toDst.sin_port = htons(port);
-	toDst.sin_addr.s_addr = inet_addr(ip);
-
-	fcntl(sockDst,F_SETFL,O_NONBLOCK);
-	return false;
-}
-
-void dst_close()
-{
-	if (sockDst != -1) {
-		close(sockDst);
-		sockDst = -1;
-	}
-	return;
-}
-
-bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path, value);
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path, value);
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s is invalid\n", path);
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
-}
-
-/* process configuration file */
-bool read_config(const char *cfgFile)
-{
-	Config cfg;
-
-	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	} catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
-		return true;
-	} catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return true;
-	}
-
-	if (! get_value(cfg, "ircddb.login", REPEATER, 3, 6, "UNDEFINED"))
-		return true;
-	REPEATER.resize(6, ' ');
-	printf("REPEATER=[%s]\n", REPEATER.c_str());
-
-	for (short int m=0; m<3; m++) {
-		std::string path = "module.";
-		path += m + 'a';
-		std::string type;
-		if (cfg.lookupValue(std::string(path+".type").c_str(), type)) {
-			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm")) {
-				printf("module type '%s' is invalid\n", type.c_str());
-				return true;
-			}
-			isdefined[m] = true;
-		}
-	}
-	if (false==isdefined[0] && false==isdefined[1] && false==isdefined[2]) {
-		printf("No repeaters defined!\n");
-		return true;
-	}
-
-	if (! get_value(cfg, "gateway.internal.ip", IP_ADDRESS, 7, 15, "127.0.0.1"))
-		return true;
-
-	get_value(cfg, "gateway.internal.port", PORT, 16000, 65535, 19000);
-
-	get_value(cfg, "timing.play.wait", PLAY_WAIT, 1, 10, 2);
-
-	get_value(cfg, "timing.play.delay", PLAY_DELAY, 9, 25, 19);
-
-	return false;
 }
 
 void ToUpper(std::string &str)
@@ -229,21 +126,43 @@ void ToUpper(std::string &str)
 
 int main(int argc, char *argv[])
 {
-	unsigned short G2_COUNTER = 0;
-
 	if (argc != 4) {
-		printf("Usage: %s <module> <mycall> <yourcall>\n", argv[0]);
-		printf("Example: %s c n7tae xrf757cl\n", argv[0]);
-		printf("Where...\n");
-		printf("        c is the local repeater module\n");
-		printf("        n7tae is the value of mycall\n");
-		printf("        xrf757cl is the value of yourcall, in this case this is a Link command\n\n");
+		fprintf(stderr, "Usage: %s <module> <mycall> <yourcall>\n", argv[0]);
+		fprintf(stderr, "Example: %s c n7tae xrf757al\n", argv[0]);
+		fprintf(stderr, "Where...\n");
+		fprintf(stderr, "        c is the local repeater module\n");
+		fprintf(stderr, "        n7tae is the value of mycall\n");
+		fprintf(stderr, "        xrf757al is the value of yourcall, in this case this is a Link command\n\n");
 		return 0;
+	}
+
+	switch (argv[1][0]) {
+		case '0':
+		case 'a':
+		case 'A':
+			module = 0;
+			break;
+		case '1':
+		case 'b':
+		case 'B':
+			module = 1;
+			break;
+		case '2':
+		case 'c':
+		case 'C':
+			module = 2;
+			break;
+		default:
+			fprintf(stderr, "module must be 0, a, A, 1, b, B, 2, c or C, not %s\n", argv[1]);
+			return 1;
 	}
 
 	std::string cfgfile(CFG_DIR);
 	cfgfile += "/qn.cfg";
-	if (read_config(cfgfile.c_str()))
+	if (cfg.Initialize(cfgfile.c_str()))
+		return 1;
+
+	if (ReadCfgFile())
 		return 1;
 
 	if (REPEATER.size() > 6) {
@@ -251,14 +170,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	ToUpper(REPEATER);
-
-	char module = argv[1][0];
-	if (islower(module))
-		module = toupper(module);
-	if ((module != 'A') && (module != 'B') && (module != 'C')) {
-		printf("module must be one of A B C\n");
-		return 1;
-	}
 
 	if (strlen(argv[2]) > 8) {
 		printf("MYCALL can not be more than 8 characters, %s is invalid\n", argv[2]);
@@ -283,127 +194,118 @@ int main(int argc, char *argv[])
 	RADIO_ID.resize(20, ' ');
 
 	time(&tNow);
-	srand(tNow + getpid());
+	CRandom Random;
+	CUnixDgramWriter ToGateway;
+	ToGateway.SetUp(togateway.c_str());
 
-	if (dst_open(IP_ADDRESS.c_str(), PORT))
-		return 1;
-
-	SDSTR pkt;
-	memcpy(pkt.pkt_id,"DSTR", 4);
-	pkt.counter = htons(G2_COUNTER);
-	pkt.flag[0] = 0x73;
-	pkt.flag[1] = 0x12;
-	pkt.flag[2] = 0x00;
-	pkt.remaining = 0x30;
-	pkt.vpkt.icm_id = 0x20;
-	pkt.vpkt.dst_rptr_id = 0x00;
-	pkt.vpkt.snd_rptr_id = 0x01;
-	if (module == 'A')
-		pkt.vpkt.snd_term_id = 0x03;
-	else if (module == 'B')
-		pkt.vpkt.snd_term_id = 0x01;
-	else if (module == 'C')
-		pkt.vpkt.snd_term_id = 0x02;
+	SDSVT pkt;
+	memcpy(pkt.title, "DSVT", 4);
+	pkt.config = 0x10U;
+	memset(pkt.flaga, 0U, 3U);
+	pkt.id = 0x20U;
+	pkt.flagb[0] = 0x0U;
+	pkt.flagb[1] = 0x1U;
+	if (module == 0)
+		pkt.flagb[2] = 0x3U;
+	else if (module == 1)
+		pkt.flagb[2] = 0x1U;
+	else if (module == 2)
+		pkt.flagb[2] = 0x2U;
 	else
-		pkt.vpkt.snd_term_id = 0x00;
-	streamid_raw = (unsigned short)(::rand() & 0xFFFF);
-	pkt.vpkt.streamid = htons(streamid_raw);
-	pkt.vpkt.ctrl = 0x80;
-	pkt.vpkt.hdr.flag[0] = pkt.vpkt.hdr.flag[1] = pkt.vpkt.hdr.flag[2] = 0x00;
+		pkt.flagb[3] = 0x0U;
+	streamid_raw = Random.NewStreamID();
+	pkt.streamid = htons(streamid_raw);
+	pkt.ctrl = 0x80;
+	pkt.hdr.flag[0] = pkt.hdr.flag[1] = pkt.hdr.flag[2] = 0x00;
 
 	REPEATER.resize(7, ' ');
-	memcpy(pkt.vpkt.hdr.r2, std::string(REPEATER + 'G').c_str(), 8);
-	memcpy(pkt.vpkt.hdr.r1, std::string(REPEATER + module).c_str(), 8);
+	memcpy(pkt.hdr.rpt2, REPEATER.c_str(), 8);
+	pkt.hdr.rpt2[7] = 'G';
+	memcpy(pkt.hdr.rpt1, REPEATER.c_str(), 8);
+	pkt.hdr.rpt1[7] = 'A' + module;
 	mycall.resize(8, ' ');
-	memcpy(pkt.vpkt.hdr.my, mycall.c_str(), 8);
-	memcpy(pkt.vpkt.hdr.nm, "QNET", 4);
+	memcpy(pkt.hdr.mycall, mycall.c_str(), 8);
+	memcpy(pkt.hdr.sfx, "QNET", 4);
 	if (yourcall.size() < 3)
 		yourcall = std::string(8-yourcall.size(), ' ') + yourcall;	// right justify 1 or 2 letter commands
 	else
 		yourcall.resize(8, ' ');
-	memcpy(pkt.vpkt.hdr.ur, yourcall.c_str(), 8);
+	memcpy(pkt.hdr.urcall, yourcall.c_str(), 8);
 
-	calcPFCS(pkt.pkt_id);
+	calcPFCS(pkt.title);
 	// send the header
-	int sent = sendto(sockDst, pkt.pkt_id, 58, 0, (struct sockaddr *)&toDst, sizeof(toDst));
-	if (sent != 58) {
+	if (56 !=  ToGateway.Write(pkt.title, 56)) {
 		printf("%s: ERROR: Couldn't send header!\n", argv[0]);
-		dst_close();
 		return 1;
 	}
 
 	// prepare and send 10 voice packets
-	pkt.remaining = 0x13;
-	memcpy(pkt.vpkt.vasd.voice, silence, 9);
+	pkt.config = 0x20U;
+	memcpy(pkt.vasd.voice, silence, 9);
 
 	for (int i=0; i<10; i++) {
-		usleep(delay);
-
 		/* start sending silence + text */
-		pkt.counter = htons(++G2_COUNTER);
-		pkt.vpkt.ctrl = i;
+		pkt.ctrl = i;
 
 		switch (i) {
 			case 0:	// sync voice frame
-				pkt.vpkt.vasd.text[0] = 0x55;
-				pkt.vpkt.vasd.text[1] = 0x2d;
-				pkt.vpkt.vasd.text[2] = 0x16;
+				pkt.vasd.text[0] = 0x55;
+				pkt.vasd.text[1] = 0x2d;
+				pkt.vasd.text[2] = 0x16;
 				break;
 			case 1:
-				pkt.vpkt.vasd.text[0] = '@' ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[0] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[1] ^ 0x93;
+				pkt.vasd.text[0] = '@' ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[0] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[1] ^ 0x93;
 				break;
 			case 2:
-				pkt.vpkt.vasd.text[0] = RADIO_ID[2] ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[3] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[4] ^ 0x93;
+				pkt.vasd.text[0] = RADIO_ID[2] ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[3] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[4] ^ 0x93;
 				break;
 			case 3:
-				pkt.vpkt.vasd.text[0] = 'A' ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[5] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[6] ^ 0x93;
+				pkt.vasd.text[0] = 'A' ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[5] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[6] ^ 0x93;
 				break;
 			case 4:
-				pkt.vpkt.vasd.text[0] = RADIO_ID[7] ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[8] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[9] ^ 0x93;
+				pkt.vasd.text[0] = RADIO_ID[7] ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[8] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[9] ^ 0x93;
 				break;
 			case 5:
-				pkt.vpkt.vasd.text[0] = 'B' ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[10] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[11] ^ 0x93;
+				pkt.vasd.text[0] = 'B' ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[10] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[11] ^ 0x93;
 				break;
 			case 6:
-				pkt.vpkt.vasd.text[0] = RADIO_ID[12] ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[13] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[14] ^ 0x93;
+				pkt.vasd.text[0] = RADIO_ID[12] ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[13] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[14] ^ 0x93;
 				break;
 			case 7:
-				pkt.vpkt.vasd.text[0] = 'C' ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[15] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[16] ^ 0x93;
+				pkt.vasd.text[0] = 'C' ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[15] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[16] ^ 0x93;
 				break;
 			case 8:
-				pkt.vpkt.vasd.text[0] = RADIO_ID[17] ^ 0x70;
-				pkt.vpkt.vasd.text[1] = RADIO_ID[18] ^ 0x4f;
-				pkt.vpkt.vasd.text[2] = RADIO_ID[19] ^ 0x93;
+				pkt.vasd.text[0] = RADIO_ID[17] ^ 0x70;
+				pkt.vasd.text[1] = RADIO_ID[18] ^ 0x4f;
+				pkt.vasd.text[2] = RADIO_ID[19] ^ 0x93;
 				break;
 			case 9:	// terminal voice packet
-				pkt.vpkt.ctrl |= 0x40;
-				pkt.vpkt.vasd.text[0] = 0x70;
-				pkt.vpkt.vasd.text[1] = 0x4f;
-				pkt.vpkt.vasd.text[2] = 0x93;
+				pkt.ctrl |= 0x40;
+				pkt.vasd.text[0] = 0x70;
+				pkt.vasd.text[1] = 0x4f;
+				pkt.vasd.text[2] = 0x93;
 				break;
 		}
 
-		sent = sendto(sockDst,pkt.pkt_id, 29, 0, (struct sockaddr *)&toDst, sizeof(toDst));
-		if (sent != 29) {
+		if (27 != ToGateway.Write(pkt.title, 27)) {
 			printf("%s: ERROR: could not send voice packet %d\n", argv[0], i);
-			dst_close();
 			return 1;
 		}
+		usleep(delay);
 	}
-	dst_close();
 	return 0;
 }

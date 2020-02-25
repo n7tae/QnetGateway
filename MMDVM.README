@@ -11,89 +11,73 @@ locale. And make sure you do "sudo apt-get update && sudo apt-get upgrade" befor
 your start. On a Raspberry Pi, you can do all of this with the configureation menu:
 "sudo raspi-config".
 
-1)  Install the only external library you need: sudo apt-get install libconfig++-dev
-    Yeah! No wxWidgets!
+If you are using a device that uses the GPIO header on the raspberry pi, you need to
+disable the serial0 console in the /boot/cmdline.txt file: Remove the reference to
+"console=serial0,115200" in this file. You should also disable bluetooth by adding:
+"dtoverlay=pi3-disable-bt" (without the quotes) to the end of the /boot/config.txt.
 
-    Now in your home directory...
+In your home directory...
 
-2)  Clone the MMDVMHost repository: git clone git://github.com/g4klx/MMDVMHost.git
+1)  Clone the MMDVMHost repository: git clone git://github.com/g4klx/MMDVMHost.git
 
-3)  cd into the MMDVMHost directory and compile: make
+2)  cd into the MMDVMHost directory and compile: make
     If you're system has multiple processors, use: make -jx
     where x is the number of processors on you system.
     To tell how many processors you have: cat /proc/cpuinfo | grep processor | wc -l
 
-4)  Copy the ini file template: cp MMDVM.ini MMDVM.qn
+3)  Copy the ini file template: cp MMDVM.ini MMDVM.qn
 
-5)  Edit the MMDVM.qn file. Set your Callsign and Id. Turn off duplex. Enable an
+4)  Edit the MMDVM.qn file. Set your Callsign and Id. Turn off duplex. Enable an
     external display, if you have one. Set the Frequency(s). Set the Latitude and
     other location info if you want. Change the log levels. I use DisplayLevel=2
     and FileLevel=0. Set the Port on your modem. Disable all services except for
     D-Star (at least for now). Very important: Set the [D-Star] Module. For UHF
     use B and for VHF use C.
 
-6)  Let's test it! Start it: ./MMDVMHost MMDVM.qn
+5)  Let's test it! Start it: ./MMDVMHost MMDVM.qn
 
-7)  Key your radio and see if the MMDVMHost responds with an acknowledgement. Then
+6)  Key your radio and see if the MMDVMHost responds with an acknowledgment. Then
     you'll know that everything on the MMDVM side is fine.
 
-8)  Stop the MMDVMHost with a Control-C and edit the MMDVM.qn file again. Change
+7)  Stop the MMDVMHost with a Control-C and edit the MMDVM.qn file again. Change
     the [D-Star] AckReply=0
-    You won't/don't want this reply from MMDVMhost. You want the acknowledgement
+    You won't/don't want this reply from MMDVMhost. You want the acknowledgment
     from QnetGateway, it's more informative.
 
     We'll come back to MMDVMHost later, but for now let's work on the QnetGateway.
 
-9)  cd back to the home directory and clone the QnetGateway:
+8)  cd back to the home directory and clone the QnetGateway. Type:
     git clone git://github.com/n7tae/QnetGateway.git
 
-10) Get into the build directory: cd QnetGateway
+9)  Get into the build directory. Type: cd QnetGateway
 
-11) Then compile: make
-    don't forget the -j option!
+10) You need a configuration file called qn.cfg for QnetGateway. Start the
+    configuration script: ./qnconfig
+    This script will allow you to change any configuration parameter from its
+    default value. At a minimum, you need to set your login callsign in the ircddb
+    section and define at least one module. If you want to use the legacy,
+    closed-source D-Plus reflectors and repeaters, be sure to enable it in the
+    D-Plus menu. Be sure to write out your configruation file after you have entered
+    all your changes, then you can exit the configuration script.
 
-12) You need a configuration file called qn.cfg for QnetGateway. A good, nearly
-    working config file is qn.mmdvm.cfg. Copy it to qn.cfg and edit it.
+11) Next, your ready to install your software. For that, start the administration
+    script. Type: ./qnadmin
+    First you want to create you gwys.txt file. This file contains a list of
+    reflectors and repeaters you might like to link. Got into the gwys.txt menu
+    creation sub-menu with "gw" and select one of three different methods to
+    generate a gwys.txt file. You can add and/or delete records manually in
+    this sub-menu. Return to the main menu because your now ready to build and
+    install your system. Install your configured system with "is". This will
+    compile and install everything that you have configured.
 
-13) You need a gwys.txt file for all the systems to which you may wish to link.
-    If you want to be able to link to repeaters: ./get_gwy_list.sh
-    If you are only interested in linking to reflectors: ./reflist.sh
-    This will download and format your gwys.txt file.
-    If the reflector(s) or repeater(s) you use most often are not present in the
-    gwys.txt file, you can add them manually, using the same syntax as the existing
-    entries, at the end of the file.
-    If you find you can no longer connect to a system, it may be because its IP
-    address has changed. You can execute either script again, copy it to
-    /usr/local/etc, and then: either reboot you system, or put "       L" in your
-    URField and key your radio, or: sudo systemctl restart qnlink
-
-14) We have a gwys.txt file and a qn.cfg in the build directory, so we are ready
-	to install and start the three QnetGateway services: sudo make install
-
-15) Now it's time to start the MMDVMHost service. You'll do this from the
-    QnetGateway directory you are aleady in: sudo make installmmdvm
-    This command will fail if it can't find both MMDVMHost and MMDVM.qn
-    in the ../MMDVMHost directory.
+12) You also need to install your MMDVMHost with "im".
 
     You should be up and running now! Congratulations! <Fireworks!>
 
-16) You can see the log of any of the 4 services that make up the QnetGateway +
-    MMDVMHost system:
-    sudo journalctl -u qngateway -f
-    sudo journalctl -u qnlink -f
-    sudo journalctl -u qnrelay -f
-    sudo journalctl -u mmdvm -f
+13) There are many additional things that can be done in the administration menu.
+    Enter the log menu with "l" and from there you can view logs from each
+    running process.
 
-    You can do all four of these in one terminal window (that you can detach from!)
-    by using "screen": sudo apt-get install screen
-    If you don't know how to use screen: http://aperiodic.net/screen/quick_reference
-    Being able to detach from a screen session is very useful, especially if you are
-    operating "headless"!
+14) DTMF is _not_ enabled by default if you want it, type "id" in the main menu.
 
-17) DTMF is _not_ enabled by default if you want it, you need to do two things:
-    First, create a working DTMF script. In the build directory: cp qndtmf.sh qndtmf
-    Then, install the DTMF service: sudo make installdtmf
-    You should be good to go, The DTMF command "00" should announce the linked
-    status of you module. See DTMF+REMOTE.README for more information.
-
-18) Build and start other MMDVMHost services...
+15) Build and start other MMDVMHost services...

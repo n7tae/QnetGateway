@@ -1,0 +1,211 @@
+#
+# Copyright (c) 2019 by Thomas A. Early N7TAE
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#########################################################################################################################
+#                                                                                                                       #
+#                                        QnetGateway Default Parameter Values                                           #
+#                                                                                                                       #
+#########################################################################################################################
+# What follows need to also be valid bash shell variable definitions, therefore:
+#     No white space on either side of the equal sign (=)
+#     String values should be quoted if they contain any special chars, including white space
+#     If a string value is a simple word, it doesn't need to be quoted
+#     Use the single quote (') for quoting strings, not the double quote(")
+#     Comments can come after a key=value definition, introduced by a pound-sign (#)
+#
+# if a definition is commented out, it means that key has no default value. And it is
+# include here just as a reference.
+
+##########################################################################################################################
+#
+# IRCDDB - You MUST use a legal callsign for logging into any IRC network
+#
+#ircddb_login_d=''               # login callsign for the ircDDB network
+ircddb0_host_d='rr.openquad.net' # other irc networks include group1-irc.ircddb.net
+ircddb0_port_d=9007              # not a good idea to change!
+ircddb0_password_d=''            # not needed for rr.openquad.net
+ircddb1_host_d=''                # second irc network
+ircddb1_port_d=9007              # not a good idea to change!
+ircddb1_password_d=''            # not needed for rr.openquad.net
+
+##########################################################################################################################
+#
+# GATEWAY
+#
+gateway_header_regen_d=true          # regenerate headers from incoming data
+gateway_send_qrgs_maps_d=true        # send frequency, offset, coordinates and url to irc-server
+gateway_ip_d='ANY_PORT'              # the g2 port
+gateway_port_d=40000                 # don't change
+gateway_ipv6_ip_d='ANY_PORT'
+gateway_ipv6_port_d=9011     # IANA-approved DStar rouing port
+gateway_gate2link_d='gate2link'      # Unix sockets between qngateway and QnetLink
+gateway_link2gate_d='link2gate'      # all Unix sockets are on the file system, but hidden from view
+gateway_modem2gate_d='modem2gate'    # Unix Sockets between the modem(s) and the gateway (1 in, 3 out)
+gateway_gate2modema_d='gate2modema'
+gateway_gate2modemb_d='gate2modemb'
+gateway_gate2modemc_d='gate2modemc'
+gateway_latitude_d=0                 # you can leave this unspecified for a mobile rig
+gateway_longitude_d=0                # like the latitude
+gateway_desc1_d=''                   # maximum of 20 characters, most special symbols are not allowed
+gateway_desc2_d=''                   # just like desc1
+gateway_url_d='github.com/n7tae/QnetGateway' # 80 characters max
+gateway_find_route_d=''              # CSV list of route(s) to load on boot-up (prevents the "not in cache" message)
+
+##########################################################################################################################
+#
+# APRS - for tracking users and also this repeater.
+#
+aprs_enable_d=true             # send info to APRS
+aprs_host_d='rotate.aprs2.net' # the APRS network server
+aprs_port_d=14580              # and port
+aprs_interval_d=40             # keep-alive in minutes
+aprs_filter_d=''               # advanced feature
+
+##########################################################################################################################
+#
+# LINK - controls the behavior of QnetLink (qnlink)
+#
+#link_admin_d=''             # these comma-separated list of users can execute scripts, block dongles, reload the gwys.txt
+#link_link_unlink_d=''       # if defined, comma-separated list of users that can link and unlink a repeater
+#link_no_link_unlink_d=''    # if defined, comma-separated list of users that cannot link or unlink, it's a blacklist
+                             # if the blacklist is defined (even if it's empty), the link_unlink will not be read
+link_incoming_ip_d='0.0.0.0' # incoming ip address of qnlink, '0.0.0.0' means accepts any connection.
+link_ref_port_d=20001        # port for REF linking, don't change
+link_xrf_port_d=30001        # port for XRF linking, don't change
+link_dcs_port_d=30051        # port for DCS linking, don't change
+link_announce_d=true         # do link, unlink, etc. announcements
+link_acknowledge_d=true      # send text acknowledgment on key-up
+link_max_dongles_d=5         # maximum number of linked hot-spots
+
+##########################################################################################################################
+#
+# GENERIC MODULE - These will be defined for any and all defined modules
+#
+module_x_link_at_start=''  # For example, set to 'REF001 C' to link module to 1-charlie when the module starts.
+module_x_auto_link=true    # attempt to automatically re-link if the link should time out.
+module_x_inactivity=0      # if no activity for this many minutes unlink reflector. Zero means no timer.
+module_x_callsign=''       # if you operate in a 'restriction mode', use your personal callsign. Usually leave this empty.
+module_x_packet_wait=25    # how many milliseconds to wait on packets in a voicestream
+module_x_acknowledge=false # Do you want an ACK back?
+module_x_ack_delay=250     # millisecond delay before acknowledgment
+module_x_range=0           # the range of this repeater, in meters 1609.344 meters is 1.0 miles
+module_x_agl=0             # the height above ground level for this repeater's antenna
+
+##########################################################################################################################
+#
+# MMDVMHost - Special parameters when: module_x='mmdvmhost'
+#
+mmdvmhost_tx_frequency=0        # in MHz, not required, set in MMDVM.qn in Hz
+mmdvmhost_rx_frequency=0        # in Mhz, not required, set in MMDVM.qn in Hz
+mmdvmhost_internal_ip='0.0.0.0' # where MMDVMHost will find the QnetRelay program
+mmdvmhost_gateway_port=20010    # which port will QnetRelay be sending on
+mmdvmhost_local_port=20011      # which port will MMDVMHost be sending on
+
+##########################################################################################################################
+#
+# MMDVM Modem - Special parameters when: module_x='mmdmvmmodem'
+#
+mmdvmmodem_device='/dev/ttyAMA0' # where QnetModem will find the MMDVM modem
+mmdvmmodem_tx_frequency=0        # in MHz, you MUST set a valid transmitter frequency!
+mmdvmmodem_rx_frequency=0        # in MHz. If unset, then it's simplex, where rx=tx
+mmdvmmodem_tx_offset=0           # in MHz. A frequency tweak.
+mmdvmmodem_rx_offset=0           # in MHz. A frequency tweak.
+mmdvmmodem_duplex=false          # set to true for duplex for modems that support it
+mmdvmmodem_rx_invert=false       # receiver gate
+mmdvmmodem_tx_invert=true        # transmitter gate
+mmdvmmodem_ptt_invert=false      # push-to-talk gate
+mmdvmmodem_tx_delay=100          # delay in milliseconds
+mmdvmmodem_rx_level=128          # range is 0-255
+mmdvmmodem_tx_level=128          # range is 0-255
+
+##########################################################################################################################
+#
+# ITAP - Special parameters when: module_x='itap'
+#
+itap_device='/dev/ttyUSB0' # where the serial-to-USB cable show up
+itap_frequency=0           # in MHz, not required for either mode, for AP mode, the simplex frequency is set on your radio
+
+##########################################################################################################################
+#
+# DVAP - Special parameters when: module.x='dvap'
+#
+module_x_frequency=0          # in MHz, you must specify an operational frequency for the DVAP
+module_x_offset=0             # it's a frequency tweak, in Hz
+dvap_power=10                 # TX power level: -12 to 10, 10 is maximum power
+dvap_squelch=-100             # RX Squelch: -128 to -45, -100 to -80 usually works best
+dvap_serial_number='APXXXXXX' # The serial number of your DVAP is visible through the bottom of the case
+
+##########################################################################################################################
+#
+# DVRPTR - Special parameters when: module_x='dvrptr'
+#
+# if you don't know what your DVRPTR serial number is, look in the log file after running qndvrptr
+dvrptr_tx_frequency=0 # in MHz, not required
+dvrptr_rx_frequency=0 # in MHz, also not required
+dvrptr_serial_number='00.00.00.00' # the DVRPTR serial number
+dvrptr_rf_on='RFON'   # put this in YRCALL to disable the channel
+dvrptr_rf_off='RFOFF' # put this in YRCALL to enable the channel
+dvrptr_rx_level=80    # see the DVRPTR V1 manual
+dvrptr_duplex=false   # set to true if the module is duplex
+dvrptr_tx_delay=250   # milliseconds to allow for switching from rx to tx
+dvrptr_rqst_count=10  # number of 2-sec intervals before the an unresponsive system is killed
+dvrptr_rx_invert=true # if your system isn't hearing you, try false
+dvrptr_tx_invert=true # if you're not hearing your system, try false
+
+##########################################################################################################################
+#
+# LOGGING - Control extra logging - useful for debugging
+#
+log_qso_d=false   # QSO info goes into the log
+log_irc_d=false   # IRC debug info
+log_dtmf_d=false  # DTMF debug info
+log_debug_d=false # WARNING, can produce a large number of log entries!
+
+##########################################################################################################################
+#
+# DPLUS - Control of dplus (trust system) linking to repeaters and REF reflectors
+#
+# The following settings do not affect your ability to use dplus linking to XRF or XLX reflectors!
+# You must be registered on the DPlus system, see www.dstargateway.org, otherwise authorization will fail,
+# even if QnetLink reports a successful authorization.
+dplus_authorize_d=false     # set to true if you want to use the closed-source DPlus reflectors and/or repeaters
+dplus_ref_login_d=''        # for logging into REF reflectors, if empty, ircddb_login will be used
+dplus_use_reflectors_d=true # set to false if you are not going to link to DPlus reflectors
+dplus_use_repeaters_d=true  # set to false if you are not going to link to DPlus repeaters
+dplus_priority_d=true       # set to true if you want DPlus reflector read after gwys.txt
+
+##########################################################################################################################
+#
+# FILE - where important QnetGateway files and directories are found.
+#
+file_status_d='/usr/local/etc/rptr_status' # where repeater status info is passed between services
+file_dtmf_d='/tmp'                         # where DTMF is decoded
+file_echotest_d='/var/local'               # echo dat files will end up here
+file_qnvoice_file_d='/tmp/qnvoice.txt'     # where qnvoice will create the play command
+file_gwys_d='/usr/local/etc/gwys.txt'      # where the list of gateways and reflectors (with ports) is.
+file_announce_dir_d='/usr/local/etc'       # where the *.dat files are for the verbal link, unlink, etc. announcements
+
+##########################################################################################################################
+#
+# TIMINGS - for controlling how to deal with timing issues
+#
+# most users will not have to override any of these default values
+timing_timeout_echo_d=1       # seconds before we assume echo has timed out
+timing_timeout_voicemail_d=1  # seconds before we assume voicemail has timed out
+timing_timeout_remote_g2_d=2  # after this many seconds with no packets, we assume the tx is closed
+timing_timeout_local_rptr_d=1 # local repeater timeout, in seconds
+timing_play_wait_d=1          # seconds before echo or voicemail playback occurs, between 1 and 10
+timing_play_delay_d=19        # milliseconds between frames playback, if echo sounds bad, adjust this up or down 1 or 2 ms

@@ -10,6 +10,7 @@
 
 IRCProtocol::IRCProtocol(IRCApplication *app, const std::string &callsign, const std::string &password, const std::string &channel, const std::string &versionInfo)
 {
+	srand(time(NULL));
 	this->password = password;
 	this->channel = channel;
 	this->app = app;
@@ -175,11 +176,22 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 				}
 			}
 		} else if (0 == m->command.compare("PRIVMSG")) {
-			if ((m->numParams == 2) && (app != NULL)) {
-				if (0 == m->params[0].compare(channel)) {
-					app->msgChannel(m);
-				} else if (0 == m->params[0].compare(currentNick)) {
-					app->msgQuery(m);
+			if (app) {
+				std::string out;
+				m->composeMessage(out);
+				out.pop_back(); out.pop_back();
+				if (2 == m->numParams) {
+					if (0 == m->params[0].compare(channel)) {
+						app->msgChannel(m);
+					} else if (0 == m->params[0].compare(currentNick)) {
+						if (0 == m->params[1].find("IDRT_PING")) {
+							std::string from = m->params[1].substr(10);
+							IRCMessage *rm = new IRCMessage("IDRT_PING");
+							rm->addParam(from);
+							app->putReplyMessage(rm);
+						} else
+							app->msgQuery(m);
+					}
 				}
 			}
 		} else if (0 == m->command.compare("352")) { // WHO list
@@ -342,5 +354,3 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 
 	return true;
 }
-
-

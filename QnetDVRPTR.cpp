@@ -21,16 +21,17 @@
 #include <termios.h>
 #include <wchar.h>
 #include <sys/file.h>
-#include "versions.h"
 #include <string>
-#include <libconfig.h++>
 
-using namespace libconfig;
+#include "Random.h"
+#include "UnixDgramSocket.h"
+#include "QnetConfigure.h"
+#include "QnetTypeDefs.h"
 
-#define VERSION DVRPTR_VERSION
+#define DVRPTR_VERSION "QnetDVRPTR-6.0.5"
+
 #define BAUD B115200
 #define CALL_SIZE 8
-#define RPTR_SIZE 8
 #define IP_SIZE 15
 
 /*** BER stuff ***/
@@ -50,24 +51,20 @@ short seq_no3 = 0;
 int fd_ser = -1;
 bool busy20000 = false;
 
-static unsigned char S_packet[26];
-static time_t S_ctrl_msg_time = 0;
 static int rqst_count = 6;
-static unsigned streamid[2] = {0x00, 0x00};
+static unsigned short streamid = 0x0;
 static unsigned char start_Header[8]= {0xD0,0x03,0x00,0x16,0x01,0x00,0x00,0x00};
 static unsigned char ptt_off[8]= {0xD0,0x03,0x00,0x1A,0x01,0xff,0x00,0x00};
-static int insock = -1;
 
-static int read_config(const char *cfgFile);
+static bool ReadConfig(const char *cfgFile);
 static void readFrom20000();
 static bool check_serial();
 
-static unsigned char Send_Network_Header[58];
-static unsigned char Send_Network_Audio [29];
+SDSVT Send_Network_Header;
+SDSVT Send_Network_Audio;
 
 static int inactiveMax = 3200;
 
-static unsigned short C_COUNTER = 0;
 static unsigned char Send_Modem_Header[52];
 
 static unsigned char writevoice[24];
@@ -80,27 +77,27 @@ static unsigned char Modem_Init2[12]= {0xD0,0x07,0x00,0x14,0xC0,0x04,0x00,0x57,0
 static unsigned char Modem_STATUS[6]= {0xD0,0x01,0x00,0x10,0x00,0x00}; // Status Abfragr
 static unsigned char Modem_SERIAL[6]= {0xD0,0x01,0x00,0x12,0x00,0x00};
 
-static char DVRPTR_SERIAL[16];
-static char DVCALL[RPTR_SIZE + 1] = {"ABCDEF"};
-static char RPTR[RPTR_SIZE + 1] = {"ABCDEF"};
-static char GATEWAY_IP[IP_SIZE + 1] = {"127.0.0.1"};
-static int GATEWAY_PORT = 20000;
-static char DVRPTR_INTERNAL_IP[IP_SIZE + 1] = {"127.0.0.1"};
-static int DVRPTR_INTERNAL_PORT = 20000;
+static int assigned_module;
+static std::string gate2modem, modem2gate;
+CUnixDgramWriter Modem2Gate;
+CUnixDgramReader Gate2Modem;
+
+static std::string DVRPTR_SERIAL;
+static char DVCALL[CALL_SIZE + 1];
+static char RPTR[CALL_SIZE + 1];
 static char DVRPTR_MOD = 'B';
 static int RF_AUDIO_Level = 10;
 static bool DUPLEX = true;
-static long ACK_DELAY = 200000;
+static int ACK_DELAY = 200000;
 static int DELAY_BETWEEN = 20000;
 static bool RPTR_ACK = true;
-static char ENABLE_RF[RPTR_SIZE + 1]  = {"        "};
-static char DISABLE_RF[RPTR_SIZE + 1] = {"        "};
+static char ENABLE_RF[CALL_SIZE + 1];
+static char DISABLE_RF[CALL_SIZE + 1];
 static bool IS_ENABLED = true;
 static bool ok = false;
-static bool RX_Inverse = 0;
-static bool TX_Inverse = 0;
-static int TX_DELAY = 250;  /* in milliseconds */
-static struct sockaddr_in outaddr;
+static bool RX_Inverse = true;
+static bool TX_Inverse = true;
+static int TX_DELAY;  /* in milliseconds */
 static unsigned char SND_TERM_ID = 0x00;
 static char DVCALL_and_G[9];
 static char DVCALL_and_MOD[9];
@@ -112,66 +109,19 @@ static char myRPT1[10]; //RX from HF RPT1
 static char myUR[10];
 static char myCall[10];
 static char myCall2[10];
-static char INVALID_YRCALL_KEY[CALL_SIZE + 1] = { "" };
 
-char Ergebnis[250];
+char cbuf[250];
 
-struct hdr {
-	unsigned char flags[3];
-	unsigned char rpt2[8];
-	unsigned char rpt1[8];
-	unsigned char urcall[8];
-	unsigned char mycall[8];
-	unsigned char sfx[4];
-	unsigned char pfcs[2];
-};
-
-struct icm {
-	unsigned char icm_id;
-	unsigned char dst_rptr_id;
-	unsigned char snd_rptr_id;
-	unsigned char snd_term_id;
-	unsigned char streamid[2];
-	unsigned char ctrl;
-};
-struct voice_and_text {
-	unsigned char voice[8];
-	unsigned char text[2];
-};
-
-struct nettext {
-	unsigned char net_text[20];
-};
-
-struct audio {
-	unsigned char buff[sizeof(struct hdr)];
-};
-
-struct pkt {
-	unsigned char pkt_id[4];
-	unsigned char nothing1[2];
-	unsigned char flags[2];
-	unsigned char nothing2[2];
-	struct icm myicm;
-	union {
-		struct audio rf_audio;
-		struct hdr rf_hdr;
-		struct nettext net_text;
-		struct voice_and_text vat;
-	};
-};
-static struct pkt recv_buf;
-typedef unsigned int U32;
-
+static SDSVT recv_buf;
 
 //! 32-bit union.
 typedef union {
-	U32 u32   ;
-	unsigned short u16[2];
-	unsigned char u8[4];
+	uint32_t u32;
+	uint16_t u16[2];
+	uint8_t u8[4];
 } Union32;
 
-static const U32 ENCODING_TABLE_23127[] = {
+static const uint32_t ENCODING_TABLE_23127[] = {
 	0x000000U, 0x0018EAU, 0x00293EU, 0x0031D4U, 0x004A96U, 0x00527CU, 0x0063A8U, 0x007B42U, 0x008DC6U, 0x00952CU,
 	0x00A4F8U, 0x00BC12U, 0x00C750U, 0x00DFBAU, 0x00EE6EU, 0x00F684U, 0x010366U, 0x011B8CU, 0x012A58U, 0x0132B2U,
 	0x0149F0U, 0x01511AU, 0x0160CEU, 0x017824U, 0x018EA0U, 0x01964AU, 0x01A79EU, 0x01BF74U, 0x01C436U, 0x01DCDCU,
@@ -584,7 +534,7 @@ static const U32 ENCODING_TABLE_23127[] = {
 	0xFFAD82U, 0xFFB568U, 0xFFCE2AU, 0xFFD6C0U, 0xFFE714U, 0xFFFFFEU
 };
 
-static const U32 ENCODING_TABLE_24128[] = {
+static const uint32_t ENCODING_TABLE_24128[] = {
 	0x000000U, 0x0018EBU, 0x00293EU, 0x0031D5U, 0x004A97U, 0x00527CU, 0x0063A9U, 0x007B42U, 0x008DC6U, 0x00952DU,
 	0x00A4F8U, 0x00BC13U, 0x00C751U, 0x00DFBAU, 0x00EE6FU, 0x00F684U, 0x010367U, 0x011B8CU, 0x012A59U, 0x0132B2U,
 	0x0149F0U, 0x01511BU, 0x0160CEU, 0x017825U, 0x018EA1U, 0x01964AU, 0x01A79FU, 0x01BF74U, 0x01C436U, 0x01DCDDU,
@@ -998,7 +948,7 @@ static const U32 ENCODING_TABLE_24128[] = {
 };
 
 
-static const U32 DECODING_TABLE_23127[] = {
+static const uint32_t DECODING_TABLE_23127[] = {
 	0x000000U, 0x000001U, 0x000002U, 0x000003U, 0x000004U, 0x000005U, 0x000006U, 0x000007U, 0x000008U, 0x000009U,
 	0x00000AU, 0x00000BU, 0x00000CU, 0x00000DU, 0x00000EU, 0x024020U, 0x000010U, 0x000011U, 0x000012U, 0x000013U,
 	0x000014U, 0x000015U, 0x000016U, 0x412000U, 0x000018U, 0x000019U, 0x00001AU, 0x180800U, 0x00001CU, 0x200300U,
@@ -1221,9 +1171,9 @@ static const U32 DECODING_TABLE_23127[] = {
  * obtain its syndrome in decoding.
  */
 
-static U32 get_syndrome_23127(U32 pattern)
+static uint32_t get_syndrome_23127(uint32_t pattern)
 {
-	U32 aux = GORLAY_X22;
+	uint32_t aux = GORLAY_X22;
 	if (pattern >= GORLAY_X11) {
 		while (pattern & GORLAY_MASK12) {
 			while ((aux & pattern)==0) aux >>= 1;
@@ -1241,8 +1191,8 @@ __inline unsigned int gorlay_encode23127(unsigned int data)
 
 unsigned int gorlay_decode23127(unsigned int code)
 {
-	U32 syndrome = get_syndrome_23127(code);
-	U32 error_pattern = DECODING_TABLE_23127[syndrome];
+	uint32_t syndrome = get_syndrome_23127(code);
+	uint32_t error_pattern = DECODING_TABLE_23127[syndrome];
 	code ^= error_pattern;
 	return code >> 11;
 }
@@ -1257,7 +1207,7 @@ __inline unsigned int gorlay_decode24128(unsigned int code)
 	return gorlay_decode23127(code >> 1);
 }
 
-static const U32 PRNG_TABLE[] = {
+static const uint32_t PRNG_TABLE[] = {
 	0x42CC47U, 0x19D6FEU, 0x304729U, 0x6B2CD0U, 0x60BF47U, 0x39650EU, 0x7354F1U, 0xEACF60U, 0x819C9FU, 0xDE25CEU,
 	0xD7B745U, 0x8CC8B8U, 0x8D592BU, 0xF71257U, 0xBCA084U, 0xA5B329U, 0xEE6AFAU, 0xF7D9A7U, 0xBCC21CU, 0x4712D9U,
 	0x4F2922U, 0x14FA37U, 0x5D43ECU, 0x564115U, 0x299A92U, 0x20A9EBU, 0x7B707DU, 0x3BE3A4U, 0x20D95BU, 0x6B085AU,
@@ -1678,7 +1628,7 @@ typedef unsigned char tambevoice[6];
 
 static void ambefec_deinterleave(tambevoicefec result, const tambevoicefec voice)
 {
-	U32 bitpos, bytcnt;
+	uint32_t bitpos, bytcnt;
 	memset(result, 0, sizeof(tambevoicefec));		// init result
 	bitpos = 0;
 	for (bytcnt = 0; bytcnt < sizeof(tambevoicefec); bytcnt++) {
@@ -1704,7 +1654,7 @@ static void ambefec_deinterleave(tambevoicefec result, const tambevoicefec voice
 
 static void ambefec_interleave(tambevoicefec result, const tambevoicefec raw_voice)
 {
-	U32 bitpos, bytcnt;
+	uint32_t bitpos, bytcnt;
 	bitpos = 0;
 	for (bytcnt = 0; bytcnt < sizeof(tambevoicefec); bytcnt++) {
 		char voice_dsr = (raw_voice[bitpos>>3] & (0x80 >> (bitpos&7)))?0x80:0x00;
@@ -1730,7 +1680,7 @@ static void ambefec_interleave(tambevoicefec result, const tambevoicefec raw_voi
 void ambefec_regenerate(tambevoicefec voice)
 {
 	tambevoicefec decoded;
-	U32 data, datb, encoded_dat;
+	uint32_t data, datb, encoded_dat;
 	ambefec_deinterleave(decoded, voice);
 	data        = gorlay_decode24128((decoded[0]<<16) | (decoded[1]<<8) | decoded[2]);
 	encoded_dat = gorlay_encode24128(data);
@@ -1746,7 +1696,7 @@ void ambefec_regenerate(tambevoicefec voice)
 	ambefec_interleave(voice, decoded);
 }
 
-static unsigned char silence[12] = { 0x4e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
+static unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 
 static unsigned short crc_tabccitt[256] = {
 	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,
@@ -1783,6 +1733,13 @@ static unsigned short crc_tabccitt[256] = {
 	0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 };
 
+static void CleanCall(std::string &callsign) {
+	for (auto it=callsign.begin(); it!=callsign.end(); it++)
+		if (islower(*it))
+			*it = toupper(*it);
+	callsign.resize(CALL_SIZE, ' ');
+}
+
 static void calcPFCS(unsigned char packet[58])//Netzwerk CRC
 {
 	unsigned short crc_dstar_ffff = 0xffff;
@@ -1803,198 +1760,103 @@ static void calcPFCS(unsigned char packet[58])//Netzwerk CRC
 	return;
 }
 
-bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%d]\n", path, value);
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		if (value < min || value > max)
-			value = default_value;
-	} else
-		value = default_value;
-	printf("%s = [%lg]\n", path, value);
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, bool &value, bool default_value)
-{
-	if (! cfg.lookupValue(path, value))
-		value = default_value;
-	printf("%s = [%s]\n", path, value ? "true" : "false");
-	return true;
-}
-
-bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value)
-{
-	if (cfg.lookupValue(path, value)) {
-		int l = value.length();
-		if (l<min || l>max) {
-			printf("%s='%s' is wrong size, must be between %d and %d\n", path, value.c_str(), min, max);
-			return false;
-		}
-	} else
-		value = default_value;
-	printf("%s = [%s]\n", path, value.c_str());
-	return true;
-}
-
 /* process configuration file */
-static int read_config(const char *cfgFile)
+static bool ReadConfig(const char *cfgFile)
 {
-	int i;
-	Config cfg;
+	CQnetConfigure cfg;
 
 	printf("Reading file %s\n", cfgFile);
-	// Read the file. If there is an error, report it and exit.
-	try {
-		cfg.readFile(cfgFile);
-	}
-	catch(const FileIOException &fioex) {
-		printf("Can't read %s\n", cfgFile);
-		return 1;
-	}
-	catch(const ParseException &pex) {
-		printf("Parse error at %s:%d - %s\n", pex.getFile(), pex.getLine(), pex.getError());
-		return 1;
-	}
+	if (cfg.Initialize(cfgFile))
+		return true;
 
-	std::string path, value;
-	for (i=0; i<3; i++) {
-		path = "module.";
-		path += ('a' + i);
-		if (cfg.lookupValue(path + ".type", value)) {
-			if (0 == strcasecmp(value.c_str(), "dvrptr"))
+	const std::string estr;	// an empty string
+	std::string type;
+	std::string path("module_");
+	if (0 > assigned_module) {
+		// we need to find the lone dvrptr module
+		for (int i=0; i<3; i++) {
+			std::string test(path);
+			test.append(1, 'a'+i);
+			if (cfg.KeyExists(test)) {
+				cfg.GetValue(test, estr, type, 1, 16);
+				if (type.compare("dvrptr"))
+					continue;	// this ain't it!
+				path.assign(test);
+				assigned_module = i;
 				break;
-		}
-	}
-	if (i >= 3) {
-		printf("dvrptr not defined in any module!\n");
-		return 1;
-	}
-	DVRPTR_MOD = 'A' + i;
-
-	if (cfg.lookupValue(std::string(path+".callsign").c_str(), value) || cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
-			return 1;
-		} else {
-			for (i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
 			}
-			value.resize(CALL_SIZE, ' ');
 		}
-		strcpy(RPTR, value.c_str());
-		printf("%s.callsign = [%s]\n", path.c_str(), RPTR);
+		if (0 > assigned_module) {
+			fprintf(stderr, "Error: no 'dvrptr' module found\n!");
+			return true;
+		}
 	} else {
-		printf("%s.callsign is not defined!\n", path.c_str());
-		return 1;
-	}
-
-	if (cfg.lookupValue("ircddb.login", value)) {
-		int l = value.length();
-		if (l<3 || l>CALL_SIZE-2) {
-			printf("Call '%s' is invalid length!\n", value.c_str());
-			return 1;
-		} else {
-			for (i=0; i<l; i++) {
-				if (islower(value[i]))
-					value[i] = toupper(value[i]);
+		// make sure dvrptr module is defined
+		path.append(1, 'a' + assigned_module);
+		if (cfg.KeyExists(path)) {
+			cfg.GetValue(path, estr, type, 1, 16);
+			if (type.compare("dvrptr")) {
+				fprintf(stderr, "%s = %s is not 'dvrptr' type!\n", path.c_str(), type.c_str());
+				return true;
 			}
-			value.resize(CALL_SIZE, ' ');
+		} else {
+			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
+			return true;
 		}
-		strcpy(DVCALL, value.c_str());
-		printf("ircddb.login = [%s]\n", DVCALL);
+	}
+	DVRPTR_MOD = 'A' + assigned_module;
+	cfg.GetValue(std::string("gateway_gate2modem")+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+
+	std::string call;
+	if (cfg.GetValue("ircddb_login", type, call, 3, 6))
+		return true;
+
+	CleanCall(call);
+	strncpy(DVCALL, call.c_str(), CALL_SIZE+1);
+
+	if (cfg.KeyExists(path+"_callsign")) {
+		if (cfg.GetValue(path+"_callsign", type, call, 3, 6))
+			return true;
+		CleanCall(call);
+		strncpy(RPTR, call.c_str(), CALL_SIZE+1);
 	} else {
-		printf("ircddb.login is not defined!\n");
-		return 1;
+		strncpy(RPTR, DVCALL, CALL_SIZE+1);
 	}
 
-	if (get_value(cfg, std::string(path+".rf_control.on").c_str(), value, 0, CALL_SIZE, "        "))
-		strcpy(ENABLE_RF, value.c_str());
-	else
-		printf("%s.rf_control.on '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
+	cfg.GetValue(path+"_rf_on", type, call, 0, CALL_SIZE);
+	CleanCall(call);
+	strncpy(ENABLE_RF, call.c_str(), CALL_SIZE+1);
 
-	if (get_value(cfg, std::string(path+".rf_control.off").c_str(), value, 0, CALL_SIZE, "        "))
-		strcpy(DISABLE_RF, value.c_str());
-	else
-		printf("%s.rf_control.off '%s' is invalid, rejected.\n", path.c_str(), value.c_str());
+	cfg.GetValue(path+"_rf_off", type, call, 0, CALL_SIZE);
+	CleanCall(call);
+	strncpy(DISABLE_RF, call.c_str(), CALL_SIZE+1);
 
-	if (cfg.lookupValue("timing.timeout.remote_g2", REMOTE_TIMEOUT)) {
-		REMOTE_TIMEOUT++;
-		if (REMOTE_TIMEOUT < 1)
-			REMOTE_TIMEOUT = 2;
-	} else
-		REMOTE_TIMEOUT = 3;
-	printf("timing.timeout.remote_g2 = [%d]\n", REMOTE_TIMEOUT);
+	cfg.GetValue(path+"_serial_number", type, DVRPTR_SERIAL, 11, 11);
 
-	if (get_value(cfg, std::string(path+".invalid_prefix").c_str(), value, 1, CALL_SIZE, "XXX")) {
-		value.resize(CALL_SIZE, ' ');
-		for (i=0; i<CALL_SIZE; i++) {
-			if (islower(value[i]))
-				value[i] = toupper(value[i]);
-		}
-		strcpy(INVALID_YRCALL_KEY, value.c_str());
-	} else {
-		printf("%s.invalid_prefix '%s' is invalid!\n", path.c_str(), value.c_str());
-		return 1;
-	}
+	cfg.GetValue(path+"_rx_level", type, RF_AUDIO_Level, 1, 100);
 
-	if (get_value(cfg, std::string(path+".serial_number").c_str(), value, 11, 11, "00.00.00.00"))
-		strcpy(DVRPTR_SERIAL, value.c_str());
-	else {
-		printf("%s.serial_number '%s' is invalid!\n", path.c_str(), value.c_str());
-		return 1;
-	}
+	cfg.GetValue(path+"_duplex", type, DUPLEX);
 
-	if (get_value(cfg, std::string(path+".internal_ip").c_str(), value, 7, IP_SIZE, "0.0.0.0"))
-		strcpy(DVRPTR_INTERNAL_IP, value.c_str());
-	else {
-		printf("%s.internal_ip '%s' is invalid!\n", path.c_str(), value.c_str());
-		return 1;
-	}
+	cfg.GetValue(path+"_acknowledge", type, RPTR_ACK);
 
-	get_value(cfg, std::string(path+".port").c_str(), DVRPTR_INTERNAL_PORT, 10000, 65535, 19998 + (DVRPTR_MOD - 'A'));
+	cfg.GetValue(path+"_ack_delay", type, ACK_DELAY, 1, 999);
+	ACK_DELAY *= 1000; // from milliseconds to seconds
 
-	if (get_value(cfg, "gateway.ip", value, 7, IP_SIZE, "127.0.0.1"))
-		strcpy(GATEWAY_IP, value.c_str());
-	else {
-		printf("gateway.ip '%s' is invalid!\n", value.c_str());
-		return 1;
-	}
-
-	get_value(cfg, "gateway.internal.port", GATEWAY_PORT, 10000, 65535, 19000);
-
-	get_value(cfg, std::string(path+".rf_tx_level").c_str(), RF_AUDIO_Level, 1, 100, 80);
-
-	get_value(cfg, std::string(path+".duplex").c_str(), DUPLEX, false);
-
-	get_value(cfg, std::string(path+".acknowledge").c_str(), RPTR_ACK, false);
-
-	get_value(cfg, std::string(path+".ack_delay").c_str(), i, 1, 999, 300);
-	ACK_DELAY = (long)i;
-
-	get_value(cfg, "timing.play.delay", DELAY_BETWEEN, 10, 25, 19);
-	DELAY_BETWEEN *= 1000;
-
-	get_value(cfg, std::string(path+".tx_delay").c_str(), TX_DELAY, 0, 6000, 250);
+	cfg.GetValue(path+"_tx_delay", type, TX_DELAY, 0, 6000);
 	Modem_Init2[8] = TX_DELAY & 0xFF;
 	Modem_Init2[9] = TX_DELAY >> 8;
 
-	get_value(cfg, std::string(path+".rqst_count").c_str(), RQST_COUNT, 6, 20, 10);
+	cfg.GetValue(path+"_rqst_count", type, RQST_COUNT, 6, 20);
 
-	get_value(cfg, std::string(path+".inverse.rx").c_str(), RX_Inverse, true);
-	get_value(cfg, std::string(path+".inverse.tx").c_str(), TX_Inverse, true);
+	cfg.GetValue(path+"_rx_invert", type, RX_Inverse);
+	cfg.GetValue(path+"_tx_invert", type, TX_Inverse);
+
+	path.assign("timing_");
+	cfg.GetValue(path+"timeout_remote_g2", estr, REMOTE_TIMEOUT, 1, 10);
+
+	cfg.GetValue(path+"play_delay", estr, DELAY_BETWEEN, 10, 25);
+	DELAY_BETWEEN *= 1000;
 
 	inactiveMax = (REMOTE_TIMEOUT * 1000000) / 400;
 	printf("... computed max number of loops %d, each loop is 400 microseconds\n", inactiveMax);
@@ -2004,26 +1866,24 @@ static int read_config(const char *cfgFile)
 
 char *cleanstr (char *Text)
 {
-	unsigned int x = 0;
-	strcpy (Ergebnis,"");
+	static char cbuf[250];
+	memset(cbuf, 0U, 250U);
 
-	for (x = 0; x < strlen (Text); x++) {
-		if ((Text[x] > 0x1F) &&  (Text[x] < 0x7F)) {
-			if (Text[x] == 0x27) {
-				strncat (Ergebnis,"\\",1);
+	for (unsigned int x=0; x < strlen(Text); x++) {
+		if ((Text[x] > 0x1F) && (Text[x] < 0x7F)) {
+			if (Text[x] == '\'') {
+				strcat(cbuf, "\\");
 			}
-			strncat (Ergebnis,&Text[x],1);
+			strncat(cbuf, &Text[x], 1);
 		}
 	}
 
-	for (x = 0; x < strlen(Ergebnis); x++) {
-		if (!isdigit(Ergebnis[x]) &&
-		        !isupper(Ergebnis[x]) &&
-		        (Ergebnis[x] != '/'))
-			Ergebnis[x] = ' ';
+	for (unsigned int x=0; x < strlen(cbuf); x++) {
+		if (!isdigit(cbuf[x]) && !isupper(cbuf[x]) && (cbuf[x] != '/'))
+			cbuf[x] = ' ';
 	}
 
-	return (Ergebnis);
+	return (cbuf);
 }
 
 int open_port(char *dvrptr_device)
@@ -2104,7 +1964,7 @@ static void send_ack(char *a_call, float ber)
 	memcpy(Send_Modem_Header + 35, DVCALL_and_MOD, 8);
 	memcpy(Send_Modem_Header + 43, "RPTR", 4);
 
-	if (memcmp(RPTR, DVCALL, RPTR_SIZE) != 0) {
+	if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
 		memcpy(Send_Modem_Header + 11, RPTR, 7);
 		memcpy(Send_Modem_Header + 19, RPTR, 7);
 
@@ -2240,8 +2100,6 @@ static void send_ack(char *a_call, float ber)
 
 static void readFrom20000()
 {
-	struct  sockaddr_in from;
-	socklen_t fromlen;
 	int len;
 	fd_set  readfd;
 	struct  timeval tv;
@@ -2251,57 +2109,55 @@ static void readFrom20000()
 	unsigned char ctrl_in = 0x80;
 	bool written_to_q = false;
 
+	int fd = Gate2Modem.GetFD();
 	while (true) {
 		written_to_q = false;
 
 		tv.tv_sec = 0;
 		tv.tv_usec = 400; // If you change that, then change the inactiveMax computation
-		fromlen = sizeof(struct sockaddr);
 		FD_ZERO (&readfd);
-		FD_SET (insock, &readfd);
-		select(insock + 1, &readfd, NULL, NULL, &tv);
-		if (FD_ISSET(insock, &readfd)) {
-			len = recvfrom (insock, (char *)&recv_buf, 58, 0, (struct sockaddr *)&from, &fromlen);
-			if (len == 58) {
+		FD_SET (fd, &readfd);
+		select(fd + 1, &readfd, NULL, NULL, &tv);
+		if (FD_ISSET(fd, &readfd)) {
+			len = Gate2Modem.Read(recv_buf.title, 56);
+			if (len == 56) {
 				if (busy20000) {
-					FD_CLR (insock, &readfd);
+					FD_CLR (fd, &readfd);
 					continue;
 				}
 
 				/* check the module and gateway */
-				if (recv_buf.rf_hdr.rpt2[7] != DVRPTR_MOD) {
-					FD_CLR (insock, &readfd);
+				if (recv_buf.hdr.rpt1[7] != DVRPTR_MOD) {
+					fprintf(stderr, "rpt1=%.8s != %c, ignoring\n", recv_buf.hdr.rpt1, DVRPTR_MOD);
+					FD_CLR (fd, &readfd);
 					break;
 				}
-				memcpy(recv_buf.rf_hdr.rpt1, DVCALL_and_G, 8);
+				memcpy(recv_buf.hdr.rpt2, DVCALL_and_G, 8);
 
-				if (memcmp(RPTR, DVCALL, RPTR_SIZE) != 0) {
-					memcpy(recv_buf.rf_hdr.rpt1, RPTR, 7);
-					memcpy(recv_buf.rf_hdr.rpt2, RPTR, 7);
+				if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
+					memcpy(recv_buf.hdr.rpt1, RPTR, 7);
+					memcpy(recv_buf.hdr.rpt2, RPTR, 7);
 
 					/*
 					   Do not change the user callsign if it is NOT an ack back from g2,
 					   because we want to know who is talking on remote net
 					*/
-					if (memcmp(recv_buf.rf_hdr.mycall, DVCALL, 7) == 0)
-						memcpy(recv_buf.rf_hdr.mycall, RPTR, 7);
+					if (memcmp(recv_buf.hdr.mycall, DVCALL, 7) == 0)
+						memcpy(recv_buf.hdr.mycall, RPTR, 7);
 				}
 
-				if ((recv_buf.rf_hdr.flags[0] != 0x00) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x01) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x08) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x20) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x28) &&
-				        (recv_buf.rf_hdr.flags[0] != 0x40)) {
-					FD_CLR (insock, &readfd);
+				if ((recv_buf.hdr.flag[0] != 0x00) &&
+				        (recv_buf.hdr.flag[0] != 0x01) &&
+				        (recv_buf.hdr.flag[0] != 0x08) &&
+				        (recv_buf.hdr.flag[0] != 0x20) &&
+				        (recv_buf.hdr.flag[0] != 0x28) &&
+				        (recv_buf.hdr.flag[0] != 0x40)) {
+					FD_CLR (fd, &readfd);
 					break;
 				}
 
-				if ((memcmp(recv_buf.pkt_id, "DSTR", 4) != 0) ||
-				        (recv_buf.flags[0] != 0x73) ||
-				        (recv_buf.flags[1] != 0x12) ||
-				        (recv_buf.myicm.icm_id != 0x20)) {
-					FD_CLR (insock, &readfd);
+				if ((memcmp(recv_buf.title, "DSVT", 4) != 0) || (recv_buf.id != 0x20)) {
+					FD_CLR (fd, &readfd);
 					break;
 				}
 
@@ -2310,8 +2166,7 @@ static void readFrom20000()
 				ctrl_in = 0x80;
 				written_to_q = true;
 
-				streamid[0] = recv_buf.myicm.streamid[0];
-				streamid[1] = recv_buf.myicm.streamid[1];
+				streamid = recv_buf.streamid;
 
 				Send_Modem_Header[0] =0xd0;
 				Send_Modem_Header[1] =0x2f;
@@ -2322,27 +2177,25 @@ static void readFrom20000()
 				Send_Modem_Header[6] =0x00;
 				Send_Modem_Header[7] =0x00;
 
-				if (recv_buf.rf_hdr.flags[0] != 0x01) {
-					if (recv_buf.rf_hdr.flags[0] == 0x00)
-						recv_buf.rf_hdr.flags[0] = 0x40;
-					else if (recv_buf.rf_hdr.flags[0] == 0x08)
-						recv_buf.rf_hdr.flags[0] = 0x48;
-					else if (recv_buf.rf_hdr.flags[0] == 0x20)
-						recv_buf.rf_hdr.flags[0] = 0x60;
-					else if (recv_buf.rf_hdr.flags[0] == 0x28)
-						recv_buf.rf_hdr.flags[0] = 0x68;
+				if (recv_buf.hdr.flag[0] != 0x1U) {
+					if (recv_buf.hdr.flag[0] == 0x0U)
+						recv_buf.hdr.flag[0] = 0x40U;
+					else if (recv_buf.hdr.flag[0] == 0x8U)
+						recv_buf.hdr.flag[0] = 0x48U;
+					else if (recv_buf.hdr.flag[0] == 0x20U)
+						recv_buf.hdr.flag[0] = 0x60U;
+					else if (recv_buf.hdr.flag[0] == 0x28U)
+						recv_buf.hdr.flag[0] = 0x68U;
 					else
-						recv_buf.rf_hdr.flags[0] = 0x40;
+						recv_buf.hdr.flag[0] = 0x40U;
 				}
-				recv_buf.rf_hdr.flags[1] = 0x00;
-				recv_buf.rf_hdr.flags[2] = 0x00;
-
-				memcpy(Send_Modem_Header + 8, recv_buf.rf_hdr.flags, 3);
-				memcpy(Send_Modem_Header + 11, recv_buf.rf_hdr.rpt1, 8);
-				memcpy(Send_Modem_Header + 19, recv_buf.rf_hdr.rpt2, 8);
-				memcpy(Send_Modem_Header + 27, recv_buf.rf_hdr.urcall, 8);
-				memcpy(Send_Modem_Header + 35, recv_buf.rf_hdr.mycall, 8);
-				memcpy(Send_Modem_Header + 43, recv_buf.rf_hdr.sfx, 4);
+				recv_buf.hdr.flag[1] = recv_buf.hdr.flag[2] = 0x0;
+				memcpy(Send_Modem_Header + 8, recv_buf.hdr.flag, 3);
+				memcpy(Send_Modem_Header + 11, recv_buf.hdr.rpt1, 8);
+				memcpy(Send_Modem_Header + 19, recv_buf.hdr.rpt2, 8);
+				memcpy(Send_Modem_Header + 27, recv_buf.hdr.urcall, 8);
+				memcpy(Send_Modem_Header + 35, recv_buf.hdr.mycall, 8);
+				memcpy(Send_Modem_Header + 43, recv_buf.hdr.sfx, 4);
 				Send_Modem_Header[47] =0xE1;
 				Send_Modem_Header[48] =0x00;
 				Send_Modem_Header[49] =0x00;
@@ -2351,11 +2204,7 @@ static void readFrom20000()
 				// printf("\nNetwork Header ID: %2.2x\n",seq_no2);
 				block = 0;
 
-				printf("From G2: streamid=%d,%d, flags=%02x:%02x:%02x, myCall=%.8s/%.4s, yrCall=%.8s, rpt1=%.8s, rpt2=%.8s\n",
-				        recv_buf.myicm.streamid[0], recv_buf.myicm.streamid[1],
-				        recv_buf.rf_hdr.flags[0], recv_buf.rf_hdr.flags[1], recv_buf.rf_hdr.flags[2],
-				        recv_buf.rf_hdr.mycall, recv_buf.rf_hdr.sfx, recv_buf.rf_hdr.urcall,
-				        recv_buf.rf_hdr.rpt2, recv_buf.rf_hdr.rpt1);
+				printf("From G2: streamid=%04x, flags=%02x:%02x:%02x, myCall=%.8s/%.4s, yrCall=%.8s, rpt1=%.8s, rpt2=%.8s\n", ntohs(recv_buf.streamid), recv_buf.hdr.flag[0], recv_buf.hdr.flag[1], recv_buf.hdr.flag[2], recv_buf.hdr.mycall, recv_buf.hdr.sfx, recv_buf.hdr.urcall, recv_buf.hdr.rpt1, recv_buf.hdr.rpt2);
 
 				ptt_off[4] = seq_no2;
 				start_Header[4]=seq_no2;
@@ -2367,8 +2216,8 @@ static void readFrom20000()
 				write(fd_ser, Send_Modem_Header, sizeof (Send_Modem_Header));
 				inactive = 0;
 				seq_no = 0;
-			} else if (len == 29) {
-				seq_no = recv_buf.myicm.ctrl & 0x1f;
+			} else if (len == 27) {
+				seq_no = recv_buf.ctrl & 0x1f;
 				if ((seq_no < 3) && (old_seq_no > 17)) {
 					block ++;
 					if (block >= 12)
@@ -2378,12 +2227,12 @@ static void readFrom20000()
 				seq_no = block * 21 + seq_no;
 
 				if (busy20000) {
-					if ((recv_buf.myicm.streamid[0] == streamid[0]) && (recv_buf.myicm.streamid[1] == streamid[1])) {
-						if ((recv_buf.myicm.ctrl <= ctrl_in) && (ctrl_in != 0x80)) {
+					if (recv_buf.streamid == streamid) {
+						if ((recv_buf.ctrl <= ctrl_in) && (ctrl_in != 0x80)) {
 							/* do not update written_to_q, ctrl_in */
 							; // printf("dup\n");
 						} else {
-							ctrl_in = recv_buf.myicm.ctrl;
+							ctrl_in = recv_buf.ctrl;
 							if (ctrl_in == 0x14)
 								ctrl_in = 0x80;
 
@@ -2397,8 +2246,8 @@ static void readFrom20000()
 							writevoice[5] =seq_no;
 							writevoice[6] =0x00;
 							writevoice[7] =0x00;
-							ambefec_regenerate((recv_buf.rf_audio.buff));
-							memcpy(writevoice + 8, recv_buf.rf_audio.buff, 12);
+							ambefec_regenerate(recv_buf.vasd.voice);
+							memcpy(writevoice + 8, recv_buf.vasd.voice, 12);
 							writevoice[20] =0x00;
 							writevoice[21] =0x00;
 							writevoice[22] =0x00;
@@ -2408,33 +2257,32 @@ static void readFrom20000()
 							write(fd_ser, writevoice, sizeof (writevoice));
 							inactive = 1;
 
-							if ((recv_buf.myicm.ctrl & 0x40) != 0) {
-								printf("End G2: streamid=%d,%d\n",recv_buf.myicm.streamid[0], recv_buf.myicm.streamid[1]);
+							if ((recv_buf.ctrl & 0x40) != 0) {
+								printf("End G2: streamid=%04x\n",ntohs(recv_buf.streamid));
 
 								ptt_off[4] = Send_Modem_Header[4];
 								write(fd_ser, ptt_off, 8);
 								busy20000 = false;
 
-								streamid[0] = 0x00;
-								streamid[1] = 0x00;
+								streamid = 0x0U;
 
 								inactive = 0;
-								FD_CLR (insock, &readfd);
+								FD_CLR (fd, &readfd);
 								break;
 							}
 						}
 					}
 				} else {
-					FD_CLR (insock, &readfd);
+					FD_CLR (fd, &readfd);
 					break;
 				}
 			} else {
 				if (!busy20000) {
-					FD_CLR (insock, &readfd);
+					FD_CLR (fd, &readfd);
 					break;
 				}
 			}
-			FD_CLR (insock, &readfd);
+			FD_CLR (fd, &readfd);
 		}
 
 		/*
@@ -2449,8 +2297,7 @@ static void readFrom20000()
 					write(fd_ser, ptt_off, 8);
 					busy20000 = false;
 
-					streamid[0] = 0x00;
-					streamid[1] = 0x00;
+					streamid = 0x0U;
 
 					inactive = 0;
 					break;
@@ -2542,7 +2389,7 @@ bool check_serial()
 				puffer[1] = 0x00;
 				sprintf(temp_dvrptr_serial, "%02X.%02X.%02X.%02X", puffer[4], puffer[5], puffer[6], puffer[7]);
 				printf("Device %s has serial=[%s]\n", dvrptr_device, temp_dvrptr_serial);
-				if (strcmp(temp_dvrptr_serial, DVRPTR_SERIAL) == 0) {
+				if (strcmp(temp_dvrptr_serial, DVRPTR_SERIAL.c_str()) == 0) {
 					printf("Device %s serial number matches DVRPTR_SERIAL in dvrptr.cfg\n", dvrptr_device);
 					match = true;
 				}
@@ -2577,8 +2424,6 @@ int main(int argc, const char **argv)
 	int InitCount = 1;
 	short seq_no = 0;
 	unsigned char puffer[200];
-	struct  sockaddr_in inaddr;
-	int rc;
 	char Temp_Text[200];
 	time_t last_RF_time = 0;
 	time_t tNow = 0;
@@ -2587,42 +2432,71 @@ int main(int argc, const char **argv)
 	int fw_version;
 	char fw_string[10];
 
-	char *temp_ptr = NULL;
-
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("dvrptr VERSION %s\n", VERSION);
+	printf("dvrptr VERSION %s\n", DVRPTR_VERSION);
 
 	if (argc != 2) {
-		printf("Usage: ./dvrptr dvrptr.cfg\n");
+		fprintf(stderr, "Usage: %s dvrptr.cfg\n", argv[0]);
 		return 1;
 	}
 
-	rc = read_config(argv[1]);
-	if (rc != 0) {
-		printf("Failed to process config file %s\n", argv[1]);
+	if ('-' == argv[1][0]) {
+		printf("\nQnetDVRPTR Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVRPTR_VERSION);
+		printf("QnetDVRPTR comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
+		return 0;
+	}
+
+	const char *qn = strstr(argv[0], "qndvrptr");
+	if (NULL == qn) {
+		fprintf(stderr, "Error finding 'qndvrptr' in %s!\n", argv[0]);
+		return 1;
+	}
+	qn += 8;
+
+	switch (*qn) {
+		case NULL:
+			assigned_module = -1;
+			break;
+		case 'a':
+			assigned_module = 0;
+			break;
+		case 'b':
+			assigned_module = 1;
+			break;
+		case 'c':
+			assigned_module = 2;
+			break;
+		default:
+		fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
+		return 1;
+	}
+
+	if (ReadConfig(argv[1])) {
+		fprintf(stderr, "Failed to process config file %s\n", argv[2]);
 		return 1;
 	}
 
 	if (!check_serial()) {
-		printf("Cant find any FREE ACMx device that matches\n");
+		fprintf(stderr, "Cant find any FREE ACMx device that matches\n");
 		return 1;
 	}
 
 	if (strlen(DVCALL) != 8) {
-		printf("Bad DVCALL value, length must be exactly 8 bytes\n");
+		fprintf(stderr, "Bad DVCALL value, length must be exactly 8 bytes\n");
 		return 1;
 	}
 	if ((DVRPTR_MOD != 'A') && (DVRPTR_MOD != 'B') && (DVRPTR_MOD != 'C')) {
-		printf("Bad DVCALL_MOD value, must be one of A or B or C\n");
+		fprintf(stderr, "Bad DVCALL_MOD value, must be one of A or B or C\n");
 		return 1;
 	}
 
 	if (DVRPTR_MOD == 'A')
-		SND_TERM_ID = 0x03;
+		SND_TERM_ID = 0x3;
 	else if (DVRPTR_MOD == 'B')
-		SND_TERM_ID = 0x01;
+		SND_TERM_ID = 0x1;
 	else if (DVRPTR_MOD == 'C')
-		SND_TERM_ID = 0x02;
+		SND_TERM_ID = 0x2;
 
 	strcpy(DVCALL_and_G, DVCALL);
 	DVCALL_and_G[7] = 'G';
@@ -2630,29 +2504,9 @@ int main(int argc, const char **argv)
 	strcpy(DVCALL_and_MOD, DVCALL);
 	DVCALL_and_MOD[7] = DVRPTR_MOD;
 
-	insock = socket(PF_INET, SOCK_DGRAM, 0);
-	if (insock == -1) {
-		printf("Failed to create insock, error=%d, message=%s\n",errno,strerror(errno));
+	Modem2Gate.SetUp(modem2gate.c_str());
+	if (Gate2Modem.Open(gate2modem.c_str()))
 		return 1;
-	}
-
-	memset(&inaddr, 0, sizeof(inaddr));
-	inaddr.sin_family = AF_INET;
-	inaddr.sin_port = htons(DVRPTR_INTERNAL_PORT);
-	inaddr.sin_addr.s_addr = inet_addr(DVRPTR_INTERNAL_IP);
-	rc = bind(insock, (struct sockaddr *)&inaddr, sizeof(inaddr));
-	if (rc == -1) {
-		printf("bind to socket failed, error=%d, message=%s\n", errno,strerror(errno));
-		close(insock);
-		insock = -1;
-		return 1;
-	}
-	fcntl(insock,F_SETFL,O_NONBLOCK);
-
-	memset(&outaddr, 0, sizeof(outaddr));
-	outaddr.sin_family = AF_INET;
-	outaddr.sin_port = htons(GATEWAY_PORT);
-	outaddr.sin_addr.s_addr = inet_addr(GATEWAY_IP);
 
 	if  (RX_Inverse == true) {
 		Modem_Init2[6]=0x01;
@@ -2665,18 +2519,10 @@ int main(int argc, const char **argv)
 			Modem_Init2[6]=0x02;
 	}
 
-	memcpy(S_packet, "DSTR", 4);
-	S_packet[4] = 0x00;
-	S_packet[5] = 0x00;
-	S_packet[6] = 0x73;
-	S_packet[7] = 0x21;
-	S_packet[8] = 0x00;
-	S_packet[9] = 0x10;
-
 	dstar_dv_init();
 
 	time(&tNow);
-	srand(tNow + getpid());
+	CRandom Random;
 
 	time(&time_rqst);
 
@@ -2694,19 +2540,6 @@ int main(int argc, const char **argv)
 				close(fd_ser);
 				break;
 			}
-		}
-
-		/* send the S packet if needed */
-		if ((tNow - S_ctrl_msg_time) > 60) {
-			S_packet[5] = (unsigned char)(C_COUNTER & 0xff);
-			S_packet[4] = ((C_COUNTER >> 8) & 0xff);
-			memcpy(S_packet + 10, DVCALL, 8);
-			S_packet[17] = 'S';
-			memcpy(S_packet + 18, DVCALL, 8);
-			S_packet[25] = 'S';
-			sendto(insock, (char *)S_packet, sizeof(S_packet), 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-			C_COUNTER ++;
-			S_ctrl_msg_time = tNow;
 		}
 
 		// init Modem
@@ -2794,13 +2627,6 @@ int main(int argc, const char **argv)
 					printf("From RF: flags=%02x:%02x:%02x, myCall=%s/%s, yrCall=%s, rpt1=%s, rpt2=%s\n",
 					        puffer[8], puffer[9], puffer[10], myCall, myCall2, myUR, myRPT1, myRPT2);
 
-					/* do not allow connections to stupid/bad STN programs */
-					temp_ptr = strstr(myUR, INVALID_YRCALL_KEY);
-					if (temp_ptr == myUR) {
-						printf("YRCALL value [%s] starts with the INVALID_YRCALL_KEY [%s], resetting to CQCQCQ\n", myUR, INVALID_YRCALL_KEY);
-						memcpy(myUR, "CQCQCQ  ", 8);
-					}
-
 					/*
 					   If rpt1 is equal to rpt2, but the first 7 bytes is not our system,
 					   then a remote repeater(standalone) is trying to reach our repeater over RF,
@@ -2826,15 +2652,20 @@ int main(int argc, const char **argv)
 					        (myRPT2[7] == 'C') ||
 					        (myRPT2[7] == 'G'))
 						memcpy(myRPT2, DVCALL, 7);
-					else
+					else {
+						printf("myRPT2=%.8s not A, B, C or G, blanking it\n", myRPT2);
 						memset(myRPT2, ' ', 8);
+					}
 
-					if ((memcmp(myUR, "CQCQCQ", 6) != 0) && (myRPT2[0] != ' '))
+					if ((memcmp(myUR, "CQCQCQ", 6) != 0) && (myRPT2[0] != ' ')) {
 						memcpy(myRPT2, DVCALL_and_G, 8);
+					}
 
 					/* 8th in rpt1, rpt2 must be diff */
-					if (myRPT2[7] == myRPT1[7])
+					if (myRPT2[7] == myRPT1[7]) {
 						memset(myRPT2, ' ', 8);
+						printf("%.8s==%.8s, blanking myRPT2\n", myRPT2, myRPT1);
+					}
 
 					/*
 					   Are we restricting the RF user ?
@@ -2843,8 +2674,8 @@ int main(int argc, const char **argv)
 					   that means that mycall, rpt1, rpt2 must be equal to RPTR
 					   otherwise we drop the rf data
 					*/
-					if (memcmp(RPTR, DVCALL, RPTR_SIZE) != 0) {
-						if (memcmp(myCall, RPTR, RPTR_SIZE) != 0) {
+					if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
+						if (memcmp(myCall, RPTR, CALL_SIZE) != 0) {
 							printf("mycall=[%.8s], not equal to %s\n", myCall, RPTR);
 							ok = false;
 						}
@@ -2900,19 +2731,6 @@ int main(int argc, const char **argv)
 					}
 				}
 
-				S_packet[5] = (unsigned char)(C_COUNTER & 0xff);
-				S_packet[4] = ((C_COUNTER >> 8) & 0xff);
-				memcpy(S_packet + 10, myCall, 8);
-				memcpy(S_packet + 18, DVCALL, 8);
-				S_packet[25] = DVRPTR_MOD;
-
-				if (ok) {
-					if (IS_ENABLED) {
-						sendto(insock, (char *)S_packet, sizeof(S_packet), 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-						C_COUNTER ++;
-					}
-				}
-
 				/*
 				   Before we send the data to the local gateway,
 				   set RPT1, RPT2 to be the local gateway
@@ -2921,47 +2739,41 @@ int main(int argc, const char **argv)
 				if (myRPT2[7] != ' ')
 					memcpy(myRPT2, DVCALL, 7);
 
-				memcpy(Send_Network_Header , "DSTR", 4);
-				Send_Network_Header[4] = ((C_COUNTER >> 8) & 0xff);
-				Send_Network_Header[5] = (unsigned char)(C_COUNTER & 0xff);
-				Send_Network_Header[6] =  0x73;
-				Send_Network_Header[7] =  0x12;
-				Send_Network_Header[8] =  0x00;
-				Send_Network_Header[9] =  0x30;
-				Send_Network_Header[10] =  0x20;
-				Send_Network_Header[11] =  0x00;
-				Send_Network_Header[12] =  0x01;
-				Send_Network_Header[13] =  SND_TERM_ID;
-				streamid_raw = (::rand() % 65535U) + 1U;
-				Send_Network_Header[14] = streamid_raw / 256U;
-				Send_Network_Header[15] = streamid_raw % 256U;
-				Send_Network_Header[16] =  0x80;
+				memcpy(Send_Network_Header.title , "DSVT", 4);
+				Send_Network_Header.config = 0x10U;
+				memset(Send_Network_Header.flaga, 0U, 3U);
+				Send_Network_Header.id = 0x20U;
+				Send_Network_Header.flagb[0] = 0x0U;
+				Send_Network_Header.flagb[1] = 0x1U;
+				Send_Network_Header.flagb[2] = SND_TERM_ID;
+				streamid_raw = Random.NewStreamID();
+				Send_Network_Header.streamid = streamid_raw;
+				Send_Network_Header.ctrl = 0x80U;
 				seq_no = 0;
 
-				if (puffer[8] == 0x40)
-					Send_Network_Header[17] = 0x00;
-				else if (puffer[8] == 0x48)
-					Send_Network_Header[17] = 0x08;
-				else if (puffer[8] == 0x60)
-					Send_Network_Header[17] = 0x20;
-				else if (puffer[8] == 0x68)
-					Send_Network_Header[17] = 0x28;
+				if (puffer[8] == 0x40U)
+					Send_Network_Header.hdr.flag[0] = 0x0U;
+				else if (puffer[8] == 0x48U)
+					Send_Network_Header.hdr.flag[0] = 0x8U;
+				else if (puffer[8] == 0x60U)
+					Send_Network_Header.hdr.flag[0] = 0x20U;
+				else if (puffer[8] == 0x68U)
+					Send_Network_Header.hdr.flag[0] = 0x28U;
 				else
-					Send_Network_Header[17] = 0x00;
+					Send_Network_Header.hdr.flag[0] = 0x00;
 
-				Send_Network_Header[18] = puffer[9];
-				Send_Network_Header[19] = puffer[10];
-				memcpy(Send_Network_Header + 20, myRPT2, 8);
-				memcpy(Send_Network_Header + 28, myRPT1, 8);
-				memcpy(Send_Network_Header + 36, myUR, 8);
-				memcpy(Send_Network_Header + 44, myCall, 8);
-				memcpy(Send_Network_Header + 52, myCall2, 4);
-				calcPFCS(Send_Network_Header);
+				Send_Network_Header.hdr.flag[1] = puffer[9];
+				Send_Network_Header.hdr.flag[2] = puffer[10];
+				memcpy(Send_Network_Header.hdr.rpt1, myRPT1, 8);
+				memcpy(Send_Network_Header.hdr.rpt2, myRPT2, 8);
+				memcpy(Send_Network_Header.hdr.urcall, myUR, 8);
+				memcpy(Send_Network_Header.hdr.mycall, myCall, 8);
+				memcpy(Send_Network_Header.hdr.sfx, myCall2, 4);
+				calcPFCS(Send_Network_Header.title);
 
 				if (ok) {
 					if (IS_ENABLED) {
-						sendto(insock, (char *)&Send_Network_Header, 58, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-						C_COUNTER ++;
+						Modem2Gate.Write(Send_Network_Header.title, 56);
 					}
 				}
 
@@ -3009,28 +2821,22 @@ int main(int argc, const char **argv)
 				if (last_RF_time > 0)
 					time(&last_RF_time);
 
-				memcpy(Send_Network_Audio , "DSTR", 4);
-				Send_Network_Audio[4] = ((C_COUNTER >> 8) & 0xff);
-				Send_Network_Audio[5] = (unsigned char)(C_COUNTER & 0xff);
-				Send_Network_Audio[6] = 0X73;
-				Send_Network_Audio[7] = 0X12;
-				Send_Network_Audio[8] = 0X00;
-				Send_Network_Audio[9] = 0X13;
-				Send_Network_Audio[10] = 0X20;
-				Send_Network_Audio[11] = 0X00;
-				Send_Network_Audio[12] = 0X01;
-				Send_Network_Audio[13] = SND_TERM_ID;
-				Send_Network_Audio[14] = streamid_raw / 256U;
-				Send_Network_Audio[15] = streamid_raw % 256U;
-				Send_Network_Audio[16] = seq_no;
-				memcpy(Send_Network_Audio + 17 , puffer + 8, 12);
+				memcpy(Send_Network_Audio.title , "DSVT", 4);
+				Send_Network_Audio.config = 0x20U;
+				memset(Send_Network_Audio.flaga, 0U, 3U);
+				Send_Network_Audio.id = 0x20U;
+				Send_Network_Audio.flagb[0] = 0X00;
+				Send_Network_Audio.flagb[1] = 0X01;
+				Send_Network_Audio.flagb[2] = SND_TERM_ID;
+				Send_Network_Audio.streamid = streamid_raw;
+				Send_Network_Audio.ctrl = seq_no;
+				memcpy(Send_Network_Audio.vasd.voice , puffer + 8, 12);
 
 				if (IS_ENABLED) {
-					sendto(insock, (char *)&Send_Network_Audio, 29, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-					ber_errs = dstar_dv_decode((unsigned char *)&Send_Network_Audio + 17, ber_data);
+					Modem2Gate.Write(Send_Network_Audio.title, 27);
+					ber_errs = dstar_dv_decode(Send_Network_Audio.vasd.voice, ber_data);
 					num_bit_errors += ber_errs;
-					num_dv_frames ++;
-					C_COUNTER ++;
+					num_dv_frames++;
 				}
 
 				seq_no ++;
@@ -3081,10 +2887,7 @@ int main(int argc, const char **argv)
 			}
 		}
 
-		if ((puffer[0] == 0xD0) &&
-		        (puffer[1] == 0x17) &&
-		        (puffer[2] == 0x00) &&
-		        (puffer[3] == 0x91)) {
+		if ((puffer[0] == 0xD0) && (puffer[1] == 0x17) && (puffer[2] == 0x00) && (puffer[3] == 0x91)) {
 			rqst_count = RQST_COUNT;
 
 			printf("DVRPTR Hardware ver: %.20s\n",puffer+6 );
@@ -3099,14 +2902,11 @@ int main(int argc, const char **argv)
 			if ((fw_version & 0x0f) > 0)
 				fw_string[4] = (fw_version & 0x0f) + 'a' - 1;
 
-			printf("DVRPTR Firmware ver: %.5s\n",fw_string );
+			printf("DVRPTR Firmware ver: %.5s\n",fw_string);
 			puffer[1] = 0x00;
 		}
 
-		if ((puffer[0] == 0xD0) &&
-		        ((puffer[1] == 0x07) || (puffer[1] == 0x08)) &&
-		        (puffer[2] == 0x00) &&
-		        (puffer[3] == 0x90)) {
+		if ((puffer[0] == 0xD0) && ((puffer[1] == 0x07) || (puffer[1] == 0x08)) && (puffer[2] == 0x00) && (puffer[3] == 0x90)) {
 			rqst_count = RQST_COUNT;
 
 			printf("\n------- STATUS READ FROM MODEM ---------\n");
@@ -3122,10 +2922,7 @@ int main(int argc, const char **argv)
 		}
 
 		/* serial */
-		if ((puffer[0] == 0xD0) &&
-		        (puffer[1] == 0x05) &&
-		        (puffer[2] == 0x00) &&
-		        (puffer[3] == 0x92)) {
+		if ((puffer[0] == 0xD0) && (puffer[1] == 0x05) && (puffer[2] == 0x00) && (puffer[3] == 0x92)) {
 			rqst_count = RQST_COUNT;
 			puffer[1] = 0x00;
 		}
@@ -3138,55 +2935,46 @@ int main(int argc, const char **argv)
 		/* If an RF user TXed and disappeared after that */
 		if ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) {
 			printf("End RF(Timeout), ber=%.02f\n",
-			        (num_dv_frames == 0)?0.00:100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
+			        (num_dv_frames == 0) ? 0.0 : 100.0 * ((float)num_bit_errors / (float)(num_dv_frames * 24.0)) );
 			ptt_off[4] = Send_Modem_Header[4];
 			write(fd_ser, ptt_off, 8);
 		}
 
-		if ( ((puffer[0] == 0xD0) &&
-		        (puffer[1] == 0x03) &&
-		        (puffer[2] == 0x00) &&
-		        (puffer[3] == 0x1A)) ||
-		        ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) ) {
+		if ( ((puffer[0] == 0xD0) && (puffer[1] == 0x03) && (puffer[2] == 0x00) && (puffer[3] == 0x1A)) || ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) ) {
 			puffer[0] = 0x00;
 			if (last_RF_time > 0) {
-				memcpy(Send_Network_Header , "DSTR", 4);
-				Send_Network_Header[4] = ((C_COUNTER >> 8) & 0xff);
-				Send_Network_Header[5] = (unsigned char)(C_COUNTER & 0xff);
-				Send_Network_Header[6] =  0x73;
-				Send_Network_Header[7] =  0x12;
-				Send_Network_Header[8] =  0x00;
-				Send_Network_Header[9] =  0x13;
-				Send_Network_Header[10] =  0x20;
-				Send_Network_Header[11] =  0x00;
-				Send_Network_Header[12] =  0x01;
-				Send_Network_Header[13] =  0x01;
-				Send_Network_Header[16] =  seq_no | 0x40;
-				Send_Network_Header[17] =  0x40;
-				Send_Network_Header[18] =  0x55;
-				Send_Network_Header[19] =  0xc8;
+				const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
+				const unsigned char silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
+				memcpy(Send_Network_Audio.title , "DSVT", 4);
+				Send_Network_Audio.config =  0x20U;
+				memset(Send_Network_Audio.flaga, 0U, 3U);
+				Send_Network_Audio.id =  0x20U;
+				Send_Network_Audio.flagb[0] =  0x0U;
+				Send_Network_Audio.flagb[1] =  0x1U;
+				Send_Network_Audio.flagb[2] =  SND_TERM_ID;
+				Send_Network_Audio.ctrl =  seq_no | 0x40U;
+				memcpy(Send_Network_Audio.vasd.voice, seq_no ? silsync : silence, 12U);
 
 				if (ok) {
 					if (IS_ENABLED) {
-						sendto(insock, (char *)&Send_Network_Header, 29, 0, (struct sockaddr *)&outaddr, sizeof(outaddr));
-						C_COUNTER ++;
+						Modem2Gate.Write(Send_Network_Audio.title, 27);
 					}
 				}
 
 				ptt_off[4] = Send_Modem_Header[4];
 				write(fd_ser, ptt_off, 8);
 
-				printf("End RF, ber=%.02f\n", (num_dv_frames == 0) ? 0.00 : 100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
+				printf("End RF, ber=%.02f\n", (num_dv_frames == 0) ? 0.0 : 100.0 * ((float)num_bit_errors / (float)(num_dv_frames * 24.0)) );
 				last_RF_time = 0;
 
 				if (IS_ENABLED && RPTR_ACK)
-					send_ack(ok ? myCall : RPTR, (num_dv_frames == 0) ? 0.00 : 100.00 * ((float)num_bit_errors / (float)(num_dv_frames * 24.00)) );
+					send_ack(ok ? myCall : RPTR, (num_dv_frames == 0) ? 0.0 : 100.0 * ((float)num_bit_errors / (float)(num_dv_frames * 24.0)) );
 				ok = false;
 			}
 		}
 	}
 
-	close(insock);
+	Gate2Modem.Close();
 	printf("dvrptr exiting...\n");
 
 	return 0;

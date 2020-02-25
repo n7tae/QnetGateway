@@ -20,11 +20,9 @@
 
 #include <atomic>
 #include <string>
-#include <libconfig.h++>
-
 #include <netinet/in.h>
 
-using namespace libconfig;
+#include "UnixDgramSocket.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -33,9 +31,9 @@ class CQnetRelay
 {
 public:
 	// functions
-	CQnetRelay();
+	CQnetRelay(int mod);
 	~CQnetRelay();
-	void Run(const char *cfgfile);
+	bool Run(const char *cfgfile);
 
 	// data
 	static std::atomic<bool> keep_running;
@@ -51,21 +49,21 @@ private:
 
 	// read configuration file
 	bool ReadConfig(const char *);
-	bool GetValue(const Config &cfg, const char *path, int &value, const int min, const int max, const int default_value);
-	bool GetValue(const Config &cfg, const char *path, double &value, const double min, const double max, const double default_value);
-	bool GetValue(const Config &cfg, const char *path, bool &value, const bool default_value);
-	bool GetValue(const Config &cfg, const char *path, std::string &value, const int min, const int max, const char *default_value);
+
+	// Unix sockets
+	int assigned_module;
+	std::string gate2modem, modem2gate;
+	CUnixDgramWriter Modem2Gate;
+	CUnixDgramReader Gate2Modem;
 
 	// config data
 	char RPTR_MOD;
-	char RPTR[CALL_SIZE + 1];
-	char OWNER[CALL_SIZE + 1];
-	std::string MMDVM_IP, G2_INTERNAL_IP;
-	unsigned short MMDVM_IN_PORT, MMDVM_OUT_PORT, G2_IN_PORT, G2_OUT_PORT;
-	int WAIT_FOR_PACKETS, DELAY_BEFORE, DELAY_BETWEEN;
+	std::string MMDVM_IP;
+	unsigned short MMDVM_IN_PORT, MMDVM_OUT_PORT;
+	bool log_qso;
 
 	// parameters
-	int msock, gsock;
+	int msock;
 	unsigned int seed;
 	unsigned short COUNTER;
 };

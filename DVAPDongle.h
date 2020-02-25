@@ -18,7 +18,7 @@
  */
 
  #include <stdint.h>
- 
+
 enum REPLY_TYPE {
 	RT_TIMEOUT,
 	RT_ERR,
@@ -66,8 +66,8 @@ typedef struct dvp_register_tag {
 			union {
 				struct {
 					unsigned char flag[3];
-					unsigned char rpt1[8];
 					unsigned char rpt2[8];
+					unsigned char rpt1[8];
 					unsigned char urcall[8];
 					unsigned char mycall[8];
 					unsigned char sfx[4];
@@ -88,7 +88,7 @@ class CDVAPDongle
 	public:
 		CDVAPDongle();
 		~CDVAPDongle();
-		bool Initialize(char *serialno, int frequency, int offset, int power, int squelch);
+		bool Initialize(const char *serialno, const int frequency, const int offset, const int power, const int squelch);
 		REPLY_TYPE GetReply(SDVAP_REGISTER &dr);
 		void Stop();
 		int KeepAlive();
@@ -107,7 +107,7 @@ class CDVAPDongle
 		int read_from_dvp(void* buf, unsigned int len);
 		int write_to_dvp(const void* buf, const unsigned int len);
 		bool syncit();
-		bool get_ser(char *dvp, char *dvap_serial_number);
+		bool get_ser(const char *dvp, const char *dvap_serial_number);
 		bool get_name();
 		bool get_fw();
 		bool set_modu();

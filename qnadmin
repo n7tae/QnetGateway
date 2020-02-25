@@ -1,0 +1,654 @@
+#!/bin/bash
+#
+# Copyright (c) 2019 by Thomas A. Early N7TAE
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+trap ControlC INT
+
+ControlC () {
+	echo "caught SIGINT"
+}
+
+InstallMMDVMHosts () {
+	if [ $nmmdvm -gt 0 ] && [ -e ${MMPATH}/MMDVMHost ]; then
+		if [ $nmmdvm -eq 1 ]; then
+			sudo make ${1}installmmdvm
+		else
+			sudo make MODULE=${ammdvm[0]} ${1}installmmdvm
+			sudo make MODULE=${ammdvm[1]} ${1}installmmdvm
+			if [ $nmmdvm -eq 3 ]; then
+				sudo make MODULE=${advap[2]} ${1}installmmdvm
+			fi
+		fi
+	fi
+}
+
+InstallSystem () {
+	local n
+	if [ -z ${1} ]; then
+		n=$( grep '^processor' /proc/cpuinfo | wc -l )
+		echo "Detected $n processors for make"
+		make base -j$n
+	fi
+	sudo make ${1}installbase
+	if [ $ndvap -gt 0 ]; then
+		if [ -z ${1} ]; then
+			make qndvap -j$n
+		fi
+		if [ $ndvap -eq 1 ]; then
+			sudo make ${1}installdvap
+		else
+			sudo make MODULE=${advap[0]} ${1}installdvap
+			sudo make MODULE=${advap[1]} ${1}installdvap
+			if [ $ndvap -eq 3 ]; then
+				sudo make MODULE=${advap[2]} ${1}installdvap
+			fi
+		fi
+	fi
+	if [ $ndvrptr -gt 0 ]; then
+		if [ -z ${1} ]; then
+			make qndvrptr -j$n
+		fi
+		if [ $ndvrptr -eq 1 ]; then
+			sudo make ${1}installdvrptr
+		else
+			sudo make MODULE=${advrptr[0]} ${1}installdvrptr
+			sudo make MODULE=${advrptr[1]} ${1}installdvrptr
+			if [ $ndvrptr -eq 3 ]; then
+				sudo make MODULE=${advrptr[2]} ${1}installdvrptr
+			fi
+		fi
+	fi
+	if [ $nitap -gt 0 ]; then
+		if [ -z ${1} ]; then
+			make qnitap -j$n
+		fi
+		if [ $nitap -eq 1 ]; then
+			sudo make ${1}installitap
+		else
+			sudo make MODULE=${aitap[0]} ${1}installitap
+			sudo make MODULE=${aitap[1]} ${1}installitap
+			if [ $nitap -eq 3 ]; then
+				sudo make MODULE=${aitap[2]} ${1}installitap
+			fi
+		fi
+	fi
+	if [ $nmmdvm -gt 0 ]; then
+		if [ -z ${1} ]; then
+			make qnrelay -j$n
+		fi
+		if [ $nmmdvm -eq 1 ]; then
+			sudo make ${1}installrelay
+		else
+			sudo make MODULE=${ammdvm[0]} ${1}installrelay
+			sudo make MODULE=${ammdvm[1]} ${1}installrelay
+			if [ $nmmdvm -eq 3 ]; then
+				sudo make MODULE=${advap[2]} ${1}installrelay
+			fi
+		fi
+	fi
+	if [ $nmodem -gt 0 ]; then
+		if [ -z ${1} ]; then
+			make qnmodem -j$n
+		fi
+		if [ $nmodem -eq 1 ]; then
+			sudo make ${1}installmodem
+		else
+			sudo make MODULE=${amodem[0]} ${1}installmodem
+			sudo make MODULE=${amodem[1]} ${1}installmodem
+			if [ $nmmdvm -eq 3 ]; then
+				sudo make MODULE=${amodem[2]} ${1}installmodem
+			fi
+		fi
+	fi
+}
+
+BaseStatus () {
+	local LoadGate SubGate LoadLink SubLink LoadDTMF SubDTMF
+	LoadGate=$( systemctl show -p LoadState --value qngateway )
+	SubGate=$( systemctl show -p SubState --value qngateway )
+	LoadLink=$( systemctl show -p LoadState --value qnlink )
+	SubLink=$( systemctl show -p SubState --value qnlink )
+	LoadDTMF=$( systemctl show -p LoadState --value qndtmf )
+	SubDTMF=$( systemctl show -p SubState --value qndtmf )
+	if [[ $LoadGate == 'loaded' ]]; then
+		if [[ $SubGate == 'running' ]]; then
+			GateState='running'
+		else
+			GateState='stopped'
+		fi
+	else
+		GateState='not installed'
+	fi
+	echo "QnetGateway is $GateState"
+	if [[ $LoadLink == 'loaded' ]]; then
+		if [[ $SubLink == 'running' ]]; then
+			LinkState='running'
+		else
+			LinkState='stopped'
+		fi
+	else
+		LinkState='not installed'
+	fi
+	echo "QnetLink is $LinkState"
+	if [[ $LoadDTMF == 'loaded' ]]; then
+		if [[ $SubDTMF == 'running' ]]; then
+			DTMFState='running'
+		else
+			DTMFState='stopped'
+		fi
+	else
+		DTMFState='not installed'
+	fi
+	echo "DTMF is $DTMFState"
+}
+
+ModuleStatus () {
+	local LoadState SubState mcvar
+	if [ -z ${3} ]; then
+		ModuleState[$1]='EMPTY'
+		MMDVMState[$1]='EMPTY'
+	else
+		mcvar="n${3}"
+		ModuleProcess[$1]="qn$3"
+		if [[ "${ModuleProcess[$1]}" == 'qnmmdvmhost' ]]; then
+			ModuleProcess[$1]='qnrelay'
+			MMDVMProcess[$1]='mmdvm'
+			MMDVMState[$1]='not installed'
+		elif [[ "${ModuleProcess[$1]}" == 'qnmmdvmmodem' ]]; then
+			ModuleProcess[$1]='qnmodem'
+			MMDVMProcess[$1]=''
+			MMDVMState[$1]='EMPTY'
+		else
+			MMDVMState[$1]='EMPTY'
+			MMDVMProcess[$1]=''
+		fi
+		if [[ ${!mcvar} > 1 ]]; then
+			ModuleProcess[$1]="${ModuleProcess[$1]}${2}"
+			if [[ "${MMDVMProcess[$1]}" == 'mmdvm' ]]; then
+				MMDVMProcess[$1]="${MMDVMProcess[$1]}${2}"
+			fi
+		fi
+		LoadState=$( systemctl show -p LoadState --value ${ModuleProcess[$1]} )
+		SubState=$( systemctl show -p SubState --value ${ModuleProcess[$1]} )
+		if [[ "$LoadState" == "loaded" ]]; then
+			if [[ $SubState == "running" ]]; then
+				ModuleState[$1]='running'
+			else
+				ModuleState[$1]='stopped'
+			fi
+		else
+			ModuleState[$1]='not installed'
+		fi
+		if [[ "${MMDVMState[$1]}" != 'EMPTY' ]]; then
+			LoadState=$( systemctl show -p LoadState --value ${MMDVMProcess[$1]} )
+			SubState=$( systemctl show -p SubState --value ${MMDVMProcess[$1]} )
+			if [[ "$LoadState" == "loaded" ]]; then
+				if [[ $SubState == "running" ]]; then
+					MMDVMState[$1]='running'
+				else
+					MMDVMState[$1]='stopped'
+				fi
+			else
+				MMDVMState[$1]='not installed'
+			fi
+		fi
+		if [[ "$3" == 'mmdvmhost' ]]; then
+			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]} - ${MMDVMProcess[$1]} is ${MMDVMState[$1]}"
+		else
+			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]}"
+		fi
+	fi
+}
+
+Header () {
+	local count
+	count=$( ps -aux | grep -e qn -e MMDVMHost | wc -l )
+	if [ ${count} -gt 3 ]; then
+		echo
+		echo "USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND"
+		ps -aux | grep -e qngateway -e qnlink -e qndtmf -e qndvap -e qnitap -e qnrelay -e qndvrptr -e qnmodem -e MMDVMHost | grep -v grep
+	fi
+	echo
+}
+
+LogMenu () {
+	ans=''
+	while [[ "$ans" != q* ]]; do
+		clear
+		echo "            Log Menu"
+		Header
+		echo "After starting a log, use <Ctrl>+C to stop the log and return to this menu."
+		echo
+		if [[ $GateState == 'running' ]]; then
+			echo " g  : qngateway Log"
+		else
+			echo "      qngateway is not running"
+		fi
+		if [[ $LinkState == 'running' ]]; then
+			echo " l  : qnlink Log"
+		else
+			echo "      qnlink is not running"
+		fi
+		if [[ $DTMFState == 'running' ]]; then
+			echo " d  : qndtmf Log"
+		else
+			echo "      qndtmf is not running"
+		fi
+		if [[ ${ModuleState[0]} != 'EMPTY' ]]; then
+			if [[ ${ModuleState[0]} == 'running' ]]; then
+				echo " a  : ${ModuleProcess[0]} Log"
+			else
+				echo "      ${ModuleProcess[0]} is not running"
+			fi
+		fi
+		if [[ ${ModuleState[1]} != 'EMPTY' ]]; then
+			if [[ ${ModuleState[1]} == 'running' ]]; then
+				echo " b  : ${ModuleProcess[1]} Log"
+			else
+				echo "      ${ModuleProcess[1]} is not running"
+			fi
+		fi
+		if [[ ${ModuleState[2]} != 'EMPTY' ]]; then
+			if [[ ${ModuleState[2]} == 'running' ]]; then
+				echo " c  : ${ModuleProcess[2]} Log"
+			else
+				echo "      ${ModuleProcess[2]} is not running"
+			fi
+		fi
+		if [[ ${MMDVMState[0]} != 'EMPTY' ]]; then
+			if [[ ${MMDVMState[0]} == 'running' ]]; then
+				echo " x  : ${MMDVMProcess[0]} Log"
+			else
+				echo "      ${MMDVMProcess[0]} is not running"
+			fi
+		fi
+		if [[ ${MMDVMState[1]} != 'EMPTY' ]]; then
+			if [[ ${MMDVMState[1]} == 'running' ]]; then
+				echo " y  : ${MMDVMProcess[1]} Log"
+			else
+				echo "      ${MMDVMProcess[1]} is not running"
+			fi
+		fi
+		if [[ ${MMDVMState[2]} != 'EMPTY' ]]; then
+			if [[ ${MMDVMState[2]} == 'running' ]]; then
+				echo " z  : ${MDVMProcess[2]} Log"
+			else
+				echo "      ${MMDVMProcess[2]} is not running"
+			fi
+		fi
+		echo
+		echo " q  : quit and return to main menu"
+		echo
+		read -p "Command: " ans
+
+		if [[ "$ans" == g* ]] && [[ "$GateState" == 'running' ]]; then
+			sudo journalctl -u qngateway -f
+		elif [[ "$ans" == l* ]] && [[ "$LinkState" == 'running' ]]; then
+			sudo journalctl -u qnlink -f
+		elif [[ "$ans" == d* ]] && [[ "$DTMFState" == 'running' ]]; then
+			sudo journalctl -u qndtmf -f
+		elif [[ "$ans" == a* ]] && [[ "${ModuleState[0]}" == 'running' ]]; then
+			sudo journalctl -u ${ModuleProcess[0]} -f
+		elif [[ "$ans" == b* ]] && [[ "${ModuleState[1]}" == 'running' ]]; then
+			sudo journalctl -u ${ModuleProcess[1]} -f
+		elif [[ "$ans" == c* ]] && [[ "${ModuleState[2]}" == 'running' ]]; then
+			sudo journalctl -u ${ModuleProcess[2]} -f
+		elif [[ "$ans" == x* ]] && [[ "${MMDVMState[0]}" == 'running' ]]; then
+			sudo journalctl -u ${MMDVMProcess[0]} -f
+		elif [[ "$ans" == y* ]] && [[ "${MMDVMState[1]}" == 'running' ]]; then
+			sudo journalctl -u ${MMDVMProcess[1]} -f
+		elif [[ "$ans" == z* ]] && [[ "${MMDVMState[2]}" == 'running' ]]; then
+			sudo journalctl -u ${MMDVMProcess[2]} -f
+		fi
+	done
+	ans=''
+}
+
+MaintenanceMenu () {
+	local m n
+	ans=''
+	while [[ "$ans" != q* ]]; do
+		clear
+		echo "            MaintenanceMenu"
+		Header
+		if [[ "$GateState" == 'running' ]]; then
+			echo " g : Stop  QnetGateway"
+		elif [[ "$GateState" == 'stopped' ]]; then
+			echo " g : Start QnetGateway"
+		fi
+		if [[ "$LinkState" == 'running' ]]; then
+			echo " l : Stop  QnetLink"
+		elif [[ "$LinkState" == 'stopped' ]]; then
+			echo " l : Start QnetLink"
+		fi
+		if [[ "$DTMFState" == 'running' ]]; then
+			echo " d : Stop  DTMF"
+		elif [[ "$DTMFState" == 'stopped' ]]; then
+			echo " d : Start DTMF"
+		fi
+		if [[ "${ModuleState[0]}" == 'running' ]]; then
+			echo " a : Stop  Module A"
+		elif [[ "${ModuleState[0]}" == 'stopped' ]]; then
+			echo " a : Start Module A"
+		fi
+		if [[ "${ModuleState[1]}" == 'running' ]]; then
+			echo " b : Stop  Module B"
+		elif [[ "${ModuleState[1]}" == 'stopped' ]]; then
+			echo " b : Start Module B"
+		fi
+		if [[ "${ModuleState[2]}" == 'running' ]]; then
+			echo " c : Stop  Module C"
+		elif [[ "${ModuleState[2]}" == 'stopped' ]]; then
+			echo " c : Start Module C"
+		fi
+		if [[ "${MMDVMState[0]}" == 'running' ]]; then
+			echo " x : Stop  MMDVMHost A"
+		elif [[ "${MMDVMState[0]}" == 'stopped' ]]; then
+			echo " x : Start MMDVMHost A"
+		fi
+		if [[ "${MMDVMState[1]}" == 'running' ]]; then
+			echo " y : Stop  MMDVMHost B"
+		elif [[ "${MMDVMState[1]}" == 'stopped' ]]; then
+			echo " y : Start MMDVMHost B"
+		fi
+		if [[ "${MMDVMState[2]}" == 'running' ]]; then
+			echo " z : Stop  MMDVMHost C"
+		elif [[ "${MMDVMState[2]}" == 'stopped' ]]; then
+			echo " z : Start MMDVMHost C"
+		fi
+		echo
+		echo " q : Return to main Menu"
+		echo
+		read -p "Command: " ans
+
+		if   [[ "$ans" == g* ]]; then
+			if [[ "$GateState" == 'running' ]]; then
+				sudo systemctl stop qngateway
+			elif [[ "$GateState" == 'stopped' ]]; then
+				sudo systemctl start qngateway
+			fi
+			BaseStatus
+		elif [[ "$ans" == l* ]]; then
+			if [[ "$LinkState" == 'running' ]]; then
+				sudo systemctl stop qnlink
+			elif [[ "$LinkState" == 'stopped' ]]; then
+				sudo systemctl start qnlink
+			fi
+			BaseStatus
+		elif [[ "$ans" == d* ]]; then
+			if [[ "$DTMFState" == 'running' ]]; then
+				sudo systemctl stop qndtmf
+			elif [[ "$DTMFState" == 'stopped' ]]; then
+				sudo systemctl start qndtmf
+			fi
+			BaseStatus
+		elif [[ "$ans" == a* ]] && [ -n $module_a ]; then
+			if [[ "${ModuleState[0]}" == 'running' ]]; then
+				sudo systemctl stop ${ModuleProcess[0]}
+			elif [[ "${ModuleState[0]}" == 'stopped' ]]; then
+				sudo systemctl start ${ModuleProcess[0]}
+			fi
+			ModuleStatus 0 a $module_a
+		elif [[ "$ans" == b* ]] && [ -n $module_b ]; then
+			if [[ "${ModuleState[1]}" == 'running' ]]; then
+				sudo systemctl stop ${ModuleProcess[1]}
+			elif [[ "${ModuleState[1]}" == 'stopped' ]]; then
+				sudo systemctl start ${ModuleProcess[1]}
+			fi
+			ModuleStatus 1 b $module_b
+		elif [[ "$ans" == c* ]] && [ -n $module_c ]; then
+			if [[ "${ModuleState[2]}" == 'running' ]]; then
+				sudo systemctl stop ${ModuleProcess[2]}
+			elif [[ "${ModuleState[2]}" == 'stopped' ]]; then
+				sudo systemctl start ${ModuleProcess[2]}
+			fi
+			ModuleStatus 2 c $module_c
+		elif [[ "$ans" == x* ]] && [ -n $module_a ]; then
+			if [[ "${MMDVMState[0]}" == 'running' ]]; then
+				sudo systemctl stop ${MMDVMProcess[0]}
+			elif [[ "${MMDVMState[0]}" == 'stopped' ]]; then
+				sudo systemctl start ${MMDVMProcess[0]}
+			fi
+			ModuleStatus 0 a $module_a
+		elif [[ "$ans" == y* ]] && [ -n $module_b ]; then
+			if [[ "${MMDVMState[1]}" == 'running' ]]; then
+				sudo systemctl stop ${MMDVMProcess[1]}
+			elif [[ "${MMDVMState[1]}" == 'stopped' ]]; then
+				sudo systemctl start ${MMDVMProcess[1]}
+			fi
+			ModuleStatus 1 b $module_b
+		elif [[ "$ans" == z* ]] && [ -n $module_c ]; then
+			if [[ "${MMDVMState[2]}" == 'running' ]]; then
+				sudo systemctl stop ${MMDVMProcess[2]}
+			elif [[ "${MMDVMState[2]}" == 'stopped' ]]; then
+				sudo systemctl start ${MMDVMProcess[2]}
+			fi
+			ModuleStatus 2 c $module_c
+		fi
+	done
+	ans=''
+}
+
+GatewayMenu () {
+	ans=''
+	while [[ "$ans" != q* ]]; do
+		local refcount=$( grep -s "^REF" gwys.txt | wc -l )
+		local dcscount=$( grep -s "^DCS" gwys.txt | wc -l )
+		local xrfcount=$( grep -s "^XRF" gwys.txt | wc -l )
+		local repcount=$( grep -s -v "^#" gwys.txt | grep -s -v -e "^REF" -e "^DCS" -e "^XRF" | wc -l )
+		clear
+		echo
+		echo "            Gateway File"
+		echo
+		echo "     $refcount REF, $dcscount DCS, $xrfcount XRF and $repcount Repeaters"
+		echo
+		echo "     All initialization will overwrite any existing file!"
+		echo "ip : Initialize gwys.txt using www.PiStar.uk/downloads and xlxapi.rlx.lu"
+		echo "iv : Initialize gwys.txt using VA3UV.com (includes a large # of repeaters)"
+		echo "ir : Initialize gwys.txt using VA3UV.com (but just the reflectors)"
+		echo "n  : Edit gwys.txt file with nano"
+		echo "v  : Edit gwys.txt file with vi"
+		echo
+		echo "q  : Quit and return to Main Menu"
+		echo
+		read -p "Command: " ans
+		if   [[ "$ans" == ip* ]]; then
+			wget -O XLX_Hosts.txt http://xlxapi.rlx.lu/api.php?do=GetXLXDMRMaster
+			wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
+			wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
+			wget http://www.pistar.uk/downloads/DCS_Hosts.txt
+			/bin/rm -f gwys.txt
+			echo "# Downloaded from www.pistar.uk and xlxapi.rlx.lu `date`" > gwys.txt
+			awk '$1 ~ /^XLX/ { gsub("\r", ""); printf "%s %s 30001\n", $1, $2 }' XLX_Hosts.txt >> gwys.txt
+			awk '$1 ~ /^XRF/ { printf "%s %s 30001\n", $1, $2 }' DExtra_Hosts.txt >> gwys.txt
+			awk '$1 ~ /^DCS/ { printf "%s %s 30051\n", $1, $2 }' DCS_Hosts.txt >> gwys.txt
+			awk '$1 ~ /^REF/ { printf "%s %s 20001\n", $1, $2 }' DPlus_Hosts.txt >> gwys.txt
+			/bin/rm -f {XLX,DExtra,DPlus,DCS}_Hosts.txt
+		elif [[ "$ans" == iv* ]]; then
+			/bin/rm -f gwys.txt
+			wget http://www.va3uv.com/gwys.txt
+		elif [[ "$ans" == ir* ]]; then
+			/bin/rm -f gwys.txt
+			wget -nv -O gwys.va3uv.txt http://www.va3uv.com/gwys.txt
+			if [ -e gwys.va3uv.txt ]; then
+				echo "# Downloaded from www.va3uv.com `date`" > gwys.txt
+				awk '$1~/^REF/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
+				awk '$1~/^XRF/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
+				awk '$1~/^DCS/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
+				rm -f gwys.va3uv.txt
+			fi
+		elif [[ "$ans" == n* ]]; then
+			nano gwys.txt
+		elif [[ "$ans" == v* ]]; then
+			vi gwys.txt
+		fi
+	done
+	ans=''
+}
+
+# get defined modules from the config file
+if [ -e qn.cfg ]; then
+	source <( grep "^module_[abc]=" qn.cfg )
+	if [ -z "$module_a" ] && [ -z "$module_b" ] && [ -z "$module_c" ]; then
+		echo "No moudules defined in the qn.cfg file!, please re-edit you configuration."
+		exit 1
+	fi
+else
+	echo "ERROR: can't find the qn.cfg configuration file!"
+	echo "You can use ./qnconfig to create your config file."
+	exit 1
+fi
+
+# get the installation directory from the make file
+if [ -e makefile ]; then
+	MAKEFILE=makefile
+elif [ -e Makefile ]; then
+	MAKEFILE=Makefile
+else
+	echo "ERROR: There is no Makefile or makefile"
+	exit 1
+fi
+source <( grep -e '^BINDIR=' -e '^MMPATH=' $MAKEFILE )
+if [ -z $BINDIR ]; then
+	echo "ERROR: The BINDIR definition in $MAKEFILE is empty!"
+	exit 1
+fi
+if [ ! -d "$BINDIR" ]; then
+	echo "ERROR: The BINDIR directory $BINDIR is not a directory!"
+	exit 1
+fi
+
+ndvap=0
+ndvrptr=0
+nitap=0
+nmmdvm=0
+nmodem=0
+
+for m in a b c ; do
+	mod=module_${m}
+	if [ -z ${!mod} ]; then continue; fi
+	type=${!mod}
+	if [[ "$type" == 'dvap' ]]; then
+		advap[${ndvap}]=${m}
+		ndvap=$((ndvap + 1))
+	elif [[ "$type" == 'dvrptr' ]]; then
+		advrptr[$ndvap]=${m}
+		ndvrptr=$((ndvrptr + 1))
+	elif [[ "$type" == 'itap' ]]; then
+		aitap[${nitap}]=${m}
+		nitap=$((nitap + 1))
+	elif [[ "$type" == 'mmdvmhost' ]]; then
+		ammdvm[${nmmdvm}]=${m}
+		nmmdvm=$((nmmdvm + 1))
+	elif [[ "$type" == 'mmdvmmodem' ]]; then
+		amodem[${nmodem}]=${m}
+		nmodem=$((nmodem + 1))
+	fi
+done
+
+MODULE_COUNT=$((ndvap + ndvrptr + nitap + nmmdvm + nmodem))
+
+while [[ "$ans" != q* ]]; do
+	clear
+	echo
+	echo "            Qnet Administration Menu"
+	Header
+	BaseStatus
+	ModuleStatus 0 a "$module_a"
+	ModuleStatus 1 b "$module_b"
+	ModuleStatus 2 c "$module_c"
+	echo
+	if [[ "$GateState" == 'not installed' ]] || [[ "$LinkState" == 'not installed' ]]; then
+		if [ -e gwys.txt ]; then
+			echo "is : Install configured system"
+			echo "gp : Do a 'git pull' to refresh sources"
+		else
+			echo "     You must set-up your gwys.txt file before installation."
+		fi
+	else
+		echo "us : Uninstall configured System"
+	fi
+	if [ -e "${MMPATH}/MMDVMHost" ] && [ $nmmdvm -gt 0 ]; then
+		if [[ "${MMDVMState[0]}" != 'EMPTY' ]] || [[ "${MMDVMState[1]}" != 'EMPTY' ]] || [[ "${MMDVMState[2]}" != 'EMPTY' ]]; then
+			if [[ "${MMDVMState[0]}" == 'not installed' ]] || [[ "${MMDVMState[1]}" == 'not installed' ]] || [[ "${MMDVMState[2]}" == 'not installed' ]]; then
+				echo "im : Install MMDVMHost(s)"
+			else
+				echo "um : Uninstall MMDVMHost(s)"
+			fi
+		fi
+	fi
+	echo "gw : Gateway File Menu"
+	echo
+	if [[ "$DTMFState" == 'not installed' ]]; then
+		echo "nd : Edit DTMF file with nano"
+		echo "vd : Edit DTMF file with vi"
+		if [ -e qndtmf ] && [ -n "`diff -q qndtmf qndtmf.sh`" ]; then
+			echo "rd : Restore DTMF file to default (this will overwrite existing DTMF file)"
+		fi
+		echo "id : Install DTMF"
+	else
+		echo "ud : Uninstall DTMF"
+	fi
+	echo
+	echo "c  : Clean (remove temporary files and locally built executables)"
+	echo
+	if [[ "$GateState" != 'not installed' ]] && [[ "$LinkState" != 'not installed' ]]; then
+		echo "m  : Maintenance Menu"
+		echo "l  : Log Menu"
+	fi
+	echo
+	read -p "q    to quit. Command: " ans
+
+	# EXECUTE COMMANDS
+	if   [[ "$GateState" == 'not installed' ]] && [[ "$ans" == is* ]]; then
+		InstallSystem
+		echo 'Wait for a few seconds for everything to start...'
+		sleep 5
+	elif [[ "$GateState" != 'not installed' ]] && [[ "$ans" == us* ]]; then
+		InstallSystem un
+	elif { [[ "${MMDVMState[0]}" == 'not installed' ]] || [[ "${MMDVMState[1]}" == 'not installed' ]] || [[ "${MMDVMState[2]}" == 'not installed' ]]; } && [ -e ${MMPATH}/MMDVMHost ] && [[ "$ans" == im* ]]; then
+		InstallMMDVMHosts
+	elif { [[ "${MMDVMState[0]}" == 'stopped' ]] || [[ "${MMDVMState[0]}" == 'running' ]] || [[ "${MMDVMState[1]}" == 'stopped' ]] || [[ "${MMDVMState[1]}" == 'running' ]] || [[ "${MMDVMState[2]}" == 'stopped' ]] || [[ "${MMDVMState[2]}" == 'running' ]]; } && [ -e ${MMPATH}/MMDVMHost ] && [[ "$ans" == um* ]]; then
+		InstallMMDVMHosts un
+	elif [[ "$GateState" == 'not installed' ]] && [[ "$ans" == gp* ]]; then
+		git pull
+		read -p 'Press <Enter> to continue: ' ans
+		ans=''
+	elif [[ "$ans" == gw* ]]; then
+		GatewayMenu
+	elif [[ "$DTMFState" == 'not installed' ]] && [[ "$ans" == nd* ]]; then
+		if [ ! -e qndtmf ]; then cp qndtmf.sh qndtmf; fi
+		nano qndtmf
+	elif [[ "$DTMFState" == 'not installed' ]] && [[ "$ans" == vd* ]]; then
+		if [ ! -e qndtmf ]; then cp qndtmf.sh qndtmf; fi
+		vi qndtmf
+	elif [[ "$DTMFState" == 'not installed' ]] && [ -e qndtmf ] && [ -n "`diff -q qndtmf qndtmf.sh`" ] && [[ "$ans" == rd* ]]; then
+		rm -f qndtmf
+	elif [[ "$DTMFState" == 'not installed' ]] && [[ "$ans" == id* ]]; then
+		if [ ! -e qndtmf ]; then cp qndtmf.sh qndtmf; fi
+		sudo make installdtmf
+	elif [[ "$DTMFState" != 'not installed' ]] && [[ "$ans" == ud* ]]; then
+		sudo make uninstalldtmf
+	elif [[ "$ans" == c* ]]; then
+		make clean
+	elif [[ "$ans" == m* ]]; then
+		MaintenanceMenu
+	elif [[ "$ans" == l* ]]; then
+		LogMenu
+	fi
+done
+
+exit 0

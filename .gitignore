@@ -1,9 +1,17 @@
 *.o
 *.d
+*.gch
+.vscode
+qn.cfg
+qndtmf
+gwys.txt
+qnitap
 qndvap
 qndvrptr
 qnlink
 qngateway
+qnigateway
 qnremote
 qnvoice
 qnrelay
+qnmodem

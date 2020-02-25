@@ -6,7 +6,8 @@ enum IRCDDB_RESPONSE_TYPE {
 	IDRT_NONE,
 	IDRT_USER,
 	IDRT_GATEWAY,
-	IDRT_REPEATER
+	IDRT_REPEATER,
+	IDRT_PING
 };
 
 enum DSTAR_PROTOCOL {
@@ -15,18 +16,19 @@ enum DSTAR_PROTOCOL {
 	DP_DPLUS
 };
 
-
 struct CIRCDDBPrivate;
 
 class CIRCDDB
 {
 public:
-	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, const std::string &localAddr = "");
+	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
 	~CIRCDDB();
+
+	// returns the socket family type
+	int GetFamily();
 
 	// A false return implies a network error, or unable to log in
 	bool open();
-
 
 	// rptrQTH can be called multiple times if necessary
 	//   rptrcall     callsign of the repeater
@@ -35,8 +37,6 @@ public:
 	//   desc1, desc2   20-character description of QTH
 
 	void rptrQTH(const std::string &rptrcall, double latitude, double longitude, const std::string &desc1, const std::string &desc2, const std::string &infoURL, const std::string &swVersion);
-
-
 
 	// rptrQRG can be called multiple times if necessary
 	//  module      letter of the module, valid values: "A", "B", "C", "D", "AD", "BD", "CD", "DD"
@@ -47,7 +47,6 @@ public:
 
 	void rptrQRG(const std::string &rptrcall, double txFrequency, double duplexShift, double range, double agl);
 
-
 	// If you call this method once, watchdog messages will be sent to the
 	// to the ircDDB network every 15 minutes. Invoke this method every 1-2 minutes to indicate
 	// that the gateway is working properly. After activating the watchdog, a red LED will be displayed
@@ -57,8 +56,6 @@ public:
 	// to "rpm_ircddbmhd-x.z-z".  The string wdInfo must contain at least one non-space character.
 
 	void kickWatchdog(const std::string &wdInfo);
-
-
 
 	// get internal network status
 	int getConnectionState();
@@ -72,14 +69,12 @@ public:
 	// Send heard data, a false return implies a network error
 	bool sendHeard(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3);
 
-
 	// same as sendHeard with two new fields:
 	//   network_destination:  empty string or 8-char call sign of the repeater
 	//	    or reflector, where this transmission is relayed to.
 	//   tx_message:  20-char TX message or empty string, if the user did not
 	//       send a TX message
-	bool sendHeardWithTXMsg(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
-	                        unsigned char flag2, unsigned char flag3, const std::string &network_destination, const std::string &tx_message);
+	bool sendHeardWithTXMsg(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3, const std::string &network_destination, const std::string &tx_message);
 
 	// this method should be called at the end of a transmission
 	//  num_dv_frames: number of DV frames sent out (96 bit frames, 20ms)
@@ -91,8 +86,7 @@ public:
 	//      So, the overall bit error rate is calculated like this:
 	//      BER = num_bit_errors / (num_dv_frames * 24)
 	//      Set num_bit_errors = -1, if the error information is not available.
-	bool sendHeardWithTXStats(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
-	                          unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors);
+	bool sendHeardWithTXStats(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors);
 
 	// The following three functions don't block waiting for a reply, they just send the data
 
@@ -124,10 +118,12 @@ public:
 
 	bool receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address, std::string &timeStamp);
 
-	void close();		// Implictely kills any threads in the IRC code
+	bool receivePing(std::string &repeaterCallsign);
 
+	void sendPing(const std::string &to, const std::string &from);
+
+	void close();		// Implictely kills any threads in the IRC code
 
 private:
 	struct CIRCDDBPrivate * const d;
-
 };

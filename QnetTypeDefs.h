@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright 2017,2018 by Thomas Early, N7TAE
+ *   Copyright 2017-2019 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  */
 
 // for communicating with the g2 gateway on the internal port
-#pragma pack(push, 1)	// we need to be sure these structures don't have any dead space
-typedef struct pkt_tag {
+#pragma pack(push, 1)	// used internally by Icom stacks
+typedef struct dstr_tag {
 	unsigned char pkt_id[4];	//  0	"DSTR"
 	unsigned short counter;		//  4
 	unsigned char flag[3];		//  6	{ 0x73, 0x12, 0x00 }
@@ -63,16 +63,16 @@ typedef struct pkt_tag {
 } SDSTR;
 #pragma pack(pop)
 
-// for the g2 external port
+// for the g2 external port and between QnetGateway programs
 #pragma pack(push, 1)
 typedef struct dsvt_tag {
 	unsigned char title[4];	//  0   "DSVT"
 	unsigned char config;	//  4   0x10 is hdr 0x20 is vasd
 	unsigned char flaga[3];	//  5   zeros
 	unsigned char id;		//  8   0x20
-	unsigned char flagb[3];	//  9   0x0 0x1 0x1
+	unsigned char flagb[3];	//  9   0x0 0x1 (A:0x3 B:0x1 C:0x2)
 	unsigned short streamid;// 12
-	unsigned char counter;	// 14   hdr: 0x80 vsad: framecounter (mod 21)
+	unsigned char ctrl;		// 14   hdr: 0x80 vsad: framecounter (mod 21)
 	union {
 		struct {                    // index
 			unsigned char flag[3];  // 15
@@ -93,7 +93,7 @@ typedef struct dsvt_tag {
 
 // for mmdvm
 #pragma pack(push, 1)
-typedef struct mmdvm_tag {	//									offset	  size
+typedef struct dsrp_tag {	//									offset	  size
 	unsigned char title[4];	// "DSRP"								 0
 	unsigned char tag;		// Poll   : 0xA							 4
 							// Header : busy ? 0x22 : 0x20
@@ -108,10 +108,10 @@ typedef struct mmdvm_tag {	//									offset	  size
 									// 0x01 Dstar Relay Unavailable
 			unsigned char r2[8];	// Repeater 2					11
 			unsigned char r1[8];	// Repeater 1					19
-			unsigned char yr[8];	// Your Call					27
+			unsigned char ur[8];	// Your Call					27
 			unsigned char my[8];	// My Call						35
 			unsigned char nm[4];	// Name							43
-			unsigned short pfcs;	// checksum						47		49
+			unsigned char pfcs[2];	// checksum						47		49
 		} header;
 		struct {
 			unsigned short id;		// random id number				 5
@@ -122,4 +122,11 @@ typedef struct mmdvm_tag {	//									offset	  size
 		} voice;
 	};
 } SDSRP;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct link_family_tag {
+    char title[4];
+    int family[3];
+} SLINKFAMILY;
 #pragma pack(pop)

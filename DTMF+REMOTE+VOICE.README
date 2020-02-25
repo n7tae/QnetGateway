@@ -4,19 +4,12 @@ DTMF is available with the QnetGateway Software. You can do things like linking
 and unlinking from you radio's keyboard, if present. For example, typing
 "B75703" should link you to XRF757 C.
 
-DTMF is not enabled by default. To enable it, first create a DTMF script called
-"qndtmf" in the build directory. A complete, functional script is included
-and is called "qndtmf.sh", so you can start by just copying it to the target:
+DTMF is not enabled by default. You can install and uninstall it from the
+qnadmin script.
 
-cp qndtmf.sh qndtmf
-
-Then you can install DTMF: sudo make installdtmf
-
-To uninstall DTMF: sudo make uninstalldtmf
-
-Be sure to look at the script. It contains examples of all the DTMF commands it
-supports. You can add more if you are good at shell programming and understand
-how qnremote works.
+Be sure to look at the 'dtmf' script. It contains examples of all the DTMF
+commands it supports. You can add more if you are good at shell programming
+and understand how qnremote works.
 
                     ######## QnetRemote #########
 
@@ -54,32 +47,37 @@ to do this search the web with "linux cron job".
 
                     ######## QnetVoice ########
 
-QnetVoice is another command line program to send any DVTool-formatted file
-to a moule configured on you gateway. It has a simple interface, like
+QnetVoice is another command line program to send any ambe-formatted file
+to a module configured on you gateway. It has a simple interface, like
 QnetRemote. To get started, open a shell on your system and type "qnvoice":
 
 pi@raspberrypi:~ $ qnvoice
-Usage: qnvoice <module> <mycall> <dvtoolFile>
+Usage: qnvoice <module> <mycall> <dat_file>
 Where...
         module is one of your modules
         mycall is your personal callsign
-        dvtoolFile is a dvtool file
+        dat_file is a .dat voice file file
 
 Please note that <module> and <mycall> are not case sensitive, but
-<dvtoolFile> is.
+<dat_file> is.
 
-So what's a DVTool file? All the voice prompts delivered with QnetGateway,
-in the QnetGateway/announce directory and DVTool files. And, you can
+So what's a .dat voice file? All the voice prompts delivered with QnetGateway,
+in the QnetGateway/announce directory are .dat files. And, you can
 easily create your own!
 
-To make your own DVTool file, just put "      S0" in your radio's YourCall
-and key up and talk. You will be making a "voice mail" DVTool file:
-/tmp/X_voicemail.dat, where X is the module on which you are transmitting.
-Once you have created it, you can move it out of the /tmp directory and
-rename it. Then you can use it in a qnvoice command. You can also replace
-all of the standard voice messsages with your own. If you want to do this
-put your versions in a directory outside of the build directoy and make
-a small script that will copy your messages over the existing, installed
+To make your own .dat voice file file, just put "      S0" in your radio's
+YourCall and key up and talk. You will be making a "voice mail" .dat file:
+/tmp/X_voicemail.dat2, where X is the module on which you are transmitting.
+Once you have created a voicemail file, you can move it out of the /tmp
+directory and rename it, but if you want to use it in a qnvoice command,
+you need to strip off the first 56 bytes. You can do this with the command:
+
+tail -c +56 /tmp/X_voicemail.dat2 > mynewvoiceprompt.dat
+
+Then you can use it in a qnvoice command. You can also replace all of the
+standard voice messages with your own. If you want to do this put your
+versions in a directory outside of the build directory and make a small
+script that will copy your messages over the existing, installed
 messages:
 
 #!/bin/bash
@@ -89,4 +87,3 @@ sudo cp ./id.dat /usr/local/etc
 
 That way, when you pull down a new release and build and install it, you
 can quickly update the voice messages with your own.
-

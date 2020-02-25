@@ -253,6 +253,8 @@ IRCDDB_RESPONSE_TYPE IRCDDBApp::getReplyMessageType()
 		return IDRT_REPEATER;
 	} else if (msgType == std::string("IDRT_GATEWAY")) {
 		return IDRT_GATEWAY;
+	} else if (msgType == std::string("IDRT_PING")) {
+		return IDRT_PING;
 	}
 
 	printf("IRCDDBApp::getMessageType: unknown msg type: %s\n", msgType.c_str());
@@ -263,6 +265,11 @@ IRCDDB_RESPONSE_TYPE IRCDDBApp::getReplyMessageType()
 IRCMessage *IRCDDBApp::getReplyMessage()
 {
 	return d->replyQ.getMessage();
+}
+
+void IRCDDBApp::putReplyMessage(IRCMessage *m)
+{
+	d->replyQ.putMessage(m);
 }
 
 bool IRCDDBApp::startWork()
@@ -428,6 +435,37 @@ void IRCDDBApp::userChanOp(const std::string &nick, bool op)
 	d->userMapMutex.unlock();
 }
 
+void IRCDDBApp::sendPing(const std::string &to, const std::string &from)
+{
+	std::string t = to.substr(0, 7);
+
+	ReplaceChar(t, '_', ' ');
+	while (isspace(t[t.length()-1]))
+		t.pop_back();
+	ToLower(t);
+
+	d->userMapMutex.lock();
+	for (int j=1; j <= 4; j++) {
+		std::string ircUser = t + std::string("-") + std::to_string(j);
+
+		if (1 == d->user.count(ircUser)) {
+			std::string f(from);
+			ReplaceChar(f, ' ', '_');
+			IRCMessage *rm = new IRCMessage(ircUser, "IDRT_PING");
+			rm->addParam(f);
+			std::string out;
+			rm->composeMessage(out);
+			out.pop_back();
+			out.pop_back();
+			printf("IRCDDBApp::sendPing: %s\n", out.c_str());
+			d->sendQ->putMessage(rm);
+			break;
+		}
+	}
+	d->userMapMutex.unlock();
+
+}
+
 static const int numberOfTables = 2;
 
 std::string IRCDDBApp::getIPAddress(std::string &zonerp_cs)
@@ -472,48 +510,8 @@ bool IRCDDBApp::findGateway(const std::string &gwCall)
 	return true;
 }
 
-static void findReflector(const std::string &rptrCall, IRCDDBAppPrivate *d)
-{
-	std::string zonerp_cs;
-	std::string ipAddr;
-
-#define MAXIPV4ADDR 5
-	struct sockaddr_in addr[MAXIPV4ADDR];
-	unsigned int numAddr = 0;
-
-	char host_name[80];
-
-	std::string host = rptrCall.substr(0,6) + ".reflector.ircddb.net";
-
-	safeStringCopy(host_name, host.c_str(), sizeof host_name);
-
-	if (getAllIPV4Addresses(host_name, 0, &numAddr, addr, MAXIPV4ADDR) == 0) {
-		if (numAddr > 0) {
-			unsigned char *a = (unsigned char *) &addr[0].sin_addr;
-			char buf[16];
-			snprintf(buf, 16, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
-			ipAddr = buf;
-			zonerp_cs = rptrCall;
-			zonerp_cs[7] = 'G';
-		}
-	}
-
-
-	IRCMessage *m2 = new IRCMessage("IDRT_REPEATER");
-	m2->addParam(rptrCall);
-	m2->addParam(zonerp_cs);
-	m2->addParam(ipAddr);
-	d->replyQ.putMessage(m2);
-}
-
 bool IRCDDBApp::findRepeater(const std::string &rptrCall)
 {
-
-	if (0==rptrCall.compare(0, 3, "XRF") || 0==rptrCall.compare(0, 3, "REF")) {
-		findReflector(rptrCall, d);
-		return true;
-	}
-
 	std::string arearp_cs = rptrCall;
 	ReplaceChar(arearp_cs, ' ', '_');
 

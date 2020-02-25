@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018 by Thomas Early N7TAE
+ *   Copyright (C) 2018-2019 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,40 +16,33 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libconfig.h++>
+#include <map>
+#include <set>
 
+#include "QnetTypeDefs.h"
+#include "SEcho.h"
+#include "UnixDgramSocket.h"
 #include "aprs.h"
+#include "SockAddress.h"
 
-using namespace libconfig;
-
-#define IP_SIZE 15
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
 #define MAX_DTMF_BUF 32
 
-typedef struct echo_tag {
-	time_t last_time;
-	unsigned short streamid;
-	int fd;
-	char file[FILENAME_MAX + 1];
-} SECHO;
-
 typedef struct to_remote_g2_tag {
 	unsigned short streamid;
-	struct sockaddr_in toDst4;
+	CSockAddress toDstar;
 	time_t last_time;
 } STOREMOTEG2;
 
 typedef struct torepeater_tag {
 	// help with header re-generation
-	unsigned char saved_hdr[58]; // repeater format
-	uint32_t saved_adr;
+	SDSVT saved_hdr; // repeater format
+	CSockAddress saved_addr;
 
 	unsigned short streamid;
-	uint32_t adr;
-	struct sockaddr_in band_addr;
+	CSockAddress addr;
 	time_t last_time;
-	std::atomic<unsigned short> G2_COUNTER;
 	unsigned char sequence;
 } STOREPEATER;
 
@@ -64,7 +57,7 @@ typedef struct band_txt_tag {
 	time_t last_time;
 	char txt[64];   // Only 20 are used
 	unsigned short txt_cnt;
-	bool txt_stats_sent;
+	bool sent_key_on_msg;
 
 	char dest_rptr[CALL_SIZE + 1];
 
@@ -85,16 +78,39 @@ class CQnetGateway {
 public:
 	CQnetGateway();
 	~CQnetGateway();
+	void Process();
+	bool Init(char *cfgfile);
+
 private:
-	SPORTIP g2_internal, g2_external, g2_link, ircddb;
+    // link type
+    int link_family[3] = { AF_UNSPEC, AF_UNSPEC, AF_UNSPEC };
+	// network type
+	int af_family[2] = { AF_UNSPEC, AF_UNSPEC };
+	// text stuff
+	bool new_group[3] = { true, true, true };
+	unsigned char header_type = 0;
+	short to_print[3] = { 0, 0, 0 };
+	bool ABC_grp[3] = { false, false, false };
+	bool C_seen[3] = { false, false, false };
+    int Index[3] = { -1, -1, -1 };
 
-	std::string OWNER, owner, local_irc_ip, status_file, dtmf_dir, dtmf_file, echotest_dir, irc_pass;
+	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
-	bool bool_send_qrgs, bool_irc_debug, bool_dtmf_debug, bool_regen_header, bool_qso_details, bool_send_aprs;
+	CUnixDgramReader Link2Gate, Modem2Gate;
+	CUnixDgramWriter Gate2Link, Gate2Modem[3];
 
-	int play_wait, play_delay, echotest_rec_timeout, voicemail_rec_timeout, from_remote_g2_timeout, from_local_rptr_timeout, dtmf_digit;
+	std::string gate2link, link2gate, gate2modem[3], modem2gate;
 
-	std::map <uint32_t, uint16_t> portmap;
+	std::string OWNER, owner, FILE_STATUS, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE;
+
+	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache;
+	bool LOG_DEBUG, LOG_IRC, LOG_DTMF, LOG_QSO;
+
+	int TIMING_PLAY_WAIT, TIMING_PLAY_DELAY, TIMING_TIMEOUT_ECHO, TIMING_TIMEOUT_VOICEMAIL, TIMING_TIMEOUT_REMOTE_G2, TIMING_TIMEOUT_LOCAL_RPTR, dtmf_digit;
+
+	unsigned int vPacketCount[3] = { 0, 0, 0 };
+
+	std::set<std::string> findRoute;
 
 	// data needed for aprs login and aprs beacon
 	// RPTR defined in aprs.h
@@ -109,25 +125,20 @@ private:
 	STOREMOTEG2 to_remote_g2[3]; // 0=A, 1=B, 2=C
 
 	// input from remote G2 gateway
-	int g2_sock = -1;
-	struct sockaddr_in fromDst4;
+	int g2_sock[2] = { -1, -1 };
+	CSockAddress fromDstar;
 
 	// Incoming data from remote systems
 	// must be fed into our local repeater modules.
 	STOREPEATER toRptr[3]; // 0=A, 1=B, 2=C
 
-	// input from our own local repeater modules
-	int srv_sock = -1;
-	SDSTR rptrbuf; // 58 or 29 or 32, max is 58
-	struct sockaddr_in fromRptr;
-
-	SDSTR end_of_audio;
+	SDSVT end_of_audio;
 
 	// send packets to g2_link
 	struct sockaddr_in plug;
 
 	// for talking with the irc server
-	CIRCDDB *ii;
+	CIRCDDB *ii[2];
 	// for handling APRS stuff
 	CAPRS *aprs;
 
@@ -135,30 +146,42 @@ private:
 	SBANDTXT band_txt[3]; // 0=A, 1=B, 2=C
 
 	/* Used to validate MYCALL input */
-	regex_t preg;
+	std::regex preg;
 
 	// CACHE used to cache users, repeaters,
 	// gateways, IP numbers coming from the irc server
 
-	std::map<std::string, std::string> user2rptr_map, rptr2gwy_map, gwy2ip_map;
+	std::map<std::string, std::string> user2rptr_map[2], rptr2gwy_map[2], gwy2ip_map[2];
 
-	pthread_mutex_t irc_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t irc_data_mutex[2] = PTHREAD_MUTEX_INITIALIZER;
 
-	int open_port(const SPORTIP &pip);
+	// dtmf stuff
+	int dtmf_buf_count[3];
+	char dtmf_buf[3][MAX_DTMF_BUF + 1];
+	int dtmf_last_frame[3];
+	unsigned int dtmf_counter[3];
+
+	bool VoicePacketIsSync(const unsigned char *text);
+	void AddFDSet(int &max, int newfd, fd_set *set);
+	int open_port(const SPORTIP *pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
-	void GetIRCDataThread();
-	int get_yrcall_rptr_from_cache(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
-	bool get_yrcall_rptr(char *call, char *arearp_cs, char *zonerp_cs, char *mod, char *ip, char RoU);
-	void PlayFileThread(char *file);
+	void GetIRCDataThread(const int i);
+	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
+	int get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
+	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
+	void ProcessTimeouts();
+	void ProcessSlowData(unsigned char *data, unsigned short sid);
+	void ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const int sock_source);
+	void ProcessModem();
+	bool Flag_is_ok(unsigned char flag);
+	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
+	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
+    int FindIndex(const int i) const;
 
 	// read configuration file
-	bool read_config(char *);
-	bool get_value(const Config &cfg, const char *path, int &value, int min, int max, int default_value);
-	bool get_value(const Config &cfg, const char *path, double &value, double min, double max, double default_value);
-	bool get_value(const Config &cfg, const char *path, bool &value, bool default_value);
-	bool get_value(const Config &cfg, const char *path, std::string &value, int min, int max, const char *default_value);
+	bool ReadConfig(char *);
 
 /* aprs functions, borrowed from my retired IRLP node 4201 */
 	void gps_send(short int rptr_idx);
@@ -169,8 +192,4 @@ private:
 
 	void set_dest_rptr(int mod_ndx, char *dest_rptr);
 	bool validate_csum(SBANDTXT &bt, bool is_gps);
-
-public:
-	void process();
-	int init(char *cfgfile);
 };
