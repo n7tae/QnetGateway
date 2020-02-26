@@ -170,7 +170,6 @@ installdtmf : qndtmf
 
 installdash :
 	/usr/bin/apt-get -y install python3-pip
-	/usr/bin/pip3 install libconf
 	/bin/cp -f dash/qng-info.py $(BINDIR)
 	/bin/cp -f dash/qngdash $(CRONDIR)
 	/bin/sh /usr/bin/python3 $(BINDIR)/qng-info.py &
