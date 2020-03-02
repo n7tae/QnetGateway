@@ -131,7 +131,7 @@ URCall: <input type="text" name='furcall' value="<?php echo $furcall;?>">
 	  if (strlen($furcall)>0 && strlen($fmodule)>0) {
 		  $command = 'qnremote '.strtolower($fmodule).' '.strtolower($cfg['ircddb_login']).' '.$furcall;
 		  echo $command, "<br>\n";
-		  $lastline = system($command);
+		  $unused = `$command`;
 	  }
 ?>
 </body>
