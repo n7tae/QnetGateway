@@ -61,7 +61,7 @@
 ?>
 <h2>QnetGateway <?php echo $cfg['ircddb_login']; ?> Dashboard</h2>
 <?php
-if (`ps -aux -e qn -e MMDVMHost | wc -l` > 1) {
+if (`ps -aux | grep -e qn -e MMDVMHost | wc -l` > 1) {
 	echo 'Process:<br><code>', "\n";
 	echo str_replace(' ', '&nbsp;', 'USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND<br>'), "\n";
 	$lines = explode("\n", `ps -aux | grep -e qngateway -e qnlink -e qndtmf -e qndvap -e qnitap -e qnrelay -e qndvrptr -e qnmodem -e MMDVMHost | grep -v grep`);
@@ -131,7 +131,7 @@ URCall: <input type="text" name='furcall' value="<?php echo $furcall;?>">
 	  if (strlen($furcall)>0 && strlen($fmodule)>0) {
 		  $command = 'sgsremote '.strtolower($fmodule).' '.strtolower($cfg['ircddb_login']).' '.$furcall;
 		  echo $command, "<br>\n";
-		  //exec($command);
+		  exec($command);
 	  }
 ?>
 </body>
