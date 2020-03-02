@@ -2,7 +2,7 @@
 <html>
 <head>
 <title>QnetGateway Dashboard</title>
-<meta http-equiv="refresh" content="15">
+<meta http-equiv="refresh" content="20">
 </head>
 <body>
 <?php
@@ -62,7 +62,7 @@
 <h2>QnetGateway <?php echo $cfg['ircddb_login']; ?> Dashboard</h2>
 <?php
 if (`ps -aux | grep -e qn -e MMDVMHost | wc -l` > 2) {
-	echo 'Process:<br><code>', "\n";
+	echo 'Processes:<br><code>', "\n";
 	echo str_replace(' ', '&nbsp;', 'USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND<br>'), "\n";
 	$lines = explode("\n", `ps -aux | grep -e qngateway -e qnlink -e qndtmf -e qndvap -e qnitap -e qnrelay -e qndvrptr -e qnmodem -e MMDVMHost | grep -v grep`);
 	foreach ($lines as $line) {
