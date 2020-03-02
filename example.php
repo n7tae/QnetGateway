@@ -46,7 +46,7 @@
 		if (array_key_exists('file_status', $kv))
 			$file = $kv['file_status'];
 		else
-			$file = '../rptr_status';
+			$file = '/usr/local/etc/rptr_status';
 		if ($lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)) {
 			foreach ($lines as $line) {
 				$words = explode(',', $line);
@@ -57,9 +57,20 @@
 		return explode(',', ',,,,,');
 	}
 
-	$cfg = parse("../qn.cfg");
+	$cfg = parse("/usr/local/etc/qn.cfg");
 ?>
 <h2>QnetGateway <?php echo $cfg['ircddb_login']; ?> Dashboard</h2>
+<?php
+if (`ps -aux -e qn -e MMDVMHost | wc -l` > 1) {
+	echo 'Process:<br><code>', "\n";
+	echo str_replace(' ', '&nbsp;', 'USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND<br>'), "\n";
+	$lines = explode("\n", `ps -aux | grep -e qngateway -e qnlink -e qndtmf -e qndvap -e qnitap -e qnrelay -e qndvrptr -e qnmodem -e MMDVMHost | grep -v grep`);
+	foreach ($lines as $line) {
+		echo str_replace(' ', '&nbsp;', $line), "<br>\n";
+	}
+	echo '</code>', "\n";
+}
+?>
 IP Addresses:<br>
 <table cellpadding='1' border='1' style='font-family: monospace'>
 <tr><td style="text-align:center">Internal</td><td style="text-align:center">IPV4</td><td style="text-align:center">IPV6</td></tr>
@@ -115,9 +126,12 @@ URCall: <input type="text" name='furcall' value="<?php echo $furcall;?>">
 		  $fmodule = $_POST['fmodule'];
 		}
 	  }
+	  $furcall = trim(preg_replace('/[^0-9a-z ]/', '', strtolower($furcall)));
 
 	  if (strlen($furcall)>0 && strlen($fmodule)>0) {
-		  echo 'COMMAND: sgsremote ', $fmodule, ' ', $cfg['ircddb_login'], ' ', $furcall, '<br>', "\n";
+		  $command = 'sgsremote '.strtolower($fmodule).' '.strtolower($cfg['ircddb_login']).' '.$furcall;
+		  echo $command, "<br>\n";
+		  //exec($command);
 	  }
 ?>
 </body>

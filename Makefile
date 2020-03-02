@@ -16,13 +16,14 @@
 # locations for the executibles and other files are set here
 # NOTE: IF YOU CHANGE THESE, YOU WILL NEED TO UPDATE THE service.* FILES AND
 # if you change these locations, make sure the sgs.service file is updated!
+# you will also break hard coded paths in the dashboard file, index.php.
 
 BINDIR=/usr/local/bin
 CFGDIR=/usr/local/etc
+WWWDIR=/usr/local/www
 MMPATH=../MMDVMHost
 SYSDIR=/lib/systemd/system
 IRC=ircddb
-CRONDIR=/etc/cron.d
 
 # use this if you want debugging help in the case of a crash
 #CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\"
@@ -168,11 +169,14 @@ installdtmf : qndtmf
 	systemctl daemon-reload
 	systemctl start qndtmf.service
 
-installdash :
-	/usr/bin/apt-get -y install python3-pip
-	/bin/cp -f dash/qng-info.py $(BINDIR)
-	/bin/cp -f dash/qngdash $(CRONDIR)
-	/usr/bin/python3 $(BINDIR)/qng-info.py &
+installdash : index.php
+	/usr/bin/apt -y php-cli
+	mkdir -p $(WWWDIR)
+	/bin/cp -f index.php $(WWWDIR)
+	/bin/cp -f system/qndash.service $(SYSDIR)
+	systemctl enable qndash.service
+	systemctl daemon-reload
+	systemctl start qndash.servlce
 
 uninstallbase :
 	######### QnetGateway #########
@@ -252,6 +256,8 @@ uninstalldtmf :
 	/bin/rm -f $(BINDIR)/qndtmf
 
 uninstalldash :
-	/bin/rm -f $(SYSDIR)/qng-info.py
-	/bin/rm -f $(CRONDIR)/qngdash
-	/usr/bin/pkill python3
+	systemctl stop qndash.service
+	systemctl disable qndash.service
+	/bin/rm -f $(SYSDIR)/qndash.service
+	systemctl daemon-reload
+	/bin/rm -f $(WWWDIR)/index.php

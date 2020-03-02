@@ -1,0 +1,13 @@
+[Unit]
+Description=QnetGateway Dashboard
+Requires=network.target
+After=systemd-user-session.service network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/local/etc/www
+ExecStart=/usr/bin/php -S 0.0.0.0:80
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

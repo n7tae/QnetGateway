@@ -1,0 +1,34 @@
+                    ##### DASHBOARD.README #####
+
+A web-based dashboard can be enabled. You can supply your own index.php file,
+or a functional dashboard can be provide. If no index.php file is in the
+build directroy when try to install the dashboard, the installation will fail.
+To get started, copy the "example.php" file to "index.php".
+
+The example.php file is a good place to start, if you want to create your own
+by adding features to your dashboard. This dashboard include a <form> with
+a button to send any URCALL to your gateway.
+
+To install, run the following command after you have created an index.php file:
+
+sudo make installdash
+
+Note that this will install a php web server and all necessary packaged needed
+for the server. To uninstall, run the following:
+
+sudo make uninstalldash
+
+These installed packaged are not uninstalled by the uninstall script. It will
+only shut down the php web server.
+
+Likewise, the index.php file will not be erased in the build directory when you
+uninstall the dashboard, so if you've done a "git pull" and have noticed that
+there was a new example.php file downloaded, you may want to copy the newer
+example.php file to index.php.
+
+One the dashboard server is running, simply point a browser at the Hotspot's IP
+address or at http://<hostname>.local/ (on the same subnet).
+
+Please note that this is a very simple server and is not recommended for the
+world wide web. If you want a robust dashboard accessible from the web, you
+will want to use a robust server, like apache, and a different index.php file.

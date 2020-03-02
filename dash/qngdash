@@ -1,6 +1,0 @@
-# Cronjob to kick off dash
-
-SHELL=/bin/sh
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-
-@reboot root /bin/sleep 30 && /usr/bin/python3 /usr/local/bin/qng-info.py
