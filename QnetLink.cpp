@@ -311,8 +311,7 @@ void CQnetLink::print_status_file()
 
 		/* print connected donglers */
 		for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
-			SINBOUND *inbound = (SINBOUND *)pos->second;
-			fprintf(statusfp, fstr, 'p', inbound->call, 'p', pos->first.c_str(), tm1.tm_mon+1,tm1.tm_mday,tm1.tm_year % 100, tm1.tm_hour,tm1.tm_min,tm1.tm_sec);
+			fprintf(statusfp, fstr, 'p', pos->second->call, 'p', pos->first.c_str(), tm1.tm_mon+1,tm1.tm_mday,tm1.tm_year % 100, tm1.tm_hour,tm1.tm_min,tm1.tm_sec);
 		}
 
 		/* print linked repeaters-reflectors */

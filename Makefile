@@ -172,7 +172,7 @@ installdash :
 	/usr/bin/apt-get -y install python3-pip
 	/bin/cp -f dash/qng-info.py $(BINDIR)
 	/bin/cp -f dash/qngdash $(CRONDIR)
-	/bin/sh /usr/bin/python3 $(BINDIR)/qng-info.py &
+	/usr/bin/python3 $(BINDIR)/qng-info.py &
 
 uninstallbase :
 	######### QnetGateway #########
