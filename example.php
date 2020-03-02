@@ -61,7 +61,7 @@
 ?>
 <h2>QnetGateway <?php echo $cfg['ircddb_login']; ?> Dashboard</h2>
 <?php
-if (`ps -aux | grep -e qn -e MMDVMHost | wc -l` > 1) {
+if (`ps -aux | grep -e qn -e MMDVMHost | wc -l` > 2) {
 	echo 'Process:<br><code>', "\n";
 	echo str_replace(' ', '&nbsp;', 'USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND<br>'), "\n";
 	$lines = explode("\n", `ps -aux | grep -e qngateway -e qnlink -e qndtmf -e qndvap -e qnitap -e qnrelay -e qndvrptr -e qnmodem -e MMDVMHost | grep -v grep`);
@@ -126,14 +126,12 @@ URCall: <input type="text" name='furcall' value="<?php echo $furcall;?>">
 		  $fmodule = $_POST['fmodule'];
 		}
 	  }
-	  $furcall = trim(preg_replace('/[^0-9a-z ]/', '', strtolower($furcall)));
+	  $furcall = str_replace(' ', '_', trim(preg_replace('/[^0-9a-z ]/', '', strtolower($furcall))));
 
 	  if (strlen($furcall)>0 && strlen($fmodule)>0) {
 		  $command = 'qnremote '.strtolower($fmodule).' '.strtolower($cfg['ircddb_login']).' '.$furcall;
 		  echo $command, "<br>\n";
-		  $lastline = system($command, $retval);
-		  if ($retval != 0)
-		  	echo $lastline, "<br>\n";
+		  $lastline = system($command);
 	  }
 ?>
 </body>
