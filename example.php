@@ -129,7 +129,7 @@ URCall: <input type="text" name='furcall' value="<?php echo $furcall;?>">
 	  $furcall = trim(preg_replace('/[^0-9a-z ]/', '', strtolower($furcall)));
 
 	  if (strlen($furcall)>0 && strlen($fmodule)>0) {
-		  $command = 'sgsremote '.strtolower($fmodule).' '.strtolower($cfg['ircddb_login']).' '.$furcall;
+		  $command = 'qnremote '.strtolower($fmodule).' '.strtolower($cfg['ircddb_login']).' '.$furcall;
 		  echo $command, "<br>\n";
 		  $lastline = system($command, $retval);
 		  if ($retval != 0)
