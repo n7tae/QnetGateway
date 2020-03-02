@@ -176,7 +176,7 @@ installdash : index.php
 	/bin/cp -f system/qndash.service $(SYSDIR)
 	systemctl enable qndash.service
 	systemctl daemon-reload
-	systemctl start qndash.servlce
+	systemctl start qndash.service
 
 uninstallbase :
 	######### QnetGateway #########
