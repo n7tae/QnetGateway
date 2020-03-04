@@ -26,10 +26,10 @@ SYSDIR=/lib/systemd/system
 IRC=ircddb
 
 # use this if you want debugging help in the case of a crash
-#CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\"
+#CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
 
 # or, you can choose this for a much smaller executable without debugging help
-CPPFLAGS=-W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\"
+CPPFLAGS=-W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
 
 LDFLAGS=-L/usr/lib -lrt
 
@@ -106,7 +106,7 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
 	/bin/ln -s $(shell pwd)/gwys.txt $(CFGDIR)
-	/bin/cp -f exec_?.sh $(CFGDIR)
+	/bin/cp -f exec_?.sh $(BINDIR)
 	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
 	systemctl daemon-reload
@@ -196,7 +196,7 @@ uninstallbase :
 	/bin/rm -f $(CFGDIR)/*.dat
 	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
 	/bin/rm -f $(CFGDIR)/gwys.txt
-	/bin/rm -f $(CFGDIR)/exec_?.sh
+	/bin/rm -f $(BINDIR)/exec_?.sh
 
 uninstallrelay :
 	######### QnetRelay #########

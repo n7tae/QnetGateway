@@ -53,6 +53,9 @@
 #include "QnetLink.h"
 
 #define LINK_VERSION "QnetLink-7.2"
+#ifndef BIN_DIR
+#define BIN_DIR "/usr/local/bin"
+#endif
 
 std::atomic<bool> CQnetLink::keep_running(true);
 
@@ -2898,7 +2901,7 @@ void CQnetLink::Process()
 								}
 								if (user_ok) {
 									memset(system_cmd, '\0', sizeof(system_cmd));
-									snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &", announce_dir.c_str(), dsvt.hdr.urcall[6], call, dsvt.hdr.rpt1[7]);
+									snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &", BIN_DIR, dsvt.hdr.urcall[6], call, dsvt.hdr.rpt1[7]);
 									printf("Executing %s\n", system_cmd);
 									system(system_cmd);
 								}
