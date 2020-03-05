@@ -24,6 +24,7 @@
 #include "UnixDgramSocket.h"
 #include "aprs.h"
 #include "SockAddress.h"
+#include "QnetDB.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -101,12 +102,12 @@ private:
 
 	std::string gate2link, link2gate, gate2modem[3], modem2gate;
 
-	std::string OWNER, owner, FILE_STATUS, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE;
+	std::string OWNER, owner, FILE_STATUS, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE, DASHBOARD_SQL_NAME;
 
 	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache;
-	bool LOG_DEBUG, LOG_IRC, LOG_DTMF, LOG_QSO;
+	bool LOG_DEBUG, LOG_IRC, LOG_DTMF, LOG_QSO, DASHBOARD_DISABLE_LASTHEARD;
 
-	int TIMING_PLAY_WAIT, TIMING_PLAY_DELAY, TIMING_TIMEOUT_ECHO, TIMING_TIMEOUT_VOICEMAIL, TIMING_TIMEOUT_REMOTE_G2, TIMING_TIMEOUT_LOCAL_RPTR, dtmf_digit;
+	int DASHBOARD_REFRESH, DASHBOARD_LASTHEARD_MAX, TIMING_PLAY_WAIT, TIMING_PLAY_DELAY, TIMING_TIMEOUT_ECHO, TIMING_TIMEOUT_VOICEMAIL, TIMING_TIMEOUT_REMOTE_G2, TIMING_TIMEOUT_LOCAL_RPTR, dtmf_digit;
 
 	unsigned int vPacketCount[3] = { 0, 0, 0 };
 
@@ -147,6 +148,9 @@ private:
 
 	/* Used to validate MYCALL input */
 	std::regex preg;
+
+	// database for the dashboard last heard section
+	CQnetDB qnDB;
 
 	// CACHE used to cache users, repeaters,
 	// gateways, IP numbers coming from the irc server

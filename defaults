@@ -209,3 +209,12 @@ timing_timeout_remote_g2_d=2  # after this many seconds with no packets, we assu
 timing_timeout_local_rptr_d=1 # local repeater timeout, in seconds
 timing_play_wait_d=1          # seconds before echo or voicemail playback occurs, between 1 and 10
 timing_play_delay_d=19        # milliseconds between frames playback, if echo sounds bad, adjust this up or down 1 or 2 ms
+
+##########################################################################################################################
+#
+# Dashboard - for the php/sqlite webpage
+#
+dashboard_disable_lastheard_d=false # set to true if you don't want a last heard section in the dashboard
+dashboard_sql_filename_d='qn.db'    # name for the sqlite database
+dashboard_refresh_d=20              # seconds for the webpage to reload
+dashbaord_lastheard_max_d=20        # maximum number of last heard entries to display

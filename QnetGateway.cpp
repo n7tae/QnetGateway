@@ -350,6 +350,13 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	cfg.GetValue(path+"remote_g2", estr, TIMING_TIMEOUT_REMOTE_G2, 1, 10);
 	cfg.GetValue(path+"local_rptr", estr, TIMING_TIMEOUT_LOCAL_RPTR, 1, 10);
 
+	// dashboard
+	path.assign("dashboard_");
+	cfg.GetValue(path+"disable_lastheard", estr, DASHBOARD_DISABLE_LASTHEARD);
+	cfg.GetValue(path+"sql_filename", estr, DASHBOARD_SQL_NAME, 1, 32);
+	cfg.GetValue(path+"refresh", estr, DASHBOARD_REFRESH, 10, 60);
+	cfg.GetValue(path+"lastheard_max", estr, DASHBOARD_LASTHEARD_MAX, 5, 100);
+
 	return false;
 }
 
@@ -1114,6 +1121,21 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 							printf("IP=[%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
 						else
 							printf("UnixSock=%s\n", link2gate.c_str());
+					}
+
+					if (! DASHBOARD_DISABLE_LASTHEARD) {
+						char cs[14] = { 0 }; char nm[5] = { 0 };
+						for (int j=0; g2buf.hdr.mycall[j] && ' '!=g2buf.hdr.mycall[j]; j++)
+							cs[j] = g2buf.hdr.mycall[j];
+						if (strlen(cs)) {
+							for (int j=0; g2buf.hdr.sfx[j] && ' '!=g2buf.hdr.sfx[j]; j++)
+								nm[j] = g2buf.hdr.sfx[j];
+							if (strlen(nm)) {
+								strcat(cs, "/");
+								strcat(cs, nm);
+							}
+							qnDB.Update(cs, (const char *)g2buf.hdr.urcall, (source_sock>=0) ? fromDstar.GetAddress() : band_txt[i].dest_rptr);
+						}
 					}
 
 					Gate2Modem[i].Write(g2buf.title, 56);
@@ -2444,6 +2466,10 @@ bool CQnetGateway::Init(char *cfgfile)
 		printf("Failed to process config file %s\n", cfgfile);
 		return true;
 	}
+
+	// open database
+	if (qnDB.Open(DASHBOARD_SQL_NAME.c_str(), DASHBOARD_DISABLE_LASTHEARD))
+		return true;
 
 	playNotInCache = false;
 
