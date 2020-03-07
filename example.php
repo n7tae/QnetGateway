@@ -107,11 +107,11 @@
 		echo '</code><br>', "\n";
 		$dbname = GetCFGValue('dashboard_sql_filename');
 		$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
-		$ss = 'SELECT mycall,sfx,urcall,module,gateway,strftime("%s","now")-lastime FROM LHEARD ORDER BY strftime("%s","now")-lastime LIMIT '.GetCFGValue('dashboard_lastheard_count');
-		if ($stmnt = $db->prepare()) {
+		$ss = 'SELECT mycall,sfx,urcall,module,gateway,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 6 LIMIT '.GetCFGValue('dashboard_lastheard_count');
+		if ($stmnt = $db->prepare($ss)) {
 			if ($result = $stmnt->execute()) {
 				while ($row = $result->FetchArray(SQLITE3_NUM)) {
-					$cs = str_pad($trim($row[0]).'/'.$trim($row[1]), 13);
+					$cs = str_pad(trim($row[0]).'/'.trim($row[1]), 13);
 					$rstr = $cs.' '.$row[2].' '.$row[3].' '.$row[4].'  '.SecToStrstring($row[4]).'<br>';
 					echo str_replace(' ', '&nbsp;', $rstr), "\n";
 				}
