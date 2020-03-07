@@ -31,6 +31,7 @@
 
 	function GetCFGValue(string $key)
 	{
+		global $cfg, $defaults;
 		if (array_key_exists($key, $cfg))
 			return $cfg[$key];
 		if ('module_' == substr($key, 0, 7)) {

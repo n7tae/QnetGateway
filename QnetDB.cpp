@@ -51,17 +51,17 @@ bool CQnetDB::Update(const char *mycall, const char *sfx, const char *urcall, co
 {
 	if (NULL == db)
 		return false;
-	std::string sql = "REPLACE INTO LHEARD (mycall,sfx,urcall,module,gateway,lasttime) VALUES (";
+	std::string sql = "REPLACE INTO LHEARD (mycall,sfx,urcall,module,gateway,lasttime) VALUES ('";
 	sql.append(mycall);
-	sql.append("\",\"");
+	sql.append("','");
 	sql.append(sfx);
-	sql.append("\",\"");
+	sql.append("','");
 	sql.append(urcall);
-	sql.append("\",\"");
+	sql.append("','");
 	sql.append(module);
-	sql.append("\",\"");
+	sql.append("','");
 	sql.append(gateway);
-	sql.append("\",");
+	sql.append("',");
 	sql.append("strftime('%s','now'));");
 
 	char *eMsg;
