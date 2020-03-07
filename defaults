@@ -216,7 +216,7 @@ timing_play_delay_d=19        # milliseconds between frames playback, if echo so
 #
 # Dashboard - for the php/sqlite webpage
 #
-dashboard_enable_lastheard_d=true # set to false if you don't want a last heard section in the dashboard
-dashboard_sql_filename_d='qn.db'  # name for the sqlite database
-dashboard_refresh_d=20            # seconds for the webpage to reload
-dashbaord_lastheard_count_d=20      # maximum number of last heard entries to display
+dashboard_enable_lastheard_d=true                # set to false if you don't want a last heard section in the dashboard
+dashboard_sql_filename_d='/usr/local/etc/qn.db'  # name for the sqlite database
+dashboard_refresh_d=20                           # seconds for the webpage to reload
+dashbaord_lastheard_count_d=20                   # maximum number of last heard entries to display
