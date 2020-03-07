@@ -1128,7 +1128,6 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 						std::string gateway((const char *)g2buf.hdr.rpt2,   8);
 						rtrim(mycall);
 						rtrim(sfx);
-						rtrim(urcall);
 						qnDB.Update(mycall.c_str(), sfx.c_str(), urcall.c_str(), module.c_str(), gateway.c_str());
 					}
 

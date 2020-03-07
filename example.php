@@ -140,7 +140,7 @@ if ('true' == GetCFGValue('dash_show_ps') && `ps -aux | grep -e qn -e MMDVMHost 
 	foreach ($lines as $line) {
 		echo str_replace(' ', '&nbsp;', $line), "<br>\n";
 	}
-	echo '</code><br>', "\n";
+	echo '</code>', "\n";
 }
 
 if ('true' == GetCFGValue('dash_show_lh')) {

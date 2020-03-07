@@ -24,19 +24,26 @@ bool CQnetDB::Open(const char *name)
 	if (sqlite3_open(name, &db))
 		return true;
 
-	std::string sql =	"DROP TABLE IF EXISTS LHEARD; "
-	                	"CREATE TABLE LHEARD("
-							"mycall		TEXT PRIMARY KEY, "
-							"sfx		TEXT, "
-							"urcall		TEXT, "
-							"module		TEXT, "
-							"gateway	TEXT, "
-							"lasttime	INT NOT NULL"
-						") WITHOUT ROWID;";
+	std::string sql =	"DROP TABLE IF EXISTS LHEARD;";
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::Open drop table error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
+	sql =	"CREATE TABLE LHEARD("
+				"mycall		TEXT PRIMARY KEY, "
+				"sfx		TEXT, "
+				"urcall		TEXT, "
+				"module		TEXT, "
+				"gateway	TEXT, "
+				"lasttime	INT NOT NULL"
+			") WITHOUT ROWID;";
+
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::Open create table error: %s\n", eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
