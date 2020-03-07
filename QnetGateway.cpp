@@ -350,7 +350,7 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	cfg.GetValue(path+"local_rptr", estr, TIMING_TIMEOUT_LOCAL_RPTR, 1, 10);
 
 	// dashboard
-	path.assign("dashboard_");
+	path.assign("dash_");
 	cfg.GetValue(path+"enable_lastheard", estr, DASH_SHOW_LH);
 	cfg.GetValue(path+"sql_filename", estr, DASH_SQL_NAME, 1, 32);
 
