@@ -94,6 +94,7 @@ aliases : bash_aliases
 
 installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
+	sudo /usr/bin/apt install -y libsqlite3-dev
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
 	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
@@ -170,7 +171,7 @@ installdtmf : qndtmf
 	systemctl start qndtmf.service
 
 installdash : index.php
-	/usr/bin/apt install -y php-common php-fpm sqlite3 libsqlite3-dev php-sqlite3
+	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
 	mkdir -p $(WWWDIR)
 	/bin/cp -f index.php $(WWWDIR)
 	/bin/cp -f system/qndash.service $(SYSDIR)
