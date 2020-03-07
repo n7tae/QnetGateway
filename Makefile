@@ -51,7 +51,6 @@ itap   : qnitap
 modem  : qnmodem
 
 qngateway : QnetGateway.o aprs.o UnixDgramSocket.o TCPReaderWriterClient.o QnetConfigure.o QnetDB.o $(IRCOBJS)
-	sudo /usr/bin/apt install -y libsqlite3-dev
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
 
 qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixDgramSocket.o QnetConfigure.o

@@ -30,9 +30,12 @@ the device listed, QnetGateway software will never be able to open it either.
 You will need several packages to build the QnetGateway gateway. You will probably
 already have all or most of these but it still doesn't hurt to be sure:
 
-sudo apt-get update
-sudo apt-get upgrade
-sudo apt-get install make g++ unzip git
+sudo apt update
+sudo apt upgrade
+sudo apt install make g++ unzip git
+
+One package you probably don't have, but will need:
+sudo apt install libsqlite3-dev
 
 If you are building a QnetGateway + MMDVMHost system, please use the instructions
 in the MMDVM.README file in order to setup and start your MMDVMHost.
