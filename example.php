@@ -6,6 +6,8 @@
 </head>
 <body>
 <?php
+	$cfg = array();
+	$defaults = array();
 	$fmodule = $furcall = '';
 	$cfgdir = '/usr/local/etc';
 
@@ -27,20 +29,20 @@
 		}
 	}
 
-	function GetCFGValue(string $key, array &$cfgarray, array &$defaultarray)
+	function GetCFGValue(string $key)
 	{
-		if (array_key_exists($key, $cfgarray))
-			return $cfgarray[$key];
+		if (array_key_exists($key, $cfg))
+			return $cfg[$key];
 		if ('module_' == substr($key, 0, 7)) {
 			$mod = substr($key, 0, 8);
-			if (array_key_exists($mod, $cfgarray)) {
-				$key = $cfgarray[$mod].substr($key, 8);
-				if (array_key_exists($key, $defaultarray))
-					return $defaultarray[$key];
+			if (array_key_exists($mod, $cfg)) {
+				$key = $cfg[$mod].substr($key, 8);
+				if (array_key_exists($key, $defaults))
+					return $defaults[$key];
 			}
 		} else {
-			if (array_key_exists($key.'_d', $defaultarray))
-				return $defaultarray[$key.'_d'];
+			if (array_key_exists($key.'_d', $defaults))
+				return $defaults[$key.'_d'];
 		}
 		return '';
 	}
@@ -104,11 +106,11 @@
 		echo '</code><br>', "\n";
 		$dbname = GetCFGValue('dashboard_sql_filename');
 		$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
-		$ss = 'SELECT mycall,sfx,urcall,module,gateway,strftime("%s","now")-lastime FROM LHEARD ORDER BY strftime("%s","now")-lastime LIMIT '.GetCFGValue('dashboard_lastheard_count', $cfg, $defaults);
+		$ss = 'SELECT mycall,sfx,urcall,module,gateway,strftime("%s","now")-lastime FROM LHEARD ORDER BY strftime("%s","now")-lastime LIMIT '.GetCFGValue('dashboard_lastheard_count');
 		if ($stmnt = $db->prepare()) {
 			if ($result = $stmnt->execute()) {
 				while ($row = $result->FetchArray(SQLITE3_NUM)) {
-					$cs = str_pad($trim($row[0])./.$trim($row[1]), 13);
+					$cs = str_pad($trim($row[0]).'/'.$trim($row[1]), 13);
 					$rstr = $cs.' '.$row[2].' '.$row[3].' '.$row[4].'  '.SecToStrstring($row[4]).'<br>';
 					echo str_replace(' ', '&nbsp;', $rstr), "\n";
 				}
@@ -120,12 +122,10 @@
 		echo '</code><br>', "\n";
 	}
 
-	$cfg = array();
-	$defaults = array();
 	ParseKVFile($cfgdir.'/qn.cfg', $cfg);
 	ParseKVFile($cfgdir.'/defaults', $defaults);
 ?>
-<h2>QnetGateway <?php echo GetCFGValue('ircddb_login', $cfg, $defaults); ?> Dashboard</h2>
+<h2>QnetGateway <?php echo GetCFGValue('ircddb_login'); ?> Dashboard</h2>
 <?php
 if (`ps -aux | grep -e qn -e MMDVMHost | wc -l` > 2) {
 	echo 'Processes:<br><code>', "\n";
@@ -137,7 +137,7 @@ if (`ps -aux | grep -e qn -e MMDVMHost | wc -l` > 2) {
 	echo '</code>', "\n";
 }
 
-if ('true' == GetCFGValue('dashboard', $cfg, $defaults))
+if ('true' == GetCFGValue('dashboard_enable_lastheard'))
 	LastHeardPage();
 ?>
 IP Addresses:<br>
