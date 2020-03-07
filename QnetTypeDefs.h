@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright 2017-2019 by Thomas Early, N7TAE
+ *   Copyright 2017-2020 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 // for communicating with the g2 gateway on the internal port
 #pragma pack(push, 1)	// used internally by Icom stacks
-typedef struct dstr_tag {
+using SDSTR = struct dstr_tag {
 	unsigned char pkt_id[4];	//  0	"DSTR"
 	unsigned short counter;		//  4
 	unsigned char flag[3];		//  6	{ 0x73, 0x12, 0x00 }
@@ -60,12 +60,12 @@ typedef struct dstr_tag {
 			};
 		} vpkt;
 	};
-} SDSTR;
+};
 #pragma pack(pop)
 
 // for the g2 external port and between QnetGateway programs
 #pragma pack(push, 1)
-typedef struct dsvt_tag {
+using SDSVT = struct dsvt_tag {
 	unsigned char title[4];	//  0   "DSVT"
 	unsigned char config;	//  4   0x10 is hdr 0x20 is vasd
 	unsigned char flaga[3];	//  5   zeros
@@ -88,12 +88,12 @@ typedef struct dsvt_tag {
 			unsigned char text[3];  // 24
 		} vasd;	// voice and slow data total 27
 	};
-} SDSVT;
+};
 #pragma pack(pop)
 
 // for mmdvm
 #pragma pack(push, 1)
-typedef struct dsrp_tag {	//									offset	  size
+using SDSRP = struct dsrp_tag {	//									offset	  size
 	unsigned char title[4];	// "DSRP"								 0
 	unsigned char tag;		// Poll   : 0xA							 4
 							// Header : busy ? 0x22 : 0x20
@@ -121,12 +121,12 @@ typedef struct dsrp_tag {	//									offset	  size
 			unsigned char ambe[12];	// voice + slow data			 9		21
 		} voice;
 	};
-} SDSRP;
+};
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-typedef struct link_family_tag {
+using SLINKFAMILY = struct link_family_tag {
     char title[4];
     int family[3];
-} SLINKFAMILY;
+};
 #pragma pack(pop)

@@ -61,8 +61,8 @@ gateway_gate2modemb_d='gate2modemb'
 gateway_gate2modemc_d='gate2modemc'
 gateway_latitude_d=0                 # you can leave this unspecified for a mobile rig
 gateway_longitude_d=0                # like the latitude
-gateway_desc1_d='QnetGateway'        # maximum of 20 characters, most special symbols are not allowed
-gateway_desc2_d='by N7TAE'           # just like desc1
+gateway_desc1_d=''                   # maximum of 20 characters, most special symbols are not allowed
+gateway_desc2_d=''                   # just like desc1
 gateway_url_d='github.com/n7tae/QnetGateway' # 80 characters max
 gateway_find_route_d=''              # CSV list of route(s) to load on boot-up (prevents the "not in cache" message)
 

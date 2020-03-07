@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ enum REPLY_TYPE {
 
 // Icom Terminal and Access Point Mode data structure
 #pragma pack(push, 1)
-typedef struct itap_tag {
+using SITAP = struct itap_tag {
 	unsigned char length;
 		// 41 for header
 		// 16 for voice
@@ -73,7 +73,7 @@ typedef struct itap_tag {
 			unsigned char text[3];
 		} voice;
 	};
-} SITAP;
+};
 #pragma pack(pop)
 
 class CFrame

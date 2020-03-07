@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2019-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -59,15 +59,15 @@ enum class EHardwareType {
 
 // Icom Terminal and Access Point Mode data structure
 #pragma pack(push, 1)
-typedef struct version_tag {
+using SVERSION = struct version_tag {
 	unsigned char start;
 	unsigned char length;
 	unsigned char type;
 	unsigned char protocol;
 	unsigned char version[251];
-} SVERSION;
+};
 
-typedef struct mmodem_tag {
+using SMODEM = struct mmodem_tag {
 	unsigned char start;	// always 0xEOU
 	unsigned char length;	// 3 - 255
 	unsigned char type;
@@ -149,7 +149,7 @@ typedef struct mmodem_tag {
 			unsigned char text[3];
 		} voice;
 	};
-} SMODEM;
+};
 #pragma pack(pop)
 
 class CFrame

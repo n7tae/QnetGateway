@@ -30,13 +30,13 @@
 #define CALL_SIZE 8
 #define MAX_DTMF_BUF 32
 
-typedef struct to_remote_g2_tag {
+using STOREMOTEG2 = struct to_remote_g2_tag {
 	unsigned short streamid;
 	CSockAddress toDstar;
 	time_t last_time;
-} STOREMOTEG2;
+};
 
-typedef struct torepeater_tag {
+using STOREPEATER = struct torepeater_tag {
 	// help with header re-generation
 	SDSVT saved_hdr; // repeater format
 	CSockAddress saved_addr;
@@ -45,9 +45,9 @@ typedef struct torepeater_tag {
 	CSockAddress addr;
 	time_t last_time;
 	unsigned char sequence;
-} STOREPEATER;
+};
 
-typedef struct band_txt_tag {
+using SBANDTXT = struct band_txt_tag {
 	unsigned short streamID;
 	unsigned char flags[3];
 	char lh_mycall[CALL_SIZE + 1];
@@ -73,7 +73,7 @@ typedef struct band_txt_tag {
 	int num_dv_frames;
 	int num_dv_silent_frames;
 	int num_bit_errors;
-} SBANDTXT;
+};
 
 class CQnetGateway {
 public:

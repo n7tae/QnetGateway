@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright 2017 by Thomas Early, N7TAE
+ *   Copyright 2017,2020 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ enum REPLY_TYPE {
 };
 
 #pragma pack(push,1)
-typedef struct dvp_register_tag {
+using  SDVAP_REGISTER = struct dvp_register_tag {
 	uint16_t header;
 	union {
 		uint8_t nul;
@@ -80,7 +80,7 @@ typedef struct dvp_register_tag {
 			};
 		} frame;
 	};
-} SDVAP_REGISTER;
+};
 #pragma pack(pop)
 
 class CDVAPDongle

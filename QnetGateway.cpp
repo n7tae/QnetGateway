@@ -50,7 +50,7 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-const std::string IRCDDB_VERSION("QnetGateway-9.2");
+const std::string GW_VERSION("QnetGateway-9.3");
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -251,11 +251,11 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			rptr.mod[m].defined = false;
 		} else {
 			printf("Found Module: %s = '%s'\n", path.c_str(), type.c_str());
-			if      (0 == type.compare("dvap"))       { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".DVAP"); }
-			else if (0 == type.compare("dvrptr"))     { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".DVRPTR"); }
-			else if (0 == type.compare("mmdvmhost"))  { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".Relay"); }
-			else if (0 == type.compare("mmdvmmodem")) { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".Modem"); }
-			else if (0 == type.compare("itap"))       { rptr.mod[m].package_version.assign(IRCDDB_VERSION+".ITAP"); }
+			if      (0 == type.compare("dvap"))       { rptr.mod[m].package_version.assign(GW_VERSION+".DVAP"); }
+			else if (0 == type.compare("dvrptr"))     { rptr.mod[m].package_version.assign(GW_VERSION+".DVRPTR"); }
+			else if (0 == type.compare("mmdvmhost"))  { rptr.mod[m].package_version.assign(GW_VERSION+".Relay"); }
+			else if (0 == type.compare("mmdvmmodem")) { rptr.mod[m].package_version.assign(GW_VERSION+".Modem"); }
+			else if (0 == type.compare("itap"))       { rptr.mod[m].package_version.assign(GW_VERSION+".ITAP"); }
 			else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
@@ -304,6 +304,8 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			cfg.GetValue(path+"desc1", estr, rptr.mod[m].desc1, 0, 20);
 			cfg.GetValue(path+"desc2", estr, rptr.mod[m].desc2, 0, 20);
 			cfg.GetValue(path+"url", estr, rptr.mod[m].url, 0, 80);
+			if (rptr.mod[m].desc1.empty()) rptr.mod[m].desc2.assign(GW_VERSION);
+			if (rptr.mod[m].desc2.empty()) rptr.mod[m].desc2.assign("by N7TAE");
 			rptr.mod[m].desc = trim_copy(rptr.mod[m].desc1) + " " + trim_copy(rptr.mod[m].desc2);
 		}
 	}
@@ -1973,7 +1975,7 @@ void CQnetGateway::Process()
 			if (keep_running)
 				printf("get_irc_data thread[%d] started\n", i);
 
-			ii[i]->kickWatchdog(IRCDDB_VERSION);
+			ii[i]->kickWatchdog(GW_VERSION);
 		}
 	}
 
@@ -2528,7 +2530,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	for (int j=0; j<2; j++) {
 		if (ircddb[j].ip.empty())
 			continue;
-		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], IRCDDB_VERSION.c_str());
+		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str());
 		bool ok = ii[j]->open();
 		if (!ok) {
 			printf("%s open failed\n", ircddb[j].ip.c_str());
@@ -2904,7 +2906,7 @@ bool CQnetGateway::verify_gps_csum(char *gps_text, char *csum_text)
 
 int main(int argc, char **argv)
 {
-	printf("VERSION %s\n", IRCDDB_VERSION.c_str());
+	printf("VERSION %s\n", GW_VERSION.c_str());
 	if (argc != 2) {
 		printf("usage: %s qn.cfg\n", argv[0]);
 		return 1;

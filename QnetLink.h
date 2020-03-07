@@ -41,12 +41,12 @@
 #define TIMEOUT 50
 #define LH_MAX_SIZE 39
 
-typedef struct refdsvt_tag {
+using SREFDSVT = struct refdsvt_tag {
 	unsigned char head[2];
 	SDSVT dsvt;
-} SREFDSVT;
+};
 
-typedef struct to_remote_g2_tag {
+using STOREMOTE = struct to_remote_g2_tag {
     char cs[CALL_SIZE + 1];
     CSockAddress addr;
     char from_mod, to_mod;
@@ -54,17 +54,17 @@ typedef struct to_remote_g2_tag {
 	bool auto_link, is_connected;
     unsigned short in_streamid;  // incoming from remote systems
     unsigned short out_streamid; // outgoing to remote systems
-} STOREMOTE;
+};
 
 // This is the data payload in the map: inbound_list
 // This is for inbound dongles
-typedef struct inbound_tag {
+using SINBOUND = struct inbound_tag {
 	char call[CALL_SIZE + 1];	// the callsign of the remote
 	CSockAddress addr;			// IP and port of remote
 	short countdown;			// if countdown expires, the connection is terminated
 	char mod;					// A B C This user talked on this module
 	char client;				// dvap, dvdongle
-} SINBOUND;
+};
 
 class CQnetLink {
 public:

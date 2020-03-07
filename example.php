@@ -99,7 +99,7 @@
 	function LastHeardPage()
 	{
 		echo 'Last Heard:<br><code>', "\n";
-		$rstr = 'MyCall  Sfx URCall  Module  Gateway Time<br>';
+		$rstr = 'MyCall/Sfx    URCall   Module   Gateway  Last Time<br>';
 		echo str_replace(' ', '&nbsp;', $rstr), "\n";
 		echo '</code><br>', "\n";
 		$dbname = GetCFGValue('dashboard_sql_filename');
@@ -108,7 +108,8 @@
 		if ($stmnt = $db->prepare()) {
 			if ($result = $stmnt->execute()) {
 				while ($row = $result->FetchArray(SQLITE3_NUM)) {
-					$rstr = $row[0].'/'.$row[1].' '.$row[2].' '.$row[3].' '.$row[4].'  '.SecToStrstring($row[4]).'<br>';
+					$cs = str_pad($trim($row[0])./.$trim($row[1]), 13);
+					$rstr = $cs.' '.$row[2].' '.$row[3].' '.$row[4].'  '.SecToStrstring($row[4]).'<br>';
 					echo str_replace(' ', '&nbsp;', $rstr), "\n";
 				}
 				$result->finalize();
