@@ -140,14 +140,13 @@ if ('true' == GetCFGValue('dash_show_ps') && `ps -aux | grep -e qn -e MMDVMHost 
 	foreach ($lines as $line) {
 		echo str_replace(' ', '&nbsp;', $line), "<br>\n";
 	}
-	echo '</code>', "\n";
+	echo '</code><br>', "\n";
 }
 
 if ('true' == GetCFGValue('dash_show_lh')) {
 	echo 'Last Heard:<br><code>', "\n";
 	$rstr = 'MyCall/Sfx    URCall   Module   Gateway  Last Time<br>';
 	echo str_replace(' ', '&nbsp;', $rstr), "\n";
-	echo '</code><br>', "\n";
 	$dbname = GetCFGValue('dash_sql_filename');
 	$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
 	$ss = 'SELECT mycall,sfx,urcall,module,gateway,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 6 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
@@ -155,7 +154,7 @@ if ('true' == GetCFGValue('dash_show_lh')) {
 		if ($result = $stmnt->execute()) {
 			while ($row = $result->FetchArray(SQLITE3_NUM)) {
 				$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].' '.RptrToAprs($row[3]).' '.$row[4].'  '.SecToString(intval($row[5])).'<br>';
-				echo str_replace(str_replace(' ', '&nbsp;', $rstr), '*', ' '), "\n";
+				echo str_replace('*', ' ', str_replace(' ', '&nbsp;', $rstr)), "\n";
 			}
 			$result->finalize();
 		}
