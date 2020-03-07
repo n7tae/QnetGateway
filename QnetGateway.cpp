@@ -351,9 +351,8 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 
 	// dashboard
 	path.assign("dashboard_");
-	cfg.GetValue(path+"enable_lastheard", estr, DASHBOARD_ENABLE_LASTHEARD);
-	cfg.GetValue(path+"sql_filename", estr, DASHBOARD_SQL_NAME, 1, 32);
-	cfg.GetValue(path+"refresh", estr, DASHBOARD_REFRESH, 10, 60);
+	cfg.GetValue(path+"enable_lastheard", estr, DASH_SHOW_LH);
+	cfg.GetValue(path+"sql_filename", estr, DASH_SQL_NAME, 1, 32);
 
 	return false;
 }
@@ -1121,7 +1120,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 							printf("UnixSock=%s\n", link2gate.c_str());
 					}
 
-					if (DASHBOARD_ENABLE_LASTHEARD) {
+					if (DASH_SHOW_LH && memcmp(g2buf.hdr.sfx, "RPTR", 4)) {
 						std::string  mycall((const char *)g2buf.hdr.mycall, 8);
 						std::string     sfx((const char *)g2buf.hdr.sfx,    4);
 						std::string  urcall((const char *)g2buf.hdr.urcall, 8);
@@ -2463,7 +2462,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 
 	// open database
-	if (qnDB.Open(DASHBOARD_SQL_NAME.c_str(), DASHBOARD_ENABLE_LASTHEARD))
+	if (DASH_SHOW_LH && qnDB.Open(DASH_SQL_NAME.c_str()))
 		return true;
 
 	playNotInCache = false;

@@ -19,11 +19,8 @@
 #include <string>
 #include "QnetDB.h"
 
-bool CQnetDB::Open(const char *name, const bool enable)
+bool CQnetDB::Open(const char *name)
 {
-	if (! enable)
-		return false;
-
 	if (sqlite3_open(name, &db))
 		return true;
 
