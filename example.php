@@ -80,22 +80,15 @@
 		}
 		return explode(',', ',,,,,');
 	}
-	function SecToString(int $secs) {
-		$days = $secs / 86400;
-		if ($days >= 1.0)
-			return sprintf("%0.2f days", $days);
-		$hrs = intdiv($secs, 3600);
+	function SecToString(int $sec) {
+		if ($sec >= 86400)
+			return sprintf("%0.2f days", $sec/86400);
+		$hrs = intdiv($sec, 3600);
 		$sec %= 3600;
-		$min = intdiv($sec, 3600);
+		$min = intdiv($sec, 60);
 		$sec %= 60;
-		if ($hrs > 9)
-			return sprintf("%d hr %2d min %2d sec", $hrs, $min, $sec);
-		if ($hrs)
-			return sprintf("%2d min $2 sec", $min, $sec);
-		if ($min > 9)
-			return sprintf("%d min %2d sec", $min, $sec);
-		if ($sec > 9)
-			return sprintf("%d sec", $sec);
+		if ($hrs) return sprintf("%2d hr %2d min %2d sec", $hrs, $min, $sec);
+		if ($min) return sprintf("%2d min %2d sec", $min, $sec);
 		return sprintf("%2d sec", $sec);
 	}
 
