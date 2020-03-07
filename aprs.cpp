@@ -245,14 +245,15 @@ void CAPRS::Open(const std::string OWNER)
     }
 
 	/* login to aprs */
-	sprintf(snd_buf, "user %s pass %d vers qngateway 2.99 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
+	//sprintf(snd_buf, "user %s pass %d vers QnetGateway 9 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
+	sprintf(snd_buf, "user %s pass %d vers QnetGateway 9 ", OWNER.c_str(), m_rptr->aprs_hash);
 
 	/* add the user's filter */
 	if (m_rptr->aprs_filter.length()) {
 		strcat(snd_buf, "filter ");
 		strcat(snd_buf, m_rptr->aprs_filter.c_str());
 	}
-	// printf("APRS login command:[%s]\n", snd_buf);
+	printf("APRS login command:[%s]\n", snd_buf);
 	strcat(snd_buf, "\r\n");
 
 	while (true) {
@@ -271,7 +272,7 @@ void CAPRS::Open(const std::string OWNER)
 		}
 	}
     aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-
+	printf("APRS Login returned: %s", rcv_buf);
 	return;
 }
 

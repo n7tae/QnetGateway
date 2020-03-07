@@ -19,9 +19,9 @@
 #include <string>
 #include "QnetDB.h"
 
-bool CQnetDB::Open(const char *name, const bool disable)
+bool CQnetDB::Open(const char *name, const bool enable)
 {
-	if (disable)
+	if (! enable)
 		return false;
 
 	if (sqlite3_open(name, &db))
@@ -29,9 +29,11 @@ bool CQnetDB::Open(const char *name, const bool disable)
 
 	std::string sql =	"DROP TABLE IF EXISTS LHEARD; "
 	                	"CREATE TABLE LHEARD("
-							"callsign	TEXT PRIMARY KEY, "
+							"mycall		TEXT PRIMARY KEY, "
+							"sfx		TEXT, "
 							"urcall		TEXT, "
-							"source		TEXT, "
+							"module		TEXT, "
+							"gateway	TEXT, "
 							"lasttime	INT NOT NULL"
 						") WITHOUT ROWID;";
 
@@ -45,16 +47,20 @@ bool CQnetDB::Open(const char *name, const bool disable)
 	return false;
 }
 
-bool CQnetDB::Update(const char *callsign, const char *urcall, const char *source)
+bool CQnetDB::Update(const char *mycall, const char *sfx, const char *urcall, const char *module, const char *gateway)
 {
 	if (NULL == db)
 		return false;
-	std::string sql = "REPLACE INTO LHEARD (callsign,urcall,source,lasttime) VALUES (";
-	sql.append(callsign);
+	std::string sql = "REPLACE INTO LHEARD (mycall,sfx,urcall,module,gateway,lasttime) VALUES (";
+	sql.append(mycall);
+	sql.append("\",\"");
+	sql.append(sfx);
 	sql.append("\",\"");
 	sql.append(urcall);
 	sql.append("\",\"");
-	sql.append(source);
+	sql.append(module);
+	sql.append("\",\"");
+	sql.append(gateway);
 	sql.append("\",");
 	sql.append("strftime('%s','now'));");
 

@@ -20,14 +20,16 @@
 #                                                                                                                       #
 #########################################################################################################################
 # What follows need to also be valid bash shell variable definitions, therefore:
-#     No white space on either side of the equal sign (=)
-#     String values should be quoted if they contain any special chars, including white space
-#     If a string value is a simple word, it doesn't need to be quoted
-#     Use the single quote (') for quoting strings, not the double quote(")
-#     Comments can come after a key=value definition, introduced by a pound-sign (#)
+#     No white space on either side of the equal sign (=).
+#     String values should be quoted if they contain any special chars, including white space.
+#     If a string value is a simple word, it doesn't need to be quoted.
+#     Use the single quote (') for quoting strings, not the double quote(").
+#     Comments can come after a key=value definition, introduced by a pound-sign (#).
+#     This file should not contain any tab characters. Use spaces instead.
 #
 # if a definition is commented out, it means that key has no default value. And it is
-# include here just as a reference.
+# include here just as a reference. The 'ircddb_login' value is requred for every
+# configure file
 
 ##########################################################################################################################
 #
@@ -59,8 +61,8 @@ gateway_gate2modemb_d='gate2modemb'
 gateway_gate2modemc_d='gate2modemc'
 gateway_latitude_d=0                 # you can leave this unspecified for a mobile rig
 gateway_longitude_d=0                # like the latitude
-gateway_desc1_d=''                   # maximum of 20 characters, most special symbols are not allowed
-gateway_desc2_d=''                   # just like desc1
+gateway_desc1_d='QnetGateway'        # maximum of 20 characters, most special symbols are not allowed
+gateway_desc2_d='by N7TAE'           # just like desc1
 gateway_url_d='github.com/n7tae/QnetGateway' # 80 characters max
 gateway_find_route_d=''              # CSV list of route(s) to load on boot-up (prevents the "not in cache" message)
 
@@ -214,7 +216,7 @@ timing_play_delay_d=19        # milliseconds between frames playback, if echo so
 #
 # Dashboard - for the php/sqlite webpage
 #
-dashboard_disable_lastheard_d=false # set to true if you don't want a last heard section in the dashboard
-dashboard_sql_filename_d='qn.db'    # name for the sqlite database
-dashboard_refresh_d=20              # seconds for the webpage to reload
-dashbaord_lastheard_max_d=20        # maximum number of last heard entries to display
+dashboard_enable_lastheard_d=true # set to false if you don't want a last heard section in the dashboard
+dashboard_sql_filename_d='qn.db'  # name for the sqlite database
+dashboard_refresh_d=20            # seconds for the webpage to reload
+dashbaord_lastheard_count_d=20      # maximum number of last heard entries to display

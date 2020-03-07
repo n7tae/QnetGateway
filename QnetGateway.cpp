@@ -48,6 +48,7 @@
 #include "IRCutils.h"
 #include "QnetConfigure.h"
 #include "QnetGateway.h"
+#include "Utilities.h"
 
 const std::string IRCDDB_VERSION("QnetGateway-9.2");
 
@@ -277,11 +278,6 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			}
 			cfg.GetValue(path+"range", type, rptr.mod[m].range, 0.0, 1609344.0);
 			cfg.GetValue(path+"agl", type, rptr.mod[m].agl, 0.0, 1000.0);
-
-			// make the long description for the log
-			if (rptr.mod[m].desc1.length())
-				rptr.mod[m].desc = rptr.mod[m].desc1 + ' ';
-			rptr.mod[m].desc += rptr.mod[m].desc2;
 		}
 	}
 	if (! (rptr.mod[0].defined || rptr.mod[1].defined || rptr.mod[2].defined)) {
@@ -308,6 +304,7 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			cfg.GetValue(path+"desc1", estr, rptr.mod[m].desc1, 0, 20);
 			cfg.GetValue(path+"desc2", estr, rptr.mod[m].desc2, 0, 20);
 			cfg.GetValue(path+"url", estr, rptr.mod[m].url, 0, 80);
+			rptr.mod[m].desc = trim_copy(rptr.mod[m].desc1) + " " + trim_copy(rptr.mod[m].desc2);
 		}
 	}
 	path.append("find_route");
@@ -352,10 +349,9 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 
 	// dashboard
 	path.assign("dashboard_");
-	cfg.GetValue(path+"disable_lastheard", estr, DASHBOARD_DISABLE_LASTHEARD);
+	cfg.GetValue(path+"enable_lastheard", estr, DASHBOARD_ENABLE_LASTHEARD);
 	cfg.GetValue(path+"sql_filename", estr, DASHBOARD_SQL_NAME, 1, 32);
 	cfg.GetValue(path+"refresh", estr, DASHBOARD_REFRESH, 10, 60);
-	cfg.GetValue(path+"lastheard_max", estr, DASHBOARD_LASTHEARD_MAX, 5, 100);
 
 	return false;
 }
@@ -1123,19 +1119,16 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 							printf("UnixSock=%s\n", link2gate.c_str());
 					}
 
-					if (! DASHBOARD_DISABLE_LASTHEARD) {
-						char cs[14] = { 0 }; char nm[5] = { 0 };
-						for (int j=0; g2buf.hdr.mycall[j] && ' '!=g2buf.hdr.mycall[j]; j++)
-							cs[j] = g2buf.hdr.mycall[j];
-						if (strlen(cs)) {
-							for (int j=0; g2buf.hdr.sfx[j] && ' '!=g2buf.hdr.sfx[j]; j++)
-								nm[j] = g2buf.hdr.sfx[j];
-							if (strlen(nm)) {
-								strcat(cs, "/");
-								strcat(cs, nm);
-							}
-							qnDB.Update(cs, (const char *)g2buf.hdr.urcall, (source_sock>=0) ? fromDstar.GetAddress() : band_txt[i].dest_rptr);
-						}
+					if (DASHBOARD_ENABLE_LASTHEARD) {
+						std::string  mycall((const char *)g2buf.hdr.mycall, 8);
+						std::string     sfx((const char *)g2buf.hdr.sfx,    4);
+						std::string  urcall((const char *)g2buf.hdr.urcall, 8);
+						std::string  module((const char *)g2buf.hdr.rpt1,   8);
+						std::string gateway((const char *)g2buf.hdr.rpt2,   8);
+						rtrim(mycall);
+						rtrim(sfx);
+						rtrim(urcall);
+						qnDB.Update(mycall.c_str(), sfx.c_str(), urcall.c_str(), module.c_str(), gateway.c_str());
 					}
 
 					Gate2Modem[i].Write(g2buf.title, 56);
@@ -2135,7 +2128,7 @@ void CQnetGateway::APRSBeaconThread()
 		time(&tnow);
 		if ((tnow - last_beacon_time) > (rptr.aprs_interval * 60)) {
 			for (short int i=0; i<3; i++) {
-				if (rptr.mod[i].desc[0] != '\0') {
+				if (rptr.mod[i].defined) {
 					float tmp_lat = fabs(rptr.mod[i].latitude);
 					float tmp_lon = fabs(rptr.mod[i].longitude);
 					float lat = floor(tmp_lat);
@@ -2170,8 +2163,8 @@ void CQnetGateway::APRSBeaconThread()
 					        lat_s,  (rptr.mod[i].latitude < 0.0)  ? 'S' : 'N',
 					        lon_s,  (rptr.mod[i].longitude < 0.0) ? 'W' : 'E',
 					        (unsigned int)rptr.mod[i].range, rptr.mod[i].band.c_str(), rptr.mod[i].desc.c_str());
-
-					// printf("APRS Beacon =[%s]\n", snd_buf);
+					if (LOG_DEBUG)
+						printf("APRS Beacon =[%s]\n", snd_buf);
 					strcat(snd_buf, "\r\n");
 
 					while (keep_running) {
@@ -2468,7 +2461,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 
 	// open database
-	if (qnDB.Open(DASHBOARD_SQL_NAME.c_str(), DASHBOARD_DISABLE_LASTHEARD))
+	if (qnDB.Open(DASHBOARD_SQL_NAME.c_str(), DASHBOARD_ENABLE_LASTHEARD))
 		return true;
 
 	playNotInCache = false;

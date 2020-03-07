@@ -170,7 +170,7 @@ installdtmf : qndtmf
 	systemctl start qndtmf.service
 
 installdash : index.php
-	/usr/bin/apt install -y php-common php-fpm
+	/usr/bin/apt install -y php-common php-fpm sqlite3 libsqlite3-dev php-sqlite3
 	mkdir -p $(WWWDIR)
 	/bin/cp -f index.php $(WWWDIR)
 	/bin/cp -f system/qndash.service $(SYSDIR)

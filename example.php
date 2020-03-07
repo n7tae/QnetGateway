@@ -7,24 +7,45 @@
 <body>
 <?php
 	$fmodule = $furcall = '';
+	$cfgdir = '/usr/local/etc';
 
-	function parse(string $filename)
+	function ParseKVFile(string $filename, &$kvarray)
 	{
-		$ret = array();
 		if ($lines = file($filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)) {
 			foreach ($lines as $line) {
 				$line = trim($line);
 				if ($line[0] == '#') continue;
 				if (! strpos($line, '=')) continue;
 				list( $key, $value ) = explode('=', $line);
-				$value = trim($value, "'");
-				$ret[$key] = $value;
+				if ("'" == $value[0])
+					list ( $value ) = explode("'", substr($value, 1));
+				else
+					list ( $value ) = explode(' ', $value);
+				$value = trim($value);
+				$kvarray[$key] = $value;
 			}
 		}
-		return $ret;
 	}
 
-	function getip(string $type)
+	function GetCFGValue(string $key, array &$cfgarray, array &$defaultarray)
+	{
+		if (array_key_exists($key, $cfgarray))
+			return $cfgarray[$key];
+		if ('module_' == substr($key, 0, 7)) {
+			$mod = substr($key, 0, 8);
+			if (array_key_exists($mod, $cfgarray)) {
+				$key = $cfgarray[$mod].substr($key, 8);
+				if (array_key_exists($key, $defaultarray))
+					return $defaultarray[$key];
+			}
+		} else {
+			if (array_key_exists($key.'_d', $defaultarray))
+				return $defaultarray[$key.'_d'];
+		}
+		return '';
+	}
+
+	function GetIP(string $type)
 	{
 		if ('internal' == $type) {
 			$iplist = explode(' ', `hostname -I`);
@@ -40,7 +61,7 @@
 		return $ip;
 	}
 
-	function getstatus(string $mod, array &$kv)
+	function GetStatus(string $mod, array &$kv)
 	{
 		$mod = strtoupper(substr($mod, 0, 1));
 		if (array_key_exists('file_status', $kv))
@@ -56,10 +77,54 @@
 		}
 		return explode(',', ',,,,,');
 	}
+	function SecToString(int $secs) {
+		$days = $secs / 86400;
+		if ($days >= 1.0)
+			return sprintf("%0.2f days", $days);
+		$hrs = intdiv($secs, 3600);
+		$sec %= 3600;
+		$min = intdiv($sec, 3600);
+		$sec %= 60;
+		if ($hrs > 9)
+			return sprintf("%d hr %2d min %2d sec", $hrs, $min, $sec);
+		if ($hrs)
+			return sprintf("%2d min $2 sec", $min, $sec);
+		if ($min > 9)
+			return sprintf("%d min %2d sec", $min, $sec);
+		if ($sec > 9)
+			return sprintf("%d sec", $sec);
+		return sprintf("%2d sec", $sec);
+	}
 
-	$cfg = parse("/usr/local/etc/qn.cfg");
+	function LastHeardPage()
+	{
+		echo 'Last Heard:<br><code>', "\n";
+		$rstr = 'MyCall  Sfx URCall  Module  Gateway Time<br>';
+		echo str_replace(' ', '&nbsp;', $rstr), "\n";
+		echo '</code><br>', "\n";
+		$dbname = GetCFGValue('dashboard_sql_filename');
+		$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
+		$ss = 'SELECT mycall,sfx,urcall,module,gateway,strftime("%s","now")-lastime FROM LHEARD ORDER BY strftime("%s","now")-lastime LIMIT '.GetCFGValue('dashboard_lastheard_count', $cfg, $defaults);
+		if ($stmnt = $db->prepare()) {
+			if ($result = $stmnt->execute()) {
+				while ($row = $result->FetchArray(SQLITE3_NUM)) {
+					$rstr = $row[0].'/'.$row[1].' '.$row[2].' '.$row[3].' '.$row[4].'  '.SecToStrstring($row[4]).'<br>';
+					echo str_replace(' ', '&nbsp;', $rstr), "\n";
+				}
+				$result->finalize();
+			}
+			$stmnt->close();
+		}
+		$db->Close();
+		echo '</code><br>', "\n";
+	}
+
+	$cfg = array();
+	$defaults = array();
+	ParseKVFile($cfgdir.'/qn.cfg', $cfg);
+	ParseKVFile($cfgdir.'/defaults', $defaults);
 ?>
-<h2>QnetGateway <?php echo $cfg['ircddb_login']; ?> Dashboard</h2>
+<h2>QnetGateway <?php echo GetCFGValue('ircddb_login', $cfg, $defaults); ?> Dashboard</h2>
 <?php
 if (`ps -aux | grep -e qn -e MMDVMHost | wc -l` > 2) {
 	echo 'Processes:<br><code>', "\n";
@@ -70,11 +135,14 @@ if (`ps -aux | grep -e qn -e MMDVMHost | wc -l` > 2) {
 	}
 	echo '</code>', "\n";
 }
+
+if ('true' == GetCFGValue('dashboard', $cfg, $defaults))
+	LastHeardPage();
 ?>
 IP Addresses:<br>
 <table cellpadding='1' border='1' style='font-family: monospace'>
 <tr><td style="text-align:center">Internal</td><td style="text-align:center">IPV4</td><td style="text-align:center">IPV6</td></tr>
-<tr><td><?php echo getip('internal');?></td><td><?php echo getip('ipv4');?></td><td><?php echo getip('ipv6');?></td></tr>
+<tr><td><?php echo GetIP('internal');?></td><td><?php echo GetIP('ipv4');?></td><td><?php echo GetIP('ipv6');?></td></tr>
 </table><br>
 Modules:<br>
 <table cellpadding='1' border='1' style='font-family: monospace'>
@@ -89,7 +157,7 @@ foreach (array('a', 'b', 'c') as $mod) {
 			$freq = $cfg[$module.'_tx_frequency'];
 		else if (array_key_exists($module.'_frequency', $cfg))
 			$freq = $cfg[$module.'_frequency'];
-		$stat = getstatus($mod, $cfg);
+		$stat = GetStatus($mod, $cfg);
 		if (8==strlen($stat[1]) && 1==strlen($stat[2]))
 			$linkstatus = substr($stat[1], 0, 7).$stat[2];
 		else
