@@ -147,7 +147,7 @@ if ('true' == GetCFGValue('dash_show_lh')) {
 	echo 'Last Heard:<br><code>', "\n";
 	$rstr = 'MyCall/Sfx    URCall   Module   Gateway  Last Time<br>';
 	echo str_replace(' ', '&nbsp;', $rstr), "\n";
-	$dbname = GetCFGValue('dash_sql_filename');
+	$dbname = $cfgdir.'/'.GetCFGValue('dash_sql_filename');
 	$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
 	$ss = 'SELECT mycall,sfx,urcall,module,gateway,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 6 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
 	if ($stmnt = $db->prepare($ss)) {
