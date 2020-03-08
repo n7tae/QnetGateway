@@ -308,9 +308,6 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			cfg.GetValue(path+"desc1", estr, rptr.mod[m].desc1, 0, 20);
 			cfg.GetValue(path+"desc2", estr, rptr.mod[m].desc2, 0, 20);
 			cfg.GetValue(path+"url", estr, rptr.mod[m].url, 0, 80);
-			if (rptr.mod[m].desc1.empty()) rptr.mod[m].desc2.assign(GW_VERSION);
-			if (rptr.mod[m].desc2.empty()) rptr.mod[m].desc2.assign("by N7TAE");
-			rptr.mod[m].desc = trim_copy(rptr.mod[m].desc1) + " " + trim_copy(rptr.mod[m].desc2);
 		}
 	}
 	path.append("find_route");
@@ -2164,7 +2161,7 @@ void CQnetGateway::APRSBeaconThread()
 					        rptr.mod[i].call.c_str(),  rptr.mod[i].call.c_str(),
 					        lat_s,  (rptr.mod[i].latitude < 0.0)  ? 'S' : 'N',
 					        lon_s,  (rptr.mod[i].longitude < 0.0) ? 'W' : 'E',
-					        (unsigned int)rptr.mod[i].range, rptr.mod[i].band.c_str(), rptr.mod[i].desc.c_str());
+					        (unsigned int)rptr.mod[i].range, rptr.mod[i].band.c_str(), GW_VERSION.c_str());
 					if (LOG_DEBUG)
 						printf("APRS Beacon =[%s]\n", snd_buf);
 					strcat(snd_buf, "\r\n");

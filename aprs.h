@@ -47,7 +47,7 @@ using SRPTR = struct aprs_info {
 		bool defined;
 		std::string band;  /* 23cm ... */
 		double frequency, offset, latitude, longitude, range, agl;
-		std::string desc1, desc2, desc, url, package_version;
+		std::string desc1, desc2, url, package_version;
 	} mod[3];
 };
 
