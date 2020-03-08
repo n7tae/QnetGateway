@@ -99,6 +99,7 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
 	/bin/cp -f defaults $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
+	/bin/cp -f index.php $(WWWDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
 	systemctl start qngateway.service
