@@ -97,7 +97,7 @@ function RptrToAprs(string $rptr)
 {
 	if (8==strlen($rptr) && 8==strlen(trim($rptr)) && strpos($rptr, ' ')) {
 		$link = strstr($rptr, ' ', true).'-'.$rptr[7];
-		return '<a*href*target="_blank"*href="https://aprs.fi/'.$link.'">'.$rptr.'</a>';
+		return '<a*target="_blank"*href="https://aprs.fi/'.$link.'">'.$rptr.'</a>';
 
 	}
 	return $rptr;
@@ -117,7 +117,7 @@ function MyAndSfxToQrz(string $my, string $sfx)
 		if (strlen($sfx))
 			$my .= '/'.$sfx;
 		$len = strlen($my);
-		$my = '<a*href*target="_blank"*href="https://www.qrz.com/db/'.$link.'">'.$my.'</a>';
+		$my = '<a*target="_blank"*href="https://www.qrz.com/db/'.$link.'">'.$my.'</a>';
 		while ($len < 13) {
 			$my .= ' ';
 			$len += 1;
