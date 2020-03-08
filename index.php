@@ -1,10 +1,4 @@
 <!DOCTYPE html>
-<html>
-<head>
-<title>QnetGateway Dashboard</title>
-<meta http-equiv="refresh" content="20">
-</head>
-<body>
 <?php
 $cfg = array();
 $defaults = array();
@@ -120,6 +114,12 @@ ParseKVFile($cfgdir.'/qn.cfg', $cfg);
 ParseKVFile($cfgdir.'/defaults', $defaults);
 ?>
 
+<html>
+<head>
+<title>QnetGateway Dashboard</title>
+<meta http-equiv="refresh" content="<?php echo GetCFGValue('dash_refresh)')?>">
+</head>
+<body>
 <h2>QnetGateway <?php echo GetCFGValue('ircddb_login'); ?> Dashboard</h2>
 
 <?php

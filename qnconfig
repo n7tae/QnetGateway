@@ -134,6 +134,47 @@ LinkMenu () {
 	done
 }
 
+DashboardMenu () {
+	key=''
+	while [[ "$key" != q* ]]; do
+		clear
+		echo
+		echo "              Dashboard Menu"
+		echo
+		if [ -n "$em" ]; then
+			echo -n "n  : Name of the database file        = "; EvaluateVar dash_sql_filename{,_d}
+		fi
+		echo -n "r  : Refresh time (sec) for page      = "; EvaluateVar dash_refresh{,_d}
+		echo -n "c  : Max number of last heard entries = "; EvaluateVar dash_lastheard_count{,_d}
+		echo -n "p  : Show the Processes               = "; EvaluateVar dash_show_ps{,_d}
+		echo -n "l  : Show the Last Heard              = "; EvaluateVar dash_show_lh{,_d}
+		echo -n "i  : Show the IP Addresses            = "; EvaluateVar dash_show_ip{,_d}
+		echo -n "m  : Show the Modules(s)              = "; EvaluateVar dash_show_mo{,_d}
+		echo -n "s  : Show the Send URCall             = "; EvaluateVar dash_show_ur{,_d}
+		EndMenu
+
+		if   [[ "$key" == n* ]]; then dash_sql_filename="$value"
+		elif [[ "$key" == r* ]]; then dash_refresh="$value"
+		elif [[ "$key" == c* ]]; then dash_lastheard_count="$value"
+		elif [[ "$key" == p* ]]; then SetBooleanValue dash_show_ps "$value"
+		elif [[ "$key" == l* ]]; then SetBooleanValue dash_show_lh "$value"
+		elif [[ "$key" == i* ]]; then SetBooleanValue dash_show_ip "$value"
+		elif [[ "$key" == m* ]]; then SetBooleanValue dash_show_mo "$value"
+		elif [[ "$key" == s* ]]; then SetBooleanValue dash_show_ur "$value"
+		elif [[ "$key" == u* ]]; then
+			if   [[ "$value" == n* ]]; then unset dash_sql_filename
+			elif [[ "$value" == r* ]]; then unset dash_refresh
+			elif [[ "$value" == c* ]]; then unset dash_lastheard_count
+			elif [[ "$value" == p* ]]; then unset dash_show_ps
+			elif [[ "$value" == l* ]]; then unset dash_show_lh
+			elif [[ "$value" == i* ]]; then unset dash_show_ip
+			elif [[ "$value" == m* ]]; then unset dash_show_mo
+			elif [[ "$value" == s* ]]; then unset dash_show_ur
+			fi
+		fi
+	done
+}
+
 FileMenu () {
 	key=''
 	while [[ "$key" != q* ]]; do
@@ -652,6 +693,15 @@ WriteCFGFile () {
 	[ -z "${timing_timeout_local_rptr+x}" ] || echo "timing_timeout_local_rptr=${timing_timeout_local_rptr}" >> $outFile
 	[ -z "${timing_play_wait+x}"          ] || echo "timing_play_wait=${timing_play_wait}"                   >> $outFile
 	[ -z "${timing_play_delay+x}"         ] || echo "timing_play_delay=${timing_play_delay}"                 >> $outFile
+	# dash_ section
+	[ -z "${dash_sql_filename+x}"    ] || echo "dash_sql_filename='${dash_sql_filename}'"     >> $outFile
+	[ -z "${dash_refresh+x}"         ] || echo "dash_refresh=${dash_refresh}"                 >> $outFile
+	[ -z "${dash_lastheard_count+x}" ] || echo "dash_lastheard_count=${dash_lastheard_count}" >> $outFile
+	[ -z "${dash_show_ip+x}"         ] || echo "dash_show_ip=${dash_show_ip}"                 >> $outFile
+	[ -z "${dash_show_lh+x}"         ] || echo "dash_show_lh=${dash_show_lh}"                 >> $outFile
+	[ -z "${dash_show_ip+x}"         ] || echo "dash_show_ip=${dash_show_ip}"                 >> $outFile
+	[ -z "${dash_show_mo+x}"         ] || echo "dash_show_mo=${dash_show_mo}"                 >> $outFile
+	[ -z "${dash_show_ur+x}"         ] || echo "dash_show_ur=${dash_show_ur}"                 >> $outFile
 	clear
 	cat $outFile
 	echo
@@ -683,7 +733,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#190424"
+	echo "           QnConfig Main Menu V#200307"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
@@ -691,6 +741,7 @@ do
 	echo    "i : IRCDDB Menu             - login = '${ircddb_login}'"
 	echo    "g : Gateway/APRS Menu       - location info and route cache"
 	echo    "l : Link/D-Plus Menu        - linking access"
+	echo    "D : Dashboard Menu          - Dashboard customization"
 	if [ -n "$em" ]; then
 		echo "d : Debugging/Files/Timings - miscellaneous parameters"
 	else
@@ -706,6 +757,7 @@ do
 	if   [[ "$ans" == a* ]]; then ModuleMenu a
 	elif [[ "$ans" == b* ]]; then ModuleMenu b
 	elif [[ "$ans" == c* ]]; then ModuleMenu c
+	elif [[ "$ans" == D* ]]; then DashboardMenu
 	elif [[ "$ans" == i* ]]; then IrcddbMenu
 	elif [[ "$ans" == g* ]]; then GateMenu
 	elif [[ "$ans" == l* ]]; then LinkMenu
