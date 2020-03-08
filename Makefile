@@ -96,17 +96,17 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	######### QnetGateway #########
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
-	/bin/ln -s $(shell pwd)/qn.cfg $(CFGDIR)
+	/bin/ln -f -s $(shell pwd)/qn.cfg $(CFGDIR)
+	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
 	/bin/cp -f defaults $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
-	/bin/cp -f index.php $(WWWDIR)
 	systemctl enable qngateway.service
 	systemctl daemon-reload
 	systemctl start qngateway.service
 	######### QnetLink #########
 	/bin/cp -f qnlink $(BINDIR)
 	/bin/cp -f announce/*.dat $(CFGDIR)
-	/bin/ln -s $(shell pwd)/gwys.txt $(CFGDIR)
+	/bin/ln -f -s $(shell pwd)/gwys.txt $(CFGDIR)
 	/bin/cp -f exec_?.sh $(BINDIR)
 	/bin/cp -f system/qnlink.service $(SYSDIR)
 	systemctl enable qnlink.service
@@ -124,7 +124,7 @@ installrelay : qnrelay
 installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
 	######### MMDVMHost #########
 	/bin/ln -f $(MMPATH)/MMDVMHost $(BINDIR)/MMDVMHost$(MODULE)
-	/bin/ln -s $(shell pwd)/$(MMPATH)/MMDVM$(MODULE).qn $(CFGDIR)
+	/bin/ln -f -s $(shell pwd)/$(MMPATH)/MMDVM$(MODULE).qn $(CFGDIR)
 	sed -e "s/XXX/MMDVMHost$(MODULE)/" -e "s/YYY/MMDVM$(MODULE)/" system/mmdvm.service > $(SYSDIR)/mmdvm$(MODULE).service
 	/bin/cp -f system/mmdvm.timer $(SYSDIR)/mmdvm$(MODULE).timer
 	systemctl enable mmdvm$(MODULE).timer
@@ -164,7 +164,7 @@ installdvrptr : qndvrptr
 	systemctl start qndvrptr$(MODULE).service
 
 installdtmf : qndtmf
-	/bin/ln -s $(shell pwd)/qndtmf $(BINDIR)
+	/bin/ln -f -s $(shell pwd)/qndtmf $(BINDIR)
 	/bin/cp -f system/qndtmf.service $(SYSDIR)
 	systemctl enable qndtmf.service
 	systemctl daemon-reload
@@ -173,7 +173,7 @@ installdtmf : qndtmf
 installdash : index.php
 	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
 	mkdir -p $(WWWDIR)
-	/bin/cp -f index.php $(WWWDIR)
+	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
 	/bin/cp -f system/qndash.service $(SYSDIR)
 	systemctl enable qndash.service
 	systemctl daemon-reload
