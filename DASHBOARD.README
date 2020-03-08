@@ -1,18 +1,9 @@
                     ##### DASHBOARD.README #####
 
 A web-based dashboard can be enabled. You can supply your own index.php file,
-or a functional dashboard is available. If no index.php file is in the build
-directroy when try to install the dashboard, the installation will fail. To
-get started, copy the "example.php" file to "index.php":
+or a functional dashboard is available.
 
-cp example.php index.php
-
-The example.php file is a good place to start if you want to create your own
-by adding features to your dashboard. This dashboard include a <form> with
-a button to send any URCALL to your gateway.
-
-To install the dashboard system, run the following command after you have
-created an index.php file:
+To install the dashboard system, run the following command:
 
 sudo make installdash
 
@@ -21,20 +12,15 @@ for the server. To uninstall, run the following:
 
 sudo make uninstalldash
 
-These installed packaged are not uninstalled by the uninstall script. It will
-only shut down the php web server.
+These installed "necessary packages" are not uninstalled by the uninstall script.
+It will only shut down the php web server.
 
-Likewise, the index.php file will not be erased in the build directory when you
-uninstall the dashboard, so if you've done a "git pull" and have noticed that
-there was a new example.php file downloaded, you may want to copy the newer
-example.php file to index.php.
-
-One the dashboard server is running, simply point a browser at the Hotspot's IP
+Once the dashboard server is running, simply point a browser at the Hotspot's IP
 address or at http://<hostname>.local/ (on the same subnet).
 
 Please note that this is a very simple server and is not recommended for the
 world wide web. If you want a robust dashboard accessible from the web, you
-will want to use a robust server, like apache, and a different index.php file.
+will want to use a hardened server, like apache, and a different index.php file.
 
 Please note that if you are tryping in a URCALL when the webpage is refreshing,
 the entry field will loose focus and you'll have to try again.

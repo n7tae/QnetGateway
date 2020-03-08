@@ -202,7 +202,6 @@ if ('true' == GetCFGValue('dash_show_ur')) {
 	echo '</form>', "\n";
 	if (isset($_POST['sendurcall'])) {
 		$furcall = $_POST['furcall'];
-
 		if (empty($_POST['fmodule'])) {
 			if (1==count($configured)) {
 				$fmodule = $configured[0];
