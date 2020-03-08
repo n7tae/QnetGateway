@@ -221,6 +221,6 @@ if ('true' == GetCFGValue('dash_show_ur')) {
 }
 ?>
 <br>
-<p align="right">QnetGateway Dashboard Version 2.0 Copyright (&copy;) by Thomas A. Early, N7TAE.</p>
+<p align="right">QnetGateway Dashboard Version 2.0 Copyright &copy; by Thomas A. Early, N7TAE.</p>
 </body>
 </html>

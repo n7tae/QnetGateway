@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -39,7 +39,11 @@
 #include "QnetConfigure.h"
 #include "UnixDgramSocket.h"
 
-#define VERSION "v2.2"
+#define VERSION "v2.3"
+
+#ifndef CFG_DIR
+#define CFG_DIR "/usr/local/etc"
+#endif
 
 int module;
 time_t tNow = 0;
@@ -185,6 +189,12 @@ int main(int argc, char *argv[])
 	}
 	std::string yourcall(argv[3]);
 	ToUpper(yourcall);
+	// replace underscores with spaces
+	auto pos = yourcall.find_first_of('_');
+	while (yourcall.npos != pos) {
+		yourcall[pos] = ' ';
+		pos = yourcall.find_first_of('_');
+	}
 
 	unsigned long int delay = PLAY_DELAY * 1000;
 	sleep(PLAY_WAIT);
