@@ -699,7 +699,7 @@ WriteCFGFile () {
 	[ -z "${dash_lastheard_count+x}" ] || echo "dash_lastheard_count=${dash_lastheard_count}" >> $outFile
 	[ -z "${dash_show_ip+x}"         ] || echo "dash_show_ip=${dash_show_ip}"                 >> $outFile
 	[ -z "${dash_show_lh+x}"         ] || echo "dash_show_lh=${dash_show_lh}"                 >> $outFile
-	[ -z "${dash_show_ip+x}"         ] || echo "dash_show_ip=${dash_show_ip}"                 >> $outFile
+	[ -z "${dash_show_ps+x}"         ] || echo "dash_show_ip=${dash_show_ps}"                 >> $outFile
 	[ -z "${dash_show_mo+x}"         ] || echo "dash_show_mo=${dash_show_mo}"                 >> $outFile
 	[ -z "${dash_show_ur+x}"         ] || echo "dash_show_ur=${dash_show_ur}"                 >> $outFile
 	clear
