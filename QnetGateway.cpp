@@ -50,6 +50,10 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
+#ifndef CFG_DIR
+#define CFG_DIR "/usr/local/etc"
+#endif
+
 const std::string GW_VERSION("QnetGateway-9.3");
 
 extern void dstar_dv_init();
@@ -351,7 +355,7 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 
 	// dashboard
 	path.assign("dash_");
-	cfg.GetValue(path+"enable_lastheard", estr, DASH_SHOW_LH);
+	cfg.GetValue(path+"show_lh", estr, DASH_SHOW_LH);
 	cfg.GetValue(path+"sql_filename", estr, DASH_SQL_NAME, 1, 32);
 
 	return false;
@@ -2461,8 +2465,13 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 
 	// open database
-	if (DASH_SHOW_LH && qnDB.Open(DASH_SQL_NAME.c_str()))
-		return true;
+	if (DASH_SHOW_LH) {
+		std::string dbname(CFG_DIR);
+		dbname.append("/");
+		dbname.append(DASH_SQL_NAME);
+		if (qnDB.Open(dbname.c_str()))
+			return true;
+	}
 
 	playNotInCache = false;
 

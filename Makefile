@@ -261,3 +261,4 @@ uninstalldash :
 	/bin/rm -f $(SYSDIR)/qndash.service
 	systemctl daemon-reload
 	/bin/rm -f $(WWWDIR)/index.php
+	/bin/rm -f $(CFGDIR)/qn.db
