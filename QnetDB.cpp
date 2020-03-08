@@ -37,8 +37,6 @@ bool CQnetDB::Open(const char *name)
 				"mycall		TEXT PRIMARY KEY, "
 				"sfx		TEXT, "
 				"urcall		TEXT, "
-				"module		TEXT, "
-				"gateway	TEXT, "
 				"lasttime	INT NOT NULL"
 			") WITHOUT ROWID;";
 
@@ -51,7 +49,7 @@ bool CQnetDB::Open(const char *name)
 	return false;
 }
 
-bool CQnetDB::Update(const char *mycall, const char *sfx, const char *urcall, const char *module, const char *gateway)
+bool CQnetDB::Update(const char *mycall, const char *sfx, const char *urcall)
 {
 	if (NULL == db)
 		return false;
@@ -61,10 +59,6 @@ bool CQnetDB::Update(const char *mycall, const char *sfx, const char *urcall, co
 	sql.append(sfx);
 	sql.append("','");
 	sql.append(urcall);
-	sql.append("','");
-	sql.append(module);
-	sql.append("','");
-	sql.append(gateway);
 	sql.append("',");
 	sql.append("strftime('%s','now'));");
 

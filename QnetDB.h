@@ -25,7 +25,7 @@ public:
 	CQnetDB() : db(NULL) {}
 	~CQnetDB() { if (db) sqlite3_close(db); }
 	bool Open(const char *name);
-	bool Update(const char *mycall, const char *sfx, const char *urcall, const char *module, const char *gateway);
+	bool Update(const char *mycall, const char *sfx, const char *urcall);
 
 private:
 	sqlite3 *db;

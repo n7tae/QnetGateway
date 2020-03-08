@@ -1124,15 +1124,13 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 							printf("UnixSock=%s\n", link2gate.c_str());
 					}
 
-					if (DASH_SHOW_LH && memcmp(g2buf.hdr.sfx, "RPTR", 4)) {
-						std::string  mycall((const char *)g2buf.hdr.mycall, 8);
+					std::string  mycall((const char *)g2buf.hdr.mycall, 8);
+					if (DASH_SHOW_LH && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(mycall.c_str(), preg)) {
 						std::string     sfx((const char *)g2buf.hdr.sfx,    4);
 						std::string  urcall((const char *)g2buf.hdr.urcall, 8);
-						std::string  module((const char *)g2buf.hdr.rpt1,   8);
-						std::string gateway((const char *)g2buf.hdr.rpt2,   8);
 						rtrim(mycall);
 						rtrim(sfx);
-						qnDB.Update(mycall.c_str(), sfx.c_str(), urcall.c_str(), module.c_str(), gateway.c_str());
+						qnDB.Update(mycall.c_str(), sfx.c_str(), urcall.c_str());
 					}
 
 					Gate2Modem[i].Write(g2buf.title, 56);

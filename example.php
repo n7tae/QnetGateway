@@ -93,16 +93,6 @@ function SecToString(int $sec) {
 	return sprintf("%2d sec", $sec);
 }
 
-function RptrToAprs(string $rptr)
-{
-	if (8==strlen($rptr) && 8==strlen(trim($rptr)) && strpos($rptr, ' ')) {
-		$link = strstr($rptr, ' ', true).'-'.$rptr[7];
-		return '<a*target="_blank"*href="https://aprs.fi/'.$link.'">'.$rptr.'</a>';
-
-	}
-	return $rptr;
-}
-
 function MyAndSfxToQrz(string $my, string $sfx)
 {
 	$my = trim($my);
@@ -145,15 +135,16 @@ if ('true' == GetCFGValue('dash_show_ps') && `ps -aux | grep -e qn -e MMDVMHost 
 
 if ('true' == GetCFGValue('dash_show_lh')) {
 	echo 'Last Heard:<br><code>', "\n";
-	$rstr = 'MyCall/Sfx    URCall   Module   Gateway  Last Time<br>';
+	$rstr = 'MyCall/Sfx    Source   Last Time<br>';
 	echo str_replace(' ', '&nbsp;', $rstr), "\n";
 	$dbname = $cfgdir.'/'.GetCFGValue('dash_sql_filename');
 	$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
-	$ss = 'SELECT mycall,sfx,urcall,module,gateway,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 6 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
+	$ss = 'SELECT mycall,sfx,urcall,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 4 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
 	if ($stmnt = $db->prepare($ss)) {
 		if ($result = $stmnt->execute()) {
 			while ($row = $result->FetchArray(SQLITE3_NUM)) {
-				$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].' '.RptrToAprs($row[3]).' '.$row[4].'  '.SecToString(intval($row[5])).'<br>';
+				$source = ("CQCQCQ  " == $row[2]) ? "Linking" : "Routing";
+				$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$source.'  '.SecToString(intval($row[3])).'<br>';
 				echo str_replace('*', ' ', str_replace(' ', '&nbsp;', $rstr)), "\n";
 			}
 			$result->finalize();
