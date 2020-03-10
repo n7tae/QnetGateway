@@ -481,7 +481,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 				if (!user.empty()) {
 					if (!rptr.empty() && !gateway.empty() && !ipaddr.empty()) {
 						if (LOG_IRC)
-							printf("C-u:%s,%s,%s,%s\n", user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
+							printf("U%d u[%s] r[%s] g[%s] a[%s]\n", i, user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 
 						pthread_mutex_lock(&irc_data_mutex[i]);
 
@@ -501,7 +501,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 				if (!rptr.empty()) {
 					if (!gateway.empty() && !ipaddr.empty()) {
 						if (LOG_IRC)
-							printf("C-r:%s,%s,%s\n", rptr.c_str(), gateway.c_str(), ipaddr.c_str());
+							printf("R%d r[%s] g[%s] a[%s] p[%d]\n", i, rptr.c_str(), gateway.c_str(), ipaddr.c_str(), int(proto));
 
 						pthread_mutex_lock(&irc_data_mutex[i]);
 
@@ -519,7 +519,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 				ii[i]->receiveGateway(gateway, ipaddr, proto);
 				if (!gateway.empty() && !ipaddr.empty()) {
 					if (LOG_IRC)
-						printf("C-g:%s,%s\n", gateway.c_str(),ipaddr.c_str());
+						printf("G%d g[%s] a[%s] p[%d]\n", i, gateway.c_str(),ipaddr.c_str(), int(proto));
 
 					pthread_mutex_lock(&irc_data_mutex[i]);
 
