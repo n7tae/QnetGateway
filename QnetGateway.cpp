@@ -478,10 +478,10 @@ void CQnetGateway::GetIRCDataThread(const int i)
 			switch (type) {
 			case IDRT_USER:
 				ii[i]->receiveUser(user, rptr, gateway, ipaddr);
+				if (LOG_IRC)
+					printf("U%d u[%s] r[%s] g[%s] a[%s]\n", i, user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 				if (!user.empty()) {
 					if (!rptr.empty() && !gateway.empty() && !ipaddr.empty()) {
-						if (LOG_IRC)
-							printf("U%d u[%s] r[%s] g[%s] a[%s]\n", i, user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
 
 						pthread_mutex_lock(&irc_data_mutex[i]);
 
@@ -498,10 +498,10 @@ void CQnetGateway::GetIRCDataThread(const int i)
 				break;
 			case IDRT_REPEATER:
 				ii[i]->receiveRepeater(rptr, gateway, ipaddr, proto);
+				if (LOG_IRC)
+					printf("R%d r[%s] g[%s] a[%s] p[%d]\n", i,rptr.c_str(), gateway.c_str(), ipaddr.c_str(), int(proto));
 				if (!rptr.empty()) {
 					if (!gateway.empty() && !ipaddr.empty()) {
-						if (LOG_IRC)
-							printf("R%d r[%s] g[%s] a[%s] p[%d]\n", i, rptr.c_str(), gateway.c_str(), ipaddr.c_str(), int(proto));
 
 						pthread_mutex_lock(&irc_data_mutex[i]);
 
@@ -517,9 +517,9 @@ void CQnetGateway::GetIRCDataThread(const int i)
 				break;
 			case IDRT_GATEWAY:
 				ii[i]->receiveGateway(gateway, ipaddr, proto);
+				if (LOG_IRC)
+					printf("G%d g[%s] a[%s] p[%d]\n", i, gateway.c_str(),ipaddr.c_str(), int(proto));
 				if (!gateway.empty() && !ipaddr.empty()) {
-					if (LOG_IRC)
-						printf("G%d g[%s] a[%s] p[%d]\n", i, gateway.c_str(),ipaddr.c_str(), int(proto));
 
 					pthread_mutex_lock(&irc_data_mutex[i]);
 
