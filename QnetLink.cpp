@@ -1,7 +1,7 @@
 
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *   Copyright (C) 2015,2018,2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2015,2008-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include <signal.h>
 #include <errno.h>
 #include <regex.h>
 
@@ -47,12 +46,13 @@
 #include <utility>
 #include <thread>
 #include <chrono>
+#include <csignal>
 
 #include "DPlusAuthenticator.h"
 #include "QnetConfigure.h"
 #include "QnetLink.h"
 
-#define LINK_VERSION "QnetLink-7.2"
+#define LINK_VERSION "QnetLink-7.3"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -182,19 +182,10 @@ void CQnetLink::RptrAckThread(char *arg)
 	char RADIO_ID[21];
 	memcpy(RADIO_ID, arg + 1, 21);
 	unsigned char silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x16, 0x29, 0xf5 };
-	struct sigaction act;
 
-	act.sa_handler = sigCatch;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return;
-	}
+	std::signal(SIGTERM, sigCatch);
+	std::signal(SIGINT,  sigCatch);
+	std::signal(SIGHUP,  sigCatch);
 
 	short int streamid_raw = Random.NewStreamID();
 
@@ -926,12 +917,9 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 }
 
 /* signal catching function */
-void CQnetLink::sigCatch(int signum)
+void CQnetLink::sigCatch(int)
 {
-	/* do NOT do any serious work here */
-	if ((signum == SIGTERM) || (signum == SIGINT))
-		keep_running = false;
-	return;
+	keep_running = false;
 }
 
 void CQnetLink::Process()
@@ -3242,18 +3230,9 @@ void CQnetLink::PlayAudioNotifyThread(char *msg)
 
 void CQnetLink::AudioNotifyThread(SECHO &edata)
 {
-	struct sigaction act;
-	act.sa_handler = sigCatch;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		fprintf(stderr, "sigaction-TERM failed, error=%d\n", errno);
-		return;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		fprintf(stderr, "sigaction-INT failed, error=%d\n", errno);
-		return;
-	}
+	std::signal(SIGTERM, sigCatch);
+	std::signal(SIGINT,  sigCatch);
+	std::signal(SIGHUP,  sigCatch);
 
 	char mod = edata.header.hdr.rpt1[7];
 
@@ -3409,8 +3388,6 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 
 bool CQnetLink::Init(const char *cfgfile)
 {
-	struct sigaction act;
-
 	tzset();
 	setvbuf(stdout, (char *)NULL, _IOLBF, 0);
 
@@ -3421,17 +3398,9 @@ bool CQnetLink::Init(const char *cfgfile)
 		return true;
 	}
 
-	act.sa_handler = sigCatch;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return true;
-	}
+	std::signal(SIGTERM, sigCatch);
+	std::signal(SIGINT,  sigCatch);
+	std::signal(SIGHUP,  sigCatch);
 
 	for (int i=0; i<3; i++) {
 		notify_msg[i][0] = '\0';

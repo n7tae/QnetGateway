@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2019,2020 by Thomas A. Early N7TAE
  *
  *   CQnetModem is inspired by {Modem,MMDVMHost}.cpp in
  *   Jonathan Naylor's brilliant MMDVMHost that is...
@@ -44,7 +44,7 @@
 #include "QnetModem.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-0.1.3"
+#define MODEM_VERSION "QnetModem-1.0.0"
 #define MAX_RESPONSES 30
 
 std::atomic<bool> CQnetModem::keep_running(true);
@@ -218,21 +218,9 @@ bool CQnetModem::Initialize(const char *cfgfile)
 	if (ReadConfig(cfgfile))
 		return true;
 
-	struct sigaction act;
-	act.sa_handler = &CQnetModem::SignalCatch;
-	sigemptyset(&act.sa_mask);
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGHUP, &act, 0) != 0) {
-		printf("sigaction-HUP failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return true;
-	}
+	std::signal(SIGTERM, SignalCatch);
+	std::signal(SIGINT,  SignalCatch);
+	std::signal(SIGHUP,  SignalCatch);
 
 	Modem2Gate.SetUp(modem2gate.c_str());
 	if (Gate2Modem.Open(gate2modem.c_str()))
@@ -850,11 +838,9 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	return false;
 }
 
-void CQnetModem::SignalCatch(const int signum)
+void CQnetModem::SignalCatch(const int)
 {
-	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
-		keep_running = false;
-	exit(0);
+	keep_running = false;
 }
 
 int main(int argc, const char **argv)

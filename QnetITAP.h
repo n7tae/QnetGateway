@@ -106,12 +106,12 @@ public:
 	void Run(const char *cfgfile);
 
 	// data
-	static std::atomic<bool> keep_running;
 
 private:
 	int assigned_module;
 	// functions
 	bool Initialize(const char *cfgfile);
+	static std::atomic<bool> keep_running;
 	static void SignalCatch(const int signum);
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessITAP(const unsigned char *raw);

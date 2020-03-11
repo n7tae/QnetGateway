@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include <signal.h>
 #include <errno.h>
 #include <math.h>
 #include <sys/time.h>
@@ -43,6 +42,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <csignal>
 
 #include "IRCDDB.h"
 #include "IRCutils.h"
@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-9.3");
+const std::string GW_VERSION("QnetGateway-9.4");
 
 extern void dstar_dv_init();
 extern int dstar_dv_decode(const unsigned char *d, int data[3]);
@@ -62,13 +62,9 @@ extern int dstar_dv_decode(const unsigned char *d, int data[3]);
 static std::atomic<bool> keep_running(true);
 
 /* signal catching function */
-static void sigCatch(int signum)
+static void sigCatch(int)
 {
-	/* do NOT do any serious work here */
-	if ((signum == SIGTERM) || (signum == SIGINT))
-		keep_running = false;
-
-	return;
+	keep_running = false;
 }
 
 int CQnetGateway::FindIndex(const int i) const
@@ -388,30 +384,14 @@ int CQnetGateway::open_port(const SPORTIP *pip, int family)
 /* receive data from the irc server and save it */
 void CQnetGateway::GetIRCDataThread(const int i)
 {
-	std::string user, rptr, gateway, ipaddr;
+	std::string user, rptr, gateway, ipaddr, utime;
 	DSTAR_PROTOCOL proto;
 	IRCDDB_RESPONSE_TYPE type;
-	struct sigaction act;
 	short last_status = 0;
 
-	act.sa_handler = sigCatch;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("GetIRCDataThread: sigaction-TERM failed, error=%d\n", errno);
-		keep_running = false;
-		return;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("GetIRCDataThread: sigaction-INT failed, error=%d\n", errno);
-		keep_running = false;
-		return;
-	}
-	if (sigaction(SIGPIPE, &act, 0) != 0) {
-		printf("GetIRCDataThread: sigaction-PIPE failed, error=%d\n", errno);
-		keep_running = false;
-		return;
-	}
+	std::signal(SIGTERM, sigCatch);
+	std::signal(SIGINT,  sigCatch);
+	std::signal(SIGHUP,  sigCatch);
 
 	short threshold = 0;
 	bool not_announced[3];
@@ -477,9 +457,9 @@ void CQnetGateway::GetIRCDataThread(const int i)
 		while (((type = ii[i]->getMessageType()) != IDRT_NONE) && keep_running) {
 			switch (type) {
 			case IDRT_USER:
-				ii[i]->receiveUser(user, rptr, gateway, ipaddr);
+				ii[i]->receiveUser(user, rptr, gateway, ipaddr, utime);
 				if (LOG_IRC)
-					printf("U%d u[%s] r[%s] g[%s] a[%s]\n", i, user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str());
+					printf("U%d u[%s] r[%s] g[%s] a[%s] t[%s]\n", i, user.c_str(), rptr.c_str(), gateway.c_str(), ipaddr.c_str(), utime.c_str());
 				if (!user.empty()) {
 					if (!rptr.empty() && !gateway.empty() && !ipaddr.empty()) {
 
@@ -2081,8 +2061,6 @@ void CQnetGateway::APRSBeaconThread()
 	char rcv_buf[512];
 	time_t tnow = 0;
 
-	struct sigaction act;
-
 	/*
 	   Every 20 seconds, the remote APRS host sends a KEEPALIVE packet-comment
 	   on the TCP/APRS port.
@@ -2094,21 +2072,9 @@ void CQnetGateway::APRSBeaconThread()
 	*/
 	short THRESHOLD_COUNTDOWN = 15;
 
-	act.sa_handler = sigCatch;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("APRSBeaconThread: sigaction-TERM failed, error=%d\n", errno);
-		return;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("APRSBeaconThread: sigaction-INT failed, error=%d\n", errno);
-		return;
-	}
-	if (sigaction(SIGPIPE, &act, 0) != 0) {
-		printf("APRSBeaconThread: sigaction-PIPE failed, error=%d\n", errno);
-		return;
-	}
+	std::signal(SIGTERM, sigCatch);
+	std::signal(SIGINT,  sigCatch);
+	std::signal(SIGHUP,  sigCatch);
 
 	time_t last_keepalive_time;
 	time(&last_keepalive_time);
@@ -2266,22 +2232,9 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
 	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 
-	struct sigaction act;
-	act.sa_handler = sigCatch;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return;
-	}
-	if (sigaction(SIGPIPE, &act, 0) != 0) {
-		printf("sigaction-PIPE failed, error=%d\n", errno);
-		return;
-	}
+	std::signal(SIGTERM, sigCatch);
+	std::signal(SIGINT,  sigCatch);
+	std::signal(SIGHUP,  sigCatch);
 
 	printf("File to playback:[%s]\n", edata.file);
 
@@ -2421,7 +2374,6 @@ void CQnetGateway::qrgs_and_maps()
 bool CQnetGateway::Init(char *cfgfile)
 {
 	short int i;
-	struct sigaction act;
 
 	setvbuf(stdout, (char *)NULL, _IOLBF, 0);
 
@@ -2434,21 +2386,9 @@ bool CQnetGateway::Init(char *cfgfile)
 		return true;
 	}
 
-	act.sa_handler = sigCatch;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGPIPE, &act, 0) != 0) {
-		printf("sigaction-PIPE failed, error=%d\n", errno);
-		return true;
-	}
+	std::signal(SIGTERM, sigCatch);
+	std::signal(SIGINT,  sigCatch);
+	std::signal(SIGHUP,  sigCatch);
 
 	for (i = 0; i < 3; i++)
 		memset(&band_txt[0], 0, sizeof(SBANDTXT));

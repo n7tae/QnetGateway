@@ -2,7 +2,7 @@
  *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
  *
  *   CQnetITAP::GetITAPData() is based on some code that is...
- *   Copyright (C) 2011-2015,2018 by Jonathan Naylor G4KLX
+ *   Copyright (C) 2011-2015,2018,2020 by Jonathan Naylor G4KLX
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-2.1.5"
+#define ITAP_VERSION "QnetITAP-2.1.6"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -63,21 +63,9 @@ bool CQnetITAP::Initialize(const char *cfgfile)
 	if (ReadConfig(cfgfile))
 		return true;
 
-	struct sigaction act;
-	act.sa_handler = &CQnetITAP::SignalCatch;
-	sigemptyset(&act.sa_mask);
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGHUP, &act, 0) != 0) {
-		printf("sigaction-HUP failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return true;
-	}
+	std::signal(SIGTERM, CQnetITAP::SignalCatch);
+	std::signal(SIGHUP,  CQnetITAP::SignalCatch);
+	std::signal(SIGINT,  CQnetITAP::SignalCatch);
 
 	Modem2Gate.SetUp(modem2gate.c_str());
 	if (Gate2Modem.Open(gate2modem.c_str()))
@@ -631,7 +619,6 @@ void CQnetITAP::SignalCatch(const int signum)
 {
 	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
 		keep_running = false;
-	exit(0);
 }
 
 void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)

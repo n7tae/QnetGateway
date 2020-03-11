@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018,2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "QnetRelay-1.1.0"
+#define RELAY_VERSION "QnetRelay-1.1.1"
 
 std::atomic<bool> CQnetRelay::keep_running(true);
 
@@ -56,21 +56,9 @@ bool CQnetRelay::Initialize(const char *cfgfile)
 	if (ReadConfig(cfgfile))
 		return true;
 
-	struct sigaction act;
-	act.sa_handler = &CQnetRelay::SignalCatch;
-	sigemptyset(&act.sa_mask);
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGHUP, &act, 0) != 0) {
-		printf("sigaction-HUP failed, error=%d\n", errno);
-		return true;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return true;
-	}
+	std::signal(SIGTERM, SignalCatch);
+	std::signal(SIGINT,  SignalCatch);
+	std::signal(SIGHUP,  SignalCatch);
 
 	return false;
 }
@@ -403,11 +391,9 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	return false;
 }
 
-void CQnetRelay::SignalCatch(const int signum)
+void CQnetRelay::SignalCatch(const int)
 {
-	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
-		keep_running = false;
-	exit(0);
+	keep_running = false;
 }
 
 int main(int argc, const char **argv)

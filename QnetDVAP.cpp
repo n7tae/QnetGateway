@@ -1,7 +1,7 @@
 /*
- *   Copyright (C) 2010, 2011 by Scott Lawson KI4LKF
+ *   Copyright (C) 2010,2011 by Scott Lawson KI4LKF
  *
- *   Copyright (C) 2015 by Thomas A. Early N7TAE
+ *   Copyright (C) 2015,2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <sys/ioctl.h>
@@ -43,6 +42,7 @@
 #include <exception>
 #include <thread>
 #include <string>
+#include <csignal>
 
 #include "DVAPDongle.h"
 #include "QnetTypeDefs.h"
@@ -150,11 +150,9 @@ static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
 	return;
 }
 
-static void sig_catch(int signum)
+static void sig_catch(int)
 {
-	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
-		keep_running = false;
-	exit(0);
+	keep_running = false;
 }
 
 /* process configuration file */
@@ -524,23 +522,11 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	sprintf(RADIO_ID, "%20.2f", ber);
 	memcpy(RADIO_ID, "BER%", 4);
 
-	struct sigaction act;
 	unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 
-	act.sa_handler = sig_catch;
-	sigemptyset(&act.sa_mask);
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return;
-	}
-	if (sigaction(SIGHUP, &act, 0) != 0) {
-		printf("sigaction-HUP failed, error=%d\n", errno);
-		return;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return;
-	}
+	std::signal(SIGTERM, sig_catch);
+	std::signal(SIGINT,  sig_catch);
+	std::signal(SIGHUP,  sig_catch);
 
 	sleep(TIMING_PLAY_WAIT);
 
@@ -642,7 +628,6 @@ static void ReadDVAPThread()
 	SDSVT dsvt;
 	SDVAP_REGISTER dr;
 	CTimer last_RF_time;
-	struct sigaction act;
 	bool dvap_busy = false;
 	// bool ptt = false;
 	bool the_end = true;
@@ -656,23 +641,9 @@ static void ReadDVAPThread()
 	int num_dv_frames = 0;
 	int num_bit_errors = 0;
 
-	act.sa_handler = sig_catch;
-	sigemptyset(&act.sa_mask);
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		keep_running = false;
-		return;
-	}
-	if (sigaction(SIGHUP, &act, 0) != 0) {
-		printf("sigaction-HUP failed, error=%d\n", errno);
-		keep_running = false;
-		return;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		keep_running = false;
-		return;
-	}
+	std::signal(SIGTERM, sig_catch);
+	std::signal(SIGINT,  sig_catch);
+	std::signal(SIGHUP,  sig_catch);
 
 	while (keep_running) {
 
@@ -891,7 +862,6 @@ static void ReadDVAPThread()
 
 int main(int argc, const char **argv)
 {
-	struct sigaction act;
 	int rc = -1;
 	short cnt = 0;
 
@@ -964,20 +934,9 @@ int main(int argc, const char **argv)
 
 	CTimer ackpoint;
 
-	act.sa_handler = sig_catch;
-	sigemptyset(&act.sa_mask);
-	if (sigaction(SIGTERM, &act, 0) != 0) {
-		printf("sigaction-TERM failed, error=%d\n", errno);
-		return 1;
-	}
-	if (sigaction(SIGHUP, &act, 0) != 0) {
-		printf("sigaction-HUP failed, error=%d\n", errno);
-		return 1;
-	}
-	if (sigaction(SIGINT, &act, 0) != 0) {
-		printf("sigaction-INT failed, error=%d\n", errno);
-		return 1;
-	}
+	std::signal(SIGTERM, sig_catch);
+	std::signal(SIGINT,  sig_catch);
+	std::signal(SIGHUP,  sig_catch);
 
 	/* open dvp */
 	if (!dongle.Initialize(MODULE_SERIAL_NUMBER.c_str(), MODULE_FREQUENCY, MODULE_OFFSET, MODULE_POWER, MODULE_SQUELCH))
