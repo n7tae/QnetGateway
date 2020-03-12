@@ -554,25 +554,24 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, st
 		return 0;
 
 	/* at this point, the data is not in cache */
-	if (ii[i]->getConnectionState() > 5) {
-		/* request data from irc server */
+	int cstate = ii[i]->getConnectionState();
+	if (cstate < 6) {
+		return 0;
+	} else {
+		// we can try a find
 		if (RoU == 'U') {
 			printf("User [%s] not in local cache, try again\n", call.c_str());
 			/*** YRCALL=KJ4NHFBL ***/
 			if (((call.at(6) == 'A') || (call.at(6) == 'B') || (call.at(6) == 'C')) && (call.at(7) == 'L'))
 				printf("If this was a gateway link request, that is ok\n");
-
-			if (!ii[i]->findUser(call)) {
+			if (!ii[i]->findUser(call))
 				printf("findUser(%s): Network error\n", call.c_str());
-				return 0;
-			}
 		} else if (RoU == 'R') {
 			printf("Repeater [%s] not in local cache, try again\n", call.c_str());
-			if (!ii[i]->findRepeater(call)) {
+			if (!ii[i]->findRepeater(call))
 				printf("findRepeater(%s): Network error\n", call.c_str());
-				return 0;
-			}
 		}
+		return 0;
 	}
 	return i + 1;
 }
