@@ -165,7 +165,7 @@ void IRCDDBApp::rptrQTH(const std::string &rptrcall, double latitude, double lon
 	d->locationMap[rptrcall] = f;
 	d->locationMapMutex.unlock();
 
-	printf("IRCDDB RPTRQTH: %s\n", f.c_str());
+	//printf("IRCDDB RPTRQTH: %s\n", f.c_str());
 
 	std::regex urlNonValid("[^[:graph:]]+");
 
@@ -179,7 +179,7 @@ void IRCDDBApp::rptrQTH(const std::string &rptrcall, double latitude, double lon
 	d->urlMap[rptrcall] = g;
 	d->urlMapMutex.unlock();
 
-	printf("IRCDDB RPTRURL: %s\n", g.c_str());
+	//printf("IRCDDB RPTRURL: %s\n", g.c_str());
 
 	std::string sw = swVersion;
 	while (std::regex_search(sw, sm, nonValid))
@@ -190,7 +190,7 @@ void IRCDDBApp::rptrQTH(const std::string &rptrcall, double latitude, double lon
 	d->swMap[rptrcall] = h;
 	d->swMapMutex.unlock();
 
-	printf("IRCDDB RPTRSW: %s\n", h.c_str());
+	//printf("IRCDDB RPTRSW: %s\n", h.c_str());
 
 	d->infoTimer = 5; // send info in 5 seconds
 }
@@ -211,7 +211,7 @@ void IRCDDBApp::rptrQRG(const std::string &rptrcall, double txFrequency, double 
 		d->moduleMap[rptrcall] = g;
 		d->moduleMapMutex.unlock();
 
-		printf("IRCDDB RPTRQRG: %s\n", g.c_str());
+		//printf("IRCDDB RPTRQRG: %s\n", g.c_str());
 
 		d->infoTimer = 5; // send info in 5 seconds
 	}
@@ -457,7 +457,7 @@ void IRCDDBApp::sendPing(const std::string &to, const std::string &from)
 			rm->composeMessage(out);
 			out.pop_back();
 			out.pop_back();
-			printf("IRCDDBApp::sendPing: %s\n", out.c_str());
+			//printf("IRCDDBApp::sendPing: %s\n", out.c_str());
 			d->sendQ->putMessage(rm);
 			break;
 		}
