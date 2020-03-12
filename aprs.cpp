@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2016-2018 by Thomas A. Early N7TAE
+ *   Copyright (C) 2016-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -246,7 +246,7 @@ void CAPRS::Open(const std::string OWNER)
 
 	/* login to aprs */
 	//sprintf(snd_buf, "user %s pass %d vers QnetGateway 9 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
-	sprintf(snd_buf, "user %s pass %d vers QnetGateway 9 ", OWNER.c_str(), m_rptr->aprs_hash);
+	sprintf(snd_buf, "user %s pass %d vers QnetGateway-9 ", OWNER.c_str(), m_rptr->aprs_hash);
 
 	/* add the user's filter */
 	if (m_rptr->aprs_filter.length()) {

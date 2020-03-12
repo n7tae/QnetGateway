@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2019 by Thomas A. Early N7TAE
+# Copyright (c) 2018-2020 by Thomas A. Early N7TAE
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -171,6 +171,7 @@ installdtmf : qndtmf
 	systemctl start qndtmf.service
 
 installdash : index.php
+	/usr/bin/apt update
 	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
 	mkdir -p $(WWWDIR)
 	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)

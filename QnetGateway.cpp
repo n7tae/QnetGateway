@@ -554,7 +554,7 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, st
 		return 0;
 
 	/* at this point, the data is not in cache */
-	if (7 == ii[i]->getConnectionState()) {
+	if (ii[i]->getConnectionState() > 5) {
 		/* request data from irc server */
 		if (RoU == 'U') {
 			printf("User [%s] not in local cache, try again\n", call.c_str());
