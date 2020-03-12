@@ -549,7 +549,7 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, st
 		//printf("get_yrcall_rptr_from_cache: call='%s' rptr='%s' gate='%s', addr='%s' RoU=%c\n", call.c_str(), rptr.c_str(), gate.c_str(), addr.c_str(), RoU);
 		if ((addr.npos == addr.find(':')) && ii[1])
 			i = 1;
-		return i;
+		return i + 1;
 	} else if (2 == rc)
 		return 0;
 
