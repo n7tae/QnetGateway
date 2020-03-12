@@ -574,7 +574,7 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, st
 			}
 		}
 	}
-	return 0;
+	return i + 1;
 }
 
 bool CQnetGateway::Flag_is_ok(unsigned char flag)
