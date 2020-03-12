@@ -545,11 +545,12 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, st
 {
 	int i = 0;
 	int rc = get_yrcall_rptr_from_cache(call, rptr, gate, addr, RoU);
-	if (rc == 0) {
+	if (0 == rc) {
 		//printf("get_yrcall_rptr_from_cache: call='%s' rptr='%s' gate='%s', addr='%s' RoU=%c\n", call.c_str(), rptr.c_str(), gate.c_str(), addr.c_str(), RoU);
 		if ((addr.npos == addr.find(':')) && ii[1])
 			i = 1;
-	} else
+		return i;
+	} else if (2 == rc)
 		return 0;
 
 	/* at this point, the data is not in cache */
