@@ -25,6 +25,7 @@
 #include "aprs.h"
 #include "SockAddress.h"
 #include "QnetDB.h"
+#include "CacheManager.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -153,12 +154,8 @@ private:
 	// database for the dashboard last heard section
 	CQnetDB qnDB;
 
-	// CACHE used to cache users, repeaters,
-	// gateways, IP numbers coming from the irc server
-
-	std::map<std::string, std::string> user2rptr_map[2], rptr2gwy_map[2], gwy2ip_map[2];
-
-	pthread_mutex_t irc_data_mutex[2] = PTHREAD_MUTEX_INITIALIZER;
+	// CACHE used to cache users, repeaters, gateways and addresses
+	CCacheManager cache;
 
 	// dtmf stuff
 	int dtmf_buf_count[3];
@@ -171,8 +168,8 @@ private:
 	int open_port(const SPORTIP *pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
 	void GetIRCDataThread(const int i);
-	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
-	int get_yrcall_rptr(const std::string &call, std::string &arearp_cs, std::string &zonerp_cs, char *mod, std::string &ip, char RoU);
+	int get_yrcall_rptr_from_cache(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
+	int get_yrcall_rptr(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
 	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
