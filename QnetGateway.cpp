@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *   Copyright (C) 2017-2019 by Thomas Early N7TAE
+ *   Copyright (C) 2017-2020 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -54,10 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-9.4");
-
-extern void dstar_dv_init();
-extern int dstar_dv_decode(const unsigned char *d, int data[3]);
+const std::string GW_VERSION("QnetGateway-9.4.1");
 
 static std::atomic<bool> keep_running(true);
 
@@ -1702,7 +1699,7 @@ void CQnetGateway::ProcessModem()
 						else
 						{	// not the end of the voice stream
 							int ber_data[3];
-							int ber_errs = dstar_dv_decode(dsvt.vasd.voice, ber_data);
+							int ber_errs = decode.Decode(dsvt.vasd.voice, ber_data);
 							if (ber_data[0] == 0xf85)
 								band_txt[i].num_dv_silent_frames++;
 							band_txt[i].num_bit_errors += ber_errs;
@@ -1837,8 +1834,6 @@ void CQnetGateway::Process()
 		dtmf_last_frame[i] = 0;
 		dtmf_counter[i] = 0U;
 	}
-
-	dstar_dv_init();
 
 	std::future<void> aprs_future, irc_data_future[2];
 	if (APRS_ENABLE) {	// start the beacon thread

@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018-2019 by Thomas Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "SockAddress.h"
 #include "QnetDB.h"
 #include "CacheManager.h"
+#include "DStarDecode.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -153,6 +154,9 @@ private:
 
 	// database for the dashboard last heard section
 	CQnetDB qnDB;
+
+	// for bit error rate calcs
+	CDStarDecode decode;
 
 	// CACHE used to cache users, repeaters, gateways and addresses
 	CCacheManager cache;

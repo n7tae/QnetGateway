@@ -50,8 +50,8 @@
 #include "UnixDgramSocket.h"
 #include "QnetConfigure.h"
 #include "Timer.h"
-
-#define DVAP_VERSION "QnetDVAP-6.1.1"
+#include "DStarDecode.h"
+#define DVAP_VERSION "QnetDVAP-6.1.2"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -107,11 +107,10 @@ static void ReadDVAPThread();
 static void RptrAckThread(SDVAP_ACK_ARG *parg);
 
 /*** BER stuff ***/
-extern void dstar_dv_init();
-extern int dstar_dv_decode(const unsigned char *d, int data[3]);
+static CDStarDecode decode;
 
-CDVAPDongle dongle;
-CRandom Random;
+static CDVAPDongle dongle;
+static CRandom Random;
 
 static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
 {
@@ -814,7 +813,7 @@ static void ReadDVAPThread()
 				Modem2Gate.Write(dsvt.title, 27);
 
 				int ber_data[3];
-				int ber_errs = dstar_dv_decode(dsvt.vasd.voice, ber_data);
+				int ber_errs = decode.Decode(dsvt.vasd.voice, ber_data);
 				if (ber_data[0] != 0xf85) {
 					num_bit_errors += ber_errs;
 					num_dv_frames++;
@@ -949,7 +948,6 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 	printf("DVAP opened and initialized!\n");
-	dstar_dv_init();
 
 	std::future<void> readthread;
 	try {

@@ -33,8 +33,7 @@ CPPFLAGS=-W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BIND
 
 LDFLAGS=-L/usr/lib -lrt
 
-DSTROBJS = $(IRC)/dstar_dv.o $(IRC)/golay23.o
-IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMessageQueue.o $(IRC)/IRCProtocol.o $(IRC)/IRCMessage.o $(IRC)/IRCDDBApp.o $(IRC)/IRCutils.o $(DSTROBJS)
+IRCOBJS = $(IRC)/IRCDDB.o $(IRC)/IRCClient.o $(IRC)/IRCReceiver.o $(IRC)/IRCMessageQueue.o $(IRC)/IRCProtocol.o $(IRC)/IRCMessage.o $(IRC)/IRCDDBApp.o $(IRC)/IRCutils.o
 SRCS = $(wildcard *.cpp) $(wildcard $(IRC)/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
@@ -50,7 +49,7 @@ dvrptr : qndvrptr
 itap   : qnitap
 modem  : qnmodem
 
-qngateway : QnetGateway.o aprs.o UnixDgramSocket.o TCPReaderWriterClient.o QnetConfigure.o QnetDB.o CacheManager.o $(IRCOBJS)
+qngateway : QnetGateway.o aprs.o UnixDgramSocket.o TCPReaderWriterClient.o QnetConfigure.o QnetDB.o CacheManager.o DStarDecode.o $(IRCOBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
 
 qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixDgramSocket.o QnetConfigure.o
@@ -65,10 +64,10 @@ qnitap : QnetITAP.o UnixDgramSocket.o QnetConfigure.o
 qnmodem : QnetModem.o UnixDgramSocket.o QnetConfigure.o
 		g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qndvap : QnetDVAP.o DVAPDongle.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
+qndvap : QnetDVAP.o DVAPDongle.o UnixDgramSocket.o QnetConfigure.o DStarDecode.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
-qndvrptr : QnetDVRPTR.o UnixDgramSocket.o QnetConfigure.o $(DSTROBJS)
+qndvrptr : QnetDVRPTR.o UnixDgramSocket.o QnetConfigure.o DStarDecode.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
 qnremote : QnetRemote.o UnixDgramSocket.o QnetConfigure.o
