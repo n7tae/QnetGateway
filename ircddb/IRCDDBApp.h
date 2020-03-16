@@ -4,37 +4,36 @@
 #include <future>
 
 #include "IRCDDB.h"
-#include "IRCApplication.h"
+#include "IRCMessageQueue.h"
 
 class IRCDDBAppPrivate;
 
-class IRCDDBApp : public IRCApplication
+class IRCDDBApp
 {
 public:
 	IRCDDBApp(const std::string &update_channel);
+	~IRCDDBApp();
 
-	virtual ~IRCDDBApp();
+	void userJoin(const std::string &nick, const std::string &name, const std::string &host);
 
-	virtual void userJoin(const std::string &nick, const std::string &name, const std::string &host);
+	void userLeave(const std::string &nick);
 
-	virtual void userLeave(const std::string &nick);
+	void userChanOp(const std::string &nick, bool op);
+	void userListReset();
 
-	virtual void userChanOp(const std::string &nick, bool op);
-	virtual void userListReset();
+	void msgChannel(IRCMessage *m);
+	void msgQuery(IRCMessage *m);
 
-	virtual void msgChannel(IRCMessage *m);
-	virtual void msgQuery(IRCMessage *m);
+	void setCurrentNick(const std::string &nick);
+	void setTopic(const std::string &topic);
 
-	virtual void setCurrentNick(const std::string &nick);
-	virtual void setTopic(const std::string &topic);
+	void setBestServer(const std::string &ircUser);
 
-	virtual void setBestServer(const std::string &ircUser);
+	void setSendQ(IRCMessageQueue *s);
+	IRCMessageQueue *getSendQ();
 
-	virtual void setSendQ(IRCMessageQueue *s);
-	virtual IRCMessageQueue *getSendQ();
-
-	virtual void putReplyMessage(IRCMessage *m);
-	virtual void sendPing(const std::string &to, const std::string &from);
+	void putReplyMessage(IRCMessage *m);
+	void sendPing(const std::string &to, const std::string &from);
 
 	bool startWork();
 	void stopWork();
@@ -58,7 +57,7 @@ public:
 	void kickWatchdog(const std::string &wdInfo);
 
 protected:
-	virtual void Entry();
+	void Entry();
 
 private:
 	void doUpdate(std::string &msg);

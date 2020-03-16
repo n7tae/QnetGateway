@@ -7,12 +7,11 @@
 #include "IRCReceiver.h"
 #include "IRCMessageQueue.h"
 #include "IRCProtocol.h"
-#include "IRCApplication.h"
 
 class IRCClient
 {
 public:
-	IRCClient(IRCApplication *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
+	IRCClient(IRCDDBApp *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
 
 	virtual ~IRCClient();
 	bool startWork();
@@ -37,6 +36,6 @@ private:
 	IRCMessageQueue *recvQ;
 	IRCMessageQueue *sendQ;
 	IRCProtocol *proto;
-	IRCApplication *app;
+	IRCDDBApp *app;
 
 };

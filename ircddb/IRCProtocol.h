@@ -1,12 +1,12 @@
 #pragma once
 
+#include "IRCDDBApp.h"
 #include "IRCMessageQueue.h"
-#include "IRCApplication.h"
 
 class IRCProtocol
 {
 public:
-	IRCProtocol(IRCApplication * app, const std::string &callsign, const std::string &password, const std::string &channel, const std::string &versionInfo);
+	IRCProtocol(IRCDDBApp *app, const std::string &callsign, const std::string &password, const std::string &channel, const std::string &versionInfo);
 
 	~IRCProtocol();
 
@@ -30,6 +30,5 @@ private:
 
 	std::string debugChannel;
 
-	IRCApplication *app;
-
+	IRCDDBApp *app;
 };
