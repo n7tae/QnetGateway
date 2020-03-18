@@ -16,7 +16,8 @@ enum DSTAR_PROTOCOL {
 	DP_DPLUS
 };
 
-struct CIRCDDBPrivate;
+class IRCDDBApp;
+class IRCClient;
 
 class CIRCDDB
 {
@@ -125,5 +126,6 @@ public:
 	void close();		// Implictely kills any threads in the IRC code
 
 private:
-	struct CIRCDDBPrivate * const d;
+	IRCDDBApp *app;
+	IRCClient *client;
 };

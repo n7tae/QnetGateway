@@ -2,11 +2,59 @@
 
 #include <string>
 #include <future>
+#include <map>
+#include <mutex>
+#include <regex>
 
 #include "IRCDDB.h"
 #include "IRCMessageQueue.h"
 
-class IRCDDBAppPrivate;
+class IRCDDBAppGateObject
+{
+public:
+
+	std::string nick;
+	std::string name;
+	std::string host;
+	bool op;
+	unsigned int usn;
+
+	IRCDDBAppGateObject() {}
+
+	IRCDDBAppGateObject(const std::string &n, const std::string &nm, const std::string &h) {
+		nick = n;
+		name = nm;
+		host = h;
+		op = false;
+		usn = counter;
+		counter++;
+	}
+	static unsigned int counter;
+};
+
+class IRCDDBAppRptrObject
+{
+public:
+
+	std::string arearp_cs;
+	time_t lastChanged;
+	std::string zonerp_cs;
+
+	IRCDDBAppRptrObject() {
+	}
+
+	IRCDDBAppRptrObject(time_t dt, std::string &repeaterCallsign, std::string &gatewayCallsign) {
+		arearp_cs = repeaterCallsign;
+		lastChanged = dt;
+		zonerp_cs = gatewayCallsign;
+
+		if (dt > maxTime) {
+			maxTime = dt;
+		}
+	}
+
+	static time_t maxTime;
+};
 
 class IRCDDBApp
 {
@@ -64,6 +112,38 @@ private:
 	void doNotFound(std::string &msg, std::string &retval);
 	std::string getIPAddress(std::string &zonerp_cs);
 	bool findServerUser();
-	IRCDDBAppPrivate *d;
 	std::future<void> worker_thread;
+	IRCMessageQueue *sendQ;
+	IRCMessageQueue replyQ;
+
+	std::map<std::string, IRCDDBAppGateObject> user;
+	std::mutex userMapMutex;
+	std::map<std::string, IRCDDBAppRptrObject> rptrMap;
+	std::mutex rptrMapMutex;
+	std::map<std::string, std::string> moduleMap;
+	std::mutex moduleMapMutex;
+	std::map<std::string, std::string> locationMap;
+	std::mutex locationMapMutex;
+	std::map<std::string, std::string> urlMap;
+	std::mutex urlMapMutex;
+	std::map<std::string, std::string> swMap;
+	std::mutex swMapMutex;
+
+	std::string currentServer;
+	std::string myNick;
+
+	std::regex tablePattern, datePattern, timePattern, dbPattern, modulePattern;
+
+	int state;
+	int timer;
+	int infoTimer;
+	int wdTimer;
+
+	std::string updateChannel;
+	std::string channelTopic;
+	std::string bestServer;
+	std::string wdInfo;
+
+	bool initReady;
+	bool terminateThread;
 };

@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "IRCClient.h"
+#include "IRCProtocol.h"
 #include "IRCutils.h"
 
 

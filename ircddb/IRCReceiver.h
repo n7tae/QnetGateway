@@ -15,6 +15,8 @@ protected:
 	virtual void Entry();
 
 private:
+	static int doRead(CTCPReaderWriterClient *ircSock, char *buf, int buf_size);
+
 	CTCPReaderWriterClient *ircSock;
 	bool terminateThread;
 	int sock;

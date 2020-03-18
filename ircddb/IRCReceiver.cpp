@@ -6,7 +6,30 @@
 #include "IRCMessage.h"
 #include "IRCReceiver.h"
 
-static int doRead(CTCPReaderWriterClient *ircSock, char *buf, int buf_size)
+IRCReceiver::IRCReceiver(CTCPReaderWriterClient	*sock, IRCMessageQueue *q)
+{
+	ircSock = sock;
+	recvQ = q;
+}
+
+IRCReceiver::~IRCReceiver()
+{
+}
+
+bool IRCReceiver::startWork()
+{
+	terminateThread = false;
+	rec_thread = std::async(std::launch::async, &IRCReceiver::Entry, this);
+	return true;
+}
+
+void IRCReceiver::stopWork()
+{
+	terminateThread = true;
+	rec_thread.get();
+}
+
+int IRCReceiver::doRead(CTCPReaderWriterClient *ircSock, char *buf, int buf_size)
 {
 	struct timeval tv;
 	tv.tv_sec = 1;
@@ -132,27 +155,4 @@ void IRCReceiver::Entry()
 	} // while
 
 	return;
-}
-
-IRCReceiver::IRCReceiver(CTCPReaderWriterClient	*sock, IRCMessageQueue *q)
-{
-	ircSock = sock;
-	recvQ = q;
-}
-
-IRCReceiver::~IRCReceiver()
-{
-}
-
-bool IRCReceiver::startWork()
-{
-	terminateThread = false;
-	rec_thread = std::async(std::launch::async, &IRCReceiver::Entry, this);
-	return true;
-}
-
-void IRCReceiver::stopWork()
-{
-	terminateThread = true;
-	rec_thread.get();
 }

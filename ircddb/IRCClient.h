@@ -6,7 +6,9 @@
 
 #include "IRCReceiver.h"
 #include "IRCMessageQueue.h"
-#include "IRCProtocol.h"
+
+class IRCProtocol;
+class IRCDDBApp;
 
 class IRCClient
 {
