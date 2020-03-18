@@ -6,8 +6,9 @@
 
 #include "IRCReceiver.h"
 #include "IRCMessageQueue.h"
+#include "IRCProtocol.h"
+#include "IRCReceiver.h"
 
-class IRCProtocol;
 class IRCDDBApp;
 
 class IRCClient
@@ -34,10 +35,10 @@ private:
 
 	bool terminateThread;
 
-	IRCReceiver *recv;
+	IRCReceiver receiver;
 	IRCMessageQueue *recvQ;
 	IRCMessageQueue *sendQ;
-	IRCProtocol *proto;
+	IRCProtocol proto;
 	IRCDDBApp *app;
 
 };

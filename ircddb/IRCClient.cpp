@@ -5,9 +5,8 @@
 #include <string.h>
 
 #include "IRCClient.h"
-#include "IRCProtocol.h"
 #include "IRCutils.h"
-
+#include "IRCDDBApp.h"
 
 IRCClient::IRCClient(IRCDDBApp *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo)
 {
@@ -21,17 +20,14 @@ IRCClient::IRCClient(IRCDDBApp *app, const std::string &update_channel, const st
 
 	this->app = app;
 
-	proto = new IRCProtocol(app, this->callsign, password, update_channel, versionInfo);
+	proto.Init(app, this->callsign, password, update_channel, versionInfo);
 
 	recvQ = NULL;
 	sendQ = NULL;
-
-	recv = NULL;
 }
 
 IRCClient::~IRCClient()
 {
-	delete proto;
 }
 
 bool IRCClient::startWork()
@@ -87,10 +83,10 @@ void IRCClient::Entry()
                 recvQ = new IRCMessageQueue();
                 sendQ = new IRCMessageQueue();
 
-                recv = new IRCReceiver(&ircSock, recvQ);
-                recv->startWork();
+                receiver.Init(&ircSock, recvQ);
+                receiver.startWork();
 
-                proto->setNetworkReady(true);
+                proto.setNetworkReady(true);
                 state = 5;
                 timer = 0;
 	            break;
@@ -104,7 +100,7 @@ void IRCClient::Entry()
                     if (recvQ->isEOF()) {
                         timer = 0;
                         state = 6;
-                    } else if (proto->processQueues(recvQ, sendQ) == false) {
+                    } else if (proto.processQueues(recvQ, sendQ) == false) {
                         timer = 0;
                         state = 6;
                     }
@@ -145,12 +141,11 @@ void IRCClient::Entry()
                     app->userListReset();
                 }
 
-                proto->setNetworkReady(false);
-                recv->stopWork();
+                proto.setNetworkReady(false);
+                receiver.stopWork();
 
                 sleep(2);
 
-                delete recv;
                 delete recvQ;
                 delete sendQ;
 

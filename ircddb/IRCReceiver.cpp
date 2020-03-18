@@ -6,7 +6,7 @@
 #include "IRCMessage.h"
 #include "IRCReceiver.h"
 
-IRCReceiver::IRCReceiver(CTCPReaderWriterClient	*sock, IRCMessageQueue *q)
+void IRCReceiver::Init(CTCPReaderWriterClient *sock, IRCMessageQueue *q)
 {
 	ircSock = sock;
 	recvQ = q;

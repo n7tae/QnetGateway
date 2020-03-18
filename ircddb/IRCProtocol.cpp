@@ -6,10 +6,11 @@
 #include "IRCutils.h"
 #include "IRCProtocol.h"
 #include "IRCMessageQueue.h"
+#include "IRCDDBApp.h"
 
 #define CIRCDDB_VERSION	  "2.0.0"
 
-IRCProtocol::IRCProtocol(IRCDDBApp *app, const std::string &callsign, const std::string &password, const std::string &channel, const std::string &versionInfo)
+void IRCProtocol::Init(IRCDDBApp *app, const std::string &callsign, const std::string &password, const std::string &channel, const std::string &versionInfo)
 {
 	srand(time(NULL));
 	this->password = password;
