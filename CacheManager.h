@@ -27,18 +27,23 @@ public:
 	CCacheManager() {}
 	~CCacheManager() {}
 
-	// the bodies of these public functions need to be mux locked to access the maps and the private functions.
+	// the bodies of these public functions are mux locked to access the maps and the private functions.
 	// for these find functions, if a map value can't be found the returned string will be empty.
 	void findUserData(const std::string &user, std::string &rptr, std::string &gate, std::string &addr);
 	void findRptrData(const std::string &rptr, std::string &gate, std::string &addr);
 	std::string findUserTime(const std::string &user);
 	std::string findUserAddr(const std::string &user);
+	std::string findNameNick(const std::string &name);
 	std::string findUserRepeater(const std::string &user);
 	std::string findGateAddress(const std::string &gate);
+	void eraseGate(const std::string &gate);
+	void eraseName(const std::string &name);
+	void clearGate();
 
 	void updateUser(const std::string &user, const std::string &rptr, const std::string &gate, const std::string &addr, const std::string &time);
 	void updateRptr(const std::string &rptr, const std::string &gate, const std::string &addr);
 	void updateGate(const std::string &gate, const std::string &addr);
+	void updateName(const std::string &name, const std::string &nick);
 
 private:
 	// these three functions aren't mux locked, that's why they're private
@@ -51,5 +56,6 @@ private:
 	std::unordered_map<std::string, std::string> RptrGate;
 	std::unordered_map<std::string, std::string> GateIPV4;
 	std::unordered_map<std::string, std::string> GateIPV6;
+	std::unordered_map<std::string, std::string> NameNick;
 	std::mutex mux;
 };

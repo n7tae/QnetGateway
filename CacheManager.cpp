@@ -73,6 +73,19 @@ std::string CCacheManager::findGateAddress(const std::string &gate)
 	return addr;
 }
 
+std::string CCacheManager::findNameNick(const std::string &name)
+{
+	std::string nick;
+	if (name.empty())
+		return nick;
+	mux.unlock();
+	auto itn = NameNick.find(name);
+	if (itn != NameNick.end())
+		nick.assign(itn->second);
+	mux.unlock();
+	return nick;
+}
+
 void CCacheManager::updateUser(const std::string &user, const std::string &rptr, const std::string &gate, const std::string &addr, const std::string &time)
 {
 	if (user.empty())
@@ -137,6 +150,38 @@ void CCacheManager::updateGate(const std::string &G, const std::string &addr)
 		GateIPV4[gate] = addr;
 	else
 		GateIPV6[gate] = addr;
+	mux.unlock();
+}
+
+void CCacheManager::updateName(const std::string &name, const std::string &nick)
+{
+	if (name.empty() || nick.empty())
+		return;
+	mux.lock();
+	NameNick[name] = nick;
+	mux.unlock();
+}
+
+void CCacheManager::eraseGate(const std::string &gate)
+{
+	mux.lock();
+	GateIPV4.erase(gate);
+	GateIPV6.erase(gate);
+	mux.unlock();
+}
+
+void CCacheManager::eraseName(const std::string &name)
+{
+	mux.lock();
+	NameNick.erase(name);
+	mux.unlock();
+}
+
+void CCacheManager::clearGate()
+{
+	mux.lock();
+	GateIPV4.clear();
+	GateIPV6.clear();
 	mux.unlock();
 }
 
