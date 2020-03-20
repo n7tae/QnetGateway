@@ -118,7 +118,7 @@ private:
 
 	// data needed for aprs login and aprs beacon
 	// RPTR defined in aprs.h
-	SRPTR rptr;
+	SRPTR Rptr;
 
 	// local repeater modules being recorded
 	// This is for echotest and voicemail
