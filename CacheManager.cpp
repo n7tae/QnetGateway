@@ -182,6 +182,7 @@ void CCacheManager::clearGate()
 	mux.lock();
 	GateIPV4.clear();
 	GateIPV6.clear();
+	NameNick.clear();
 	mux.unlock();
 }
 

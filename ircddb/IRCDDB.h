@@ -6,9 +6,6 @@
 
 enum IRCDDB_RESPONSE_TYPE {
 	IDRT_NONE,
-	IDRT_USER,
-	IDRT_GATEWAY,
-	IDRT_REPEATER,
 	IDRT_PING
 };
 
@@ -93,12 +90,6 @@ public:
 
 	// The following three functions don't block waiting for a reply, they just send the data
 
-	// Send query for a gateway/reflector, a false return implies a network error
-	bool findGateway(const std::string &gatewayCallsign);
-
-	// Send query for a repeater module, a false return implies a network error
-	bool findRepeater(const std::string &repeaterCallsign);
-
 	// Send query for a user, a false return implies a network error
 	bool findUser(const std::string &userCallsign);
 
@@ -109,18 +100,6 @@ public:
 
 	// Get a gateway message, as a result of IDRT_REPEATER returned from getMessageType()
 	// A false return implies a network error
-	bool receiveRepeater(std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address, DSTAR_PROTOCOL& protocol);
-
-	// Get a gateway message, as a result of IDRT_GATEWAY returned from getMessageType()
-	// A false return implies a network error
-	bool receiveGateway(std::string &gatewayCallsign, std::string &address, DSTAR_PROTOCOL &protocol);
-
-	// Get a user message, as a result of IDRT_USER returned from getMessageType()
-	// A false return implies a network error
-	bool receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address);
-
-	bool receiveUser(std::string &userCallsign, std::string &repeaterCallsign, std::string &gatewayCallsign, std::string &address, std::string &timeStamp);
-
 	bool receivePing(std::string &repeaterCallsign);
 
 	void sendPing(const std::string &to, const std::string &from);

@@ -160,28 +160,11 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 			if (app != NULL) {
 				app->userLeave( m->getPrefixNick() );
 			}
-		} else if (0 == m->command.compare("MODE")) {
-			if ((m->numParams >= 3) && 0==m->params[0].compare(channel)) {
-				if (app != NULL) {
-					size_t i;
-					std::string mode = m->params[1];
-
-					for (i=1; i<mode.length() && (size_t)m->numParams>=(i+2); i++) {
-						if (mode[i] == 'o') {
-							if (mode[0] == '+') {
-								app->userChanOp(m->params[i+1], true);
-							} else if (mode[0] == '-') {
-								app->userChanOp(m->params[i+1], false);
-							}
-						}
-					} // for
-				}
-			}
 		} else if (0 == m->command.compare("PRIVMSG")) {
 			if (app) {
-				std::string out;
-				m->composeMessage(out);
-				out.pop_back(); out.pop_back();
+				// std::string out;
+				// m->composeMessage(out);
+				// out.pop_back(); out.pop_back();
 				if (2 == m->numParams) {
 					if (0 == m->params[0].compare(channel)) {
 						app->msgChannel(m);
@@ -200,20 +183,12 @@ bool IRCProtocol::processQueues(IRCMessageQueue *recvQ, IRCMessageQueue *sendQ)
 			if ((m->numParams >= 7) && 0==m->params[0].compare(currentNick) && 0==m->params[1].compare(channel)) {
 				if (app != NULL) {
 					app->userJoin(m->params[5], m->params[2], m->params[3]);
-					app->userChanOp (m->params[5], 0==m->params[6].compare("H@"));
-					// this mod is for ngircd
-					// app->userChanOp (m->params[5], std::string::npos!=m->params[6].find('H') && std::string::npos!=m->params[6].find('@'));
-					// NOT NEEDED, W1BSB fixed it in ngircd
 				}
 			}
 		} else if (0 == m->command.compare("433")) { // nick collision
 			if (state == 2) {
 				state = 3;  // nick collision, choose new nick
 				timer = 10; // wait 5 seconds..
-			}
-		} else if (0==m->command.compare("332") || 0==m->command.compare("TOPIC")) { // topic
-			if ((m->numParams == 2) && (app != NULL) && 0==m->params[0].compare(channel)) {
-				app->setTopic(m->params[1]);
 			}
 		}
 

@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-9.4.1");
+const std::string GW_VERSION("QnetGateway-200320");
 
 static std::atomic<bool> keep_running(true);
 
@@ -447,35 +447,6 @@ void CQnetGateway::GetIRCDataThread(const int i)
 
 		while (((type = ii[i]->getMessageType()) != IDRT_NONE) && keep_running) {
 			switch (type) {
-				case IDRT_USER: {
-					std::string user, rptr, gate, addr, utime;
-					ii[i]->receiveUser(user, rptr, gate, addr, utime);
-					if (LOG_IRC)
-						printf("U%d u[%s] r[%s] g[%s] a[%s] t[%s]\n", i, user.c_str(), rptr.c_str(), gate.c_str(), addr.c_str(), utime.c_str());
-					cache.updateUser(user, rptr, gate, addr, utime);
-				}
-				break;
-
-				case IDRT_REPEATER: {
-					std::string rptr, gate, addr, ip;
-					DSTAR_PROTOCOL proto;
-					ii[i]->receiveRepeater(rptr, gate, addr, proto);
-					if (LOG_IRC)
-						printf("R%d r[%s] g[%s] a[%s]\n", i, rptr.c_str(), gate.c_str(), addr.c_str());
-					cache.updateRptr(rptr, gate, addr);
-				}
-				break;
-
-				case IDRT_GATEWAY: {
-					std::string gate, addr;
-					DSTAR_PROTOCOL proto;
-					ii[i]->receiveGateway(gate, addr, proto);
-					if (LOG_IRC)
-						printf("G%d g[%s] a[%s]\n", i, gate.c_str(),addr.c_str());
-					cache.updateGate(gate, addr);
-				}
-				break;
-
 				case IDRT_PING: {
 					std::string rptr, gate, addr;
 					ii[i]->receivePing(rptr);
@@ -530,6 +501,7 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const std::string &call, std::strin
 		fprintf(stderr, "ERROR: Invalid module %c\n", rptr.at(7));
 		return 2;
 	}
+
 	if (addr.empty()) {
 		printf("Couldn't find IP address for %s\n", ('R' == RoU) ? "repeater" : "user");
 		return 1;
@@ -564,9 +536,7 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, st
 			if (!ii[i]->findUser(call))
 				printf("findUser(%s): Network error\n", call.c_str());
 		} else if (RoU == 'R') {
-			printf("Repeater [%s] not in local cache, try again\n", call.c_str());
-			if (!ii[i]->findRepeater(call))
-				printf("findRepeater(%s): Network error\n", call.c_str());
+			printf("Repeater [%s] not found\n", call.c_str());
 		}
 		return 0;
 	}
