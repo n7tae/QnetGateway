@@ -1328,9 +1328,9 @@ void CQnetGateway::ProcessModem()
 
 									Index[i] = get_yrcall_rptr(user, rptr, gate, addr, 'R');
 									if (Index[i]--) { /* it is a repeater */
-										std::string from = OWNER.substr(0, 7);
-										from.append(1, i+'A');
-										ii[Index[i]]->sendPing(user, from);
+										// std::string from = OWNER.substr(0, 7);
+										// from.append(1, i+'A');
+										// ii[Index[i]]->sendPing(user, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
 										if (addr.npos == addr.find(':') && af_family[Index[i]] == AF_INET6)
 											fprintf(stderr, "ERROR using IRC[%d]: IP returned from cache is IPV4, %s, but family is AF_INET6!\n", Index[i], addr.c_str());
@@ -1383,10 +1383,12 @@ void CQnetGateway::ProcessModem()
 
 									/* one radio user on a repeater module at a time */
 									if (to_remote_g2[i].toDstar.AddressIsZero()) {
+										if (std::regex_match(user.c_str(), preg)) {
+											// don't do a ping to a routing group
+											std::string from((const char *)dsvt.hdr.rpt1, 8);
+											ii[Index[i]]->sendPing(gate, from);
+										}
 										/* set the destination */
-										std::string from = OWNER.substr(0, 7);
-										from.append(1, i+'A');
-										ii[Index[i]]->sendPing(rptr, from);
 										to_remote_g2[i].streamid = dsvt.streamid;
 										if (addr.npos == addr.find(':') && af_family[Index[i]] == AF_INET6)
 											fprintf(stderr, "ERROR using IRC[%d]: IP returned from cache, %s, is IPV4 but family is AF_INET6!\n", Index[i], addr.c_str());
@@ -2277,7 +2279,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 	/* Used to validate MYCALL input */
 	try {
-		preg = std::regex("^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
+		preg = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
 	} catch (std::regex_error &e) {
 		printf("Regular expression error: %s\n", e.what());
 		return true;
@@ -2369,7 +2371,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	for (int j=0; j<2; j++) {
 		if (ircddb[j].ip.empty())
 			continue;
-		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str());
+		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str(), &cache);
 		bool ok = ii[j]->open();
 		if (!ok) {
 			printf("%s open failed\n", ircddb[j].ip.c_str());

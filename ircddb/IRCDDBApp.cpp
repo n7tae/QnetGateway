@@ -11,7 +11,7 @@ unsigned int IRCDDBAppGateObject::counter = 0;
 
 time_t IRCDDBAppRptrObject::maxTime((time_t)950000000);  // February 2000
 
-IRCDDBApp::IRCDDBApp(const std::string &u_chan)
+IRCDDBApp::IRCDDBApp(const std::string &u_chan, CCacheManager *cache)
 {
 	wdTimer = -1;
 	sendQ = NULL;
@@ -31,6 +31,7 @@ IRCDDBApp::IRCDDBApp(const std::string &u_chan)
 	timePattern   = std::regex("^((2[0-3])|([01][0-9])):[0-5][0-9]:[0-5][0-9]$");
 	dbPattern     = std::regex("^[0-9A-Z_]{8}$");
 	modulePattern = std::regex("^.*[ABCD]D?$");
+	this->cache = cache;
 }
 
 IRCDDBApp::~IRCDDBApp()
@@ -340,35 +341,26 @@ void IRCDDBApp::userChanOp(const std::string &nick, bool op)
 	userMapMutex.unlock();
 }
 
+// to is the gateway to which we are sending the message, (the gateway last used by URCall)
+// from is the repeater we are expecting the receive the the ping
+// this will open the routing port on the target
 void IRCDDBApp::sendPing(const std::string &to, const std::string &from)
 {
-	std::string t = to.substr(0, 7);
+	std::string name = to.substr(0, 7);
 
-	ReplaceChar(t, '_', ' ');
-	while (isspace(t[t.length()-1]))
-		t.pop_back();
-	ToLower(t);
+	while (isspace(name[name.length()-1]))
+		name.pop_back();
+	ToLower(name);
 
-	userMapMutex.lock();
-	for (int j=1; j <= 4; j++) {
-		std::string ircUser = t + std::string("-") + std::to_string(j);
+	auto nick = cache->findNameNick(name);
 
-		if (1 == user.count(ircUser)) {
-			std::string f(from);
-			ReplaceChar(f, ' ', '_');
-			IRCMessage *rm = new IRCMessage(ircUser, "IDRT_PING");
-			rm->addParam(f);
-			std::string out;
-			rm->composeMessage(out);
-			out.pop_back();
-			out.pop_back();
-			//printf("IRCDDBApp::sendPing: %s\n", out.c_str());
-			sendQ->putMessage(rm);
-			break;
-		}
+	if (! nick.empty()) {
+		std::string rptr(from);
+		ReplaceChar(rptr, ' ', '_');
+		IRCMessage *m = new IRCMessage(nick, "IDRT_PING");
+		m->addParam(rptr);
+		sendQ->putMessage(m);
 	}
-	userMapMutex.unlock();
-
 }
 
 static const int numberOfTables = 2;

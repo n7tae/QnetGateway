@@ -59,7 +59,7 @@ public:
 class IRCDDBApp
 {
 public:
-	IRCDDBApp(const std::string &update_channel);
+	IRCDDBApp(const std::string &update_channel, CCacheManager *cache);
 	~IRCDDBApp();
 
 	void userJoin(const std::string &nick, const std::string &name, const std::string &host);
@@ -115,6 +115,7 @@ private:
 	std::future<void> worker_thread;
 	IRCMessageQueue *sendQ;
 	IRCMessageQueue replyQ;
+	CCacheManager *cache;
 
 	std::map<std::string, IRCDDBAppGateObject> user;
 	std::mutex userMapMutex;

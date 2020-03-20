@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "../CacheManager.h"
+
 enum IRCDDB_RESPONSE_TYPE {
 	IDRT_NONE,
 	IDRT_USER,
@@ -22,7 +24,7 @@ class IRCClient;
 class CIRCDDB
 {
 public:
-	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
+	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, CCacheManager *cache);
 	~CIRCDDB();
 
 	// returns the socket family type
@@ -128,4 +130,5 @@ public:
 private:
 	IRCDDBApp *app;
 	IRCClient *client;
+	CCacheManager *cache;
 };
