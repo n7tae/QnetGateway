@@ -159,7 +159,7 @@ private:
 	CDStarDecode decode;
 
 	// CACHE used to cache users, repeaters, gateways and addresses
-	CCacheManager cache;
+	CCacheManager cache[2];
 
 	// dtmf stuff
 	int dtmf_buf_count[3];
@@ -172,7 +172,7 @@ private:
 	int open_port(const SPORTIP *pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
 	void GetIRCDataThread(const int i);
-	int get_yrcall_rptr_from_cache(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
+	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
 	int get_yrcall_rptr(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
 	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();

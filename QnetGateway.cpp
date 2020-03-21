@@ -452,7 +452,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 					ii[i]->receivePing(rptr);
 					if (! rptr.empty()) {
 						ReplaceChar(rptr, '_', ' ');
-						cache.findRptrData(rptr, gate, addr);
+						cache[i].findRptrData(rptr, gate, addr);
 						if (addr.empty())
 							break;
 						CSockAddress to;
@@ -477,11 +477,11 @@ void CQnetGateway::GetIRCDataThread(const int i)
 }
 
 /* return codes: 0=OK(found it), 1=TRY AGAIN, 2=FAILED(bad data) */
-int CQnetGateway::get_yrcall_rptr_from_cache(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU)
+int CQnetGateway::get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU)
 {
 	switch (RoU) {
 		case 'U':
-			cache.findUserData(call, rptr, gate, addr);
+			cache[i].findUserData(call, rptr, gate, addr);
 			if (rptr.empty()) {
 				printf("Could not find last heard repeater for user '%s'\n", call.c_str());
 				return 1;
@@ -489,7 +489,7 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const std::string &call, std::strin
 			break;
 		case 'R':
 			rptr.assign(call);
-			cache.findRptrData(call, gate, addr);
+			cache[i].findRptrData(call, gate, addr);
 			break;
 		default:
 			fprintf(stderr, "ERROR: Invalid Rou of '%c'\n", RoU);
@@ -512,35 +512,34 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const std::string &call, std::strin
 int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU)
 // returns 0 if unsuccessful, otherwise returns ii index plus one
 {
-	int i = 0;
-	int rc = get_yrcall_rptr_from_cache(call, rptr, gate, addr, RoU);
-	if (0 == rc) {
-		//printf("get_yrcall_rptr_from_cache: call='%s' rptr='%s' gate='%s', addr='%s' RoU=%c\n", call.c_str(), rptr.c_str(), gate.c_str(), addr.c_str(), RoU);
-		if ((addr.npos == addr.find(':')) && ii[1])
-			i = 1;
-		return i + 1;
-	} else if (2 == rc)
-		return 0;
+	int rval[2] = { 1, 1 };
+	for (int i=0; i<2; i++) {
+		if (ii[i]) {
+			rval[i] = get_yrcall_rptr_from_cache(i, call, rptr, gate, addr, RoU);
+			if (0 == rval[i])
+				return i + 1;
+		}
+	}
 
 	/* at this point, the data is not in cache */
-	int cstate = ii[i]->getConnectionState();
-	if (cstate < 6) {
-		return 0;
-	} else {
-		// we can try a find
-		if (RoU == 'U') {
-			printf("User [%s] not in local cache, try again\n", call.c_str());
-			/*** YRCALL=KJ4NHFBL ***/
-			if (((call.at(6) == 'A') || (call.at(6) == 'B') || (call.at(6) == 'C')) && (call.at(7) == 'L'))
-				printf("If this was a gateway link request, that is ok\n");
-			if (!ii[i]->findUser(call))
-				printf("findUser(%s): Network error\n", call.c_str());
-		} else if (RoU == 'R') {
-			printf("Repeater [%s] not found\n", call.c_str());
+	for (int i=0; i<2; i++) {
+		if (ii[i] && (1 == rval[i])) {
+			if (ii[i]->getConnectionState() > 5) {
+				// we can try a find
+				if (RoU == 'U') {
+					printf("User [%s] not in local cache, try again\n", call.c_str());
+					/*** YRCALL=KJ4NHFBL ***/
+					if (((call.at(6) == 'A') || (call.at(6) == 'B') || (call.at(6) == 'C')) && (call.at(7) == 'L'))
+						printf("If this was a gateway link request, that is ok\n");
+					if (!ii[i]->findUser(call))
+						printf("findUser(%s): Network error\n", call.c_str());
+				} else if (RoU == 'R') {
+					printf("Repeater [%s] not found\n", call.c_str());
+				}
+			}
 		}
-		return 0;
 	}
-	return i + 1;
+	return 0;
 }
 
 bool CQnetGateway::Flag_is_ok(unsigned char flag)
@@ -2341,7 +2340,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	for (int j=0; j<2; j++) {
 		if (ircddb[j].ip.empty())
 			continue;
-		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str(), &cache);
+		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str(), &cache[j]);
 		bool ok = ii[j]->open();
 		if (!ok) {
 			printf("%s open failed\n", ircddb[j].ip.c_str());

@@ -55,8 +55,7 @@ private:
 	std::unordered_map<std::string, std::string> UserTime;
 	std::unordered_map<std::string, std::string> UserRptr;
 	std::unordered_map<std::string, std::string> RptrGate;
-	std::unordered_map<std::string, std::string> GateIPV4;
-	std::unordered_map<std::string, std::string> GateIPV6;
+	std::unordered_map<std::string, std::string> GateAddr;
 	std::unordered_map<std::string, std::string> NameNick;
 	std::mutex mux;
 };
