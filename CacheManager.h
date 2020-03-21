@@ -36,6 +36,7 @@ public:
 	std::string findNameNick(const std::string &name);
 	std::string findUserRepeater(const std::string &user);
 	std::string findGateAddress(const std::string &gate);
+	std::string findServerUser();
 	void eraseGate(const std::string &gate);
 	void eraseName(const std::string &name);
 	void clearGate();

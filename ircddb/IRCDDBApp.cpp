@@ -9,18 +9,16 @@
 
 IRCDDBApp::IRCDDBApp(const std::string &u_chan, CCacheManager *cache) : numberOfTables(2)
 {
+	updateChannel = u_chan;
+	this->cache = cache;
 	maxTime = 950000000;	// Feb 2000
 	wdTimer = -1;
 	sendQ = NULL;
 	initReady = false;
-
-	userListReset();
-
 	state = 0;
 	timer = 0;
 	myNick = "none";
 
-	updateChannel = u_chan;
 
 	terminateThread = false;
 	tablePattern  = std::regex("^[0-9]$");
@@ -28,7 +26,6 @@ IRCDDBApp::IRCDDBApp(const std::string &u_chan, CCacheManager *cache) : numberOf
 	timePattern   = std::regex("^((2[0-3])|([01][0-9])):[0-5][0-9]:[0-5][0-9]$");
 	dbPattern     = std::regex("^[0-9A-Z_]{8}$");
 	modulePattern = std::regex("^.*[ABCD]D?$");
-	this->cache = cache;
 }
 
 IRCDDBApp::~IRCDDBApp()
@@ -184,9 +181,7 @@ void IRCDDBApp::stopWork()
 
 void IRCDDBApp::userJoin(const std::string &nick, const std::string &name, const std::string &addr)
 {
-	if ('-' == nick.at(1)) {
-		if ('s' == nick.at(0))
-			setBestServer(nick);
+	if (0 == nick.compare(0, 2, "u-")) {
 		return;
 	}
 	std::string gate(name);
@@ -237,7 +232,11 @@ void IRCDDBApp::setBestServer(const std::string &ircUser)
 
 bool IRCDDBApp::findServerUser()
 {
-	return (!bestServer.empty() && !currentServer.empty());
+	std::string suser(cache->findServerUser());
+	if (suser.empty())
+		return false;
+	currentServer.assign(suser);
+	return true;
 }
 
 // to is the gateway to which we are sending the message, (the gateway last used by URCall)

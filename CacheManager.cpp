@@ -78,12 +78,26 @@ std::string CCacheManager::findNameNick(const std::string &name)
 	std::string nick;
 	if (name.empty())
 		return nick;
-	mux.unlock();
+	mux.lock();
 	auto itn = NameNick.find(name);
 	if (itn != NameNick.end())
 		nick.assign(itn->second);
 	mux.unlock();
 	return nick;
+}
+
+std::string CCacheManager::findServerUser()
+{
+	std::string suser;
+	mux.lock();
+	for (auto it=NameNick.begin(); it!=NameNick.end(); it++) {
+		if (0 == it->first.compare(0, 2, "s-")) {
+			suser.assign(it->first);
+			break;
+		}
+	}
+	mux.unlock();
+	return suser;
 }
 
 void CCacheManager::updateUser(const std::string &user, const std::string &rptr, const std::string &gate, const std::string &addr, const std::string &time)
