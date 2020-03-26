@@ -142,8 +142,14 @@ foreach($showlist as $section) {
 			echo 'System Info:<br>', "\n";
 			$hn = trim(`uname -n`);
 			$kn = trim(`uname -rmo`);
-			$oslist = explode(':', `lsb_release -d`);
-			$os = trim($oslist[1]);
+			$osinfo = file('/etc/os-release', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+			foreach ($osinfo as $line) {
+				list( $key, $value ) = explode('=', $line);
+				if ($key == 'PRETTY_NAME') {
+					$os = trim($value, '"');
+					break;
+				}
+			}
 			$cu = trim(`cat /proc/cpuinfo | grep Model`);
 			if (0 == strlen($cu))
 				$cu = trim(`cat /proc/cpuinfo | grep "model name"`);
