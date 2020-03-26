@@ -2370,11 +2370,11 @@ bool CQnetGateway::Init(char *cfgfile)
 		}
 		switch (ii[j]->GetFamily()) {
 		case AF_INET:
-			printf("IRC server is using IPV4\n");
+			printf("IRC server %s is using IPV4\n", ircddb[j].ip.c_str());
 			af_family[j] = AF_INET;
 			break;
 		case AF_INET6:
-			printf("IRC server is using IPV6\n");
+			printf("IRC server %s is using IPV6\n", ircddb[j].ip.c_str());
 			af_family[j] = AF_INET6;
 			break;
 		default:
