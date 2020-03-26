@@ -151,7 +151,7 @@ if ('true' == GetCFGValue('dash_show_sy')) {
 		$cu .= ' ' . `/opt/vc/bin/vcgencmd measure_temp`;
 	echo '<table cellpadding="1" border="1" style="font-family: monospace">', "\n";
 	echo '<tr><td style="text-align:center">Hostname</td><td style="text-align:center">Kernel</td><td style="text-align:center">OS</td><td style="text-align:center">CPU</td></tr>', "\n";
-	echo '<tr><td style="text-align:center">', $hn, '</td><td style="text-align:center">', $kn, '</td><td style="text-align:center">', $os, '</td><td style="text-align:center">', $cu, '</td></tr>', "\n";
+	echo '<tr><td style="text-align:center">', $hn, '</td><td style="text-align:center">', $kn, '</td><td style="text-align:center">', $os, '</td><td style="text-align:center">', $cu, '</td></tr></table><br>', "\n";
 }
 
 if ('true' == GetCFGValue('dash_show_lh')) {
