@@ -4,14 +4,12 @@
 #include "IRCDDBApp.h"
 #include "IRCutils.h"
 
-CIRCDDB::CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, CCacheManager *cache)
+CIRCDDB::CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo)
 
 {
-	this->cache = cache;
-
 	const std::string update_channel("#dstar");
 
-	app = new IRCDDBApp(update_channel, cache);
+	app = new IRCDDBApp(update_channel, &cache);
 	client = new IRCClient(app, update_channel, hostName, port, callsign, password, versionInfo);
 }
 

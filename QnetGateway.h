@@ -25,7 +25,6 @@
 #include "aprs.h"
 #include "SockAddress.h"
 #include "QnetDB.h"
-#include "CacheManager.h"
 #include "DStarDecode.h"
 
 #define MAXHOSTNAMELEN 64
@@ -157,9 +156,6 @@ private:
 
 	// for bit error rate calcs
 	CDStarDecode decode;
-
-	// CACHE used to cache users, repeaters, gateways and addresses
-	CCacheManager cache[2];
 
 	// dtmf stuff
 	int dtmf_buf_count[3];

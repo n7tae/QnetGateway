@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-200320");
+const std::string GW_VERSION("QnetGateway-326");
 
 static std::atomic<bool> keep_running(true);
 
@@ -452,7 +452,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 					ii[i]->receivePing(rptr);
 					if (! rptr.empty()) {
 						ReplaceChar(rptr, '_', ' ');
-						cache[i].findRptrData(rptr, gate, addr);
+						ii[i]->cache.findRptrData(rptr, gate, addr);
 						if (addr.empty())
 							break;
 						CSockAddress to;
@@ -481,7 +481,7 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const int i, const std::string &cal
 {
 	switch (RoU) {
 		case 'U':
-			cache[i].findUserData(call, rptr, gate, addr);
+			ii[i]->cache.findUserData(call, rptr, gate, addr);
 			if (rptr.empty()) {
 				printf("Could not find last heard repeater for user '%s'\n", call.c_str());
 				return 1;
@@ -489,7 +489,7 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const int i, const std::string &cal
 			break;
 		case 'R':
 			rptr.assign(call);
-			cache[i].findRptrData(call, gate, addr);
+			ii[i]->cache.findRptrData(call, gate, addr);
 			break;
 		default:
 			fprintf(stderr, "ERROR: Invalid Rou of '%c'\n", RoU);
@@ -2340,7 +2340,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	for (int j=0; j<2; j++) {
 		if (ircddb[j].ip.empty())
 			continue;
-		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str(), &cache[j]);
+		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str());
 		bool ok = ii[j]->open();
 		if (!ok) {
 			printf("%s open failed\n", ircddb[j].ip.c_str());

@@ -21,7 +21,7 @@ class IRCClient;
 class CIRCDDB
 {
 public:
-	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, CCacheManager *cache);
+	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
 	~CIRCDDB();
 
 	// returns the socket family type
@@ -106,8 +106,9 @@ public:
 
 	void close();		// Implictely kills any threads in the IRC code
 
+	CCacheManager cache;
+
 private:
 	IRCDDBApp *app;
 	IRCClient *client;
-	CCacheManager *cache;
 };
