@@ -133,6 +133,27 @@ if ('true' == GetCFGValue('dash_show_ps') && `ps -aux | grep -e qn -e MMDVMHost 
 	echo '</code>', "\n";
 }
 
+if ('true' == GetCFGValue('dash_show_sy')) {
+	echo 'System Info:<br>', "\n";
+	$hn = trim(`uname -n`);
+	$kn = trim(`uname -rmo`);
+	$oslist = explode(':', `lsb_release -d`);
+	$os = trim($oslist[1]);
+	$cu = trim(`cat /proc/cpuinfo | grep Model`);
+	if (0 == strlen($cu))
+		$cu = trim(`cat /proc/cpuinfo | grep "model name"`);
+	$culist = explode("\n", $cu);
+	$mnlist = explode(':', $culist[0]);
+	$cu = trim($mnlist[1]);
+	if (count($culist) > 1)
+		$cu .= ' ' . count($culist) . ' Threads';
+	if (file_exists('/opt/vc/bin/vcgencmd'))
+		$cu .= ' ' . `/opt/vc/bin/vcgencmd measure_temp`;
+	echo '<table cellpadding="1" border="1" style="font-family: monospace">', "\n";
+	echo '<tr><td style="text-align:center">Hostname</td><td style="text-align:center">Kernel</td><td style="text-align:center">OS</td><td style="text-align:center">CPU</td></tr>', "\n";
+	echo '<tr><td style="text-align:center">', $hn, '</td><td style="text-align:center">', $kn, '</td><td style="text-align:center">', $os, '</td><td style="text-align:center">', $cu, '</td></tr>', "\n";
+}
+
 if ('true' == GetCFGValue('dash_show_lh')) {
 	echo 'Last Heard:<br><code>', "\n";
 	$rstr = 'MyCall/Sfx    Source   Last Time<br>';

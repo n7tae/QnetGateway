@@ -147,6 +147,7 @@ DashboardMenu () {
 		echo -n "r  : Refresh time (sec) for page      = "; EvaluateVar dash_refresh{,_d}
 		echo -n "c  : Max number of last heard entries = "; EvaluateVar dash_lastheard_count{,_d}
 		echo -n "p  : Show the Processes               = "; EvaluateVar dash_show_ps{,_d}
+		echo -n "y  : Show the System                  = "; EvaluateVar dash_show_sy{,_d}
 		echo -n "l  : Show the Last Heard              = "; EvaluateVar dash_show_lh{,_d}
 		echo -n "i  : Show the IP Addresses            = "; EvaluateVar dash_show_ip{,_d}
 		echo -n "m  : Show the Modules(s)              = "; EvaluateVar dash_show_mo{,_d}
@@ -157,6 +158,7 @@ DashboardMenu () {
 		elif [[ "$key" == r* ]]; then dash_refresh="$value"
 		elif [[ "$key" == c* ]]; then dash_lastheard_count="$value"
 		elif [[ "$key" == p* ]]; then SetBooleanValue dash_show_ps "$value"
+		elif [[ "$key" == y* ]]; then SetBooleanValue dash_show_sy "$value"
 		elif [[ "$key" == l* ]]; then SetBooleanValue dash_show_lh "$value"
 		elif [[ "$key" == i* ]]; then SetBooleanValue dash_show_ip "$value"
 		elif [[ "$key" == m* ]]; then SetBooleanValue dash_show_mo "$value"
@@ -166,6 +168,7 @@ DashboardMenu () {
 			elif [[ "$value" == r* ]]; then unset dash_refresh
 			elif [[ "$value" == c* ]]; then unset dash_lastheard_count
 			elif [[ "$value" == p* ]]; then unset dash_show_ps
+			elif [[ "$value" == y* ]]; then unset dash_show_sy
 			elif [[ "$value" == l* ]]; then unset dash_show_lh
 			elif [[ "$value" == i* ]]; then unset dash_show_ip
 			elif [[ "$value" == m* ]]; then unset dash_show_mo
@@ -700,6 +703,7 @@ WriteCFGFile () {
 	[ -z "${dash_show_ip+x}"         ] || echo "dash_show_ip=${dash_show_ip}"                 >> $outFile
 	[ -z "${dash_show_lh+x}"         ] || echo "dash_show_lh=${dash_show_lh}"                 >> $outFile
 	[ -z "${dash_show_ps+x}"         ] || echo "dash_show_ps=${dash_show_ps}"                 >> $outFile
+	[ -z "${dash_show_sy+x}"         ] || echo "dash_show_sy=${dash_show_sy}"                 >> $outFile
 	[ -z "${dash_show_mo+x}"         ] || echo "dash_show_mo=${dash_show_mo}"                 >> $outFile
 	[ -z "${dash_show_ur+x}"         ] || echo "dash_show_ur=${dash_show_ur}"                 >> $outFile
 	clear
@@ -733,7 +737,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#200312"
+	echo "           QnConfig Main Menu V#200326"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
