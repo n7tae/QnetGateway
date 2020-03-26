@@ -1,7 +1,7 @@
                     ##### DASHBOARD.README #####
 
 A web-based dashboard can be enabled. The dashboard has several sections
-that you can disable if you want. You can also control the refresh rate and
+that you can display in any order. You can also control the refresh rate and
 how many rows you want in the Last Heard section. You can configure these
 features with the ./qnconfig menu. Don't set the refresh time faster than about
 10 seconds. If you do, it will become difficult to use the Send URCall button.

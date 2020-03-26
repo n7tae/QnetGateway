@@ -146,33 +146,29 @@ DashboardMenu () {
 		fi
 		echo -n "r  : Refresh time (sec) for page      = "; EvaluateVar dash_refresh{,_d}
 		echo -n "c  : Max number of last heard entries = "; EvaluateVar dash_lastheard_count{,_d}
-		echo -n "p  : Show the Processes               = "; EvaluateVar dash_show_ps{,_d}
-		echo -n "y  : Show the System                  = "; EvaluateVar dash_show_sy{,_d}
-		echo -n "l  : Show the Last Heard              = "; EvaluateVar dash_show_lh{,_d}
-		echo -n "i  : Show the IP Addresses            = "; EvaluateVar dash_show_ip{,_d}
-		echo -n "m  : Show the Modules(s)              = "; EvaluateVar dash_show_mo{,_d}
-		echo -n "s  : Show the Send URCall             = "; EvaluateVar dash_show_ur{,_d}
+		echo -n "o  : Show Section Order               = "; EvaluateVar dash_show_order{,_d}
+		echo
+		echo "     The 'Show Section' is a comma separated value, e.g. 'lh,mo,sy,ip,ps,ur'"
+		echo "     The following sections can be shown in any order. It's okay to leave out sections."
+		echo "     Don't use spaces, just use commas. Lowercase will be set to uppercase."
+		echo
+		echo "     LH is the Last Heard Section"
+		echo "     MO is the Modules Section"
+		echo "     SY is the System Section"
+		echo "     IP is the IP Address Section"
+		echo "     PS is the Processes Section"
+		echo "     UR is the Send URCall Section"
 		EndMenu
 
 		if   [[ "$key" == n* ]]; then dash_sql_filename="$value"
 		elif [[ "$key" == r* ]]; then dash_refresh="$value"
 		elif [[ "$key" == c* ]]; then dash_lastheard_count="$value"
-		elif [[ "$key" == p* ]]; then SetBooleanValue dash_show_ps "$value"
-		elif [[ "$key" == y* ]]; then SetBooleanValue dash_show_sy "$value"
-		elif [[ "$key" == l* ]]; then SetBooleanValue dash_show_lh "$value"
-		elif [[ "$key" == i* ]]; then SetBooleanValue dash_show_ip "$value"
-		elif [[ "$key" == m* ]]; then SetBooleanValue dash_show_mo "$value"
-		elif [[ "$key" == s* ]]; then SetBooleanValue dash_show_ur "$value"
+		elif [[ "$key" == o* ]]; then dash_show_order="${value^^}"
 		elif [[ "$key" == u* ]]; then
 			if   [[ "$value" == n* ]]; then unset dash_sql_filename
 			elif [[ "$value" == r* ]]; then unset dash_refresh
 			elif [[ "$value" == c* ]]; then unset dash_lastheard_count
-			elif [[ "$value" == p* ]]; then unset dash_show_ps
-			elif [[ "$value" == y* ]]; then unset dash_show_sy
-			elif [[ "$value" == l* ]]; then unset dash_show_lh
-			elif [[ "$value" == i* ]]; then unset dash_show_ip
-			elif [[ "$value" == m* ]]; then unset dash_show_mo
-			elif [[ "$value" == s* ]]; then unset dash_show_ur
+			elif [[ "$value" == o* ]]; then unset dash_show_order
 			fi
 		fi
 	done
@@ -700,12 +696,7 @@ WriteCFGFile () {
 	[ -z "${dash_sql_filename+x}"    ] || echo "dash_sql_filename='${dash_sql_filename}'"     >> $outFile
 	[ -z "${dash_refresh+x}"         ] || echo "dash_refresh=${dash_refresh}"                 >> $outFile
 	[ -z "${dash_lastheard_count+x}" ] || echo "dash_lastheard_count=${dash_lastheard_count}" >> $outFile
-	[ -z "${dash_show_ip+x}"         ] || echo "dash_show_ip=${dash_show_ip}"                 >> $outFile
-	[ -z "${dash_show_lh+x}"         ] || echo "dash_show_lh=${dash_show_lh}"                 >> $outFile
-	[ -z "${dash_show_ps+x}"         ] || echo "dash_show_ps=${dash_show_ps}"                 >> $outFile
-	[ -z "${dash_show_sy+x}"         ] || echo "dash_show_sy=${dash_show_sy}"                 >> $outFile
-	[ -z "${dash_show_mo+x}"         ] || echo "dash_show_mo=${dash_show_mo}"                 >> $outFile
-	[ -z "${dash_show_ur+x}"         ] || echo "dash_show_ur=${dash_show_ur}"                 >> $outFile
+	[ -z "${dash_show_order+x}"      ] || echo "dash_show_order='${dash_show_order}'"         >> $outFile
 	clear
 	cat $outFile
 	echo

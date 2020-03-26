@@ -345,7 +345,8 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 
 	// dashboard
 	path.assign("dash_");
-	cfg.GetValue(path+"show_lh", estr, DASH_SHOW_LH);
+	cfg.GetValue(path+"show_order", estr, DASH_SHOW_ORDER, 2, 17);
+	showLastHeard = (std::string::npos == DASH_SHOW_ORDER.find("LH"));
 	cfg.GetValue(path+"sql_filename", estr, DASH_SQL_NAME, 1, 32);
 
 	return false;
@@ -993,7 +994,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 					}
 
 					std::string  mycall((const char *)g2buf.hdr.mycall, 8);
-					if (DASH_SHOW_LH && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(mycall.c_str(), preg)) {
+					if (showLastHeard && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(mycall.c_str(), preg)) {
 						std::string     sfx((const char *)g2buf.hdr.sfx,    4);
 						std::string  urcall((const char *)g2buf.hdr.urcall, 8);
 						rtrim(mycall);
@@ -2268,7 +2269,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 
 	// open database
-	if (DASH_SHOW_LH) {
+	if (showLastHeard) {
 		std::string dbname(CFG_DIR);
 		dbname.append("/");
 		dbname.append(DASH_SQL_NAME);
