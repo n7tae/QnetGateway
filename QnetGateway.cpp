@@ -346,7 +346,7 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	// dashboard
 	path.assign("dash_");
 	cfg.GetValue(path+"show_order", estr, DASH_SHOW_ORDER, 2, 17);
-	showLastHeard = (std::string::npos == DASH_SHOW_ORDER.find("LH"));
+	showLastHeard = (std::string::npos != DASH_SHOW_ORDER.find("LH"));
 	cfg.GetValue(path+"sql_filename", estr, DASH_SQL_NAME, 1, 32);
 
 	return false;
