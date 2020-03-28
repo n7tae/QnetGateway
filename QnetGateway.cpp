@@ -114,42 +114,19 @@ void CQnetGateway::PrintCallsigns(const std::string &key, const std::set<std::st
 }
 
 
-void CQnetGateway::set_dest_rptr(int mod_ndx, char *dest_rptr)
+void CQnetGateway::set_dest_rptr(const char mod, std::string &call)
 {
-	FILE *statusfp = fopen(FILE_STATUS.c_str(), "r");
-	if (statusfp) {
-		setvbuf(statusfp, (char *)NULL, _IOLBF, 0);
+	std::list<CLink> linklist;
+	if (qnDB.FindLS(mod, linklist))
+		return;
 
-		char statusbuf[1024];
-		while (fgets(statusbuf, 1020, statusfp) != NULL) {
-			char *p = strchr(statusbuf, '\r');
-			if (p)
-				*p = '\0';
-			p = strchr(statusbuf, '\n');
-			if (p)
-				*p = '\0';
+	auto count = linklist.size();
+	if (count != 1)
+		printf("set_dest_rptr() returned %d link sets\n", int(count));
+	if (0 == count)
+		return;
 
-			const char *delim = ",";
-			char *saveptr = NULL;
-			char *status_local_mod = strtok_r(statusbuf, delim, &saveptr);
-			char *status_remote_stm = strtok_r(NULL, delim, &saveptr);
-			char *status_remote_mod = strtok_r(NULL, delim, &saveptr);
-
-			if (!status_local_mod || !status_remote_stm || !status_remote_mod)
-				continue;
-
-			if ( ((*status_local_mod == 'A') && (mod_ndx == 0))  ||
-			     ((*status_local_mod == 'B') && (mod_ndx == 1))  ||
-			     ((*status_local_mod == 'C') && (mod_ndx == 2)) ) {
-				strncpy(dest_rptr, status_remote_stm, CALL_SIZE);
-				dest_rptr[7] = *status_remote_mod;
-				dest_rptr[CALL_SIZE] = '\0';
-				break;
-			}
-		}
-		fclose(statusfp);
-	}
-	return;
+	call.assign(linklist.front().callsign);
 }
 
 /* compute checksum */
@@ -330,7 +307,6 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	path.assign("file_");
 	cfg.GetValue(path+"echotest", estr, FILE_ECHOTEST, 2, FILENAME_MAX);
 	cfg.GetValue(path+"dtmf", estr, FILE_DTMF, 2, FILENAME_MAX);
-	cfg.GetValue(path+"status", estr, FILE_STATUS, 2, FILENAME_MAX);
 	cfg.GetValue(path+"qnvoice_file", estr, FILE_QNVOICE_FILE, 2, FILENAME_MAX);
 
 	// timing
@@ -805,11 +781,8 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 						// 100 voice packets received and still no 20-char message!
 						/*** if YRCALL is CQCQCQ, set dest_rptr ***/
 						band_txt[i].txt[0] = '\0';
-						if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
-							set_dest_rptr(i, band_txt[i].dest_rptr);
-							if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
-								band_txt[i].dest_rptr[0] = '\0';
-						}
+						if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0)
+							set_dest_rptr(i+'A', band_txt[i].dest_rptr);
 
 						int x = FindIndex(i);
 						if (x >= 0)
@@ -840,11 +813,9 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 								band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
 								if ( ! band_txt[i].sent_key_on_msg) {
 									/*** if YRCALL is CQCQCQ, set dest_rptr ***/
-									if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
-										set_dest_rptr(i, band_txt[i].dest_rptr);
-										if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
-											band_txt[i].dest_rptr[0] = '\0';
-									}
+									if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0)
+										set_dest_rptr(i+'A', band_txt[i].dest_rptr);
+
 									// we have the 20-character message, send it to the server...
                                     int x = FindIndex(i);
 									if (x >= 0)
@@ -999,7 +970,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 						std::string  urcall((const char *)g2buf.hdr.urcall, 8);
 						rtrim(mycall);
 						rtrim(sfx);
-						qnDB.Update(mycall.c_str(), sfx.c_str(), urcall.c_str());
+						qnDB.UpdateLH(mycall.c_str(), sfx.c_str(), urcall.c_str());
 					}
 
 					Gate2Modem[i].Write(g2buf.title, 56);
@@ -1319,8 +1290,7 @@ void CQnetGateway::ProcessModem()
 
 										// The remote repeater has been set, lets fill in the dest_rptr
 										// so that later we can send that to the LIVE web site
-										memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt1, 8);
-										band_txt[i].dest_rptr[CALL_SIZE] = '\0';
+										band_txt[i].dest_rptr.assign((char *)dsvt.hdr.rpt1, 8);
 
 										// send to remote gateway
 										for (int j=0; j<5; j++)
@@ -1373,8 +1343,7 @@ void CQnetGateway::ProcessModem()
 
 										// The remote repeater has been set, lets fill in the dest_rptr
 										// so that later we can send that to the LIVE web site
-										memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt1, 8);
-										band_txt[i].dest_rptr[CALL_SIZE] = '\0';
+										band_txt[i].dest_rptr.assign((char *)dsvt.hdr.rpt1, 8);
 
 										/* send to remote gateway */
 										for (int j=0; j<5; j++)
@@ -1397,9 +1366,8 @@ void CQnetGateway::ProcessModem()
 								    		   The remote repeater has been set, lets fill in the dest_rptr
 									    	   so that later we can send that to the LIVE web site
 										    */
-    										memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt2, 8);
-	    									band_txt[i].dest_rptr[7] = rptr.at(7);
-		    								band_txt[i].dest_rptr[8] = '\0';
+    										band_txt[i].dest_rptr.assign((char *)dsvt.hdr.rpt2, 7);
+	    									band_txt[i].dest_rptr.append(1, rptr.at(7));
 
     										i = rptr.at(7) - 'A';
 
@@ -1557,8 +1525,7 @@ void CQnetGateway::ProcessModem()
 					if (i>=0 && i<3) {
 						// The remote repeater has been set, lets fill in the dest_rptr
 						// so that later we can send that to the LIVE web site
-						memcpy(band_txt[i].dest_rptr, dsvt.hdr.rpt2, 8);
-						band_txt[i].dest_rptr[8] = '\0';
+						band_txt[i].dest_rptr.append((char *)dsvt.hdr.rpt2, 8);
 					}
 
 					i = dsvt.hdr.rpt2[7] - 'A';
@@ -1618,9 +1585,7 @@ void CQnetGateway::ProcessModem()
 							if (! band_txt[i].sent_key_on_msg) {
 								band_txt[i].txt[0] = '\0';
 								if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
-									set_dest_rptr(i, band_txt[i].dest_rptr);
-									if (memcmp(band_txt[i].dest_rptr, "REF", 3) == 0)
-										band_txt[i].dest_rptr[0] = '\0';
+									set_dest_rptr(i+'A', band_txt[i].dest_rptr);
 								}
                                 int x = FindIndex(i);
 								if (x >= 0)
@@ -2259,8 +2224,29 @@ bool CQnetGateway::Init(char *cfgfile)
 	std::signal(SIGINT,  sigCatch);
 	std::signal(SIGHUP,  sigCatch);
 
-	for (i = 0; i < 3; i++)
-		memset(&band_txt[0], 0, sizeof(SBANDTXT));
+	for (i=0; i<3; i++) {
+		band_txt[i].streamID = 0;
+		memset(band_txt[i].flags, 0, 3);
+		memset(band_txt[i].lh_mycall, 0, 9);
+		memset(band_txt[i].lh_sfx, 0, 5);
+		memset(band_txt[i].lh_yrcall, 0, 9);
+		memset(band_txt[i].lh_rpt1, 0, 9);
+		memset(band_txt[i].lh_rpt2, 0, 9);
+		band_txt[i].last_time = 0;
+		memset(band_txt[i].txt, 0, 64);   // Only 20 are used
+		band_txt[i].txt_cnt = 0;
+		band_txt[i].sent_key_on_msg = false;
+		band_txt[i].dest_rptr.clear();
+		memset(band_txt[i].temp_line, 0, 256);
+		band_txt[i].temp_line_cnt = 0U;
+		memset(band_txt[i].gprmc, 0, 256);
+		memset(band_txt[i].gpid, 0, 256);
+		band_txt[i].is_gps_sent = false;
+		band_txt[i].gps_last_time = 0;
+		band_txt[i].num_dv_frames = 0;
+		band_txt[i].num_dv_silent_frames = 0;
+		band_txt[i].num_bit_errors = 0;
+	}
 
 	/* process configuration file */
 	if ( ReadConfig(cfgfile) ) {
@@ -2269,13 +2255,12 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 
 	// open database
-	if (showLastHeard) {
-		std::string dbname(CFG_DIR);
-		dbname.append("/");
-		dbname.append(DASH_SQL_NAME);
-		if (qnDB.Open(dbname.c_str()))
-			return true;
-	}
+	std::string fname(CFG_DIR);
+	fname.append("/");
+	fname.append(DASH_SQL_NAME);
+	if (qnDB.Open(fname.c_str()) || qnDB.Init())
+		return true;
+
 
 	playNotInCache = false;
 

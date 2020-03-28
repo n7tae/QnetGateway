@@ -61,7 +61,7 @@ using SBANDTXT = struct band_txt_tag {
 	unsigned short txt_cnt;
 	bool sent_key_on_msg;
 
-	char dest_rptr[CALL_SIZE + 1];
+	std::string dest_rptr;
 
 	// try to process GPS mode: GPRMC and ID
 	char temp_line[256];
@@ -103,7 +103,7 @@ private:
 
 	std::string gate2link, link2gate, gate2modem[3], modem2gate;
 
-	std::string OWNER, owner, FILE_STATUS, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE, DASH_SQL_NAME, DASH_SHOW_ORDER;
+	std::string OWNER, owner, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE, DASH_SQL_NAME, DASH_SHOW_ORDER;
 
 	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache, showLastHeard;
 	bool LOG_DEBUG, LOG_IRC, LOG_DTMF, LOG_QSO;
@@ -191,6 +191,6 @@ private:
 
 	void qrgs_and_maps();
 
-	void set_dest_rptr(int mod_ndx, char *dest_rptr);
+	void set_dest_rptr(const char mod, std::string &call);
 	bool validate_csum(SBANDTXT &bt, bool is_gps);
 };

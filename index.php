@@ -58,23 +58,6 @@ function GetIP(string $type)
 	return $ip;
 }
 
-function GetStatus(string $mod, array &$kv)
-{
-	$mod = strtoupper(substr($mod, 0, 1));
-	if (array_key_exists('file_status', $kv))
-		$file = $kv['file_status'];
-	else
-		$file = '/usr/local/etc/rptr_status';
-	if ($lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)) {
-		foreach ($lines as $line) {
-			$words = explode(',', $line);
-			if ($words[0] == $mod)
-				return $words;
-		}
-	}
-	return explode(',', ',,,,,');
-}
-
 function SecToString(int $sec) {
 	if ($sec >= 86400)
 		return sprintf("%0.2f days", $sec/86400);
@@ -194,33 +177,53 @@ foreach($showlist as $section) {
 			break;
 		case 'MO':
 			echo 'Modules:<br>', "\n";
+			$dbname = $cfgdir.'/'.GetCFGValues('dash_sql_filename');
+			$db = new SQLiet3($dbname, SQLITE3_OPEN_READ_ONLY);
 			echo "<table cellpadding='1' border='1' style='font-family: monospace'>\n";
-			echo '<tr><td style="text-align:center">Module</td><td style="text-align:center">Modem</td><td style="text-align:center">Frequency</td><td style="text-align:center">Link</td><td style="text-align:center">Link IP</td></tr>', "\n";
+			echo '<tr><td style="text-align:center">Module</td><td style="text-align:center">Modem</td><td style="text-align:center">Frequency</td><td style="text-align:center">Link</td><td style="text-align:center">Linked Time</td><td style="text-align:center">Link IP</td></tr>', "\n";
 			foreach (array('a', 'b', 'c') as $mod) {
 				$module = 'module_'.$mod;
 				if (array_key_exists($module, $cfg)) {
-					$configured[] = strtoupper($mod);
 					$freq = 0.0;
 					if (array_key_exists($module.'_tx_frequency', $cfg))
 						$freq = $cfg[$module.'_tx_frequency'];
 					else if (array_key_exists($module.'_frequency', $cfg))
 						$freq = $cfg[$module.'_frequency'];
-					$stat = GetStatus($mod, $cfg);
-					if (8==strlen($stat[1]) && 1==strlen($stat[2]))
-						$linkstatus = substr($stat[1], 0, 7).$stat[2];
-					else
-						$linkstatus = 'Unlinked';
-					echo '<tr><td style="text-align:center">',strtoupper($mod),'</td><td style="text-align:center">',$cfg[$module],'</td><td style="text-align:center">',$freq,'</td><td style="text-align:center">',$linkstatus,'</td><td style="text-align:center">',$stat[3],'</td></tr>',"\n";
+					$ss = 'SELECT ip_address,to_callsign,to_mod,strftime("%s","now")-link_time FROM LINKSTATUS WHERE from_mod=' . "'" . strtoupper($mod) . "';";
+					if ($stmnt = $db->prepare($ss)) {
+						if ($result = $stmnt->execute()) {
+							if ($row = $result->FetchArray(SQLITE3_NUM)) {
+								$linkstatus = str_pad(trim($row[1]), 7).$row[2];
+								$address = $row[0];
+								$ctime = SecToString(intval($row[3]));
+							} else {
+								$linkstatus = 'Unlinked';
+								$address = '';
+								$ctime = '';
+							}
+							$result->finalize();
+						}
+						$stmnt->close();
+					}
+					echo '<tr><td style="text-align:center">', strtoupper($mod), '</td><td style="text-align:center">',$cfg[$module], '</td><td style="text-align:center">', $freq, '</td><td style="text-align:center">', $linkstatus, '</td><td style="text-align:right">', $ctime, '</td><td style="text-align:center">', $address, '</td></tr>', "\n";
 				}
 			}
 			echo '</table><br>', "\n";
+			$db->close();
 			break;
 		case 'UR':
 			echo 'Send URCall:<br>', "\n";
 			echo '<form method="post">', "\n";
-			if (count($configured) > 1) {
+			$mods = array();
+			foreach (array('a', 'b', 'c') as $mod) {
+				$module = 'module_'.$mod;
+				if (array_key_exists($module, $cfg)) {
+					$mods[] = strtoupper($mod);
+				}
+			}
+			if (count($mods) > 1) {
 				echo 'Module: ', "\n";
-				foreach ($configured as $mod) {
+				foreach ($mods as $mod) {
 					echo '<input type="radio" name="fmodule"', (isset($fmodule) && $fmodule==$mod) ? '"checked"' : '', ' value="$mod">', $mod, '<br>', "\n";
 				}
 			} else

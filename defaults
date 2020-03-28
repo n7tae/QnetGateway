@@ -193,7 +193,6 @@ dplus_priority_d=true       # set to true if you want DPlus reflector read after
 #
 # FILE - where important QnetGateway files and directories are found.
 #
-file_status_d='/usr/local/etc/rptr_status' # where repeater status info is passed between services
 file_dtmf_d='/tmp'                         # where DTMF is decoded
 file_echotest_d='/var/local'               # echo dat files will end up here
 file_qnvoice_file_d='/tmp/qnvoice.txt'     # where qnvoice will create the play command

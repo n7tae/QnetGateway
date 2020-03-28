@@ -52,8 +52,8 @@ modem  : qnmodem
 qngateway : QnetGateway.o aprs.o UnixDgramSocket.o TCPReaderWriterClient.o QnetConfigure.o QnetDB.o CacheManager.o DStarDecode.o $(IRCOBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
 
-qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
+qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixDgramSocket.o QnetConfigure.o QnetDB.o
+	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
 
 qnrelay : QnetRelay.o UnixDgramSocket.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)

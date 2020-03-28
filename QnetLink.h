@@ -32,6 +32,7 @@
 #include "UnixDgramSocket.h"
 #include "SockAddress.h"
 #include "Timer.h"
+#include "QnetDB.h"
 
 /*** version number must be x.xx ***/
 #define CALL_SIZE 8
@@ -66,6 +67,12 @@ using SINBOUND = struct inbound_tag {
 	char client;				// dvap, dvdongle
 };
 
+using STRACING = struct tracing_tag {
+	unsigned short streamid;
+	time_t last_time;	// last time RF user talked
+};
+
+
 class CQnetLink {
 public:
 	// functions
@@ -86,7 +93,6 @@ private:
 	void srv_close();
 	static void sigCatch(int signum);
 	void g2link(const char from_mod, const char *call, const char to_mod);
-	void print_status_file();
 	void send_heartbeat();
 	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
 	void rptr_ack(short i);
@@ -95,7 +101,7 @@ private:
 	void RptrAckThread(char *arg);
 
 	/* configuration data */
-	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, status_file, qnvoice_file, announce_dir;
+	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, dash_sql_name, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
 	bool dplus_authorize, dplus_reflectors, dplus_repeaters, dplus_priority;
 	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
@@ -132,10 +138,7 @@ private:
 	SDSVT fromrptr_torptr_brd;
 	short brd_from_rptr_idx;
 
-	struct tracing_tag {
-		unsigned short streamid;
-		time_t last_time;	// last time RF user talked
-	} tracing[3];
+	STRACING tracing[3];
 
 	// input from remote
 	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
@@ -178,6 +181,6 @@ private:
 	} old_sid[3];
 
 	CRandom Random;
-
+	CQnetDB qnDB;
 	std::vector<unsigned long> speak;
 };
