@@ -182,7 +182,7 @@ foreach($showlist as $section) {
 			echo "<table cellpadding='1' border='1' style='font-family: monospace'>\n";
 			echo '<tr><td style="text-align:center">Module</td><td style="text-align:center">Modem</td><td style="text-align:center">Frequency</td><td style="text-align:center">Link</td><td style="text-align:center">Linked Time</td><td style="text-align:center">Link IP</td></tr>', "\n";
 			foreach (array('a', 'b', 'c') as $mod) {
-				$linkstatus = '';
+				$linkstatus = 'Unlinked';
 				$address = '';
 				$ctime = '';
 				$module = 'module_'.$mod;
