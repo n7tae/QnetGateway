@@ -226,18 +226,18 @@ foreach($showlist as $section) {
 					echo '<input type="radio" name="fmodule"', (isset($fmodule) && $fmodule==$mod) ? '"checked"' : '', ' value="$mod">', $mod, '<br>', "\n";
 				}
 			} else
-				$fmodule = $configured[0];
+				$fmodule = $mods[0];
 			echo 'URCall: <input type="text" name="furcall" value="', $furcall, '">', "\n";
 			echo '<input type="submit" name="sendurcall" value="Send URCall"><br>', "\n";
 			echo '</form>', "\n";
 			if (isset($_POST['sendurcall'])) {
 				$furcall = $_POST['furcall'];
 				if (empty($_POST['fmodule'])) {
-					if (1==count($configured)) {
-						$fmodule = $configured[0];
+					if (1==count($mods)) {
+						$fmodule = $mods[0];
 					}
 				} else {
-				$fmodule = $_POST['fmodule'];
+					$fmodule = $_POST['fmodule'];
 				}
 			}
 			$furcall = str_replace(' ', '_', trim(preg_replace('/[^0-9a-z_ ]/', '', strtolower($furcall))));
