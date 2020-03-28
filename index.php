@@ -184,7 +184,7 @@ foreach($showlist as $section) {
 			foreach (array('a', 'b', 'c') as $mod) {
 				$linkstatus = '';
 				$address = '';
-				$ctime = '':
+				$ctime = '';
 				$module = 'module_'.$mod;
 				if (array_key_exists($module, $cfg)) {
 					$freq = 0.0;
