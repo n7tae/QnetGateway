@@ -177,11 +177,14 @@ foreach($showlist as $section) {
 			break;
 		case 'MO':
 			echo 'Modules:<br>', "\n";
-			$dbname = $cfgdir.'/'.GetCFGValues('dash_sql_filename');
-			$db = new SQLiet3($dbname, SQLITE3_OPEN_READ_ONLY);
+			$dbname = $cfgdir.'/'.GetCFGValue('dash_sql_filename');
+			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
 			echo "<table cellpadding='1' border='1' style='font-family: monospace'>\n";
 			echo '<tr><td style="text-align:center">Module</td><td style="text-align:center">Modem</td><td style="text-align:center">Frequency</td><td style="text-align:center">Link</td><td style="text-align:center">Linked Time</td><td style="text-align:center">Link IP</td></tr>', "\n";
 			foreach (array('a', 'b', 'c') as $mod) {
+				$linkstatus = '';
+				$address = '';
+				$ctime = '':
 				$module = 'module_'.$mod;
 				if (array_key_exists($module, $cfg)) {
 					$freq = 0.0;
@@ -189,17 +192,13 @@ foreach($showlist as $section) {
 						$freq = $cfg[$module.'_tx_frequency'];
 					else if (array_key_exists($module.'_frequency', $cfg))
 						$freq = $cfg[$module.'_frequency'];
-					$ss = 'SELECT ip_address,to_callsign,to_mod,strftime("%s","now")-link_time FROM LINKSTATUS WHERE from_mod=' . "'" . strtoupper($mod) . "';";
+					$ss = 'SELECT ip_address,to_callsign,to_mod,strftime("%s","now")-linked_time FROM LINKSTATUS WHERE from_mod=' . "'" . strtoupper($mod) . "';";
 					if ($stmnt = $db->prepare($ss)) {
 						if ($result = $stmnt->execute()) {
 							if ($row = $result->FetchArray(SQLITE3_NUM)) {
 								$linkstatus = str_pad(trim($row[1]), 7).$row[2];
 								$address = $row[0];
 								$ctime = SecToString(intval($row[3]));
-							} else {
-								$linkstatus = 'Unlinked';
-								$address = '';
-								$ctime = '';
 							}
 							$result->finalize();
 						}
