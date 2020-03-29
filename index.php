@@ -144,8 +144,8 @@ foreach($showlist as $section) {
 			if (file_exists('/opt/vc/bin/vcgencmd'))
 				$cu .= ' ' . str_replace("'", '&deg;', trim(`/opt/vc/bin/vcgencmd measure_temp`));
 			echo '<table cellpadding="1" border="1" style="font-family: monospace">', "\n";
-			echo '<tr><td style="text-align:center">Hostname</td><td style="text-align:center">Kernel</td><td style="text-align:center">OS</td><td style="text-align:center">CPU</td></tr>', "\n";
-			echo '<tr><td style="text-align:center">', $hn, '</td><td style="text-align:center">', $kn, '</td><td style="text-align:center">', $os, '</td><td style="text-align:center">', $cu, '</td></tr></table><br>', "\n";
+			echo '<tr><td style="text-align:center">CPU</td><td style="text-align:center">Kernel</td><td style="text-align:center">OS</td><td style="text-align:center">Hostname</td></tr>', "\n";
+			echo '<tr><td style="text-align:center">', $cu, '</td><td style="text-align:center">', $kn, '</td><td style="text-align:center">', $os, '</td><td style="text-align:center">', $hn, '</td></tr></table><br>', "\n";
 			break;
 		case 'LH':
 			echo 'Last Heard:<br><code>', "\n";
@@ -255,6 +255,6 @@ foreach($showlist as $section) {
 }
 ?>
 <br>
-<p align="right">QnetGateway Dashboard Version 2.0 Copyright &copy; by Thomas A. Early, N7TAE.</p>
+<p align="right">QnetGateway Dashboard Version 2.1 Copyright &copy; by Thomas A. Early, N7TAE.</p>
 </body>
 </html>
