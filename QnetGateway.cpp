@@ -766,6 +766,8 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 						}
 
 						if (band_txt[i].txt_cnt >= 20) {
+							if (0 == memcmp(band_txt[i].txt, "VIA SMRTGRP ", 12))
+								printf("%s\n", band_txt[i].txt);
 							band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
 							band_txt[i].txt_cnt = 0;
 						}
@@ -786,7 +788,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 
 						int x = FindIndex(i);
 						if (x >= 0)
-							ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+							ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 						band_txt[i].sent_key_on_msg = true;
 					}
 					if (to_print[i] == 3) {
@@ -819,7 +821,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 									// we have the 20-character message, send it to the server...
                                     int x = FindIndex(i);
 									if (x >= 0)
-										ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+										ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 									band_txt[i].sent_key_on_msg = true;
 								}
 								band_txt[i].txt_cnt = 0;
@@ -1589,7 +1591,7 @@ void CQnetGateway::ProcessModem()
 								}
                                 int x = FindIndex(i);
 								if (x >= 0)
-									ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, (strstr(band_txt[i].lh_yrcall,"REF") == NULL)?band_txt[i].lh_yrcall:"CQCQCQ  ", band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
+									ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].dest_rptr, band_txt[i].txt);
 								band_txt[i].sent_key_on_msg = true;
 							}
 							// send the "key off" message, this will end up in the openquad.net Last Heard webpage.
