@@ -52,7 +52,7 @@
 #include "QnetConfigure.h"
 #include "QnetLink.h"
 
-#define LINK_VERSION "QnetLink-327"
+#define LINK_VERSION "QnetLink-329"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -2050,7 +2050,7 @@ void CQnetLink::Process()
 								printf("Login OK to call %s mod %c\n", to_remote_g2[i].cs, to_remote_g2[i].to_mod);
 
 								tracing[i].last_time = time(NULL);
-								qnDB.UpdateLS(to_remote_g2[i].addr.GetAddress(), to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod, tracing[i].last_time);
+								qnDB.UpdateLS(to_remote_g2[i].addr.GetAddress(), to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, tracing[i].last_time);
 
 								strcpy(linked_remote_system, to_remote_g2[i].cs);
 								space_p = strchr(linked_remote_system, ' ');
