@@ -173,7 +173,8 @@ private:
 	void compute_aprs_hash();
 	void APRSBeaconThread();
 	void ProcessTimeouts();
-	void ProcessSlowData(unsigned char *data, unsigned short sid);
+	void ProcessSlowData(unsigned char *data, const unsigned short sid);
+	void ProcessG2Msg(const unsigned char *data, const int mod);
 	void ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const int sock_source);
 	void ProcessModem();
 	bool Flag_is_ok(unsigned char flag);

@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-326");
+const std::string GW_VERSION("QnetGateway-330");
 
 static std::atomic<bool> keep_running(true);
 
@@ -635,20 +635,56 @@ void CQnetGateway::ProcessTimeouts()
 	}
 }
 
+void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
+{
+	static unsigned int part[3] = { 0 };
+	static char txt[3][21];
+	if ((data[0] != 0x55) || (data[1] != 0x2d) || (data[2] != 0x16)) {
+		const unsigned int c[3] = { (unsigned char)(data[0] ^ 0x70u), (unsigned char)(data[1] ^ 0x4fu), (unsigned char)(data[2] ^ 0x93u) };	// unscramble
+		if (part[mod]) {
+			// we are in a message
+			if (part[mod] % 2) {
+				// this is the second part of the 2-frame pair
+				memcpy(txt[mod]+part[mod]/2+2, c, 3);
+				if (++part[mod] > 7) {
+					// we've got everything!
+					printf("Msg = %s\n", txt[mod]);
+					part[mod] = 0;	// now we can start over
+				}
+			} else {
+				// we're expecting the next 2-frame pair
+				unsigned int sequence = part[mod]++ / 2;	// this is the sequency we are expecting
+				if ((sequence & 0x40u) == c[0]) {
+					memcpy(txt[mod]+5*sequence, c+1, 2);	// got it! get the copy the two chars
+				} else {
+					part[mod] = 0;	// unexpected
+				}
+			}
+		} else if (0x40u == c[0]) {
+			// start of new message
+			memcpy(txt[mod], c+1, 2);
+			memset(txt[mod]+2, 0, 19);
+			part[mod] = 1;
+		}
+	} else {
+		part[mod] = 0;	// messages will never be spread across a superframe
+	}
+}
+
 // new_group is true if we are processing the first voice packet of a 2-voice packet pair. The high order nibble of the first byte of
 // this first packet specifed the type of slow data that is being sent.
 // the to_print is an integer that counts down how many 2-voice-frame pairs remain to be processed.
 // ABC_grp means that we are processing a 20-character message.
 // C_seen means that we are processing the last 2-voice-frame packet on a 20 character message.
-void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
+void CQnetGateway::ProcessSlowData(unsigned char *data, const unsigned short sid)
 {
 	/* extract 20-byte RADIO ID */
 	if ((data[0] != 0x55) || (data[1] != 0x2d) || (data[2] != 0x16)) {
 
 		// first, unscramble
-		unsigned char c1 = data[0] ^ 0x70u;
-		unsigned char c2 = data[1] ^ 0x4fu;
-		unsigned char c3 = data[2] ^ 0x93u;
+		const unsigned char c1 = data[0] ^ 0x70u;
+		const unsigned char c2 = data[1] ^ 0x4fu;
+		const unsigned char c3 = data[2] ^ 0x93u;
 
 		for (int i=0; i<3; i++) {
 			if (band_txt[i].streamID == sid) {
@@ -686,12 +722,10 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 
 							/* do not copy CR, NL */
 							if ((c2 != '\r') && (c2 != '\n')) {
-								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c2;
-								band_txt[i].temp_line_cnt++;
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c2;
 							}
 							if ((c3 != '\r') && (c3 != '\n')) {
-								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c3;
-								band_txt[i].temp_line_cnt++;
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c3;
 							}
 
 							if ((c2 == '\r') || (c3 == '\r')) {
@@ -721,8 +755,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 
 							/* do not copy CR, NL */
 							if ((c2 != '\r') && (c2 != '\n')) {
-								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c2;
-								band_txt[i].temp_line_cnt++;
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c2;
 							}
 
 							if (c2 == '\r') {
@@ -750,11 +783,9 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 						ABC_grp[i] = true;
 						C_seen[i] = ((c1 & 0x0f) == 0x03) ? true : false;
 
-						band_txt[i].txt[band_txt[i].txt_cnt] = c2;
-						band_txt[i].txt_cnt++;
+						band_txt[i].txt[band_txt[i].txt_cnt++] = c2;
 
-						band_txt[i].txt[band_txt[i].txt_cnt] = c3;
-						band_txt[i].txt_cnt++;
+						band_txt[i].txt[band_txt[i].txt_cnt++] = c3;
 
 						/* We should NOT see any more text,
 						   if we already processed text,
@@ -768,8 +799,6 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 						if (band_txt[i].txt_cnt >= 20) {
 							band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
 							band_txt[i].txt_cnt = 0;
-							if (0 == memcmp(band_txt[i].txt, "VIA SMARTGP ", 12))
-								printf("%s\n", band_txt[i].txt);
 						}
 					}
 					else {	// header type is not header, squelch, gps or message
@@ -793,14 +822,11 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 					}
 					if (to_print[i] == 3) {
 						if (ABC_grp[i]) {
-							band_txt[i].txt[band_txt[i].txt_cnt] = c1;
-							band_txt[i].txt_cnt++;
+							band_txt[i].txt[band_txt[i].txt_cnt++] = c1;
 
-							band_txt[i].txt[band_txt[i].txt_cnt] = c2;
-							band_txt[i].txt_cnt++;
+							band_txt[i].txt[band_txt[i].txt_cnt++] = c2;
 
-							band_txt[i].txt[band_txt[i].txt_cnt] = c3;
-							band_txt[i].txt_cnt++;
+							band_txt[i].txt[band_txt[i].txt_cnt++] = c3;
 
 							/* We should NOT see any more text,
 							   if we already processed text,
@@ -838,16 +864,13 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 
 							/* do not copy carrige return or newline */
 							if ((c1 != '\r') && (c1 != '\n')) {
-								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c1;
-								band_txt[i].temp_line_cnt++;
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c1;
 							}
 							if ((c2 != '\r') && (c2 != '\n')) {
-								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c2;
-								band_txt[i].temp_line_cnt++;
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c2;
 							}
 							if ((c3 != '\r') && (c3 != '\n')) {
-								band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c3;
-								band_txt[i].temp_line_cnt++;
+								band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c3;
 							}
 
 							if ( (c1 == '\r') || (c2 == '\r') || (c3 == '\r') ) {
@@ -912,8 +935,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 
 						/* do not copy CR, NL */
 						if ((c1 != '\r') && (c1 != '\n')) {
-							band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c1;
-							band_txt[i].temp_line_cnt++;
+							band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c1;
 						}
 
 						if (c1 == '\r') {
