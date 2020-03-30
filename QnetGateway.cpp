@@ -643,18 +643,17 @@ void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
 		const unsigned int c[3] = { (unsigned char)(data[0] ^ 0x70u), (unsigned char)(data[1] ^ 0x4fu), (unsigned char)(data[2] ^ 0x93u) };	// unscramble
 		if (part[mod]) {
 			// we are in a message
-			if (part[mod] % 2) {
+			if (part[mod] % 2) {	// true when part[mod] = 1, 3, 5 or 7
 				// this is the second part of the 2-frame pair
-				memcpy(txt[mod]+part[mod]/2+2, c, 3);
+				memcpy(txt[mod]+5*(part[mod]/2)+2, c, 3);
 				if (++part[mod] > 7) {
 					// we've got everything!
 					printf("Msg = %s\n", txt[mod]);
 					part[mod] = 0;	// now we can start over
 				}
-			} else {
-				// we're expecting the next 2-frame pair
-				unsigned int sequence = part[mod]++ / 2;	// this is the sequency we are expecting
-				if ((sequence & 0x40u) == c[0]) {
+			} else {	// we'll get here when part[mod] = 2, 4 or 6
+				unsigned int sequence = part[mod]++ / 2;	// this is the sequency we are expecting, 1, 2 or 3
+				if ((sequence | 0x40u) == c[0]) {
 					memcpy(txt[mod]+5*sequence, c+1, 2);	// got it! get the copy the two chars
 				} else {
 					part[mod] = 0;	// unexpected
