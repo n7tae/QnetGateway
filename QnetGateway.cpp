@@ -647,9 +647,9 @@ void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
 		};	// unscramble
 		if (part[mod]) {
 			// we are in a message
-			if (part[mod] % 2) {	// true when part[mod] = 1, 3, 5 or 7
+			if (part[mod] % 2) {
 				// this is the second part of the 2-frame pair
-				memcpy(txt[mod]+(5u*(part[mod]/2u)+2u), c, 3);	// offset is 2, 7, 12 or 17
+				memcpy(txt[mod]+(5u*(part[mod]/2u)+2u), c, 3);
 				if (++part[mod] > 7) {
 					// we've got everything!
 					printf("Msg = '%s'\n", txt[mod]);
@@ -658,15 +658,15 @@ void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
 			} else {	// we'll get here when part[mod] = 2, 4 or 6
 				unsigned int sequence = part[mod]++ / 2;	// this is the sequency we are expecting, 1, 2 or 3
 				if ((sequence | 0x40u) == c[0]) {
-					memcpy(txt[mod]+(5u*sequence), c+1, 2);	// got it! get the copy the two chars
+					memcpy(txt[mod]+(5u*sequence), c+1, 2);	// got it, copy the 2 remainin chars
 				} else {
 					part[mod] = 0;	// unexpected
 				}
 			}
 		} else if (0x40u == c[0]) {
-			// start of new message
-			memset(txt[mod], 0, 21);
+			// start a new message
 			memcpy(txt[mod], c+1, 2);
+			memset(txt[mod]+2, 0, 19);
 			part[mod] = 1;
 		}
 	} else {
@@ -2361,7 +2361,11 @@ bool CQnetGateway::Init(char *cfgfile)
 			printf("%s open failed\n", ircddb[j].ip.c_str());
 			return true;
 		}
+	}
 
+	for (int j=0; j<2; j++) {
+		if (ircddb[j].ip.empty())
+			continue;
 		int rc = ii[j]->getConnectionState();
 		printf("Waiting for %s connection status of 2\n", ircddb[j].ip.c_str());
 		i = 0;
