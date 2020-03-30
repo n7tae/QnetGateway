@@ -640,17 +640,16 @@ void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
 	static unsigned int part[3] = { 0 };
 	static char txt[3][21];
 	if ((data[0] != 0x55u) || (data[1] != 0x2du) || (data[2] != 0x16u)) {
-		const unsigned int c[3] = {
-			data[0] ^ 0x70u,
-			data[1] ^ 0x4fu,
-			data[2] ^ 0x93u
-		};	// unscramble
+		unsigned int c[3];
+		c[0] = data[0] ^ 0x70u;
+		c[1] = data[1] ^ 0x4fu;
+		c[2] = data[2] ^ 0x93u;	// unscramble
 		if (part[mod]) {
 			// we are in a message
 			if (part[mod] % 2) {	// true when part[mod] = 1, 3, 5 or 7
 				// this is the second part of the 2-frame pair
 				memcpy(txt[mod]+(5u*(part[mod]/2u)+2u), c, 3);	// offset is 2, 7, 12 or 17
-				printf("part[%d]=%u Msg ='%s'\n", mod, part[mod], txt[mod]);
+				printf("part[%d]=%u Msg='%s'\n", mod, part[mod], txt[mod]);
 				if (++part[mod] > 7) {
 					// we've got everything!
 					part[mod] = 0;	// now we can start over
@@ -668,6 +667,7 @@ void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
 			// start of new message
 			memcpy(txt[mod], c+1, 2);
 			memset(txt[mod]+2, 0, 19);
+			printf("part[%d]=%u Msg='%s'\n", mod, part[mod], txt[mod]);
 			part[mod] = 1;
 		}
 	} else {
