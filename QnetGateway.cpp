@@ -644,6 +644,7 @@ void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
 		c[0] = data[0] ^ 0x70u;
 		c[1] = data[1] ^ 0x4fu;
 		c[2] = data[2] ^ 0x93u;	// unscramble
+		printf("c=0x%02x 0x%02x 0x%02x\n", c[0], c[1], c[2]);
 		if (part[mod]) {
 			// we are in a message
 			if (part[mod] % 2) {	// true when part[mod] = 1, 3, 5 or 7
