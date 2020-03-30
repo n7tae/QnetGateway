@@ -766,10 +766,10 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, unsigned short sid)
 						}
 
 						if (band_txt[i].txt_cnt >= 20) {
-							if (0 == memcmp(band_txt[i].txt, "VIA SMARTGP ", 12))
-								printf("%s\n", band_txt[i].txt);
 							band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
 							band_txt[i].txt_cnt = 0;
+							if (0 == memcmp(band_txt[i].txt, "VIA SMARTGP ", 12))
+								printf("%s\n", band_txt[i].txt);
 						}
 					}
 					else {	// header type is not header, squelch, gps or message
