@@ -1076,6 +1076,8 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 							// no matter what, we will send this on if it is the closing frame
 							lastctrl = (0x3FU & g2buf.ctrl);
 							Gate2Modem[i].Write(g2buf.title, 27);
+							if (source_sock >= 0)
+								ProcessG2Msg(g2buf.vasd.text, i);
 						} else {
 							if (LOG_DEBUG)
 								fprintf(stderr, "Warning: Ignoring packet because its ctrl=0x%02xU and lastctrl=0x%02xU\n", g2buf.ctrl, lastctrl);
