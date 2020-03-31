@@ -253,7 +253,7 @@ void CAPRS::Open(const std::string OWNER)
 		strcat(snd_buf, "filter ");
 		strcat(snd_buf, m_rptr->aprs_filter.c_str());
 	}
-	printf("APRS login command:[%s]\n", snd_buf);
+	//printf("APRS Login command:[%s]\n", snd_buf);
 	strcat(snd_buf, "\r\n");
 
 	while (true) {
@@ -263,16 +263,16 @@ void CAPRS::Open(const std::string OWNER)
                 aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			} else {
-				printf("APRS login command failed, error=%d\n", errno);
+				printf("APRS Login command failed, error=%d\n", errno);
 				break;
 			}
 		} else {
-			// printf("APRS login command sent\n");
+			// printf("APRS Login command sent\n");
 			break;
 		}
 	}
     aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-	printf("APRS Login returned: %s", rcv_buf);
+	//printf("APRS Login returned: %s", rcv_buf);
 	return;
 }
 
