@@ -1089,7 +1089,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 							// no matter what, we will send this on if it is the closing frame
 							lastctrl = (0x3FU & g2buf.ctrl);
 							Gate2Modem[i].Write(g2buf.title, 27);
-							if (source_sock >= 0) {
+							if (source_sock >= 0 && showLastHeard) {
 								std::string smartgroup;
 								if(ProcessG2Msg(g2buf.vasd.text, i, smartgroup)) {
 									qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), 'A'+i, smartgroup.c_str());

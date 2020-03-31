@@ -149,7 +149,7 @@ foreach($showlist as $section) {
 			break;
 		case 'LH':
 			echo 'Last Heard:<br><code>', "\n";
-			$rstr = 'MyCall/Sfx   Mod Via     Time<br>';
+			$rstr = 'MyCall/Sfx   Mod Via       Time<br>';
 			echo str_replace(' ', '&nbsp;', $rstr), "\n";
 			$dbname = $cfgdir.'/'.GetCFGValue('dash_sql_filename');
 			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);

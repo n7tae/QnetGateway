@@ -82,7 +82,6 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 {
 	if (NULL == db)
 		return false;
-	printf("UpdateLH call=%s sfx=%s mod=%c ref='%s'\n", callsign, sfx, module, reflector);
 	std::string sql("REPLACE INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('");
 	sql.append(callsign);
 	sql.append("','");
