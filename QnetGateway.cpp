@@ -1005,6 +1005,8 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 						std::string  reflector((const char *)g2buf.hdr.urcall, 8);
 						if (0 == reflector.compare("CQCQCQ  "))
 							set_dest_rptr('A'+i, reflector);
+						else if (0 == reflector.compare(OWNER))
+							reflector.assign("CSRoute");
 						qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), 'A'+i, reflector.c_str());
 					}
 
