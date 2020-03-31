@@ -65,7 +65,7 @@ function SecToString(int $sec) {
 	$sec %= 3600;
 	$min = intdiv($sec, 60);
 	$sec %= 60;
-	if ($hrs) return sprintf("%2d hr %2d min", $hrs, $min);
+	if ($hrs) return sprintf("%2d hr  %2d min", $hrs, $min);
 	if ($min) return sprintf("%2d min %2d sec", $min, $sec);
 	return sprintf("%2d sec", $sec);
 }
