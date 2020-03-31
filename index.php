@@ -149,16 +149,15 @@ foreach($showlist as $section) {
 			break;
 		case 'LH':
 			echo 'Last Heard:<br><code>', "\n";
-			$rstr = 'MyCall/Sfx    Source   Last Time<br>';
+			$rstr = 'MyCall/Sfx   Mod From     Last Time<br>';
 			echo str_replace(' ', '&nbsp;', $rstr), "\n";
 			$dbname = $cfgdir.'/'.GetCFGValue('dash_sql_filename');
 			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
-			$ss = 'SELECT mycall,sfx,urcall,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 4 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
+			$ss = 'SELECT callsign,sfx,module,reflector,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 4 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
 			if ($stmnt = $db->prepare($ss)) {
 				if ($result = $stmnt->execute()) {
 					while ($row = $result->FetchArray(SQLITE3_NUM)) {
-						$source = ("CQCQCQ  " == $row[2]) ? "Linking" : "Routing";
-						$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$source.'  '.SecToString(intval($row[3])).'<br>';
+						$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].'  '.$row[3].' '.SecToString(intval($row[4])).'<br>';
 						echo str_replace('*', ' ', str_replace(' ', '&nbsp;', $rstr)), "\n";
 					}
 					$result->finalize();

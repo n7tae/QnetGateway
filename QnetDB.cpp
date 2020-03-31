@@ -40,9 +40,10 @@ bool CQnetDB::Init()
 	}
 
 	sql.assign("CREATE TABLE LHEARD("
-				"mycall		TEXT PRIMARY KEY, "
+				"callsign	TEXT PRIMARY KEY, "
 				"sfx		TEXT, "
-				"urcall		TEXT, "
+				"module		TEXT, "
+				"reflector	TEXT, "
 				"lasttime	INT NOT NULL"
 			") WITHOUT ROWID;");
 
@@ -77,16 +78,18 @@ bool CQnetDB::Init()
 	return false;
 }
 
-bool CQnetDB::UpdateLH(const char *mycall, const char *sfx, const char *urcall)
+bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module, const char *reflector)
 {
 	if (NULL == db)
 		return false;
-	std::string sql("REPLACE INTO LHEARD (mycall,sfx,urcall,lasttime) VALUES ('");
-	sql.append(mycall);
+	std::string sql("REPLACE INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('");
+	sql.append(callsign);
 	sql.append("','");
 	sql.append(sfx);
 	sql.append("','");
-	sql.append(urcall);
+	sql.append(1, module);
+	sql.append("','");
+	sql.append(reflector);
 	sql.append("',");
 	sql.append("strftime('%s','now'));");
 

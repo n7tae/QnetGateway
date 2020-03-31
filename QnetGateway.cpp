@@ -635,7 +635,7 @@ void CQnetGateway::ProcessTimeouts()
 	}
 }
 
-void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
+bool CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp)
 {
 	static unsigned int part[3] = { 0 };
 	static char txt[3][21];
@@ -652,8 +652,10 @@ void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
 				memcpy(txt[mod]+(5u*(part[mod]/2u)+2u), c, 3);
 				if (++part[mod] > 7) {
 					// we've got everything!
-					printf("Msg = '%s'\n", txt[mod]);
+					if (0 == strncmp(txt[mod], "VIA SMARTGP ", 12))
+						smrtgrp.assign(txt[mod]+12);
 					part[mod] = 0;	// now we can start over
+					return true;
 				}
 			} else {	// we'll get here when part[mod] = 2, 4 or 6
 				unsigned int sequence = part[mod]++ / 2;	// this is the sequency we are expecting, 1, 2 or 3
@@ -672,6 +674,7 @@ void CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod)
 	} else {
 		part[mod] = 0;	// messages will never be spread across a superframe
 	}
+	return false;
 }
 
 // new_group is true if we are processing the first voice packet of a 2-voice packet pair. The high order nibble of the first byte of
@@ -971,6 +974,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, const unsigned short sid
 void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const int source_sock)
 // source_sock is the socket number of the incoming data, or -1 if it's a unix socket
 {
+	static std::string lhcallsign, lhsfx;
 	static unsigned char lastctrl = 20U;
 	static std::string superframe[3];
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
@@ -990,14 +994,13 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 						else
 							printf("UnixSock=%s\n", link2gate.c_str());
 					}
-
-					std::string  mycall((const char *)g2buf.hdr.mycall, 8);
-					if (showLastHeard && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(mycall.c_str(), preg)) {
-						std::string     sfx((const char *)g2buf.hdr.sfx,    4);
-						std::string  urcall((const char *)g2buf.hdr.urcall, 8);
-						rtrim(mycall);
-						rtrim(sfx);
-						qnDB.UpdateLH(mycall.c_str(), sfx.c_str(), urcall.c_str());
+					lhcallsign.assign((const char *)g2buf.hdr.mycall, 8);
+					if (showLastHeard && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(lhcallsign.c_str(), preg)) {
+						lhsfx.assign((const char *)g2buf.hdr.sfx, 4);
+						std::string  reflector((const char *)g2buf.hdr.urcall, 8);
+						if (0 == reflector.compare("CQCQCQ  "))
+							set_dest_rptr('A'+i, reflector);
+						qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), 'A'+i, reflector.c_str());
 					}
 
 					Gate2Modem[i].Write(g2buf.title, 56);
@@ -1079,8 +1082,12 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const i
 							// no matter what, we will send this on if it is the closing frame
 							lastctrl = (0x3FU & g2buf.ctrl);
 							Gate2Modem[i].Write(g2buf.title, 27);
-							if (source_sock >= 0)
-								ProcessG2Msg(g2buf.vasd.text, i);
+							if (source_sock >= 0) {
+								std::string smartgroup;
+								if(ProcessG2Msg(g2buf.vasd.text, i, smartgroup)) {
+									qnDB.UpdateLH(lhcallsign.c_str(), lhsfx.c_str(), 'A'+i, smartgroup.c_str());
+								}
+							}
 						} else {
 							if (LOG_DEBUG)
 								fprintf(stderr, "Warning: Ignoring packet because its ctrl=0x%02xU and lastctrl=0x%02xU\n", g2buf.ctrl, lastctrl);

@@ -53,7 +53,7 @@ public:
 	~CQnetDB() { if (db) sqlite3_close(db); }
 	bool Open(const char *name);
 	bool Init();
-	bool UpdateLH(const char *mycall, const char *sfx, const char *urcall);
+	bool UpdateLH(const char *callsign, const char *sfx, const char module, const char *reflector);
 	bool UpdateLS(const char *address, const char from_mod, const char *to_callsign, const char to_mod, time_t connect_time);
 	bool DeleteLS(const char *address);
 	bool FindLS(const char mod, std::list<CLink> &linklist);
