@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-330");
+const std::string GW_VERSION("QnetGateway-331");
 
 static std::atomic<bool> keep_running(true);
 
@@ -652,9 +652,14 @@ bool CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod, std::s
 				memcpy(txt[mod]+(5u*(part[mod]/2u)+2u), c, 3);
 				if (++part[mod] > 7) {
 					// we've got everything!
+					part[mod] = 0;	// now we can start over
 					if (0 == strncmp(txt[mod], "VIA SMARTGP ", 12))
 						smrtgrp.assign(txt[mod]+12);
-					part[mod] = 0;	// now we can start over
+					if (smrtgrp.size() < 8) {
+						// something bad happened
+						smrtgrp.empty();
+						return false;
+					}
 					return true;
 				}
 			} else {	// we'll get here when part[mod] = 2, 4 or 6
