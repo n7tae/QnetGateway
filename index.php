@@ -153,7 +153,7 @@ foreach($showlist as $section) {
 			echo str_replace(' ', '&nbsp;', $rstr), "\n";
 			$dbname = $cfgdir.'/'.GetCFGValue('dash_sql_filename');
 			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
-			$ss = 'SELECT callsign,sfx,module,reflector,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 4 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
+			$ss = 'SELECT callsign,sfx,module,reflector,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 5 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
 			if ($stmnt = $db->prepare($ss)) {
 				if ($result = $stmnt->execute()) {
 					while ($row = $result->FetchArray(SQLITE3_NUM)) {
