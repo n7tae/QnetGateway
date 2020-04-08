@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-331");
+const std::string GW_VERSION("QnetGateway-408");
 
 static std::atomic<bool> keep_running(true);
 
@@ -346,7 +346,7 @@ int CQnetGateway::open_port(const SPORTIP *pip, int family)
 	//	return -1;
 	//}
 
-	if (bind(sock, sin.GetPointer(), sizeof(struct sockaddr_storage)) != 0) {
+	if (bind(sock, sin.GetCPointer(), sizeof(struct sockaddr_storage)) != 0) {
 		printf("Failed to bind %s:%d, errno=%d, %s\n", pip->ip.c_str(), pip->port, errno, strerror(errno));
 		close(sock);
 		return -1;
@@ -437,7 +437,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 							to.Initialize(AF_INET, (unsigned short)g2_external.port, addr.c_str());
 						else
 							to.Initialize(AF_INET6, (unsigned short)g2_ipv6_external.port, addr.c_str());
-						sendto(g2_sock[i], "PONG", 4, 0, to.GetPointer(), to.GetSize());
+						sendto(g2_sock[i], "PONG", 4, 0, to.GetCPointer(), to.GetSize());
 						if (LOG_QSO)
 							printf("Sent 'PONG' to %s\n", addr.c_str());
 					}
@@ -627,7 +627,7 @@ void CQnetGateway::ProcessTimeouts()
 			if ((t_now - to_remote_g2[i].last_time) > TIMING_TIMEOUT_LOCAL_RPTR) {
 				printf("Inactivity from local rptr mod %c, removing stream id %04x\n", 'A'+i, ntohs(to_remote_g2[i].streamid));
 
-				to_remote_g2[i].toDstar.Initialize(AF_UNSPEC);
+				to_remote_g2[i].toDstar.Clear();
 				to_remote_g2[i].streamid = 0;
 				to_remote_g2[i].last_time = 0;
 			}
@@ -1337,7 +1337,7 @@ void CQnetGateway::ProcessModem()
 
 										// send to remote gateway
 										for (int j=0; j<5; j++)
-											sendto(g2_sock[Index[i]], dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
+											sendto(g2_sock[Index[i]], dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetCPointer(), to_remote_g2[i].toDstar.GetSize());
 
 										printf("id=%04x zone route to [%s]:%u ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n",
 										ntohs(dsvt.streamid), to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(),
@@ -1390,7 +1390,7 @@ void CQnetGateway::ProcessModem()
 
 										/* send to remote gateway */
 										for (int j=0; j<5; j++)
-											sendto(g2_sock[Index[i]], dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
+											sendto(g2_sock[Index[i]], dsvt.title, 56, 0, to_remote_g2[i].toDstar.GetCPointer(), to_remote_g2[i].toDstar.GetSize());
 
 										printf("Callsign route to [%s]:%u id=%04x my=%.8s/%.4s ur=%.8s rpt1=%.8s rpt2=%.8s\n", to_remote_g2[i].toDstar.GetAddress(), to_remote_g2[i].toDstar.GetPort(), ntohs(dsvt.streamid), dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2);
 
@@ -1722,13 +1722,13 @@ void CQnetGateway::ProcessModem()
 				for (int i=0; i<3; i++) {
 					/* find out if data must go to the remote G2 */
 					if (to_remote_g2[i].streamid==dsvt.streamid && Index[i]>=0) {
-						sendto(g2_sock[Index[i]], dsvt.title, 27, 0, to_remote_g2[i].toDstar.GetPointer(), to_remote_g2[i].toDstar.GetSize());
+						sendto(g2_sock[Index[i]], dsvt.title, 27, 0, to_remote_g2[i].toDstar.GetCPointer(), to_remote_g2[i].toDstar.GetSize());
 
 						time(&(to_remote_g2[i].last_time));
 
 						/* Is this the end-of-stream */
 						if (dsvt.ctrl & 0x40) {
-							to_remote_g2[i].toDstar.Initialize(AF_UNSPEC);
+							to_remote_g2[i].toDstar.Clear();
 							to_remote_g2[i].streamid = 0;
 							to_remote_g2[i].last_time = 0;
 						}
@@ -1784,7 +1784,7 @@ void CQnetGateway::ProcessModem()
 						if (dsvt.ctrl & 0x40) {
 							toRptr[i].last_time = 0;
 							toRptr[i].streamid = 0;
-							toRptr[i].addr.Initialize(AF_UNSPEC);
+							toRptr[i].addr.Clear();
 						}
 						break;
 					}
@@ -2471,10 +2471,10 @@ bool CQnetGateway::Init(char *cfgfile)
 
 		// the repeater modules run on these ports
 		memset(toRptr[i].saved_hdr.title, 0, 56);
-		toRptr[i].saved_addr.Initialize(AF_UNSPEC);
+		toRptr[i].saved_addr.Clear();
 
 		toRptr[i].streamid = 0;
-		toRptr[i].addr.Initialize(AF_UNSPEC);
+		toRptr[i].addr.Clear();
 
 		toRptr[i].last_time = 0;
 
@@ -2491,7 +2491,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 	/* to remote systems */
 	for (i = 0; i < 3; i++) {
-		to_remote_g2[i].toDstar.Initialize(AF_UNSPEC);
+		to_remote_g2[i].toDstar.Clear();
 		to_remote_g2[i].streamid = 0;
 		to_remote_g2[i].last_time = 0;
 	}

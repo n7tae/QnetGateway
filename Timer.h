@@ -30,8 +30,8 @@ public:
 		starttime = std::chrono::steady_clock::now();
 	}
 	double time() {
-		std::chrono::steady_clock::duration elapsed = std::chrono::steady_clock::now() - starttime;
-		return double(elapsed.count()) * std::chrono::steady_clock::period::num / std::chrono::steady_clock::period::den;
+		std::chrono::duration<double> elapsed(std::chrono::steady_clock::now() - starttime);
+		return elapsed.count();
 	}
 private:
 	std::chrono::steady_clock::time_point starttime;

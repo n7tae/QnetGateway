@@ -35,6 +35,14 @@ using SPORTIP = struct portip_tag {
 	int port;
 };
 
+using SMOD = struct aprs_module {
+	std::string call;   /* KJ4NHF-B */
+	bool defined;
+	std::string band;  /* 23cm ... */
+	double frequency, offset, latitude, longitude, range, agl;
+	std::string desc1, desc2, url, package_version;
+};
+
 using SRPTR = struct aprs_info {
 	SPORTIP aprs;
 	std::string aprs_filter;
@@ -42,13 +50,7 @@ using SRPTR = struct aprs_info {
 	int aprs_interval;
 
 	/* 0=A, 1=B, 2=C */
-	struct aprs_module {
-		std::string call;   /* KJ4NHF-B */
-		bool defined;
-		std::string band;  /* 23cm ... */
-		double frequency, offset, latitude, longitude, range, agl;
-		std::string desc1, desc2, url, package_version;
-	} mod[3];
+	SMOD mod[3];
 };
 
 class CAPRS {
