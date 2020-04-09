@@ -29,20 +29,6 @@ public:
 		Clear();
 	}
 
-	CSockAddress(const struct sockaddr_storage &from)
-	{
-		Clear();
-		if (AF_INET == from.ss_family) {
-			memcpy(&addr, &from, sizeof(struct sockaddr_in));
-			auto addr4 = (struct sockaddr_in *)&addr;
-			inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN);
-		} else {
-			memcpy(&addr, &from, sizeof(struct sockaddr_in6));
-			auto addr6 = (struct sockaddr_in6 *)&addr;
-			inet_ntop(AF_INET, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN);
-		}
-	}
-
 	CSockAddress(const int family, const unsigned short port = 0, const char *address = NULL)
 	{
 		Initialize(family, port, address);
@@ -99,14 +85,16 @@ public:
 
 	bool operator==(const CSockAddress &from) const	// doesn't compare ports, only addresses and, implicitly, families
 	{
+		std::cout << "Does '" << straddr << "' == '" << from.straddr << "'?" << std::endl;
 		const std::string addr(straddr);
-		return addr.compare(from.straddr) ? false : true;
+		return (0 == addr.compare(from.straddr));
 	}
 
 	bool operator!=(const CSockAddress &from) const	// doesn't compare ports, only addresses and, implicitly, families
 	{
+		std::cout << "Does '" << straddr << "' != '" << from.straddr << "'?" << std::endl;
 		const std::string addr(straddr);
-		return addr.compare(from.straddr) ? true : false;
+		return (0 != addr.compare(from.straddr));
 	}
 
 	bool AddressIsZero() const
