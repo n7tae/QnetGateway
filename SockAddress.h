@@ -18,10 +18,8 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <string.h>
-#include <strings.h>
+#include <iostream>
 #include <netinet/in.h>
-#include <string>
 
 class CSockAddress
 {
@@ -45,32 +43,9 @@ public:
 		}
 	}
 
-	CSockAddress(const int family, const unsigned short port, const char *address)
+	CSockAddress(const int family, const unsigned short port = 0, const char *address = NULL)
 	{
-		Clear();
-		if (AF_INET==family && address) {
-			auto addr4 = (struct sockaddr_in *)&addr;
-			addr4->sin_family = AF_INET;
-			addr4->sin_port = htons(port);
-			if (0 == strncasecmp(address, "loc", 3))
-				inet_pton(AF_INET, "127.0.0.1", &(addr4->sin_addr));
-			else if (0 == strncasecmp(address, "any", 3))
-				inet_pton(AF_INET, "0.0.0.0", &(addr4->sin_addr));
-			else
-				inet_pton(AF_INET, address, &(addr4->sin_addr));
-			inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN);
-		} else if (AF_INET6==family && address) {
-			auto addr6 = (struct sockaddr_in6 *)&addr;
-			addr6->sin6_family = AF_INET6;
-			addr6->sin6_port = htons(port);
-			if (0 == strncasecmp(address, "loc", 3))
-				inet_pton(AF_INET6, "::1", &(addr6->sin6_addr));
-			else if (0 == strncasecmp(address, "any", 3))
-				inet_pton(AF_INET6, "::", &(addr6->sin6_addr));
-			else
-				inet_pton(AF_INET6, address, &(addr6->sin6_addr));
-			inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN);
-		}
+		Initialize(family, port, address);
 	}
 
 	~CSockAddress() {}
@@ -78,7 +53,7 @@ public:
 	void Initialize(const int family, const uint16_t port = 0U, const char *address = NULL)
 	{
 		Clear();
-		addr.ss_family = (sa_family_t)family;
+		addr.ss_family = family;
 		if (AF_INET == family) {
 			auto addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_port = htons(port);
@@ -87,11 +62,13 @@ public:
 					inet_pton(AF_INET, "127.0.0.1", &(addr4->sin_addr));
 				else if (0 == strncasecmp(address, "any", 3))
 					inet_pton(AF_INET, "0.0.0.0", &(addr4->sin_addr));
-				else
-					inet_pton(AF_INET, address, &(addr4->sin_addr));
-				inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN);
+				else if (address) {
+					if (1 > inet_pton(AF_INET, address, &(addr4->sin_addr)))
+						std::cerr << "Address Initialization Error: '" << address << "' is not a valdid IPV4 address!" << std::endl;
+				}
 			}
-		} else {
+			inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN);
+		} else if (AF_INET6 == family) {
 			auto addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_port = htons(port);
 			if (address) {
@@ -99,11 +76,14 @@ public:
 					inet_pton(AF_INET6, "::1", &(addr6->sin6_addr));
 				else if (0 == strncasecmp(address, "any", 3))
 					inet_pton(AF_INET6, "::", &(addr6->sin6_addr));
-				else
-					inet_pton(AF_INET6, address, &(addr6->sin6_addr));
-				inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN);
+				else if (address) {
+					if (1 > inet_pton(AF_INET6, address, &(addr6->sin6_addr)))
+						std::cerr << "Address Initialization Error: '" << address << "' is not a valid IPV6 address!" << std::endl;
+				}
 			}
-		}
+			inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN);
+		} else
+			std::cerr << "Error: Wrong address family type:" << family << " for [" << (address ? address : "NULL") << "']:" << port << std::endl;
 	}
 
 	CSockAddress &operator=(const CSockAddress &from)
@@ -149,9 +129,11 @@ public:
 		if (AF_INET == addr.ss_family) {
 			auto addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_addr.s_addr = 0U;
+			strcpy(straddr, "0.0.0.0");
 		} else {
 			auto addr6 = (struct sockaddr_in6 *)&addr;
 			memset(&(addr6->sin6_addr.s6_addr), 0, 16);
+			strcpy(straddr, "::");
 		}
 	}
 
@@ -170,10 +152,11 @@ public:
 		if (AF_INET == addr.ss_family) {
 			auto addr4 = (struct sockaddr_in *)&addr;
 			return ntohs(addr4->sin_port);
-		} else {
+		} else if (AF_INET6 == addr.ss_family) {
 			auto addr6 = (struct sockaddr_in6 *)&addr;
 			return ntohs(addr6->sin6_port);
-		}
+		} else
+			return 0;
 	}
 
 	void SetPort(const uint16_t newport)
@@ -181,7 +164,7 @@ public:
 		if (AF_INET == addr.ss_family) {
 			auto addr4 = (struct sockaddr_in *)&addr;
 			addr4->sin_port = newport;
-		} else {
+		} else if (AF_INET6 == addr.ss_family) {
 			auto addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_port = newport;
 		}
