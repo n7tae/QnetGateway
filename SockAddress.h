@@ -92,11 +92,7 @@ public:
 		} else if (AF_INET6 == addr.ss_family) {
 			auto l = (struct sockaddr_in6 *)&addr;
 			auto r = (struct sockaddr_in6 *)&rhs.addr;
-			for (int i=0; i<16; i++) {
-				if (l->sin6_addr.s6_addr[i] != r->sin6_addr.s6_addr[i])
-					return false;
-			}
-			return true;
+			return (0 == memcmp(&(l->sin6_addr), &(r->sin6_addr), sizeof(struct in6_addr)));
 		}
 		return false;
 	}
@@ -112,11 +108,7 @@ public:
 		} else if (AF_INET6 == addr.ss_family) {
 			auto l = (struct sockaddr_in6 *)&addr;
 			auto r = (struct sockaddr_in6 *)&rhs.addr;
-			for (int i=0; i<16; i++) {
-				if (l->sin6_addr.s6_addr[i] != r->sin6_addr.s6_addr[i])
-					return true;
-			}
-			return false;
+			return (0 != memcmp(&(l->sin6_addr), &(r->sin6_addr), sizeof(struct in6_addr)));
 		}
 		return true;
 	}
