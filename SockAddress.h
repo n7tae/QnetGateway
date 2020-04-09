@@ -19,6 +19,9 @@
  */
 
 #include <iostream>
+#include <cstring>
+
+#include <strings.h>
 #include <netinet/in.h>
 
 class CSockAddress
