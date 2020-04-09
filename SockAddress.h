@@ -53,7 +53,6 @@ public:
 						std::cerr << "Address Initialization Error: '" << address << "' is not a valdid IPV4 address!" << std::endl;
 				}
 			}
-			inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN);
 		} else if (AF_INET6 == family) {
 			auto addr6 = (struct sockaddr_in6 *)&addr;
 			addr6->sin6_port = htons(port);
@@ -67,7 +66,6 @@ public:
 						std::cerr << "Address Initialization Error: '" << address << "' is not a valid IPV6 address!" << std::endl;
 				}
 			}
-			inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN);
 		} else
 			std::cerr << "Error: Wrong address family type:" << family << " for [" << (address ? address : "NULL") << "]:" << port << std::endl;
 	}
@@ -83,18 +81,44 @@ public:
 		return *this;
 	}
 
-	bool operator==(const CSockAddress &from) const	// doesn't compare ports, only addresses and, implicitly, families
+	bool operator==(const CSockAddress &rhs) const	// doesn't compare ports, only addresses and families
 	{
-		std::cout << "Does '" << straddr << "' == '" << from.straddr << "'?" << std::endl;
-		const std::string addr(straddr);
-		return (0 == addr.compare(from.straddr));
+		if (addr.ss_family != rhs.addr.ss_family)
+			return false;
+		if (AF_INET == addr.ss_family) {
+			auto l = (struct sockaddr_in *)&addr;
+			auto r = (struct sockaddr_in *)&rhs.addr;
+			return (l->sin_addr.s_addr == r->sin_addr.s_addr);
+		} else if (AF_INET6 == addr.ss_family) {
+			auto l = (struct sockaddr_in6 *)&addr;
+			auto r = (struct sockaddr_in6 *)&rhs.addr;
+			for (int i=0; i<16; i++) {
+				if (l->sin6_addr.s6_addr[i] != r->sin6_addr.s6_addr[i])
+					return false;
+			}
+			return true;
+		}
+		return false;
 	}
 
-	bool operator!=(const CSockAddress &from) const	// doesn't compare ports, only addresses and, implicitly, families
+	bool operator!=(const CSockAddress &rhs) const	// doesn't compare ports, only addresses and families
 	{
-		std::cout << "Does '" << straddr << "' != '" << from.straddr << "'?" << std::endl;
-		const std::string addr(straddr);
-		return (0 != addr.compare(from.straddr));
+		if (addr.ss_family != rhs.addr.ss_family)
+			return true;
+		if (AF_INET == addr.ss_family) {
+			auto l = (struct sockaddr_in *)&addr;
+			auto r = (struct sockaddr_in *)&rhs.addr;
+			return (l->sin_addr.s_addr != r->sin_addr.s_addr);
+		} else if (AF_INET6 == addr.ss_family) {
+			auto l = (struct sockaddr_in6 *)&addr;
+			auto r = (struct sockaddr_in6 *)&rhs.addr;
+			for (int i=0; i<16; i++) {
+				if (l->sin6_addr.s6_addr[i] != r->sin6_addr.s6_addr[i])
+					return true;
+			}
+			return false;
+		}
+		return true;
 	}
 
 	bool AddressIsZero() const
@@ -125,8 +149,20 @@ public:
 		}
 	}
 
-	const char *GetAddress() const
+	const char *GetAddress()
 	{
+		if (straddr)
+			return straddr;
+		memset(straddr, 0, INET6_ADDRSTRLEN);
+		if (AF_INET == addr.ss_family) {
+			auto addr4 = (struct sockaddr_in *)&addr;
+			inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN);
+		} else if (AF_INET6 == addr.ss_family) {
+			auto addr6 = (struct sockaddr_in6 *)&addr;
+			inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN);
+		} else {
+			std::cerr << "Unknown socket family: " << addr.ss_family << std::endl;
+		}
 		return straddr;
 	}
 
