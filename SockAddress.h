@@ -83,7 +83,7 @@ public:
 			}
 			inet_ntop(AF_INET6, &(addr6->sin6_addr), straddr, INET6_ADDRSTRLEN);
 		} else
-			std::cerr << "Error: Wrong address family type:" << family << " for [" << (address ? address : "NULL") << "']:" << port << std::endl;
+			std::cerr << "Error: Wrong address family type:" << family << " for [" << (address ? address : "NULL") << "]:" << port << std::endl;
 	}
 
 	CSockAddress &operator=(const CSockAddress &from)
@@ -163,10 +163,10 @@ public:
 	{
 		if (AF_INET == addr.ss_family) {
 			auto addr4 = (struct sockaddr_in *)&addr;
-			addr4->sin_port = newport;
+			addr4->sin_port = htons(newport);
 		} else if (AF_INET6 == addr.ss_family) {
 			auto addr6 = (struct sockaddr_in6 *)&addr;
-			addr6->sin6_port = newport;
+			addr6->sin6_port = htons(newport);
 		}
 	}
 
@@ -177,7 +177,7 @@ public:
 
 	const struct sockaddr *GetCPointer() const
 	{
-		return (const sockaddr *)&addr;
+		return (const struct sockaddr *)&addr;
 	}
 
 	size_t GetSize() const
