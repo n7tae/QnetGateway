@@ -52,7 +52,7 @@
 #include "QnetConfigure.h"
 #include "QnetLink.h"
 
-#define LINK_VERSION "QnetLink-407"
+#define LINK_VERSION "QnetLink-409"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif

@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-408");
+const std::string GW_VERSION("QnetGateway-409");
 
 static std::atomic<bool> keep_running(true);
 
