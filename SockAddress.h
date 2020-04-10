@@ -146,7 +146,7 @@ public:
 
 	const char *GetAddress()
 	{
-		if (straddr)
+		if (straddr[0])
 			return straddr;
 		memset(straddr, 0, INET6_ADDRSTRLEN);
 		if (AF_INET == addr.ss_family) {
