@@ -96,7 +96,7 @@ bool CQnetLink::resolve_rmt(const char *name, const unsigned short port, CSockAd
             if (AF_INET == rp->ai_family) {
                 char saddr[INET_ADDRSTRLEN];
                 struct sockaddr_in *addr4 = (struct sockaddr_in *)rp->ai_addr;
-                if (inet_ntop(rp->ai_family, &addr4->sin_addr, saddr, INET_ADDRSTRLEN)) {
+                if (inet_ntop(rp->ai_family, &(addr4->sin_addr), saddr, INET_ADDRSTRLEN)) {
                     addr.Initialize(rp->ai_family, port, saddr);
                     found = true;
                     break;
@@ -104,7 +104,7 @@ bool CQnetLink::resolve_rmt(const char *name, const unsigned short port, CSockAd
             } else if (AF_INET6 == rp->ai_family) {
                 char saddr[INET6_ADDRSTRLEN];
                 struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)rp->ai_addr;
-                if (inet_ntop(rp->ai_family, &addr6->sin6_addr, saddr, INET6_ADDRSTRLEN)) {
+                if (inet_ntop(rp->ai_family, &(addr6->sin6_addr), saddr, INET6_ADDRSTRLEN)) {
                     addr.Initialize(rp->ai_family, port, saddr);
                     found = true;
                     break;
@@ -1184,8 +1184,8 @@ void CQnetLink::Process()
 								tracing[i].last_time = time(NULL);
 
 								to_remote_g2[i].is_connected = true;
-								printf("Connected from: [%s] %c\n", to_remote_g2[i].cs, to_remote_g2[i].to_mod);
-								qnDB.UpdateLS(fromDst4.GetAddress(), to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, time(NULL));
+								printf("Connected from: %s %c [%s]:%u\n", to_remote_g2[i].cs, to_remote_g2[i].to_mod, to_remote_g2[i].addr.GetAddress(), to_remote_g2[i].addr.GetPort());
+								qnDB.UpdateLS(to_remote_g2[i].addr.GetAddress(), to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, tracing[i].last_time);
 
 								strcpy(linked_remote_system, to_remote_g2[i].cs);
 								space_p = strchr(linked_remote_system, ' ');
