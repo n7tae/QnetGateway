@@ -148,7 +148,6 @@ public:
 	{
 		if (straddr[0])
 			return straddr;
-		memset(straddr, 0, INET6_ADDRSTRLEN);
 		if (AF_INET == addr.ss_family) {
 			auto addr4 = (struct sockaddr_in *)&addr;
 			inet_ntop(AF_INET, &(addr4->sin_addr), straddr, INET6_ADDRSTRLEN);
@@ -191,6 +190,7 @@ public:
 
 	struct sockaddr *GetPointer()
 	{
+		memset(straddr, 0, INET6_ADDRSTRLEN);	// things might change
 		return (struct sockaddr *)&addr;
 	}
 
