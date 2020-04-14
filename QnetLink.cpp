@@ -40,6 +40,7 @@
 #include <netdb.h>
 
 #include <iostream>
+#include <sstream>
 #include <fstream>
 #include <future>
 #include <exception>
@@ -51,6 +52,7 @@
 #include "DPlusAuthenticator.h"
 #include "QnetConfigure.h"
 #include "QnetLink.h"
+#include "Utilities.h"
 
 #define LINK_VERSION "QnetLink-409"
 #ifndef BIN_DIR
@@ -293,111 +295,37 @@ bool CQnetLink::load_gwys(const std::string &filename)
 	// DPlus Authenticate
 	if (dplus_authorize && !dplus_priority) {
 		CDPlusAuthenticator auth(login_call, std::string("auth.dstargateway.org"));
-		if (auth.Process(gwy_list, dplus_reflectors, dplus_repeaters))
+		if (auth.Process(qnDB, dplus_reflectors, dplus_repeaters))
 			fprintf(stdout, "DPlus Authorization failed.\n");
 		else
 			fprintf(stderr, "DPlus Authorization complete!\n");
 	}
 
-	char inbuf[1024];
-	const char *delim = " ";
-
-	char call[CALL_SIZE + 1];
-	char host[MAXHOSTNAMELEN + 1];
-	char port[5 + 1];
-
-	/* host + space + port + NULL */
-	char payload[MAXHOSTNAMELEN + 1 + 5 + 1];
-	unsigned short j;
-
-	printf("Trying to open file %s\n", filename.c_str());
-	FILE *fp = fopen(filename.c_str(), "r");
-	if (fp == NULL) {
-		printf("Failed to open file %s\n", filename.c_str());
-		return false;
+	std::ifstream hostfile(filename);
+	if (hostfile.is_open()) {
+		std::string line;
+		while (std::getline(hostfile, line)) {
+			trim(line);
+			if (! line.empty() && ('#' != line.at(0))) {
+				std::istringstream iss(line);
+				std::string host, address;
+				unsigned short port;
+				iss >> host >> address >> port;
+				qnDB.UpdateGW(host.c_str(), address.c_str(), port);
+			}
+		}
+		hostfile.close();
 	}
-	printf("Opened file %s OK\n", filename.c_str());
 
-	while (fgets(inbuf, 1020, fp) != NULL) {
-		char *p = strchr(inbuf, '\r');
-		if (p)
-			*p = '\0';
-
-		p = strchr(inbuf, '\n');
-		if (p)
-			*p = '\0';
-
-		p = strchr(inbuf, '#');
-		if (p) {
-			printf("Comment line:[%s]\n", inbuf);
-			continue;
-		}
-
-		/* get the call */
-		char *tok = strtok(inbuf, delim);
-		if (!tok)
-			continue;
-		if ((strlen(tok) > CALL_SIZE) || (strlen(tok) < 3)) {
-			printf("Invalid call [%s]\n", tok);
-			continue;
-		}
-		memset(call, ' ', CALL_SIZE);
-		call[CALL_SIZE] = '\0';
-		memcpy(call, tok, strlen(tok));
-		for (j = 0; j < strlen(call); j++)
-			call[j] = toupper(call[j]);
-		if (strcmp(call, owner.c_str()) == 0) {
-			printf("Call [%s] will not be loaded\n", call);
-			continue;
-		}
-
-		/* get the host */
-		tok = strtok(NULL, delim);
-		if (!tok) {
-			printf("Call [%s] has no host\n", call);
-			continue;
-		}
-		strncpy(host,tok,MAXHOSTNAMELEN);
-		host[MAXHOSTNAMELEN] = '\0';
-		if (strcmp(host, "0.0.0.0") == 0) {
-			printf("call %s has invalid host %s\n", call, host);
-			continue;
-		}
-
-		/* get the port */
-		tok = strtok(NULL, delim);
-		if (!tok) {
-			printf("Call [%s] has no port\n", call);
-			continue;
-		}
-		if (strlen(tok) > 5) {
-			printf("call %s has invalid port [%s]\n", call, tok);
-			continue;
-		}
-		strcpy(port, tok);
-
-		/* at this point, we have: call host port */
-		/* copy the payload(host port) */
-		sprintf(payload, "%s %s", host, port);
-
-		auto gwy_pos = gwy_list.find(call);
-		if (gwy_pos != gwy_list.end())
-			printf("%s %s has been redefined!\n", call, payload);
-		gwy_list[call] = payload;
-	}
-	fclose(fp);
 	// DPlus Authenticate
 	if (dplus_authorize && dplus_priority) {
 		CDPlusAuthenticator auth(login_call, std::string("auth.dstargateway.org"));
-		if (auth.Process(gwy_list, dplus_reflectors, dplus_repeaters))
+		if (auth.Process(qnDB, dplus_reflectors, dplus_repeaters))
 			fprintf(stdout, "DPlus Authorization failed.\n");
 		else
 			fprintf(stderr, "DPlus Authorization completed!\n");
 	}
 
-	//for (auto it=gwy_list.begin(); it!=gwy_list.end(); it++)
-	//	printf("%s %s\n", it->first.c_str(), it->second.c_str());
-	printf("Added %d gateways from gwys.txt\n", (int)gwy_list.size());
 	return true;
 }
 
@@ -714,25 +642,12 @@ void CQnetLink::srv_close()
 void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 {
 	char linked_remote_system[CALL_SIZE + 1];
-	char *space_p = 0;
-
-	char host[MAXHOSTNAMELEN + 1];
-	char port_s[5 + 1];
-	unsigned short port_i;
-
-	/* host + space + port + NULL */
-	char payload[MAXHOSTNAMELEN + 1 + 5 + 1];
-	char *p = NULL;
 
 	char link_request[519];
 
 	bool ok = false;
 
 	memset(link_request, 0, sizeof(link_request));
-
-	host[0] = '\0';
-	port_s[0] = '\0';
-	payload[0] = '\0';
 
 	int i;
 	if (from_mod == 'A')
@@ -775,31 +690,18 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 		}
 	}
 
-	auto gwy_pos = gwy_list.find(call);
-	if (gwy_pos == gwy_list.end()) {
+	std::string address;
+	unsigned short port;
+	if (qnDB.FindGW(call, address, port)) {
 		sprintf(notify_msg[i], "%c_gatewaynotfound.dat_GATEWAY_NOT_FOUND", from_mod);
 		printf("%s not found in gwy list\n", call);
 		return;
 	}
 
-	strcpy(payload, gwy_pos->second.c_str());
-
-	/* extract host and port */
-	p = strchr(payload, ' ');
-	if (!p) {
-		printf("Invalid payload [%s] for call [%s]\n", payload, call);
-		return;
-	}
-	*p = '\0';
-
-	strcpy(host, payload);
-	strcpy(port_s, p + 1);
-	port_i = (unsigned short)atoi(port_s);
-
-	if (host[0] != '\0') {
-		ok = resolve_rmt(host, port_i, to_remote_g2[i].addr);
+	if (address.size()) {
+		ok = resolve_rmt(address.c_str(), port, to_remote_g2[i].addr);
 		if (!ok) {
-			printf("Call %s is host %s but could not resolve to IP\n", call, host);
+			printf("Call %s is host %s but could not resolve to IP\n", call, address.c_str());
             to_remote_g2[i].addr.Clear();
             to_remote_g2[i].countdown = 0;
             to_remote_g2[i].from_mod = '\0';
@@ -819,17 +721,17 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 		to_remote_g2[i].in_streamid= 0x0;
 
 		/* is it XRF? */
-		if (port_i == rmt_xrf_port) {
+		if (port == rmt_xrf_port) {
 			strcpy(link_request, owner.c_str());
 			link_request[8] = from_mod;
 			link_request[9] = to_mod;
 			link_request[10] = '\0';
 
-			printf("sending link request from mod %c to link with: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, payload);
+			printf("sending link request from mod %c to link with: [%s] mod %c [%s]:%u\n", to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, address.c_str(), port);
 
 			for (int j=0; j<5; j++)
 				sendto(xrf_g2_sock, link_request, CALL_SIZE + 3, 0, to_remote_g2[i].addr.GetCPointer(), to_remote_g2[i].addr.GetSize());
-		} else if (port_i == rmt_dcs_port) {
+		} else if (port == rmt_dcs_port) {
 			strcpy(link_request, owner.c_str());
 			link_request[8] = from_mod;
 			link_request[9] = to_mod;
@@ -837,9 +739,9 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 			memcpy(link_request + 11, to_remote_g2[i].cs, 8);
 			strcpy(link_request + 19, "<table border=\"0\" width=\"95%\"><tr><td width=\"4%\"><img border=\"0\" src=g2ircddb.jpg></td><td width=\"96%\"><font size=\"2\"><b>REPEATER</b> QnetGateway v1.0+</font></td></tr></table>");
 
-			printf("sending link request from mod %c to link with: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, payload);
+			printf("sending link request from mod %c to link with: [%s] mod %c [%s]:%u\n", to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, address.c_str(), port);
 			sendto(dcs_g2_sock, link_request, 519, 0, to_remote_g2[i].addr.GetCPointer(), to_remote_g2[i].addr.GetSize());
-		} else if (port_i == rmt_ref_port) {
+		} else if (port == rmt_ref_port) {
 			int counter;
 			for (counter = 0; counter < 3; counter++) {
 				if (counter != i) {
@@ -848,7 +750,7 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 				}
 			}
 			if (counter > 2) {
-				printf("sending link command from mod %c to: [%s] mod %c [%s]\n", to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, payload);
+				printf("sending link command from mod %c to: [%s] mod %c [%s]:%u\n", to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, address.c_str(), port);
 
 				queryCommand[0] = 5;
 				queryCommand[1] = 0;
@@ -866,7 +768,7 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 
 					// announce it here
 					strcpy(linked_remote_system, to_remote_g2[i].cs);
-					space_p = strchr(linked_remote_system, ' ');
+					auto space_p = strchr(linked_remote_system, ' ');
 					if (space_p)
 						*space_p = '\0';
 					sprintf(notify_msg[i], "%c_linked.dat_LINKED_%s_%c", to_remote_g2[i].from_mod, linked_remote_system, to_remote_g2[i].to_mod);
@@ -1283,8 +1185,9 @@ void CQnetLink::Process()
 					i = 2;
 
 				/* Is this repeater listed in gwys.txt? */
-				auto gwy_pos = gwy_list.find(call);
-				if (gwy_pos == gwy_list.end()) {
+				std::string Address;
+				unsigned short Port;
+				if (qnDB.FindGW(call, Address, Port)) {
 					/* We did NOT find this repeater in gwys.txt, reject the incoming link request */
 					printf("Incoming link from %s,%s but not found in gwys.txt\n", call, ip.c_str());
 					i = -1;
@@ -2839,7 +2742,7 @@ void CQnetLink::Process()
 							}
 						}
 						else if (0==memcmp(dsvt.hdr.urcall, "       F", CALL_SIZE) && admin.find(call)!=admin.end()) { // only ADMIN can reload gwys.txt
-							gwy_list.clear();
+							qnDB.ClearGW();
 							load_gwys(gwys);
 						}
 					}

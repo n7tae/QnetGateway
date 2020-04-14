@@ -129,7 +129,7 @@ bool CQnetConfigure::GetDefaultString(const std::string &path, const std::string
 		search_again = mod;		// we're looking from a module value. We may have to look for non-generic module parameters
 		if (0==path.compare(0, 7, "module_") && ('a'==path.at(7) || 'b'==path.at(7) || 'c'==path.at(7)) && '_'==path.at(8)) {
 			// path begins with module_{a|b|c}_
-			if (0==mod.compare("dvrptr") || 0==mod.compare("dvap") || 0==mod.compare("mmdvmhost") || 0==mod.compare("mmdvmmodem") || 0==mod.compare("itap")) {
+			if (0==mod.compare("dvrptr") || 0==mod.compare("dvap") || 0==mod.compare("mmdvmhost") || 0==mod.compare("mmdvmmodem") || 0==mod.compare("itap") || 0==mod.compare("thumbdv")) {
 				// and the module is recognized
 				search = path;
 				search.replace(7, 1, 1, 'x');

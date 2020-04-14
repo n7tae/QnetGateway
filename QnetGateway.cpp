@@ -230,6 +230,7 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			else if (0 == type.compare("mmdvmhost"))  { Rptr.mod[m].package_version.assign(GW_VERSION+".Relay"); }
 			else if (0 == type.compare("mmdvmmodem")) { Rptr.mod[m].package_version.assign(GW_VERSION+".Modem"); }
 			else if (0 == type.compare("itap"))       { Rptr.mod[m].package_version.assign(GW_VERSION+".ITAP"); }
+			else if (0 == type.compare("thumbdv"))    { Rptr.mod[m].package_version.assign(GW_VERSION+".ThumbDV"); }
 			else {
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;

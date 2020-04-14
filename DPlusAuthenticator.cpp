@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010-2015 by Jonathan Naylor G4KLX
- *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ CDPlusAuthenticator::~CDPlusAuthenticator()
 {
 }
 
-bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters)
+bool CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool repeaters)
 // return true if everything went okay
 {
 	int result = client.Open(m_address, AF_UNSPEC, "20001");
@@ -51,10 +51,10 @@ bool CDPlusAuthenticator::Process(std::map<std::string, std::string> &gwy_map, c
 		fprintf(stderr, "DPlus Authorization failed: %s\n", gai_strerror(result));
 		return true;
 	}
-	return authenticate(gwy_map, reflectors, repeaters);
+	return authenticate(db, reflectors, repeaters);
 }
 
-bool CDPlusAuthenticator::authenticate(std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters)
+bool CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const bool repeaters)
 {
 	unsigned char* buffer = new unsigned char[4096U];
 	::memset(buffer, ' ', 56U);
@@ -77,7 +77,6 @@ bool CDPlusAuthenticator::authenticate(std::map<std::string, std::string> &gwy_m
 	}
 
 	int ret = client.ReadExact(buffer, 2U);
-	size_t sofar = gwy_map.size();
 	unsigned int returned = 0;
 
 	while (ret == 2) {
@@ -100,7 +99,7 @@ bool CDPlusAuthenticator::authenticate(std::map<std::string, std::string> &gwy_m
 
 			Trim(address);
 			Trim(name);
-			name.resize(8, ' ');
+			name.resize(6, ' ');
 
 			// Get the active flag
 			bool active = (buffer[i + 25U] & 0x80U) == 0x80U;
@@ -109,9 +108,9 @@ bool CDPlusAuthenticator::authenticate(std::map<std::string, std::string> &gwy_m
 			if (address.size()>0U && name.size()>0U && active) {
 				returned++;
 				if (reflectors && 0==name.compare(0, 3, "REF"))
-					gwy_map[name] = address.append(" 20001");
+					db.UpdateGW(name.c_str(), address.c_str(), 20001);
 				else if (repeaters && name.compare(0, 3, "REF"))
-					gwy_map[name] = address.append(" 20001");
+					db.UpdateGW(name.c_str(), address.c_str(), 20001);
 			}
 		}
 
@@ -120,7 +119,6 @@ bool CDPlusAuthenticator::authenticate(std::map<std::string, std::string> &gwy_m
 
 	printf("Probably authorized DPlus on %s using callsign %s\n", m_address.c_str(), m_loginCallsign.c_str());
 	printf("%s returned %u systems\n", m_address.c_str(), returned);
-	printf("The gateway map increased by %u additional DPlus gateways\n", (unsigned int)(gwy_map.size() - sofar));
 	client.Close();
 
 	delete[] buffer;

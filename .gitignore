@@ -1,5 +1,6 @@
 *.o
 *.d
+*~
 *.gch
 .vscode
 qn.cfg

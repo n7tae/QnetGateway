@@ -1,7 +1,7 @@
 #pragma once
 /*
  *   Copyright (C) 2010-2013 by Jonathan Naylor G4KLX
- *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -21,14 +21,16 @@
 #include <netinet/in.h>
 #include <map>
 #include <string>
+
 #include "TCPReaderWriterClient.h"
+#include "QnetDB.h"
 
 class CDPlusAuthenticator {
 public:
 	CDPlusAuthenticator(const std::string &loginCallsign, const std::string &address);
 	~CDPlusAuthenticator();
 
-	bool Process(std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters);
+	bool Process(CQnetDB &qn, const bool reflectors, const bool repeaters);
 
 private:
 	std::string m_loginCallsign;
@@ -36,5 +38,5 @@ private:
 	CTCPReaderWriterClient client;
 
 	void Trim(std::string &s);
-	bool authenticate(std::map<std::string, std::string> &gwy_map, const bool reflectors, const bool repeaters);
+	bool authenticate(CQnetDB &db, const bool reflectors, const bool repeaters);
 };

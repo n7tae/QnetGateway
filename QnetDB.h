@@ -55,8 +55,11 @@ public:
 	bool Init();
 	bool UpdateLH(const char *callsign, const char *sfx, const char module, const char *reflector);
 	bool UpdateLS(const char *address, const char from_mod, const char *to_callsign, const char to_mod, time_t connect_time);
+	bool UpdateGW(const char *name, const char *address, unsigned short port);
 	bool DeleteLS(const char *address);
 	bool FindLS(const char mod, std::list<CLink> &linklist);
+	bool FindGW(const char *name, std::string &address, unsigned short &port);
+	void ClearGW();
 
 private:
 	sqlite3 *db;

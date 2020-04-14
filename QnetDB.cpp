@@ -75,6 +75,26 @@ bool CQnetDB::Init()
 		return true;
 	}
 
+	sql.assign("DROP TABLE IF EXISTS GATEWAYS;");
+
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::Open drop table LINKSTATUS error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
+	sql.assign("CREATE TABLE GATEWAYS("
+				"name		TEXT PRIMARY KEY, "
+				"address	TEXT NOT NULL, "
+				"port		INT NOT NULL"
+			") WITHOUT ROWID;");
+
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::Open create table GATEWAYS error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
 	return false;
 }
 
@@ -129,6 +149,30 @@ bool CQnetDB::UpdateLS(const char *address, const char from_mod, const char *to_
 	return false;
 }
 
+bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short port)
+{
+	if (NULL == db)
+		return false;
+	std::string n(name);
+	n.resize(6, ' ');
+	std::string sql = "REPLACE INTO GATEWAYS (name,address,port) VALUES ('";
+	sql.append(n);
+	sql.append("','");
+	sql.append(address);
+	sql.append("',");
+	sql.append(std::to_string(port));
+	sql.append(");");
+
+	char *eMsg;
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::UpdateGW error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
+	return false;
+}
+
 bool CQnetDB::DeleteLS(const char *address)
 {
 	if (NULL == db)
@@ -174,4 +218,44 @@ bool CQnetDB::FindLS(const char mod, std::list<CLink> &linklist)
 
 	sqlite3_finalize(stmt);
 	return false;
+}
+
+bool CQnetDB::FindGW(const char *name, std::string &address, unsigned short &port)
+{
+	if (NULL == db)
+		return false;
+	std::string n(name);
+	n.resize(6, ' ');
+	std::string sql("SELECT address,port FROM GATEWAYS WHERE name=='");
+	sql.append(n);
+	sql.append("';");
+
+	sqlite3_stmt *stmt;
+	int rval = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
+	if (SQLITE_OK != rval) {
+		fprintf(stderr, "CQnetDB::FindLS error: %d\n", rval);
+		return true;
+	}
+
+	if (SQLITE_ROW == sqlite3_step(stmt)) {
+		address.assign((const char *)sqlite3_column_text(stmt, 0));
+		port = (unsigned short)(sqlite3_column_int(stmt, 1));
+		sqlite3_finalize(stmt);
+		return false;
+	} else {
+		sqlite3_finalize(stmt);
+		return true;
+	}
+}
+
+void CQnetDB::ClearGW()
+{
+	std::string sql("DELETE FROM GATEWAYS;");
+	char *eMsg;
+
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::Open drop table LINKSTATUS error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+	}
+
 }

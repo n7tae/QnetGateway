@@ -160,10 +160,6 @@ private:
 	// Used to validate incoming donglers
 	regex_t preg;
 
-	// the map of remotes
-	// key is the callsign, data is the host
-	std::map<std::string, std::string> gwy_list;
-
 	unsigned char queryCommand[QUERY_SIZE];
 
 	// START:  TEXT crap
