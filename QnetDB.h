@@ -60,6 +60,7 @@ public:
 	bool FindLS(const char mod, std::list<CLink> &linklist);
 	bool FindGW(const char *name, std::string &address, unsigned short &port);
 	void ClearGW();
+	int Count(const char *table);
 
 private:
 	sqlite3 *db;

@@ -233,7 +233,7 @@ bool CQnetDB::FindGW(const char *name, std::string &address, unsigned short &por
 	sqlite3_stmt *stmt;
 	int rval = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
 	if (SQLITE_OK != rval) {
-		fprintf(stderr, "CQnetDB::FindLS error: %d\n", rval);
+		fprintf(stderr, "CQnetDB::FindGW error: %d\n", rval);
 		return true;
 	}
 
@@ -250,12 +250,40 @@ bool CQnetDB::FindGW(const char *name, std::string &address, unsigned short &por
 
 void CQnetDB::ClearGW()
 {
+	if (NULL == db)
+		return;
+
 	std::string sql("DELETE FROM GATEWAYS;");
 	char *eMsg;
 
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open drop table LINKSTATUS error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::ClearGW error: %s\n", eMsg);
 		sqlite3_free(eMsg);
 	}
+}
 
+static int countcallback(void *count, int argc, char **argv, char **azColName) {
+    auto c = (int *)count;
+    *c = atoi(argv[0]);
+    return 0;
+}
+
+int CQnetDB::Count(const char *table)
+{
+	if (NULL == db)
+		return;
+
+ 	std::string sql("SELECT COUNT(*) FROM ");
+	sql.append(table);
+	sql.append(";");
+
+	int count = 0;
+
+	char *eMsg;
+    if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), countcallback, &count, &eMsg)) {
+        fprintf(stderr, "CQnetDB::Count error: %s\n", eMsg);
+        sqlite3_free(eMsg);
+    }
+
+    return count;
 }

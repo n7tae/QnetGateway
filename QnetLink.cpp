@@ -326,6 +326,10 @@ bool CQnetLink::load_gwys(const std::string &filename)
 			fprintf(stderr, "DPlus Authorization completed!\n");
 	}
 
+	auto count = qnDB.Count("GATEWAYS");
+	if (count)
+		printf("Loaded %d gateways from %s%s\n", count, filename.c_str(), dplus_authorize ? " and auth.dstargateway.org" : "");
+
 	return true;
 }
 
