@@ -29,6 +29,7 @@
 #include <netdb.h>
 
 #include "DPlusAuthenticator.h"
+#include "Utilities.h"
 
 CDPlusAuthenticator::CDPlusAuthenticator(const std::string &loginCallsign, const std::string &address) :
 m_loginCallsign(loginCallsign),
@@ -36,25 +37,25 @@ m_address(address)
 {
 	assert(loginCallsign.size());
 
-	Trim(m_loginCallsign);
+	trim(m_loginCallsign);
 }
 
 CDPlusAuthenticator::~CDPlusAuthenticator()
 {
 }
 
-bool CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool repeaters)
+int CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool repeaters)
 // return true if everything went okay
 {
 	int result = client.Open(m_address, AF_UNSPEC, "20001");
 	if (result) {
 		fprintf(stderr, "DPlus Authorization failed: %s\n", gai_strerror(result));
-		return true;
+		return 0;
 	}
 	return authenticate(db, reflectors, repeaters);
 }
 
-bool CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const bool repeaters)
+int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const bool repeaters)
 {
 	unsigned char* buffer = new unsigned char[4096U];
 	::memset(buffer, ' ', 56U);
@@ -73,11 +74,11 @@ bool CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const
 		fprintf(stderr, "ERROR: could not write opening phrase\n");
 		client.Close();
 		delete[] buffer;
-		return true;
+		return 0;
 	}
 
 	int ret = client.ReadExact(buffer, 2U);
-	unsigned int returned = 0;
+	unsigned int rval = 0;
 
 	while (ret == 2) {
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
@@ -85,20 +86,20 @@ bool CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const
 		ret = client.ReadExact(buffer + 2U, len - 2U);
 		if (0 > ret) {
 			fprintf(stderr, "Problem reading line, it returned %d\n", errno);
-			return true;
+			return rval;
 		}
 
 		if ((buffer[1U] & 0xC0U) != 0xC0U || buffer[2U] != 0x01U) {
 			fprintf(stderr, "Invalid packet received from 20001\n");
-			return true;
+			return rval;
 		}
 
 		for (unsigned int i = 8U; (i + 25U) < len; i += 26U) {
 			std::string address((char *)(buffer + i));
 			std::string name((char *)(buffer + i + 16U));
 
-			Trim(address);
-			Trim(name);
+			trim(address);
+			trim(name);
 			name.resize(6, ' ');
 
 			// Get the active flag
@@ -106,7 +107,7 @@ bool CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const
 
 			// An empty name or IP address or an inactive gateway/reflector is not added
 			if (address.size()>0U && name.size()>0U && active) {
-				returned++;
+				rval++;
 				if (reflectors && 0==name.compare(0, 3, "REF"))
 					db.UpdateGW(name.c_str(), address.c_str(), 20001);
 				else if (repeaters && name.compare(0, 3, "REF"))
@@ -118,22 +119,9 @@ bool CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const
 	}
 
 	printf("Probably authorized DPlus on %s using callsign %s\n", m_address.c_str(), m_loginCallsign.c_str());
-	printf("%s returned %u systems\n", m_address.c_str(), returned);
 	client.Close();
 
 	delete[] buffer;
 
-	return false;
-}
-
-void CDPlusAuthenticator::Trim(std::string &s)
-{
-	auto it = s.begin();
-	while (it!=s.end() && isspace(*it))
-		s.erase(it);
-	auto rit = s.rbegin();
-	while (rit!=s.rend() && isspace(*rit)) {
-		s.resize(s.size() - 1);
-        rit = s.rbegin();
-    }
+	return rval;
 }

@@ -30,13 +30,12 @@ public:
 	CDPlusAuthenticator(const std::string &loginCallsign, const std::string &address);
 	~CDPlusAuthenticator();
 
-	bool Process(CQnetDB &qn, const bool reflectors, const bool repeaters);
+	int Process(CQnetDB &qn, const bool reflectors, const bool repeaters);
 
 private:
 	std::string m_loginCallsign;
 	std::string m_address;
 	CTCPReaderWriterClient client;
 
-	void Trim(std::string &s);
-	bool authenticate(CQnetDB &db, const bool reflectors, const bool repeaters);
+	int authenticate(CQnetDB &db, const bool reflectors, const bool repeaters);
 };

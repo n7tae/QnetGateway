@@ -262,7 +262,7 @@ void CQnetDB::ClearGW()
 	}
 }
 
-static int countcallback(void *count, int argc, char **argv, char **azColName) {
+static int countcallback(void *count, int /*argc*/, char **argv, char **/*azColName*/) {
     auto c = (int *)count;
     *c = atoi(argv[0]);
     return 0;
@@ -271,7 +271,7 @@ static int countcallback(void *count, int argc, char **argv, char **azColName) {
 int CQnetDB::Count(const char *table)
 {
 	if (NULL == db)
-		return;
+		return 0;
 
  	std::string sql("SELECT COUNT(*) FROM ");
 	sql.append(table);

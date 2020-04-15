@@ -86,9 +86,9 @@ private:
 	void ToUpper(std::string &s);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
-	bool load_gwys(const std::string &filename);
+	void LoadGateways(const std::string &filename);
 	void calcPFCS(unsigned char *packet, int len);
-	bool read_config(const char *);
+	bool ReadConfig(const char *);
 	bool srv_open();
 	void srv_close();
 	static void sigCatch(int signum);

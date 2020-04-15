@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-409"
+#define LINK_VERSION "QnetLink-415"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -290,17 +290,21 @@ void CQnetLink::RptrAckThread(char *arg)
 }
 
 /* Open text file of repeaters, reflectors */
-bool CQnetLink::load_gwys(const std::string &filename)
+void CQnetLink::LoadGateways(const std::string &filename)
 {
+	const std::string website("auth.dstargateway.org");
+	int dplus = 0;
 	// DPlus Authenticate
 	if (dplus_authorize && !dplus_priority) {
-		CDPlusAuthenticator auth(login_call, std::string("auth.dstargateway.org"));
-		if (auth.Process(qnDB, dplus_reflectors, dplus_repeaters))
+		CDPlusAuthenticator auth(login_call, std::string(website.c_str()));
+		dplus = auth.Process(qnDB, dplus_reflectors, dplus_repeaters);
+		if (0 == dplus)
 			fprintf(stdout, "DPlus Authorization failed.\n");
 		else
 			fprintf(stderr, "DPlus Authorization complete!\n");
 	}
 
+	int count = 0;
 	std::ifstream hostfile(filename);
 	if (hostfile.is_open()) {
 		std::string line;
@@ -312,25 +316,31 @@ bool CQnetLink::load_gwys(const std::string &filename)
 				unsigned short port;
 				iss >> host >> address >> port;
 				qnDB.UpdateGW(host.c_str(), address.c_str(), port);
+				count++;
 			}
 		}
 		hostfile.close();
 	}
 
-	// DPlus Authenticate
-	if (dplus_authorize && dplus_priority) {
-		CDPlusAuthenticator auth(login_call, std::string("auth.dstargateway.org"));
-		if (auth.Process(qnDB, dplus_reflectors, dplus_repeaters))
-			fprintf(stdout, "DPlus Authorization failed.\n");
-		else
-			fprintf(stderr, "DPlus Authorization completed!\n");
+	if (dplus_authorize) {
+		if (! dplus_priority)
+			printf("#Gateways: %s=%d %s=%d Total=%d\n", website.c_str(), dplus, filename.c_str(), count, qnDB.Count("GATEWAYS"));
+	} else {
+		printf("#Gateways: %s=%d\n", filename.c_str(), count);
 	}
 
-	auto count = qnDB.Count("GATEWAYS");
-	if (count)
-		printf("Loaded %d gateways from %s%s\n", count, filename.c_str(), dplus_authorize ? " and auth.dstargateway.org" : "");
-
-	return true;
+	// DPlus Authenticate
+	if (dplus_authorize && dplus_priority) {
+		CDPlusAuthenticator auth(login_call, std::string(website.c_str()));
+		dplus = auth.Process(qnDB, dplus_reflectors, dplus_repeaters);
+		if (0 == dplus) {
+			printf("#Gateways: %s=%d\n", filename.c_str(), count);
+			fprintf(stdout, "DPlus Authorization failed.\n");
+		} else {
+			fprintf(stderr, "DPlus Authorization completed!\n");
+			printf("#Gateways %s=%d %s=%d Total=%d\n", filename.c_str(), count, website.c_str(), dplus, qnDB.Count("GATEWAYS"));
+		}
+	}
 }
 
 /* compute checksum */
@@ -423,7 +433,7 @@ void CQnetLink::PrintCallsigns(const std::string &key, const std::set<std::strin
 }
 
 /* process configuration file */
-bool CQnetLink::read_config(const char *cfgFile)
+bool CQnetLink::ReadConfig(const char *cfgFile)
 {
 	CQnetConfigure cfg;
 	const std::string estr;	// an empty string
@@ -2747,7 +2757,7 @@ void CQnetLink::Process()
 						}
 						else if (0==memcmp(dsvt.hdr.urcall, "       F", CALL_SIZE) && admin.find(call)!=admin.end()) { // only ADMIN can reload gwys.txt
 							qnDB.ClearGW();
-							load_gwys(gwys);
+							LoadGateways(gwys);
 						}
 					}
 
@@ -3259,7 +3269,7 @@ bool CQnetLink::Init(const char *cfgfile)
 	brd_from_rptr_idx = 0;
 
 	/* process configuration file */
-	if (read_config(cfgfile)) {
+	if (ReadConfig(cfgfile)) {
 		printf("Failed to process config file %s\n", cfgfile);
 		return true;
 	}
@@ -3270,9 +3280,7 @@ bool CQnetLink::Init(const char *cfgfile)
 	if (qnDB.Open(fname.c_str()))
 		return true;
 
-	/* Open DB */
-	if (!load_gwys(gwys))
-		return true;
+	LoadGateways(gwys);
 
 	/* create our server */
 	if (!srv_open()) {
