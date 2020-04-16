@@ -1199,18 +1199,16 @@ void CQnetLink::Process()
 					i = 2;
 
 				/* Is this repeater listed in gwys.txt? */
-				std::string Address;
-				unsigned short Port;
-				if (qnDB.FindGW(call, Address, Port)) {
+				if (qnDB.FindGW(call)) {
+					int rc = regexec(&preg, call, 0, NULL, 0);
+					if (rc != 0) {
+						printf("Invalid repeater %s, %s requesting to link\n", call, ip.c_str());
+						i = -1;
+					}
+				} else {
 					/* We did NOT find this repeater in gwys.txt, reject the incoming link request */
 					printf("Incoming link from %s,%s but not found in gwys.txt\n", call, ip.c_str());
 					i = -1;
-				} else {
-					int rc = regexec(&preg, call, 0, NULL, 0);
-					if (rc != 0) {
-						printf("Invalid repeater %s,%s requesting to link\n", call, ip.c_str());
-						i = -1;
-					}
 				}
 
 				if (i >= 0) {

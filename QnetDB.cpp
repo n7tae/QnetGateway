@@ -221,6 +221,7 @@ bool CQnetDB::FindLS(const char mod, std::list<CLink> &linklist)
 }
 
 bool CQnetDB::FindGW(const char *name, std::string &address, unsigned short &port)
+// returns true if NOT found
 {
 	if (NULL == db)
 		return false;
@@ -245,6 +246,33 @@ bool CQnetDB::FindGW(const char *name, std::string &address, unsigned short &por
 	} else {
 		sqlite3_finalize(stmt);
 		return true;
+	}
+}
+
+bool CQnetDB::FindGW(const char *name)
+// returns true if found
+{
+	if (NULL == db)
+		return false;
+	std::string n(name);
+	n.resize(6, ' ');
+	std::string sql("SELECT address,port FROM GATEWAYS WHERE name=='");
+	sql.append(n);
+	sql.append("';");
+
+	sqlite3_stmt *stmt;
+	int rval = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
+	if (SQLITE_OK != rval) {
+		fprintf(stderr, "CQnetDB::FindGW error: %d\n", rval);
+		return true;
+	}
+
+	if (SQLITE_ROW == sqlite3_step(stmt)) {
+		sqlite3_finalize(stmt);
+		return true;
+	} else {
+		sqlite3_finalize(stmt);
+		return false;
 	}
 }
 

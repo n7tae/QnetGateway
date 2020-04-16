@@ -59,6 +59,7 @@ public:
 	bool DeleteLS(const char *address);
 	bool FindLS(const char mod, std::list<CLink> &linklist);
 	bool FindGW(const char *name, std::string &address, unsigned short &port);
+	bool FindGW(const char *name);
 	void ClearGW();
 	int Count(const char *table);
 
