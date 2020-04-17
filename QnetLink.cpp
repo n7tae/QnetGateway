@@ -296,7 +296,7 @@ void CQnetLink::LoadGateways(const std::string &filename)
 	int dplus = 0;
 	// DPlus Authenticate
 	if (dplus_authorize && !dplus_priority) {
-		CDPlusAuthenticator auth(login_call, std::string(website.c_str()));
+		CDPlusAuthenticator auth(login_call, website);
 		dplus = auth.Process(qnDB, dplus_reflectors, dplus_repeaters);
 		if (0 == dplus)
 			fprintf(stdout, "DPlus Authorization failed.\n");
@@ -331,7 +331,7 @@ void CQnetLink::LoadGateways(const std::string &filename)
 
 	// DPlus Authenticate
 	if (dplus_authorize && dplus_priority) {
-		CDPlusAuthenticator auth(login_call, std::string(website.c_str()));
+		CDPlusAuthenticator auth(login_call, website);
 		dplus = auth.Process(qnDB, dplus_reflectors, dplus_repeaters);
 		if (0 == dplus) {
 			printf("#Gateways: %s=%d\n", filename.c_str(), count);

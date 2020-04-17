@@ -202,7 +202,7 @@ bool CQnetDB::FindLS(const char mod, std::list<CLink> &linklist)
 	sqlite3_stmt *stmt;
 	int rval = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
 	if (SQLITE_OK != rval) {
-		fprintf(stderr, "CQnetDB::FindLS error: %d\n", rval);
+		fprintf(stderr, "CQnetDB::FindLS prepare_v2 error\n");
 		return true;
 	}
 
