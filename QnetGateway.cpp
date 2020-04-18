@@ -1598,7 +1598,7 @@ void CQnetGateway::ProcessModem()
 				}
 			}
 			else
-			{	// recvlen is 29 or 32
+			{	// recvlen is 27
 				for (int i=0; i<3; i++) {
 					if (band_txt[i].streamID == dsvt.streamid) {
 						time(&band_txt[i].last_time);
@@ -1671,7 +1671,7 @@ void CQnetGateway::ProcessModem()
 							band_txt[i].txt[0] = '\0';
 							band_txt[i].txt_cnt = 0;
 
-							band_txt[i].dest_rptr[0] = '\0';
+							band_txt[i].dest_rptr.clear();
 
 							band_txt[i].num_dv_frames = 0;
 							band_txt[i].num_dv_silent_frames = 0;
@@ -1913,7 +1913,6 @@ void CQnetGateway::Process()
 		if (ii[i])
 			irc_data_future[i].get();
 	}
-	return;
 }
 
 void CQnetGateway::compute_aprs_hash()
@@ -2324,37 +2323,6 @@ bool CQnetGateway::Init(char *cfgfile)
 	Rptr.mod[1].band = "70cm";
 	Rptr.mod[2].band = "2m";
 	printf("Repeater callsigns: [%s] [%s] [%s]\n", Rptr.mod[0].call.c_str(), Rptr.mod[1].call.c_str(), Rptr.mod[2].call.c_str());
-
-	for (i = 0; i < 3; i++) {
-		//Rptr.mod[i].frequency = Rptr.mod[i].offset = Rptr.mod[i].latitude = Rptr.mod[i].longitude = Rptr.mod[i].agl = Rptr.mod[i].range = 0.0;
-		band_txt[i].streamID = 0;
-		band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
-		band_txt[i].lh_mycall[0] = '\0';
-		band_txt[i].lh_sfx[0] = '\0';
-		band_txt[i].lh_yrcall[0] = '\0';
-		band_txt[i].lh_rpt1[0] = '\0';
-		band_txt[i].lh_rpt2[0] = '\0';
-
-		band_txt[i].last_time = 0;
-
-		band_txt[i].txt[0] = '\0';
-		band_txt[i].txt_cnt = 0;
-		band_txt[i].sent_key_on_msg = false;
-
-		band_txt[i].dest_rptr[0] = '\0';
-
-		band_txt[i].temp_line[0] = '\0';
-		band_txt[i].temp_line_cnt = 0;
-		band_txt[i].gprmc[0] = '\0';
-		band_txt[i].gpid[0] = '\0';
-		band_txt[i].is_gps_sent = false;
-		band_txt[i].gps_last_time = 0;
-
-		band_txt[i].num_dv_frames = 0;
-		band_txt[i].num_dv_silent_frames = 0;
-		band_txt[i].num_bit_errors = 0;
-
-	}
 
 	if (APRS_ENABLE) {
 		aprs = new CAPRS(&Rptr);
