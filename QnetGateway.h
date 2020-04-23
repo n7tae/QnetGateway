@@ -175,7 +175,7 @@ private:
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, const unsigned short sid);
 	bool ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp);
-	void ProcessG2(const ssize_t g2buflen, const SDSVT &g2buf, const int sock_source);
+	void ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sock_source);
 	void ProcessModem();
 	bool Flag_is_ok(unsigned char flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
