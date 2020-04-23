@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-415"
+#define LINK_VERSION "QnetLink-422"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
