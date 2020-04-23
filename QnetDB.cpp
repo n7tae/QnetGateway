@@ -17,6 +17,7 @@
  */
 
 #include <string>
+
 #include "QnetDB.h"
 
 bool CQnetDB::Open(const char *name)
@@ -102,7 +103,7 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 {
 	if (NULL == db)
 		return false;
-	std::string sql("REPLACE INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('");
+	std::string sql("INSERT OR REPLACE INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('");
 	sql.append(callsign);
 	sql.append("','");
 	sql.append(sfx);
@@ -127,7 +128,7 @@ bool CQnetDB::UpdateLS(const char *address, const char from_mod, const char *to_
 {
 	if (NULL == db)
 		return false;
-	std::string sql = "REPLACE INTO LINKSTATUS (ip_address,from_mod,to_callsign,to_mod,linked_time) VALUES ('";
+	std::string sql = "INSERT OR REPLACE INTO LINKSTATUS (ip_address,from_mod,to_callsign,to_mod,linked_time) VALUES ('";
 	sql.append(address);
 	sql.append("','");
 	sql.append(1, from_mod);
@@ -152,10 +153,10 @@ bool CQnetDB::UpdateLS(const char *address, const char from_mod, const char *to_
 bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short port)
 {
 	if (NULL == db)
-		return false;
+		return true;
 	std::string n(name);
 	n.resize(6, ' ');
-	std::string sql = "REPLACE INTO GATEWAYS (name,address,port) VALUES ('";
+	std::string sql = "INSERT OR REPLACE INTO GATEWAYS (name,address,port) VALUES ('";
 	sql.append(n);
 	sql.append("','");
 	sql.append(address);
@@ -170,6 +171,31 @@ bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short por
 		return true;
 	}
 
+	return false;
+}
+
+bool CQnetDB::UpdateGW(CHostQueue &hqueue)
+{
+	if (NULL == db)
+		return true;
+
+	char *eMsg;
+	if (SQLITE_OK != sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::UpdateGW BEGIN TRANSATION error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
+	while (! hqueue.Empty()) {
+		auto h = hqueue.Pop();
+		UpdateGW(h.name.c_str(), h.addr.c_str(), h.port);
+	}
+
+	if (SQLITE_OK != sqlite3_exec(db, "COMMIT TRANSACTION;", NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::UpdateGW END TRANSACTION error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
 	return false;
 }
 

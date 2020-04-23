@@ -307,6 +307,7 @@ void CQnetLink::LoadGateways(const std::string &filename)
 	int count = 0;
 	std::ifstream hostfile(filename);
 	if (hostfile.is_open()) {
+		CHostQueue hqueue;
 		std::string line;
 		while (std::getline(hostfile, line)) {
 			trim(line);
@@ -315,11 +316,13 @@ void CQnetLink::LoadGateways(const std::string &filename)
 				std::string host, address;
 				unsigned short port;
 				iss >> host >> address >> port;
-				qnDB.UpdateGW(host.c_str(), address.c_str(), port);
+				hqueue.Push(CHost(host, address, port));
 				count++;
 			}
 		}
 		hostfile.close();
+		if (! hqueue.Empty())
+			qnDB.UpdateGW(hqueue);
 	}
 
 	if (dplus_authorize) {

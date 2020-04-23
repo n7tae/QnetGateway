@@ -57,7 +57,7 @@ int CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool 
 
 int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const bool repeaters)
 {
-	unsigned char* buffer = new unsigned char[4096U];
+	unsigned char buffer[4096U];
 	::memset(buffer, ' ', 56U);
 
 	buffer[0U] = 0x38U;
@@ -73,12 +73,12 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 	if (client.Write(buffer, 56U)) {
 		fprintf(stderr, "ERROR: could not write opening phrase\n");
 		client.Close();
-		delete[] buffer;
 		return 0;
 	}
 
 	int ret = client.ReadExact(buffer, 2U);
 	unsigned int rval = 0;
+	CHostQueue hqueue;
 
 	while (ret == 2) {
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
@@ -107,21 +107,23 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 
 			// An empty name or IP address or an inactive gateway/reflector is not added
 			if (address.size()>0U && name.size()>0U && active) {
-				rval++;
-				if (reflectors && 0==name.compare(0, 3, "REF"))
-					db.UpdateGW(name.c_str(), address.c_str(), 20001);
-				else if (repeaters && name.compare(0, 3, "REF"))
-					db.UpdateGW(name.c_str(), address.c_str(), 20001);
+				if (reflectors && 0==name.compare(0, 3, "REF")) {
+					rval++;
+					hqueue.Push(CHost(name.c_str(), address.c_str(), 20001));
+				} else if (repeaters && name.compare(0, 3, "REF")) {
+					rval++;
+					hqueue.Push(CHost(name.c_str(), address.c_str(), 20001));
+				}
 			}
 		}
+		if (! hqueue.Empty())
+			db.UpdateGW(hqueue);
 
 		ret = client.ReadExact(buffer, 2U);
 	}
 
 	printf("Probably authorized DPlus on %s using callsign %s\n", m_address.c_str(), m_loginCallsign.c_str());
 	client.Close();
-
-	delete[] buffer;
 
 	return rval;
 }
