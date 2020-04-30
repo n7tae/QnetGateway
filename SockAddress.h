@@ -23,6 +23,7 @@
 
 #include <strings.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 class CSockAddress
 {
