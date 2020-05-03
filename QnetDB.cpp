@@ -17,6 +17,7 @@
  */
 
 #include <string>
+#include <thread>
 
 #include "QnetDB.h"
 
@@ -25,78 +26,106 @@ bool CQnetDB::Open(const char *name)
 	if (sqlite3_open(name, &db)) {
 		fprintf(stderr, "CQnetDB::Open: can't open %s\n", name);
 		return true;
-	} else
-		return false;
+	}
+	return false;
 }
 
-bool CQnetDB::Init()
+void CQnetDB::Init()
 {
 	std::string sql("DROP TABLE IF EXISTS LHEARD;");
 
 	char *eMsg;
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open drop table LHEARD error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
+	int rval = SQLITE_ERROR;
+	for (int i=0; i<10 && rval!=SQLITE_OK; i++) {
+		rval = sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg);
+		if (SQLITE_OK != rval) {
+			fprintf(stderr, "CQnetDB::Open drop table LHEARD error: %s\n", eMsg);
+			sqlite3_free(eMsg);
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
 	}
 
-	sql.assign("CREATE TABLE LHEARD("
-				"callsign	TEXT PRIMARY KEY, "
-				"sfx		TEXT, "
-				"module		TEXT, "
-				"reflector	TEXT, "
-				"lasttime	INT NOT NULL"
-			") WITHOUT ROWID;");
+	if (SQLITE_OK == rval) {
+		sql.assign("CREATE TABLE LHEARD("
+					"callsign	TEXT PRIMARY KEY, "
+					"sfx		TEXT, "
+					"module		TEXT, "
+					"reflector	TEXT, "
+					"lasttime	INT NOT NULL"
+				") WITHOUT ROWID;");
 
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open create table LHEARD error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
+		rval = SQLITE_ERROR;
+		for (int i=0; i<10 && rval!=SQLITE_OK; i++) {
+			rval = sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg);
+			if (SQLITE_OK != rval) {
+				fprintf(stderr, "CQnetDB::Open create table LHEARD error: %s\n", eMsg);
+				sqlite3_free(eMsg);
+				std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			}
+		}
 	}
 
 	sql.assign("DROP TABLE IF EXISTS LINKSTATUS;");
 
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open drop table LINKSTATUS error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
+	rval = SQLITE_ERROR;
+	for (int i=0; i<10 && rval!=SQLITE_OK; i++) {
+		rval = sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg);
+		if (SQLITE_OK != rval) {
+			fprintf(stderr, "CQnetDB::Open drop table LINKSTATUS error: %s\n", eMsg);
+			sqlite3_free(eMsg);
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
 	}
 
-	sql.assign("CREATE TABLE LINKSTATUS("
-				"ip_address		TEXT PRIMARY KEY, "
-				"from_mod		TEXT NOT NULL, "
-				"to_callsign    TEXT NOT NULL, "
-				"to_mod			TEXT NOT NULL, "
-				"linked_time	INT NOT NULL"
-			") WITHOUT ROWID;");
+	if (SQLITE_OK == rval) {
+		sql.assign("CREATE TABLE LINKSTATUS("
+					"ip_address		TEXT PRIMARY KEY, "
+					"from_mod		TEXT NOT NULL, "
+					"to_callsign    TEXT NOT NULL, "
+					"to_mod			TEXT NOT NULL, "
+					"linked_time	INT NOT NULL"
+				") WITHOUT ROWID;");
 
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open create table LINKSTATUS error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
+		rval = SQLITE_ERROR;
+		for (int i=0; i<10 && rval!=SQLITE_OK; i++) {
+			rval = sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg);
+			if (SQLITE_OK != rval) {
+				fprintf(stderr, "CQnetDB::Open create table LINKSTATUS error: %s\n", eMsg);
+				sqlite3_free(eMsg);
+				std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			}
+		}
 	}
 
 	sql.assign("DROP TABLE IF EXISTS GATEWAYS;");
 
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open drop table LINKSTATUS error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
+	rval = SQLITE_ERROR;
+	for (int i=0; i<10 && rval!=SQLITE_OK; i++) {
+		rval = sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg);
+		if (SQLITE_OK != rval) {
+			fprintf(stderr, "CQnetDB::Open drop table GATEWAYS error: %s\n", eMsg);
+			sqlite3_free(eMsg);
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
 	}
 
-	sql.assign("CREATE TABLE GATEWAYS("
-				"name		TEXT PRIMARY KEY, "
-				"address	TEXT NOT NULL, "
-				"port		INT NOT NULL"
-			") WITHOUT ROWID;");
+	if (SQLITE_OK == rval) {
+		sql.assign("CREATE TABLE GATEWAYS("
+					"name		TEXT PRIMARY KEY, "
+					"address	TEXT NOT NULL, "
+					"port		INT NOT NULL"
+				") WITHOUT ROWID;");
 
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open create table GATEWAYS error: %s\n", eMsg);
-		sqlite3_free(eMsg);
-		return true;
+		rval = SQLITE_ERROR;
+		for (int i=0; i<10 && rval!=SQLITE_OK; i++) {
+			rval = sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg);
+			if (SQLITE_OK != rval) {
+				fprintf(stderr, "CQnetDB::Open create table GATEWAYS error: %s\n", eMsg);
+				sqlite3_free(eMsg);
+				std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			}
+		}
 	}
-
-	return false;
 }
 
 bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module, const char *reflector)
