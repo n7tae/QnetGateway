@@ -148,6 +148,17 @@ The first thing you want to do is to create your gwys.txt file. use the 'gw' key
 to get into that sub-menu. There are several choices to initialize your gwys.txt
 file. Choose one and then you can edit the file to your satisfaction.
 
+If you create a My_Hosts.txt file, it will automatically be appended to the end of
+your gwys.txt file. Because it is at the end, definitions in My_Hosts.txt will
+override anything defined before. The format for this file is just like gwys.txt:
+
+# comments can begin with a hash mark
+# and then: gateway ip_address port
+# choose port for linking family (must be supported by the gateway):
+#   20001 for DPlus 30001 for DExtra 30051 for DCS.
+# Here comes a bogus definition, with the proper format:
+Q0XYZ 44.44.44.44 20001
+
 You are now ready to install your QnetGateway system. If you are installing an
 MMDVM-based system, follow the instructions in MMDVM.README to get MMDVMHost
 up and running.

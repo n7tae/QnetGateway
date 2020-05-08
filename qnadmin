@@ -476,10 +476,16 @@ GatewayMenu () {
 			awk '$1 ~ /^XRF/ { printf "%s %s 30001\n", $1, $2 }' DExtra_Hosts.txt >> gwys.txt
 			awk '$1 ~ /^DCS/ { printf "%s %s 30051\n", $1, $2 }' DCS_Hosts.txt >> gwys.txt
 			awk '$1 ~ /^REF/ { printf "%s %s 20001\n", $1, $2 }' DPlus_Hosts.txt >> gwys.txt
+			if [ -e My_Hosts.txt ]; then
+				cat My_Hosts.txt >> gwys.txt
+			fi
 			/bin/rm -f {XLX,DExtra,DPlus,DCS}_Hosts.txt
 		elif [[ "$ans" == iv* ]]; then
 			/bin/rm -f gwys.txt
 			wget http://www.va3uv.com/gwys.txt
+			if [ -e My_Hosts.txt ]; then
+				cat My_Hosts.txt >> gwys.txt
+			fi
 		elif [[ "$ans" == ir* ]]; then
 			/bin/rm -f gwys.txt
 			wget -nv -O gwys.va3uv.txt http://www.va3uv.com/gwys.txt
@@ -488,6 +494,9 @@ GatewayMenu () {
 				awk '$1~/^REF/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
 				awk '$1~/^XRF/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
 				awk '$1~/^DCS/{print $1, $2, $3}' gwys.va3uv.txt >> gwys.txt
+				if [ -e My_Hosts.txt ]; then
+					cat My_Hosts.txt >> gwys.txt
+				fi
 				rm -f gwys.va3uv.txt
 			fi
 		elif [[ "$ans" == n* ]]; then
