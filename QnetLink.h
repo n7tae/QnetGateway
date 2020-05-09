@@ -95,7 +95,7 @@ private:
 	void g2link(const char from_mod, const char *call, const char to_mod);
 	void send_heartbeat();
 	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
-	void rptr_ack(short i);
+	void rptr_ack(int i);
 	void PlayAudioNotifyThread(char *msg);
 	void AudioNotifyThread(SECHO &edata);
 	void RptrAckThread(char *arg);

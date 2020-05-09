@@ -142,7 +142,7 @@ void CQnetLink::send_heartbeat()
 	}
 }
 
-void CQnetLink::rptr_ack(short i)
+void CQnetLink::rptr_ack(int i)
 {
 	static char mod_and_RADIO_ID[3][22];
 
@@ -889,7 +889,7 @@ void CQnetLink::Process()
 	}
 
 	while (keep_running) {
-		static bool loadG = false;
+		static bool loadG[3] = { false, false, false };
 		time(&tnow);
 		if (keep_running && (tnow - hb) > 0) {
 			/* send heartbeat to connected donglers */
@@ -2762,7 +2762,7 @@ void CQnetLink::Process()
 							if (admin.size()>0 && admin.end()==admin.find(call)) {
 								printf("%s not found in admin list, ignoring gwys read request\n", call);
 							} else {
-								loadG = true;
+								loadG[i] = true;
 							}
 						}
 					}
@@ -3019,16 +3019,17 @@ void CQnetLink::Process()
 			}
 			FD_CLR (Gate2Link.GetFD(), &fdset);
 		}
-		for (int i=0; i<3; i++) {
-			if (keep_running && notify_msg[i][0] && 0x0U == tracing[i].streamid) {
+		for (int i=0; i<3 && keep_running; i++) {
+			if (notify_msg[i][0] && 0x0U == tracing[i].streamid) {
 				PlayAudioNotifyThread(notify_msg[i]);
 				notify_msg[i][0] = '\0';
 			}
-		}
-		if (loadG && 0x0U==(tracing[0].streamid | tracing[1].streamid | tracing[2].streamid)) {
-			qnDB.ClearGW();
-			LoadGateways(gwys);
-			loadG = false;
+			if (loadG[i] && 0x0U == tracing[i].streamid) {
+				qnDB.ClearGW();
+				LoadGateways(gwys);
+				loadG[i] = false;
+				rptr_ack(i);
+			}
 		}
 	}
 }
