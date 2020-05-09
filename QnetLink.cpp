@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-422"
+#define LINK_VERSION "QnetLink-509"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -889,6 +889,7 @@ void CQnetLink::Process()
 	}
 
 	while (keep_running) {
+		static bool loadG = false;
 		time(&tnow);
 		if (keep_running && (tnow - hb) > 0) {
 			/* send heartbeat to connected donglers */
@@ -2733,12 +2734,9 @@ void CQnetLink::Process()
 						}
 						else if (0==memcmp(dsvt.hdr.urcall, "      ", 6) && dsvt.hdr.urcall[7]=='X') {	// execute a script
 							if (dsvt.hdr.urcall[6] != ' ') {	// there has to be a char here
-								bool user_ok = true;
 								if (admin.size()>0 && admin.end()==admin.find(call)) { // only admins (if defined) can execute scripts
-									printf("%s not found in the link_admin list!\n", call);
-									user_ok = false;
-								}
-								if (user_ok) {
+									printf("%s not found in admin list, ignoring script %c request\n", call, dsvt.hdr.urcall[6]);
+								} else {
 									memset(system_cmd, '\0', sizeof(system_cmd));
 									snprintf(system_cmd, FILENAME_MAX, "%s/exec_%c.sh %s %c &", BIN_DIR, dsvt.hdr.urcall[6], call, dsvt.hdr.rpt1[7]);
 									printf("Executing %s\n", system_cmd);
@@ -2746,19 +2744,26 @@ void CQnetLink::Process()
 								}
 							}
 						}
-						else if (0==memcmp(dsvt.hdr.urcall, "      ", 6) && dsvt.hdr.urcall[6]=='D' && admin.find(call)!=admin.end()) { // only ADMIN can block dongle users
-							if (dsvt.hdr.urcall[7] == '1') {
-								max_dongles = saved_max_dongles;
-								printf("Dongle connections are now allowed\n");
-							} else if (dsvt.hdr.urcall[7] == '0') {
-								inbound_list.clear();
-								max_dongles = 0;
-								printf("Dongle connections are now disallowed\n");
+						else if (0==memcmp(dsvt.hdr.urcall, "      ", 6) && dsvt.hdr.urcall[6]=='D') { // only ADMIN can block dongle users
+							if (admin.size()>0 && admin.end()==admin.find(call)) {
+								printf("%s not found in admin list, ignoring dongle gate request\n", call);
+							} else {
+								if (dsvt.hdr.urcall[7] == '1') {
+									max_dongles = saved_max_dongles;
+									printf("Dongle connections are now allowed by %s\n", call);
+								} else if (dsvt.hdr.urcall[7] == '0') {
+									inbound_list.clear();
+									max_dongles = 0;
+									printf("Dongle connections are now disallowed by %s\n", call);
+								}
 							}
 						}
 						else if (0==memcmp(dsvt.hdr.urcall, "       F", CALL_SIZE) && admin.find(call)!=admin.end()) { // only ADMIN can reload gwys.txt
-							qnDB.ClearGW();
-							LoadGateways(gwys);
+							if (admin.size()>0 && admin.end()==admin.find(call)) {
+								printf("%s not found in admin list, ignoring gwys read request\n", call);
+							} else {
+								loadG = true;
+							}
 						}
 					}
 
@@ -3019,6 +3024,11 @@ void CQnetLink::Process()
 				PlayAudioNotifyThread(notify_msg[i]);
 				notify_msg[i][0] = '\0';
 			}
+		}
+		if (loadG && 0x0U==(tracing[0].streamid | tracing[1].streamid | tracing[2].streamid)) {
+			qnDB.ClearGW();
+			LoadGateways(gwys);
+			loadG = false;
 		}
 	}
 }
