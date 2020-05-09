@@ -2758,7 +2758,7 @@ void CQnetLink::Process()
 								}
 							}
 						}
-						else if (0==memcmp(dsvt.hdr.urcall, "       F", CALL_SIZE) && admin.find(call)!=admin.end()) { // only ADMIN can reload gwys.txt
+						else if (0==memcmp(dsvt.hdr.urcall, "       F", CALL_SIZE)) { // only ADMIN can reload gwys.txt
 							if (admin.size()>0 && admin.end()==admin.find(call)) {
 								printf("%s not found in admin list, ignoring gwys read request\n", call);
 							} else {
