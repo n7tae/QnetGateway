@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-509"
+#define LINK_VERSION "QnetLink-510"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -2629,7 +2629,7 @@ void CQnetLink::Process()
 					}
 
 					if (memcmp(dsvt.hdr.urcall, "CQCQCQ", 6) && i>=0) {
-						if (memcmp(dsvt.hdr.urcall, owner.c_str(), CALL_SIZE-1) && dsvt.hdr.urcall[7] == 'L' && 0==memcmp(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE-1) && dsvt.hdr.rpt2[7] == 'G' && (dsvt.hdr.flag[0]==0x00 || dsvt.hdr.flag[0]==0x08 || dsvt.hdr.flag[0]==0x20 || dsvt.hdr.flag[0]==0x28)) {
+						if (memcmp(dsvt.hdr.urcall, owner.c_str(), CALL_SIZE-1) && dsvt.hdr.urcall[0] != ' ' && dsvt.hdr.urcall[7] == 'L' && 0==memcmp(dsvt.hdr.rpt2, owner.c_str(), CALL_SIZE-1) && dsvt.hdr.rpt2[7] == 'G' && (dsvt.hdr.flag[0]==0x00 || dsvt.hdr.flag[0]==0x08 || dsvt.hdr.flag[0]==0x20 || dsvt.hdr.flag[0]==0x28)) {
 							if (
 									// if there is a black list, is he in the blacklist?
 									(link_blacklist.size() && link_blacklist.end()!=link_blacklist.find(call)) ||
