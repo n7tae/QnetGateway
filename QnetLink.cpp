@@ -3028,7 +3028,8 @@ void CQnetLink::Process()
 				qnDB.ClearGW();
 				LoadGateways(gwys);
 				loadG[i] = false;
-				rptr_ack(i);
+				if (bool_rptr_ack)
+					rptr_ack(i);
 			}
 		}
 	}

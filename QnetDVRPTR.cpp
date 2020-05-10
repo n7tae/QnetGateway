@@ -89,7 +89,7 @@ static int RF_AUDIO_Level = 10;
 static bool DUPLEX = true;
 static int ACK_DELAY = 200000;
 static int DELAY_BETWEEN = 20000;
-static bool RPTR_ACK = true;
+static bool RPTR_ACK = false;
 static char ENABLE_RF[CALL_SIZE + 1];
 static char DISABLE_RF[CALL_SIZE + 1];
 static bool IS_ENABLED = true;
@@ -1423,7 +1423,7 @@ static bool ReadConfig(const char *cfgFile)
 	cfg.GetValue(path+"_acknowledge", type, RPTR_ACK);
 
 	cfg.GetValue(path+"_ack_delay", type, ACK_DELAY, 1, 999);
-	ACK_DELAY *= 1000; // from milliseconds to seconds
+	ACK_DELAY *= 1000; // from milliseconds to mircroseconds
 
 	cfg.GetValue(path+"_tx_delay", type, TX_DELAY, 0, 6000);
 	Modem_Init2[8] = TX_DELAY & 0xFF;
