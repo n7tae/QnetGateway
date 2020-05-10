@@ -430,6 +430,7 @@ ModuleMenu () {
 			echo -n "ac : Send acknowledgment on each transmission     = "; EvaluateVar {${mod},module_x}_acknowledge
 			echo -n "ad : acknowledgment delay (in msec)               = "; EvaluateVar {${mod},module_x}_ack_delay
 			echo -n "pw : in msec, packet wait time (test for timeout) = "; EvaluateVar {${mod},module_x}_packet_wait
+			echo -n "hf : is an HF module                              = "; EvaluateVar {${mod},module_x}_is_hf
 		fi
 		if [[ "${!mod}" == 'dvap' ]]; then
 			echo -n "fr : Frequency in MHz                             = "; EvaluateVar {${mod},dvap}_frequency
@@ -489,6 +490,7 @@ ModuleMenu () {
 		elif [[ "$key" == dv* ]]; then eval ${mod}_device="$value"
 		elif [[ "$key" == fr* ]]; then eval ${mod}_frequency="$value"
 		elif [[ "$key" == gp* ]]; then eval ${mod}_gateway_port="$value"
+		elif [[ "$key" == hf* ]]; then SetBooleanValue ${mod}_is_hf "$value"
 		elif [[ "$key" == in* ]]; then eval ${mod}_inactivity="$value"
 		elif [[ "$key" == ir* ]]; then SetBooleanValue ${mod}_rx_invert "$value"
 		elif [[ "$key" == ip* ]]; then eval ${mod}_internal_ip="$value"
@@ -590,6 +592,7 @@ WriteCFGFile () {
 			q=${p}_packet_wait;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_acknowledge;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			q=${p}_ack_delay;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+			q=${p}_is_hf;          [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			if [[ "${!p}" == "dvap" ]]; then
 				q=${p}_frequency;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_power;         [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile

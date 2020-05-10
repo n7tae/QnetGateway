@@ -105,6 +105,7 @@ module_x_acknowledge=false # Do you want an ACK back?
 module_x_ack_delay=250     # millisecond delay before acknowledgment
 module_x_range=0           # the range of this repeater, in meters 1609.344 meters is 1.0 miles
 module_x_agl=0             # the height above ground level for this repeater's antenna
+module_x_is_hf=false       # set to true if this is an HF module
 
 ##########################################################################################################################
 #
