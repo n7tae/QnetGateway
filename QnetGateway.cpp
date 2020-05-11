@@ -1090,7 +1090,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 								}
 							} else {
 								if (LOG_DEBUG)
-									printf("missing %d packes from voice stream on module %c, resetting\n", diff, 'A'+i);
+									printf("missing %d packets from voice stream on module %c, resetting\n", diff, 'A'+i);
 								nextctrl[i] = g2buf.ctrl;
 							}
 						}
