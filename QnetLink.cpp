@@ -688,6 +688,14 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
     to_remote_g2[i].cs[0] = '\0';
     to_remote_g2[i].to_mod = '\0';
 
+	std::string address;
+	unsigned short port;
+	if (qnDB.FindGW(call, address, port)) {
+		sprintf(notify_msg[i], "%c_gatewaynotfound.dat_GATEWAY_NOT_FOUND", from_mod);
+		printf("%s not found in gwy list\n", call);
+		return;
+	}
+
 	strcpy(to_remote_g2[i].cs, call);
 	to_remote_g2[i].to_mod = to_mod;
 
@@ -706,14 +714,6 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 			printf("Another mod(%c) is already linked to %s %c\n", to_remote_g2[counter].from_mod, to_remote_g2[counter].cs, to_remote_g2[counter].to_mod);
 			return;
 		}
-	}
-
-	std::string address;
-	unsigned short port;
-	if (qnDB.FindGW(call, address, port)) {
-		sprintf(notify_msg[i], "%c_gatewaynotfound.dat_GATEWAY_NOT_FOUND", from_mod);
-		printf("%s not found in gwy list\n", call);
-		return;
 	}
 
 	if (address.size()) {
