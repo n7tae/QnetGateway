@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-510"
+#define LINK_VERSION "QnetLink-511"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -292,6 +292,7 @@ void CQnetLink::RptrAckThread(char *arg)
 /* Open text file of repeaters, reflectors */
 void CQnetLink::LoadGateways(const std::string &filename)
 {
+	qnDB.ClearGW();
 	const std::string website("auth.dstargateway.org");
 	int dplus = 0;
 	// DPlus Authenticate
@@ -3025,7 +3026,6 @@ void CQnetLink::Process()
 				notify_msg[i][0] = '\0';
 			}
 			if (loadG[i] && 0x0U == tracing[i].streamid) {
-				qnDB.ClearGW();
 				LoadGateways(gwys);
 				loadG[i] = false;
 				if (bool_rptr_ack)
@@ -3292,7 +3292,7 @@ bool CQnetLink::Init(const char *cfgfile)
 	fname.append(dash_sql_name);
 	if (qnDB.Open(fname.c_str()))
 		return true;
-
+	qnDB.ClearLS();
 	LoadGateways(gwys);
 
 	/* create our server */

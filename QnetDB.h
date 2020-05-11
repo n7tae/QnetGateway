@@ -54,18 +54,20 @@ public:
 	CQnetDB() : db(NULL) {}
 	~CQnetDB() { if (db) sqlite3_close(db); }
 	bool Open(const char *name);
-	void Init();
 	bool UpdateLH(const char *callsign, const char *sfx, const char module, const char *reflector);
 	bool UpdateLS(const char *address, const char from_mod, const char *to_callsign, const char to_mod, time_t connect_time);
-	bool UpdateGW(const char *name, const char *address, unsigned short port);
 	bool UpdateGW(CHostQueue &);
 	bool DeleteLS(const char *address);
 	bool FindLS(const char mod, std::list<CLink> &linklist);
 	bool FindGW(const char *name, std::string &address, unsigned short &port);
 	bool FindGW(const char *name);
+	void ClearLH();
+	void ClearLS();
 	void ClearGW();
 	int Count(const char *table);
 
 private:
+	bool Init();
+	bool UpdateGW(const char *name, const char *address, unsigned short port);
 	sqlite3 *db;
 };

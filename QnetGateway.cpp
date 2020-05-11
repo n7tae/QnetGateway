@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-510");
+const std::string GW_VERSION("QnetGateway-511");
 
 static std::atomic<bool> keep_running(true);
 
@@ -2317,7 +2317,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	fname.append(DASH_SQL_NAME);
 	if (qnDB.Open(fname.c_str()))
 		return true;
-	qnDB.Init();
+	qnDB.ClearLH();
 
 
 	playNotInCache = false;
