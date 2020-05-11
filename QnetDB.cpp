@@ -35,7 +35,7 @@ bool CQnetDB::Init()
 {
 	char *eMsg;
 
-	std::string sql("CREATE TABLE IF NOT EXIST LHEARD("
+	std::string sql("CREATE TABLE IF NOT EXISTS LHEARD("
 						"callsign	TEXT PRIMARY KEY, "
 						"sfx		TEXT, "
 						"module		TEXT, "
@@ -49,7 +49,7 @@ bool CQnetDB::Init()
 		return true;
 	}
 
-	sql.assign("CREATE TABLE IF NOT EXIST LINKSTATUS("
+	sql.assign("CREATE TABLE IF NOT EXISTS LINKSTATUS("
 					"ip_address		TEXT PRIMARY KEY, "
 					"from_mod		TEXT NOT NULL, "
 					"to_callsign    TEXT NOT NULL, "
@@ -63,7 +63,7 @@ bool CQnetDB::Init()
 		return true;
 	}
 
-	sql.assign("CREATE TABLE IF NOT EXIST GATEWAYS("
+	sql.assign("CREATE TABLE IF NOT EXISTS GATEWAYS("
 					"name		TEXT PRIMARY KEY, "
 					"address	TEXT NOT NULL, "
 					"port		INT NOT NULL"
