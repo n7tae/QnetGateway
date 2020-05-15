@@ -141,9 +141,6 @@ DashboardMenu () {
 		echo
 		echo "              Dashboard Menu"
 		echo
-		if [ -n "$em" ]; then
-			echo -n "n  : Name of the database file        = "; EvaluateVar dash_sql_filename{,_d}
-		fi
 		echo -n "r  : Refresh time (sec) for page      = "; EvaluateVar dash_refresh{,_d}
 		echo -n "c  : Max number of last heard entries = "; EvaluateVar dash_lastheard_count{,_d}
 		echo -n "o  : Show Section Order               = "; EvaluateVar dash_show_order{,_d}
@@ -160,13 +157,11 @@ DashboardMenu () {
 		echo "     UR is the Send URCall Section"
 		EndMenu
 
-		if   [[ "$key" == n* ]]; then dash_sql_filename="$value"
 		elif [[ "$key" == r* ]]; then dash_refresh="$value"
 		elif [[ "$key" == c* ]]; then dash_lastheard_count="$value"
 		elif [[ "$key" == o* ]]; then dash_show_order="${value^^}"
 		elif [[ "$key" == u* ]]; then
-			if   [[ "$value" == n* ]]; then unset dash_sql_filename
-			elif [[ "$value" == r* ]]; then unset dash_refresh
+			if   [[ "$value" == r* ]]; then unset dash_refresh
 			elif [[ "$value" == c* ]]; then unset dash_lastheard_count
 			elif [[ "$value" == o* ]]; then unset dash_show_order
 			fi
@@ -696,7 +691,6 @@ WriteCFGFile () {
 	[ -z "${timing_play_wait+x}"          ] || echo "timing_play_wait=${timing_play_wait}"                   >> $outFile
 	[ -z "${timing_play_delay+x}"         ] || echo "timing_play_delay=${timing_play_delay}"                 >> $outFile
 	# dash_ section
-	[ -z "${dash_sql_filename+x}"    ] || echo "dash_sql_filename='${dash_sql_filename}'"     >> $outFile
 	[ -z "${dash_refresh+x}"         ] || echo "dash_refresh=${dash_refresh}"                 >> $outFile
 	[ -z "${dash_lastheard_count+x}" ] || echo "dash_lastheard_count=${dash_lastheard_count}" >> $outFile
 	[ -z "${dash_show_order+x}"      ] || echo "dash_show_order='${dash_show_order}'"         >> $outFile

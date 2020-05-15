@@ -195,7 +195,7 @@ uninstallbase :
 	/bin/rm -f $(SYSDIR)/qnlink.service
 	/bin/rm -f $(BINDIR)/qnlink
 	/bin/rm -f $(CFGDIR)/*.dat
-	/bin/rm -f $(CFGDIR)/RPT_STATUS.txt
+	/bin/rm -f $(CFGDIR)/qn.db
 	/bin/rm -f $(CFGDIR)/gwys.txt
 	/bin/rm -f $(BINDIR)/exec_?.sh
 

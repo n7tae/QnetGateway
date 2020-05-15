@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-511");
+const std::string GW_VERSION("QnetGateway-515");
 
 static std::atomic<bool> keep_running(true);
 
@@ -325,7 +325,6 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	path.assign("dash_");
 	cfg.GetValue(path+"show_order", estr, DASH_SHOW_ORDER, 2, 17);
 	showLastHeard = (std::string::npos != DASH_SHOW_ORDER.find("LH"));
-	cfg.GetValue(path+"sql_filename", estr, DASH_SQL_NAME, 1, 32);
 
 	return false;
 }
@@ -2313,8 +2312,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 	// open database
 	std::string fname(CFG_DIR);
-	fname.append("/");
-	fname.append(DASH_SQL_NAME);
+	fname.append("/qn.db");
 	if (qnDB.Open(fname.c_str()))
 		return true;
 	qnDB.ClearLH();

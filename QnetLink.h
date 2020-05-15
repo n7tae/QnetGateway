@@ -101,7 +101,7 @@ private:
 	void RptrAckThread(char *arg);
 
 	/* configuration data */
-	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, dash_sql_name, qnvoice_file, announce_dir;
+	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
 	bool dplus_authorize, dplus_reflectors, dplus_repeaters, dplus_priority;
 	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;

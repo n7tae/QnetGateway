@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-511"
+#define LINK_VERSION "QnetLink-515"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -538,8 +538,6 @@ bool CQnetLink::ReadConfig(const char *cfgFile)
 		login_call.resize(CALL_SIZE, ' ');
 	}
 	cfg.GetValue(key+"priority", estr, dplus_priority);
-
-	cfg.GetValue("dash_sql_filename", estr, dash_sql_name, 2, 32);
 
 	return false;
 }
@@ -3288,8 +3286,7 @@ bool CQnetLink::Init(const char *cfgfile)
 	}
 	// open sqlite
 	std::string fname(CFG_DIR);
-	fname.append("/");
-	fname.append(dash_sql_name);
+	fname.append("/qn.db");
 	if (qnDB.Open(fname.c_str()))
 		return true;
 	qnDB.ClearLS();
