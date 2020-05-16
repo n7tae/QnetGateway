@@ -176,7 +176,7 @@ foreach($showlist as $section) {
 			break;
 		case 'MO':
 			echo 'Modules:<br>', "\n";
-			$dbname = $cfgdir.'/'.GetCFGValue('dash_sql_filename');
+			$dbname = $cfgdir.'/qn.db';
 			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
 			echo "<table cellpadding='1' border='1' style='font-family: monospace'>\n";
 			echo '<tr><td style="text-align:center">Module</td><td style="text-align:center">Modem</td><td style="text-align:center">Frequency</td><td style="text-align:center">Link</td><td style="text-align:center">Linked Time</td><td style="text-align:center">Link IP</td></tr>', "\n";
