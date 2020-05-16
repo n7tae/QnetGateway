@@ -157,7 +157,7 @@ DashboardMenu () {
 		echo "     UR is the Send URCall Section"
 		EndMenu
 
-		elif [[ "$key" == r* ]]; then dash_refresh="$value"
+		if   [[ "$key" == r* ]]; then dash_refresh="$value"
 		elif [[ "$key" == c* ]]; then dash_lastheard_count="$value"
 		elif [[ "$key" == o* ]]; then dash_show_order="${value^^}"
 		elif [[ "$key" == u* ]]; then

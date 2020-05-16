@@ -151,7 +151,7 @@ foreach($showlist as $section) {
 			echo 'Last Heard:<br><code>', "\n";
 			$rstr = 'MyCall/Sfx   Mod Via       Time<br>';
 			echo str_replace(' ', '&nbsp;', $rstr), "\n";
-			$dbname = $cfgdir.'/'.GetCFGValue('dash_sql_filename');
+			$dbname = $cfgdir.'/qn.db';
 			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
 			$ss = 'SELECT callsign,sfx,module,reflector,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 5 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
 			if ($stmnt = $db->prepare($ss)) {
