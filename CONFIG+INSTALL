@@ -138,7 +138,8 @@ you to look at:
 . qn.mmdvm.cfg is the starting place for configuring an MMDVMHost repeater. Be sure
   the module assignment agrees with the module configured in your MMDVM.cfg file.
 . qn.itap.cfg is a simple configuration file for Icom's Terminal and Access Point
-  Mode. Please read ITAP.README for more information.
+  Mode. Please note that if you intend on configuring your Icom radio to run in
+  Access Point mode, be sure to enable AP mode in your configuration file.
 
 Once you have your qn.cfg file, your ready to compile and install your system, type:
 
