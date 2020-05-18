@@ -140,6 +140,7 @@ mmdvmmodem_tx_level=128          # range is 0-255
 #
 itap_device='/dev/ttyUSB0' # where the serial-to-USB cable show up
 itap_frequency=0           # in MHz, not required for either mode, for AP mode, the simplex frequency is set on your radio
+itap_ap_mode=false         # Set to true if you are operating in Access Point Mode
 
 ##########################################################################################################################
 #

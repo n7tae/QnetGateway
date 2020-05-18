@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018-2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2020 by Thomas A. Early N7TAE
  *
  *   CQnetITAP::GetITAPData() is based on some code that is...
  *   Copyright (C) 2011-2015,2018,2020 by Jonathan Naylor G4KLX
@@ -45,7 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-2.1.6"
+#define ITAP_VERSION "QnetITAP-518"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -225,6 +225,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	CTimer lastdataTimer;
 	CTimer pingTimer;
 	double pingtime = 0.001;
+	const double ackwait = AP_MODE ? 0.4 : 0.06;
 
 	while (keep_running) {
 
@@ -361,9 +362,8 @@ void CQnetITAP::Run(const char *cfgfile)
 					}
 				}
 			} else {	// we are waiting on an acknowledgement
-				if (ackTimer.time() >= 0.06) {
-					if (LOG_DEBUG)
-						fprintf(stderr, "Serial port communication error, restarting...\n");
+				if (ackTimer.time() >= ackwait) {
+					fprintf(stderr, "Icom failure suspected, restarting...\n");
 					close(serfd);
 					poll_counter = 0;
 					pingtime = 0.001;
@@ -493,9 +493,9 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 		if (0 == memcmp(itap.header.r1, "DIRECT", 6)) {
 			// Terminal Mode!
 			memcpy(dsvt.hdr.rpt1, RPTR.c_str(), 7);	// build r1
-			dsvt.hdr.rpt1[7] = RPTR_MOD;		// with module
+			dsvt.hdr.rpt1[7] = RPTR_MOD;			// with module
 			memcpy(dsvt.hdr.rpt2, RPTR.c_str(), 7);	// build r2
-			dsvt.hdr.rpt2[7] = 'G';			// with gateway
+			dsvt.hdr.rpt2[7] = 'G';					// with gateway
 			if (' '==itap.header.ur[2] && ' '!=itap.header.ur[0]) {
 				// it's a command because it has as space in the 3rd position, we have to right-justify it!
 				// Terminal Mode left justifies short commands.
@@ -584,8 +584,7 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	RPTR_MOD = 'A' + assigned_module;
 
 	cfg.GetValue(itap_path+"_device", type, ITAP_DEVICE, 7, FILENAME_MAX);
-	cfg.GetValue("gateway_gate2modem"+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue(itap_path+"_ap_mode", type, AP_MODE);
 
 	itap_path.append("_callsign");
 	if (cfg.KeyExists(itap_path)) {
@@ -610,6 +609,8 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 		RPTR.resize(CALL_SIZE, ' ');
 	}
 
+	cfg.GetValue(std::string("gateway_gate2modem")+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
 	cfg.GetValue("log_qso", estr, LOG_QSO);
 	cfg.GetValue("log_debug", estr, LOG_DEBUG);
 	return false;

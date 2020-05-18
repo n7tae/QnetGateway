@@ -448,6 +448,7 @@ ModuleMenu () {
 		elif [[ "${!mod}" == 'itap' ]]; then
 			echo -n "fr : Frequency in MHz                             = "; EvaluateVar {${mod},itap}_frequency
 			echo -n "dv : USB device path                              = "; EvaluateVar {${mod},itap}_device
+			echo -n "ap : Set to true if using Access Point Mode       = "; EvaluateVar {${mod},itap}_ap_mode
 		elif [[ "${!mod}" == 'mmdvmhost' ]]; then
 			echo -n "tx : Transmit frequency, in MHz                   = "; EvaluateVar {${mod},mmdvmhost}_tx_frequency
 			echo -n "rx : Receive  frequency, in MHz                   = "; EvaluateVar {${mod},mmdvmhost}_rx_frequency
@@ -478,6 +479,7 @@ ModuleMenu () {
 			eval ${mod}_link_at_start="'${value^^}'"
 		elif [[ "$key" == ac* ]]; then SetBooleanValue ${mod}_acknowledge "$value"
 		elif [[ "$key" == ad* ]]; then eval ${mod}_ack_delay="$value"
+		elif [[ "$key" == ap* ]]; then SetBooleanValue ${mod}_ap_mode "$value"
 		elif [[ "$key" == ag* ]]; then eval ${mod}_agl="$value"
 		elif [[ "$key" == ar* ]]; then SetBooleanValue ${mod}_auto_link "$value"
 		elif [[ "$key" == cs* ]]; then eval ${mod}_callsign="${value^^}"
@@ -512,12 +514,13 @@ ModuleMenu () {
 			unset ${mod}_{link_at_start,callsign,{,rx_,tx_}frequency,offset,range,agl}
 			unset ${mod}_{inactivity,packet_wait,acknowledge,ack_delay,power,squelch,serial_number,rf_o{n,ff},{r,t}x_level}
 			unset ${mod}_{duplex,tx_delay,rqst_count,{tx,rx,ptt}_invert,device,internal_ip,{gateway,local}_port}
-			unset ${mod}_{tx_offset,rx_offset,auto_link}
+			unset ${mod}_{tx_offset,rx_offset,auto_link,ap_mode}
 			unset ${mod}
 			return
 		elif [[ "$key" == u* ]]; then
 			if   [[ "$value" == ac* ]]; then unset ${mod}_acknowledge
 			elif [[ "$value" == ad* ]]; then unset ${mod}_ack_delay
+			elif [[ "$value" == ap* ]]; then unset ${mod}_ap_mode
 			elif [[ "$value" == ar* ]]; then unset ${mod}_auto_link
 			elif [[ "$value" == ag* ]]; then unset ${mod}_agl
 			elif [[ "$value" == cs* ]]; then unset ${mod}_callsign
@@ -608,6 +611,7 @@ WriteCFGFile () {
 			elif [[ "${!p}" == "itap" ]]; then
 				q=${p}_frequency;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_device;        [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_ap_mode;       [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			elif [[ "${!p}" == "mmdvmhost" ]]; then
 				q=${p}_tx_frequency;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_rx_frequency;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
@@ -725,7 +729,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#200326"
+	echo "           QnConfig Main Menu V#200518"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi

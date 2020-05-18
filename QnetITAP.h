@@ -128,6 +128,7 @@ private:
 	char RPTR_MOD;
 	std::string ITAP_DEVICE, RPTR;
 	bool LOG_QSO, LOG_DEBUG;
+	bool AP_MODE;
 
 	// parameters
 	int serfd;

@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-515");
+const std::string GW_VERSION("QnetGateway-518");
 
 static std::atomic<bool> keep_running(true);
 
@@ -2154,9 +2154,17 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
         fclose(fp);
         return;
     }
+
 	int mod = dsvt.hdr.rpt1[7] - 'A';
+
+	if (! Rptr.mod[mod].defined) {
+		fprintf(stderr, "Module %c is not configured, erasing file %s\n", mod+'A', edata.file);
+		unlink(edata.file);
+		return;
+	}
+
 	if (mod<0 || mod>2) {
-		fprintf(stderr, "unknown module suffix '%s'\n", dsvt.hdr.rpt1);
+		fprintf(stderr, "Unknown module suffix '%s'\n", dsvt.hdr.rpt1);
 		return;
 	}
 
