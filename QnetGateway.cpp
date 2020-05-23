@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-518");
+const std::string GW_VERSION("QnetGateway-523");
 
 static std::atomic<bool> keep_running(true);
 
@@ -269,12 +269,11 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	cfg.GetValue(path+"ipv6_port", estr, g2_ipv6_external.port, 1024, 65535);
 	cfg.GetValue(path+"header_regen", estr, GATEWAY_HEADER_REGEN);
 	cfg.GetValue(path+"send_qrgs_maps", estr, GATEWAY_SEND_QRGS_MAP);
-	cfg.GetValue(path+"gate2link", estr, gate2link, 1, FILENAME_MAX);
-	cfg.GetValue(path+"link2gate", estr, link2gate, 1, FILENAME_MAX);
-	cfg.GetValue(path+"modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue(path+"tolink", estr, tolink, 1, FILENAME_MAX);
+	cfg.GetValue(path+"fromremote", estr, fromremote, 1, FILENAME_MAX);
 	for (int m=0; m<3; m++) {
 		if (Rptr.mod[m].defined) {
-			cfg.GetValue(path+"gate2modem"+std::string(1, 'a'+m), estr, gate2modem[m], 1, FILENAME_MAX);
+			cfg.GetValue(path+"tomodem"+std::string(1, 'a'+m), estr, tomodem[m], 1, FILENAME_MAX);
 			cfg.GetValue(path+"latitude", estr, Rptr.mod[m].latitude, -90.0, 90.0);
 			cfg.GetValue(path+"longitude", estr, Rptr.mod[m].longitude, -180.0, 180.0);
 			cfg.GetValue(path+"desc1", estr, Rptr.mod[m].desc1, 0, 20);
@@ -584,7 +583,7 @@ void CQnetGateway::ProcessTimeouts()
 				end_of_audio.ctrl = toRptr[i].sequence | 0x40;
 
 				for (int j=0; j<2; j++)
-					Gate2Modem[i].Write(end_of_audio.title, 27);
+					ToModem[i].Write(end_of_audio.title, 27);
 
 
 				toRptr[i].streamid = 0;
@@ -998,7 +997,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 						if (source_sock >= 0)
 							printf("IP=[%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
 						else
-							printf("UnixSock=%s\n", link2gate.c_str());
+							printf("UnixSock=%s\n", tolink.c_str());
 					}
 					lhcallsign[i].assign((const char *)g2buf.hdr.mycall, 8);
 					if (showLastHeard && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(lhcallsign[i].c_str(), preg)) {
@@ -1011,7 +1010,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 						qnDB.UpdateLH(lhcallsign[i].c_str(), lhsfx[i].c_str(), 'A'+i, reflector.c_str());
 					}
 
-					Gate2Modem[i].Write(g2buf.title, 56);
+					ToModem[i].Write(g2buf.title, 56);
 					nextctrl[i] = 0U;
 
 					/* save the header */
@@ -1085,7 +1084,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 										const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
 										memcpy(dsvt.vasd.voice, sync, 3U);
 									}
-									Gate2Modem[i].Write(dsvt.title, 27);
+									ToModem[i].Write(dsvt.title, 27);
 								}
 							} else {
 								if (LOG_DEBUG)
@@ -1102,7 +1101,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 								g2buf.ctrl = nextctrl[i];
 								nextctrl[i] = (nextctrl[i] + 1U) % 21U;
 							}
-							Gate2Modem[i].Write(g2buf.title, 27);
+							ToModem[i].Write(g2buf.title, 27);
 							if (source_sock >= 0 && showLastHeard) {
 								std::string smartgroup;
 								if(ProcessG2Msg(g2buf.vasd.text, i, smartgroup)) {
@@ -1161,10 +1160,10 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 								printf("Re-generating header for streamID=%04x\n", ntohs(g2buf.streamid));
 
 								/* re-generate/send the header */
-								Gate2Modem[i].Write(toRptr[i].saved_hdr.title, 56);
+								ToModem[i].Write(toRptr[i].saved_hdr.title, 56);
 
 								/* send this audio packet to repeater */
-								Gate2Modem[i].Write(g2buf.title, 27);
+								ToModem[i].Write(g2buf.title, 27);
 
 								/* make sure that any more audio arriving will be accepted */
 								toRptr[i].streamid = g2buf.streamid;
@@ -1185,13 +1184,9 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 	}
 }
 
-void CQnetGateway::ProcessModem()
+void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 {
 	char tempfile[FILENAME_MAX];
-
-	SDSVT dsvt;
-
-	int recvlen = Modem2Gate.Read(dsvt.title, 56);
 
 	if (0 == memcmp(dsvt.title, "DSVT", 4)) {
 		if ( (recvlen==56 || recvlen==27) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U) ) {
@@ -1290,7 +1285,7 @@ void CQnetGateway::ProcessModem()
 				bool mycall_valid = std::regex_match(call.c_str(), preg);
 
 				if (mycall_valid)
-					Gate2Link.Write(dsvt.title, recvlen);
+					ToLink.Write(dsvt.title, recvlen);
 				else
 					printf("MYCALL [%s] failed IRC expression validation\n", call.c_str());
 
@@ -1441,7 +1436,7 @@ void CQnetGateway::ProcessModem()
 										    		dsvt.hdr.rpt1[7] = 'G';
 											    	calcPFCS(dsvt.title, 56);
 
-												    Gate2Modem[i].Write(dsvt.title, 56);
+												    ToModem[i].Write(dsvt.title, 56);
 
     												/* This is the active streamid */
 	    											toRptr[i].streamid = dsvt.streamid;
@@ -1597,7 +1592,7 @@ void CQnetGateway::ProcessModem()
 							dsvt.hdr.rpt1[7] = 'G';
 							calcPFCS(dsvt.title, 56);
 
-							Gate2Modem[i].Write(dsvt.title, 56);
+							ToModem[i].Write(dsvt.title, 56);
 
 							/* This is the active streamid */
 							toRptr[i].streamid = dsvt.streamid;
@@ -1727,7 +1722,7 @@ void CQnetGateway::ProcessModem()
 				ProcessSlowData(dsvt.vasd.text,  dsvt.streamid);
 
 				/* send data to qnlink */
-				Gate2Link.Write(dsvt.title, 27);
+				ToLink.Write(dsvt.title, 27);
 
 				/* aprs processing */
 				if (APRS_ENABLE)
@@ -1787,7 +1782,7 @@ void CQnetGateway::ProcessModem()
 						break;
 					}
 					else if (toRptr[i].streamid == dsvt.streamid) {	// or maybe this is cross-banding data
-						Gate2Modem[i].Write(dsvt.title, 27);
+						ToModem[i].Write(dsvt.title, 27);
 
 						/* timeit */
 						time(&toRptr[i].last_time);
@@ -1866,8 +1861,12 @@ void CQnetGateway::Process()
 			AddFDSet(max_nfds, g2_sock[0], &fdset);
 		if (g2_sock[1] >= 0)
 			AddFDSet(max_nfds, g2_sock[1], &fdset);
-		AddFDSet(max_nfds, Link2Gate.GetFD(), &fdset);
-		AddFDSet(max_nfds, Modem2Gate.GetFD(), &fdset);
+		AddFDSet(max_nfds, ToLink.GetFD(), &fdset);
+		for (int i=0; i<3; i++) {
+			if (Rptr.mod[i].defined)
+				AddFDSet(max_nfds, ToModem[i].GetFD(), &fdset);
+		}
+		AddFDSet(max_nfds, FromRemote.GetFD(), &fdset);
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000; // 20 ms
@@ -1889,10 +1888,18 @@ void CQnetGateway::Process()
 			}
 		}
 
-		// process packets from qnlink
-		if (keep_running && FD_ISSET(Link2Gate.GetFD(), &fdset)) {
+		// process packets from qnremote
+		if (keep_running && FD_ISSET(FromRemote.GetFD(), &fdset)) {
 			SDSVT dsvt;
-			ssize_t g2buflen = Link2Gate.Read(dsvt.title, 56);
+			const ssize_t len = FromRemote.Read(dsvt.title, 56);
+			ProcessModem(len, dsvt);
+			FD_CLR(FromRemote.GetFD(), &fdset);
+		}
+
+		// process packets from qnlink
+		if (keep_running && FD_ISSET(ToLink.GetFD(), &fdset)) {
+			SDSVT dsvt;
+			ssize_t g2buflen = ToLink.Read(dsvt.title, 56);
             if (16==g2buflen && 0==memcmp(dsvt.title, "LINK", 4)) {
                 SLINKFAMILY fam;
                 memcpy(fam.title, dsvt.title, 16);
@@ -1907,13 +1914,18 @@ void CQnetGateway::Process()
             } else {
 			    ProcessG2(g2buflen, dsvt, -1);
             }
-			FD_CLR(Link2Gate.GetFD(), &fdset);
+			FD_CLR(ToLink.GetFD(), &fdset);
 		}
 
 		// process packets coming from local repeater module(s)
-		if (keep_running && FD_ISSET(Modem2Gate.GetFD(), &fdset)) {
-			ProcessModem();
-			FD_CLR(Modem2Gate.GetFD(), &fdset);
+		for (int i=0; i<3; i++) {
+			if (keep_running && FD_ISSET(ToModem[i].GetFD(), &fdset)) {
+				SDSVT dsvt;
+				const ssize_t len = ToModem[i].Read(dsvt.title, 56);
+				if (Rptr.mod[i].defined)
+					ProcessModem(len, dsvt);
+				FD_CLR(ToModem[i].GetFD(), &fdset);
+			}
 		}
 	}
 
@@ -2174,7 +2186,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 	memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
 	calcPFCS(dsvt.title, 56);
 
-	Gate2Modem[mod].Write(dsvt.title, 56);
+	ToModem[mod].Write(dsvt.title, 56);
 
 	dsvt.config = 0x20U;
 
@@ -2235,7 +2247,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 			if (i+1 == ambeblocks)
 				dsvt.ctrl |= 0x40U;
 
-			Gate2Modem[mod].Write(dsvt.title, 27);
+			ToModem[mod].Write(dsvt.title, 27);
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(TIMING_PLAY_DELAY));
 		}
@@ -2429,16 +2441,15 @@ bool CQnetGateway::Init(char *cfgfile)
 		}
 	}
 
-	// Open unix sockets between qngateway and qnlink
-	Gate2Link.SetUp(gate2link.c_str());
-	if (Link2Gate.Open(link2gate.c_str()))
+	// Open unix sockets between qngateway and qnremote
+	if (ToLink.Open(tolink.c_str()))
 		return true;
-	if (Modem2Gate.Open(modem2gate.c_str()))
+	if (FromRemote.Open(fromremote.c_str()))
 		return true;
 
 	for (i=0; i<3; i++) {
 		if (Rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
-			Gate2Modem[i].SetUp(gate2modem[i].c_str());
+			ToModem[i].Open(tomodem[i].c_str());
 		}
 		// recording for echotest on local repeater modules
 		recd[i].last_time = 0;
@@ -2500,8 +2511,12 @@ CQnetGateway::CQnetGateway()
 
 CQnetGateway::~CQnetGateway()
 {
-	Link2Gate.Close();
-	Modem2Gate.Close();
+	ToLink.Close();
+	FromRemote.Close();
+	for (int i=0; i<3; i++) {
+		if (Rptr.mod[i].defined)
+			ToModem[i].Close();
+	}
 
 	if (APRS_ENABLE) {
 		if (aprs->aprs_sock.GetFD() != -1) {

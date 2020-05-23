@@ -36,7 +36,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "QnetRelay-1.1.1"
+#define RELAY_VERSION "QnetRelay-523"
 
 std::atomic<bool> CQnetRelay::keep_running(true);
 
@@ -116,11 +116,10 @@ bool CQnetRelay::Run(const char *cfgfile)
 	if (msock < 0)
 		return true;
 
-	Modem2Gate.SetUp(modem2gate.c_str());
-	if (Gate2Modem.Open(gate2modem.c_str()))
+	if (ToGate.Open(togate.c_str()))
 		return true;
 
-	int fd = Gate2Modem.GetFD();
+	int fd = ToGate.GetFD();
 
 	printf("msock=%d, gateway=%d\n", msock, fd);
 
@@ -164,10 +163,10 @@ bool CQnetRelay::Run(const char *cfgfile)
 		}
 
 		if (FD_ISSET(fd, &readfds)) {
-			len = Gate2Modem.Read(buf, 100);
+			len = ToGate.Read(buf, 100);
 
 			if (len < 0) {
-				fprintf(stderr, "ERROR: Run: Gate2Modem.Read() returned error %d: %s\n", errno, strerror(errno));
+				fprintf(stderr, "ERROR: Run: ToGate.Read() returned error %d: %s\n", errno, strerror(errno));
 				break;
 			}
 		}
@@ -195,7 +194,7 @@ bool CQnetRelay::Run(const char *cfgfile)
 	}
 
 	::close(msock);
-	Gate2Modem.Close();
+	ToGate.Close();
 	return false;
 }
 
@@ -306,7 +305,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			memcpy(dsvt.hdr.mycall, dsrp.header.my,   8);
 			memcpy(dsvt.hdr.sfx,    dsrp.header.nm,   4);
 			memcpy(dsvt.hdr.pfcs,   dsrp.header.pfcs, 2);
-			if (56 != Modem2Gate.Write(dsvt.title, 56)) {
+			if (ToGate.Write(dsvt.title, 56)) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
@@ -316,7 +315,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			dsvt.ctrl = dsrp.header.seq;
 			memcpy(dsvt.vasd.voice, dsrp.voice.ambe, 12);
 
-			if (27 != Modem2Gate.Write(dsvt.title, 27)) {
+			if (ToGate.Write(dsvt.title, 27)) {
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 				return true;
 			}
@@ -377,8 +376,7 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	}
 	RPTR_MOD = 'A' + assigned_module;
 
-	cfg.GetValue("gateway_gate2modem"+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_tomodem"+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 	cfg.GetValue(mmdvm_path+"_internal_ip", type, MMDVM_IP, 7, IP_SIZE);
 	int i;
 	cfg.GetValue(mmdvm_path+"_local_port", type, i, 10000, 65535);

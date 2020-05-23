@@ -29,7 +29,7 @@
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "Random.h"
-#include "UnixDgramSocket.h"
+#include "UnixPacketSock.h"
 #include "SockAddress.h"
 #include "Timer.h"
 #include "QnetDB.h"
@@ -145,9 +145,8 @@ private:
 	CSockAddress fromDst4;
 
 	// unix sockets to gateway
-	std::string link2gate, gate2link;
-	CUnixDgramReader Gate2Link;
-	CUnixDgramWriter Link2Gate;
+	std::string togate;
+	CUnixPacketClient ToGate;
 
 	// input from our own local repeater
 	struct sockaddr_in fromRptr;

@@ -39,22 +39,22 @@
 #include "QnetConfigure.h"
 #include "UnixDgramSocket.h"
 
-#define VERSION "v2.3"
+#define VERSION "v523"
 
 #ifndef CFG_DIR
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-int module;
-time_t tNow = 0;
-short streamid_raw = 0;
-std::string REPEATER, togateway;
-int PLAY_WAIT, PLAY_DELAY;
+static int module;
+static time_t tNow = 0;
+static short streamid_raw = 0;
+static std::string REPEATER, togateway;
+static int PLAY_WAIT, PLAY_DELAY;
 
-unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
+static unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 
 
-unsigned short crc_tabccitt[256] = {
+static unsigned short crc_tabccitt[256] = {
 	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 	0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
 	0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
@@ -73,9 +73,9 @@ unsigned short crc_tabccitt[256] = {
 	0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 };
 
-CQnetConfigure cfg;
+static CQnetConfigure cfg;
 
-bool ReadCfgFile()
+static bool ReadCfgFile()
 {
 	const std::string estr;
 	std::string type;
@@ -95,14 +95,14 @@ bool ReadCfgFile()
 			return true;
 		}
 	}
-	cfg.GetValue("gateway_modem2gate", estr, togateway, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_fromremote", estr, togateway, 1, FILENAME_MAX);
 
 	cfg.GetValue("timing_play_wait", estr, PLAY_WAIT, 1, 10);
 	cfg.GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
 	return false;
 }
 
-void calcPFCS(unsigned char rawbytes[56])
+static void calcPFCS(unsigned char rawbytes[56])
 {
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
@@ -121,7 +121,7 @@ void calcPFCS(unsigned char rawbytes[56])
 	return;
 }
 
-void ToUpper(std::string &str)
+static void ToUpper(std::string &str)
 {
 	for (unsigned int i=0; i<str.size(); i++)
 		if (islower(str[i]))

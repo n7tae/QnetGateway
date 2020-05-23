@@ -24,12 +24,12 @@
 #include <string>
 
 #include "Random.h"
-#include "UnixDgramSocket.h"
+#include "UnixPacketSock.h"
 #include "QnetConfigure.h"
 #include "QnetTypeDefs.h"
 #include "DStarDecode.h"
 
-#define DVRPTR_VERSION "QnetDVRPTR-6.0.6"
+#define DVRPTR_VERSION "QnetDVRPTR-523"
 
 #define BAUD B115200
 #define CALL_SIZE 8
@@ -77,9 +77,8 @@ static unsigned char Modem_STATUS[6]= {0xD0,0x01,0x00,0x10,0x00,0x00}; // Status
 static unsigned char Modem_SERIAL[6]= {0xD0,0x01,0x00,0x12,0x00,0x00};
 
 static int assigned_module;
-static std::string gate2modem, modem2gate;
-CUnixDgramWriter Modem2Gate;
-CUnixDgramReader Gate2Modem;
+static std::string togate;
+CUnixPacketClient ToGate;
 
 static std::string DVRPTR_SERIAL;
 static char DVCALL[CALL_SIZE + 1];
@@ -1387,8 +1386,7 @@ static bool ReadConfig(const char *cfgFile)
 		}
 	}
 	DVRPTR_MOD = 'A' + assigned_module;
-	cfg.GetValue(std::string("gateway_gate2modem")+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue(std::string("gateway_tomodem")+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 
 	std::string call;
 	if (cfg.GetValue("ircddb_login", type, call, 3, 6))
@@ -1691,7 +1689,7 @@ static void readFrom20000()
 	unsigned char ctrl_in = 0x80;
 	bool written_to_q = false;
 
-	int fd = Gate2Modem.GetFD();
+	int fd = ToGate.GetFD();
 	while (true) {
 		written_to_q = false;
 
@@ -1701,7 +1699,7 @@ static void readFrom20000()
 		FD_SET (fd, &readfd);
 		select(fd + 1, &readfd, NULL, NULL, &tv);
 		if (FD_ISSET(fd, &readfd)) {
-			len = Gate2Modem.Read(recv_buf.title, 56);
+			len = ToGate.Read(recv_buf.title, 56);
 			if (len == 56) {
 				if (busy20000) {
 					FD_CLR (fd, &readfd);
@@ -2086,8 +2084,7 @@ int main(int argc, const char **argv)
 	strcpy(DVCALL_and_MOD, DVCALL);
 	DVCALL_and_MOD[7] = DVRPTR_MOD;
 
-	Modem2Gate.SetUp(modem2gate.c_str());
-	if (Gate2Modem.Open(gate2modem.c_str()))
+	if (ToGate.Open(togate.c_str()))
 		return 1;
 
 	if  (RX_Inverse == true) {
@@ -2353,7 +2350,7 @@ int main(int argc, const char **argv)
 
 				if (ok) {
 					if (IS_ENABLED) {
-						Modem2Gate.Write(Send_Network_Header.title, 56);
+						ToGate.Write(Send_Network_Header.title, 56);
 					}
 				}
 
@@ -2413,7 +2410,7 @@ int main(int argc, const char **argv)
 				memcpy(Send_Network_Audio.vasd.voice , puffer + 8, 12);
 
 				if (IS_ENABLED) {
-					Modem2Gate.Write(Send_Network_Audio.title, 27);
+					ToGate.Write(Send_Network_Audio.title, 27);
 					ber_errs = decode.Decode(Send_Network_Audio.vasd.voice, ber_data);
 					num_bit_errors += ber_errs;
 					num_dv_frames++;
@@ -2537,7 +2534,7 @@ int main(int argc, const char **argv)
 
 				if (ok) {
 					if (IS_ENABLED) {
-						Modem2Gate.Write(Send_Network_Audio.title, 27);
+						ToGate.Write(Send_Network_Audio.title, 27);
 					}
 				}
 
@@ -2554,7 +2551,7 @@ int main(int argc, const char **argv)
 		}
 	}
 
-	Gate2Modem.Close();
+	ToGate.Close();
 	printf("dvrptr exiting...\n");
 
 	return 0;

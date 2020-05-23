@@ -49,25 +49,25 @@ dvrptr : qndvrptr
 itap   : qnitap
 modem  : qnmodem
 
-qngateway : QnetGateway.o aprs.o UnixDgramSocket.o TCPReaderWriterClient.o QnetConfigure.o QnetDB.o CacheManager.o DStarDecode.o $(IRCOBJS)
+qngateway : QnetGateway.o aprs.o UnixDgramSocket.o UnixPacketSock.o TCPReaderWriterClient.o QnetConfigure.o QnetDB.o CacheManager.o DStarDecode.o $(IRCOBJS)
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
 
-qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixDgramSocket.o QnetConfigure.o QnetDB.o
+qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixPacketSock.o QnetConfigure.o QnetDB.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
 
-qnrelay : QnetRelay.o UnixDgramSocket.o QnetConfigure.o
+qnrelay : QnetRelay.o UnixPacketSock.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qnitap : QnetITAP.o UnixDgramSocket.o QnetConfigure.o
+qnitap : QnetITAP.o UnixPacketSock.o QnetConfigure.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qnmodem : QnetModem.o UnixDgramSocket.o QnetConfigure.o
+qnmodem : QnetModem.o UnixPacketSock.o QnetConfigure.o
 		g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
-qndvap : QnetDVAP.o DVAPDongle.o UnixDgramSocket.o QnetConfigure.o DStarDecode.o
+qndvap : QnetDVAP.o DVAPDongle.o UnixPacketSock.o QnetConfigure.o DStarDecode.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
 
-qndvrptr : QnetDVRPTR.o UnixDgramSocket.o QnetConfigure.o DStarDecode.o
+qndvrptr : QnetDVRPTR.o UnixPacketSock.o QnetConfigure.o DStarDecode.o
 	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
 
 qnremote : QnetRemote.o UnixDgramSocket.o QnetConfigure.o

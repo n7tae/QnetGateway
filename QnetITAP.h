@@ -25,7 +25,7 @@
 
 #include <netinet/in.h>
 #include "Random.h"	// for streamid generation
-#include "UnixDgramSocket.h"
+#include "UnixPacketSock.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -137,9 +137,8 @@ private:
 	CRandom random;
 
 	// unix sockets
-	std::string modem2gate, gate2modem;
-	CUnixDgramWriter Modem2Gate;
-	CUnixDgramReader Gate2Modem;
+	std::string togate;
+	CUnixPacketClient ToGate;
 
 	// Queue
 	std::queue<CFrame> queue;

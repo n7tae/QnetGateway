@@ -47,11 +47,11 @@
 #include "DVAPDongle.h"
 #include "QnetTypeDefs.h"
 #include "Random.h"
-#include "UnixDgramSocket.h"
+#include "UnixPacketSock.h"
 #include "QnetConfigure.h"
 #include "Timer.h"
 #include "DStarDecode.h"
-#define DVAP_VERSION "QnetDVAP-6.1.2"
+#define DVAP_VERSION "QnetDVAP-523"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -65,9 +65,8 @@ typedef struct dvap_ack_arg_tag {
 static int assigned_module;
 
 // unix sockets
-static std::string modem2gate, gate2modem;
-static CUnixDgramReader Gate2Modem;
-static CUnixDgramWriter Modem2Gate;
+static std::string togate;
+static CUnixPacketClient ToGate;
 /* Default configuration data */
 static std::string RPTR;
 static std::string OWNER;
@@ -199,8 +198,7 @@ static bool ReadConfig(const char *cfgFile)
 		}
 	}
 	RPTR_MOD = 'A' + assigned_module;
-	cfg.GetValue("gateway_gate2modem"+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_tomodem"+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 	if (cfg.KeyExists(dvap_path+"_callsign")) {
 		if (cfg.GetValue(dvap_path+"_callsign", type, RPTR, 3, 6))
 			return true;
@@ -254,8 +252,7 @@ static bool ReadConfig(const char *cfgFile)
 
 static int open_sock()
 {
-	Modem2Gate.SetUp(modem2gate.c_str());
-	if (Gate2Modem.Open(gate2modem.c_str()))
+	if (ToGate.Open(togate.c_str()))
 		return 1;
 	return 0;
 }
@@ -283,12 +280,12 @@ static void ReadFromGateway()
 		tv.tv_sec = 0;
 		tv.tv_usec = MODULE_PACKET_WAIT;
 		FD_ZERO (&readfd);
-		int fd = Gate2Modem.GetFD();
+		int fd = ToGate.GetFD();
 		FD_SET (fd, &readfd);
 		select(fd + 1, &readfd, NULL, NULL, &tv);
 
 		if (FD_ISSET(fd, &readfd)) {
-			len = Gate2Modem.Read(dsvt.title, 56);
+			len = ToGate.Read(dsvt.title, 56);
 			if (len == 56) {
 				if (busy20000) {
 					FD_CLR (fd, &readfd);
@@ -790,7 +787,7 @@ static void ReadDVAPThread()
 				dsvt.ctrl = 0x80;
 				sequence = 0;
 				calcPFCS((unsigned char *)&(dsvt.hdr), dsvt.hdr.pfcs);
-				Modem2Gate.Write(dsvt.title, 56);
+				ToGate.Write(dsvt.title, 56);
 
 				// local RF user keying up, start timer
 				dvap_busy = true;
@@ -810,7 +807,7 @@ static void ReadDVAPThread()
 				if (the_end)
 					dsvt.ctrl = sequence | 0x40;
 				memcpy(&dsvt.vasd, &dr.frame.vad.voice, 12);
-				Modem2Gate.Write(dsvt.title, 27);
+				ToGate.Write(dsvt.title, 27);
 
 				int ber_data[3];
 				int ber_errs = decode.Decode(dsvt.vasd.voice, ber_data);
@@ -975,7 +972,7 @@ int main(int argc, const char **argv)
 	}
 
 	readthread.get();
-	Gate2Modem.Close();
+	ToGate.Close();
 	printf("QnetDVAP exiting\n");
 	return 0;
 }

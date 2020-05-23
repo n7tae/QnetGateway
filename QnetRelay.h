@@ -22,7 +22,7 @@
 #include <string>
 #include <netinet/in.h>
 
-#include "UnixDgramSocket.h"
+#include "UnixPacketSock.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -52,9 +52,8 @@ private:
 
 	// Unix sockets
 	int assigned_module;
-	std::string gate2modem, modem2gate;
-	CUnixDgramWriter Modem2Gate;
-	CUnixDgramReader Gate2Modem;
+	std::string togate;
+	CUnixPacketClient ToGate;
 
 	// config data
 	char RPTR_MOD;

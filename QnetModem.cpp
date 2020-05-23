@@ -44,7 +44,7 @@
 #include "QnetModem.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-1.0.0"
+#define MODEM_VERSION "QnetModem-523"
 #define MAX_RESPONSES 30
 
 std::atomic<bool> CQnetModem::keep_running(true);
@@ -222,8 +222,7 @@ bool CQnetModem::Initialize(const char *cfgfile)
 	std::signal(SIGINT,  SignalCatch);
 	std::signal(SIGHUP,  SignalCatch);
 
-	Modem2Gate.SetUp(modem2gate.c_str());
-	if (Gate2Modem.Open(gate2modem.c_str()))
+	if (ToGate.Open(togate.c_str()))
 		return true;
 
 	serfd = OpenModem();
@@ -437,7 +436,7 @@ void CQnetModem::Run(const char *cfgfile)
 	if (Initialize(cfgfile))
 		return;
 
-	int ug2m = Gate2Modem.GetFD();
+	int ug2m = ToGate.GetFD();
 	printf("gate2modem=%d, serial=%d\n", ug2m, serfd);
 
 	keep_running = true;
@@ -501,7 +500,7 @@ void CQnetModem::Run(const char *cfgfile)
 
 		if (keep_running && FD_ISSET(ug2m, &readfds)) {
 			SDSVT dsvt;
-			ssize_t len = Gate2Modem.Read(dsvt.title, sizeof(SDSVT));
+			ssize_t len = ToGate.Read(dsvt.title, sizeof(SDSVT));
 
 			if (len <= 0) {
 				break;
@@ -548,7 +547,7 @@ void CQnetModem::Run(const char *cfgfile)
 		}
 	}
 	close(serfd);
-	Gate2Modem.Close();
+	ToGate.Close();
 }
 
 int CQnetModem::SendToModem(const unsigned char *buf)
@@ -664,7 +663,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		memcpy(dsvt.hdr.mycall, frame.header.my,   8);
 		memcpy(dsvt.hdr.sfx,    frame.header.nm,   4);
 		memcpy(dsvt.hdr.pfcs,   frame.header.pfcs, 2);
-		if (56 != Modem2Gate.Write(dsvt.title, 56)) {
+		if (ToGate.Write(dsvt.title, 56)) {
 			printf("ERROR: ProcessModem: Could not write gateway header packet\n");
 			return true;
 		}
@@ -682,7 +681,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 						printf("Warning: Inserting missing frame sync after header\n");
 					dsvt.ctrl = 0U;
 					memcpy(dsvt.vasd.voice, sync, 12U);
-					Modem2Gate.Write(dsvt.title, 27);
+					ToGate.Write(dsvt.title, 27);
 					nextctrl = 0x1U;
 				}
 				first_voice_packet = false;
@@ -694,7 +693,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 				memcpy(dsvt.vasd.voice, silence, 12U);
 				while (nextctrl < 21U) {
 					dsvt.ctrl = nextctrl++;
-					Modem2Gate.Write(dsvt.title, 27);
+					ToGate.Write(dsvt.title, 27);
 				}
 				nextctrl = 0x0U;
 			}
@@ -703,7 +702,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 				fprintf(stderr, "Warning: nextctrl=%u, inserting missing sync frame\n", nextctrl);
 				dsvt.ctrl = 0U;
 				memcpy(dsvt.vasd.voice, sync, 12U);
-				Modem2Gate.Write(dsvt.title, 27);
+				ToGate.Write(dsvt.title, 27);
 				nextctrl = 0x1U;
 			}
 
@@ -726,7 +725,7 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			in_stream = false;
 		}
 		dsvt.ctrl = nextctrl++;
-		if (27 != Modem2Gate.Write(dsvt.title, 27)) {
+		if (ToGate.Write(dsvt.title, 27)) {
 			printf("ERROR: ProcessModem: Could not write gateway voice packet\n");
 			return true;
 		}
@@ -789,8 +788,7 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	RPTR_MOD = 'A' + assigned_module;
 
 	cfg.GetValue(modem_path+"_device", type, MODEM_DEVICE, 7, FILENAME_MAX);
-	cfg.GetValue("gateway_gate2modem"+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue("gateway_tomodem"+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 
 	if (cfg.GetValue(modem_path+"_tx_frequency", type, TX_FREQUENCY, 1.0, 6000.0))
 		return true;	// we have to have a valid frequency

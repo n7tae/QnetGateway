@@ -45,7 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-518"
+#define ITAP_VERSION "QnetITAP-523"
 
 std::atomic<bool> CQnetITAP::keep_running(true);
 
@@ -67,8 +67,7 @@ bool CQnetITAP::Initialize(const char *cfgfile)
 	std::signal(SIGHUP,  CQnetITAP::SignalCatch);
 	std::signal(SIGINT,  CQnetITAP::SignalCatch);
 
-	Modem2Gate.SetUp(modem2gate.c_str());
-	if (Gate2Modem.Open(gate2modem.c_str()))
+	if (ToGate.Open(togate.c_str()))
 		return true;
 
 	return false;
@@ -214,7 +213,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	if (serfd < 0)
 		return;
 
-	int ug2m = Gate2Modem.GetFD();
+	int ug2m = ToGate.GetFD();
 	printf("gate2modem=%d, serial=%d\n", ug2m, serfd);
 
 	keep_running = true;
@@ -334,7 +333,7 @@ void CQnetITAP::Run(const char *cfgfile)
 		}
 
 		if (keep_running && FD_ISSET(ug2m, &readfds)) {
-			ssize_t len = Gate2Modem.Read(buf, 100);
+			ssize_t len = ToGate.Read(buf, 100);
 
 			if (len < 0) {
 				printf("ERROR: Run: recvfrom(gsock) returned error %d, %s\n", errno, strerror(errno));
@@ -384,7 +383,7 @@ void CQnetITAP::Run(const char *cfgfile)
 	}
 
 	close(serfd);
-	Gate2Modem.Close();
+	ToGate.Close();
 }
 
 int CQnetITAP::SendTo(const unsigned char *buf)
@@ -517,7 +516,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 		memcpy(dsvt.hdr.mycall, itap.header.my,   8);
 		memcpy(dsvt.hdr.sfx,    itap.header.nm,   4);
 		calcPFCS(dsvt.hdr.flag, dsvt.hdr.pfcs);
-		if (56 != Modem2Gate.Write(dsvt.title, 56)) {
+		if (ToGate.Write(dsvt.title, 56)) {
 			printf("ERROR: ProcessITAP: Could not write gateway header packet\n");
 			return true;
 		}
@@ -526,7 +525,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 	} else if (16 == len) {	// ambe
 		dsvt.ctrl = itap.voice.sequence;
 		memcpy(dsvt.vasd.voice, itap.voice.ambe, 12);
-		if (27 != Modem2Gate.Write(dsvt.title, 27)) {
+		if (ToGate.Write(dsvt.title, 27)) {
 			printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 			return true;
 		}
@@ -609,8 +608,7 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 		RPTR.resize(CALL_SIZE, ' ');
 	}
 
-	cfg.GetValue(std::string("gateway_gate2modem")+std::string(1, 'a'+assigned_module), estr, gate2modem, 1, FILENAME_MAX);
-	cfg.GetValue("gateway_modem2gate", estr, modem2gate, 1, FILENAME_MAX);
+	cfg.GetValue(std::string("gateway_tomodem")+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 	cfg.GetValue("log_qso", estr, LOG_QSO);
 	cfg.GetValue("log_debug", estr, LOG_DEBUG);
 	return false;

@@ -17,10 +17,13 @@
  */
 
 #include <set>
+#include <regex>
 
+#include "IRCDDB.h"
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "UnixDgramSocket.h"
+#include "UnixPacketSock.h"
 #include "aprs.h"
 #include "SockAddress.h"
 #include "QnetDB.h"
@@ -97,10 +100,10 @@ private:
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
-	CUnixDgramReader Link2Gate, Modem2Gate;
-	CUnixDgramWriter Gate2Link, Gate2Modem[3];
+	CUnixDgramReader FromRemote;
+	CUnixPacketServer ToLink, ToModem[3];
 
-	std::string gate2link, link2gate, gate2modem[3], modem2gate;
+	std::string tolink, fromremote, tomodem[3];
 
 	std::string OWNER, owner, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE, DASH_SHOW_ORDER;
 
@@ -175,7 +178,7 @@ private:
 	void ProcessSlowData(unsigned char *data, const unsigned short sid);
 	bool ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp);
 	void ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sock_source);
-	void ProcessModem();
+	void ProcessModem(const ssize_t len, SDSVT &dsvt);
 	bool Flag_is_ok(unsigned char flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);

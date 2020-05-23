@@ -300,12 +300,6 @@ GateMenu () {
 			echo -n "i  : IRC TCP local network address  = "; EvaluateVar gateway_local_irc_ip{,_d}
 			echo -n "a  : G2 port address                = "; EvaluateVar gateway_ip{,_d}
 			echo -n "p  : G2 port number                 = "; EvaluateVar gateway_port{,_d}
-			echo -n "tl : UNIX socket to QnetLink        = "; EvaluateVar gateway_gate2link{,_d}
-			echo -n "fl : UNIX socket from QnetLink      = "; EvaluateVar gateway_link2gate{,_d}
-			echo -n "ta : UNIX socket to Modem A         = "; EvaluateVar gateway_gate2modema{,_d}
-			echo -n "tb : UNIX socket to Modem B         = "; EvaluateVar gateway_gate2modemb{,_d}
-			echo -n "tc : UNIX socket to Modem C         = "; EvaluateVar gateway_gate2modemc{,_d}
-			echo -n "fm : UNIX socket from Modem(s)      = "; EvaluateVar gateway_modem2gate{,_d}
 		fi
 		echo -n "la : Latitude (-90.0 to 90.0)       = "; EvaluateVar gateway_latitude{,_d}
 		echo -n "lo : Longitude (-180.0 to 180.0)    = "; EvaluateVar gateway_longitude{,_d}
@@ -331,12 +325,6 @@ GateMenu () {
 		elif [[ "$key" == i*  ]]; then gateway_local_irc_ip="$value"
 		elif [[ "$key" == a*  ]]; then gateway_ip="$value"
 		elif [[ "$key" == p*  ]]; then gateway_port="$value"
-		elif [[ "$key" == tl* ]]; then gateway_gate2link="$value"
-		elif [[ "$key" == fl* ]]; then gateway_link2gate="$value"
-		elif [[ "$key" == ta* ]]; then gateway_gate2modema="$value"
-		elif [[ "$key" == tb* ]]; then gateway_gate2modemb="$value"
-		elif [[ "$key" == tc* ]]; then gateway_gate2modemc="$value"
-		elif [[ "$key" == fm* ]]; then gateway_modem2gate="$value"
 		elif [[ "$key" == la* ]]; then gateway_latitude="$value"
 		elif [[ "$key" == lo* ]]; then gateway_longitude="$value"
 		elif [[ "$key" == d1* ]]; then gateway_desc1="${value:0:20}"
@@ -354,11 +342,6 @@ GateMenu () {
 			elif [[ "$value" == i*  ]]; then unset gateway_local_irc_ip
 			elif [[ "$value" == a*  ]]; then unset gateway_ip
 			elif [[ "$value" == p*  ]]; then unset gateway_port
-			elif [[ "$value" == tl* ]]; then unset gateway_gate2link
-			elif [[ "$value" == ta* ]]; then unset gateway_gate2modema
-			elif [[ "$value" == tb* ]]; then unset gateway_gate2modemb
-			elif [[ "$value" == tc* ]]; then unset gateway_gate2modemc
-			elif [[ "$value" == fm* ]]; then unset gateway_modem2gate
 			elif [[ "$value" == la* ]]; then unset gateway_latitude
 			elif [[ "$value" == lo* ]]; then unset gateway_longitude
 			elif [[ "$value" == d1* ]]; then unset gateway_desc1
@@ -640,12 +623,6 @@ WriteCFGFile () {
 	[ -z "${gateway_local_irc_ip+x}"   ] || echo "gateway_local_irc_ip='${gateway_local_irc_ip}'"   >> $outFile
 	[ -z "${gateway_port+x}"           ] || echo "gateway_port=${gateway_port}"                     >> $outFile
 	[ -z "${gateway_ip+x}"             ] || echo "gateway_ip=${gateway_ip}"                         >> $outFile
-	[ -z "${gateway_tolink+x}"         ] || echo "gateway_tolink=${gateway_tolink}"                 >> $outFile
-	[ -z "${gateway_fromlink+x}"       ] || echo "gateway_fromlink=${gateway_fromlink}"             >> $outFile
-	[ -z "${gateway_gate2modema+x}"    ] || echo "gateway_gate2modema=${gateway_gate2modema}"       >> $outFile
-	[ -z "${gateway_gate2modemb+x}"    ] || echo "gateway_gate2modemb=${gateway_gate2modemb}"       >> $outFile
-	[ -z "${gateway_gate2modemc+x}"    ] || echo "gateway_gate2modemc=${gateway_gate2modemc}"       >> $outFile
-	[ -z "${gateway_modem2gate+x}"     ] || echo "gateway_modem2gate=${gateway_modem2gate}"         >> $outFile
 	[ -z "${gateway_latitude+x}"       ] || echo "gateway_latitude=${gateway_latitude}"             >> $outFile
 	[ -z "${gateway_longitude+x}"      ] || echo "gateway_longitude=${gateway_longitude}"           >> $outFile
 	[ -z "${gateway_desc1+x}"          ] || echo "gateway_desc1='${gateway_desc1}'"                 >> $outFile
