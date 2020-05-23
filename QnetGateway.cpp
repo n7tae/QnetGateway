@@ -2337,6 +2337,50 @@ bool CQnetGateway::Init(char *cfgfile)
 		return true;
 	qnDB.ClearLH();
 
+	// Open unix sockets between qngateway and qnremote
+	printf("Connecting to qnlink at %s\n", tolink.c_str());
+	if (ToLink.Open(tolink.c_str()))
+		return true;
+	printf("Opening remote port at %s\n", fromremote.c_str());
+	if (FromRemote.Open(fromremote.c_str()))
+		return true;
+
+	for (i=0; i<3; i++) {
+		if (Rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
+			printf("Connecting to modem at %s\n", tomodem[i].c_str());
+			if (ToModem[i].Open(tomodem[i].c_str()))
+				return true;
+		}
+		// recording for echotest on local repeater modules
+		recd[i].last_time = 0;
+		recd[i].streamid = 0;
+		recd[i].fd = -1;
+		memset(recd[i].file, 0, sizeof(recd[i].file));
+
+		// recording for voicemail on local repeater modules
+		vm[i].last_time = 0;
+		vm[i].streamid = 0;
+		vm[i].fd = -1;
+		memset(vm[i].file, 0, sizeof(vm[i].file));
+
+		snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), 'A'+i, "voicemail.dat2");
+
+		if (access(vm[i].file, F_OK) != 0)
+			memset(vm[i].file, 0, sizeof(vm[i].file));
+		else
+			printf("Loaded voicemail file: %s for mod %d\n", vm[i].file, i);
+
+		// the repeater modules run on these ports
+		memset(toRptr[i].saved_hdr.title, 0, 56);
+		toRptr[i].saved_addr.Clear();
+
+		toRptr[i].streamid = 0;
+		toRptr[i].addr.Clear();
+
+		toRptr[i].last_time = 0;
+
+		toRptr[i].sequence = 0x0;
+	}
 
 	playNotInCache = false;
 
@@ -2439,50 +2483,6 @@ bool CQnetGateway::Init(char *cfgfile)
 			printf("Can't open %s:%d for %s\n", pip->ip.c_str(), pip->port, ircddb[1].ip.c_str());
 			return true;
 		}
-	}
-
-	// Open unix sockets between qngateway and qnremote
-	printf("Connecting to qnlink at %s\n", tolink.c_str());
-	if (ToLink.Open(tolink.c_str()))
-		return true;
-	printf("Opening remote port at %s\n", fromremote.c_str());
-	if (FromRemote.Open(fromremote.c_str()))
-		return true;
-
-	for (i=0; i<3; i++) {
-		if (Rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
-			printf("Connecting to modem at %s\n", tomodem[i].c_str());
-			ToModem[i].Open(tomodem[i].c_str());
-		}
-		// recording for echotest on local repeater modules
-		recd[i].last_time = 0;
-		recd[i].streamid = 0;
-		recd[i].fd = -1;
-		memset(recd[i].file, 0, sizeof(recd[i].file));
-
-		// recording for voicemail on local repeater modules
-		vm[i].last_time = 0;
-		vm[i].streamid = 0;
-		vm[i].fd = -1;
-		memset(vm[i].file, 0, sizeof(vm[i].file));
-
-		snprintf(vm[i].file, FILENAME_MAX, "%s/%c_%s", FILE_ECHOTEST.c_str(), 'A'+i, "voicemail.dat2");
-
-		if (access(vm[i].file, F_OK) != 0)
-			memset(vm[i].file, 0, sizeof(vm[i].file));
-		else
-			printf("Loaded voicemail file: %s for mod %d\n", vm[i].file, i);
-
-		// the repeater modules run on these ports
-		memset(toRptr[i].saved_hdr.title, 0, 56);
-		toRptr[i].saved_addr.Clear();
-
-		toRptr[i].streamid = 0;
-		toRptr[i].addr.Clear();
-
-		toRptr[i].last_time = 0;
-
-		toRptr[i].sequence = 0x0;
 	}
 
 	/*
