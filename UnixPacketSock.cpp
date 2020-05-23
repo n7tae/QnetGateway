@@ -17,6 +17,8 @@
  */
 
 #include <iostream>
+#include <thread>
+#include <chrono>
 #include <unistd.h>
 #include <sys/un.h>
 #include <sys/socket.h>
@@ -114,10 +116,21 @@ bool CUnixPacketClient::Open(const char *name)
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
 	memcpy(addr.sun_path+1, name, strlen(name));
-	if (-1 == connect(m_fd, (struct sockaddr *)&addr, sizeof(addr))) {
-		std::cerr << "Cannot connect unix client socket " << name << std::endl;
-		Close();
-		return true;
+	int rval = -1;
+	int tries = 0;
+	while (rval < 0) {
+		rval = connect(m_fd, (struct sockaddr *)&addr, sizeof(addr));
+		if (rval < 0) {
+			if (ECONNREFUSED == errno) {
+				if (0 == tries++ % 20)
+					std::cout << "Waiting for " << name << " server to start..." << std::endl;
+				std::this_thread::sleep_for(std::chrono::milliseconds(250));
+			} else {
+				std::cerr << "Cannot connect unix client socket " << name << std::endl;
+				Close();
+				return true;
+			}
+		}
 	}
 
 	return false;
