@@ -56,7 +56,7 @@ bool CUnixPacketServer::Open(const char *name)
 {
 	m_server = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	if (m_server < 0) {
-		std::cerr << "Cannot open " << name << " Unix server socket!" << std::endl;
+		std::cerr << "Cannot open " << name << " unix server socket!" << std::endl;
 		return true;
 	}
 
@@ -65,20 +65,20 @@ bool CUnixPacketServer::Open(const char *name)
 	addr.sun_family = AF_UNIX;
 	memcpy(addr.sun_path+1, name, strlen(name));
 	if (-1 == bind(m_server, (struct sockaddr *)&addr, sizeof(addr))) {
-		std::cerr << "Cannot bind " << name << "Unix server socket!" << std::endl;
+		std::cerr << "Cannot bind unix server socket " << name << std::endl;
 		Close();
 		return true;
 	}
 
 	if (-1 == listen(m_server, 1)) {
-		std::cerr << "Cannot listen on " << name << "Unix server socket!" << std::endl;
+		std::cerr << "Cannot listen on unix server socket " << name << std::endl;
 		Close();
 		return true;
 	}
 
 	m_fd = accept(m_server, nullptr, 0);
 	if (m_fd < 0) {
-		std::cerr << "Cannot accept on " << name << "Unix server socket!" << std::endl;
+		std::cerr << "Cannot accept on unix server socket " << name << std::endl;
 		Close();
 		return true;
 	}
@@ -106,7 +106,7 @@ bool CUnixPacketClient::Open(const char *name)
 {
 	m_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	if (m_fd < 0) {
-		std::cerr << "Cannot open " << name << " Unix client socket!" << std::endl;
+		std::cerr << "Cannot open unix client socket " << name << std::endl;
 		return true;
 	}
 
@@ -115,7 +115,7 @@ bool CUnixPacketClient::Open(const char *name)
 	addr.sun_family = AF_UNIX;
 	memcpy(addr.sun_path+1, name, strlen(name));
 	if (-1 == connect(m_fd, (struct sockaddr *)&addr, sizeof(addr))) {
-		std::cerr << "Cannot connect " << name << "Unix client socket!" << std::endl;
+		std::cerr << "Cannot connect unix client socket " << name << std::endl;
 		Close();
 		return true;
 	}

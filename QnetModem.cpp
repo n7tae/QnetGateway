@@ -222,6 +222,7 @@ bool CQnetModem::Initialize(const char *cfgfile)
 	std::signal(SIGINT,  SignalCatch);
 	std::signal(SIGHUP,  SignalCatch);
 
+	printf("Connecting to qngateway at %s\n", togate.c_str());
 	if (ToGate.Open(togate.c_str()))
 		return true;
 
@@ -788,7 +789,7 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	RPTR_MOD = 'A' + assigned_module;
 
 	cfg.GetValue(modem_path+"_device", type, MODEM_DEVICE, 7, FILENAME_MAX);
-	cfg.GetValue("gateway_tomodem"+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
+	cfg.GetValue(std::string("gateway_tomodem")+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 
 	if (cfg.GetValue(modem_path+"_tx_frequency", type, TX_FREQUENCY, 1.0, 6000.0))
 		return true;	// we have to have a valid frequency

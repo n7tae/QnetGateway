@@ -2442,13 +2442,16 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 
 	// Open unix sockets between qngateway and qnremote
+	printf("Connecting to qnlink at %s\n", tolink.c_str());
 	if (ToLink.Open(tolink.c_str()))
 		return true;
+	printf("Opening remote port at %s\n", fromremote.c_str());
 	if (FromRemote.Open(fromremote.c_str()))
 		return true;
 
 	for (i=0; i<3; i++) {
 		if (Rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
+			printf("Connecting to modem at %s\n", tomodem[i].c_str());
 			ToModem[i].Open(tomodem[i].c_str());
 		}
 		// recording for echotest on local repeater modules

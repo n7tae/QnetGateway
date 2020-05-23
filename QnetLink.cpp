@@ -604,6 +604,7 @@ bool CQnetLink::srv_open()
 	}
 
 	/* create our gateway unix sockets */
+	printf("Connecting to qngateway at %s\n", togate.c_str());
 	if (ToGate.Open(togate.c_str())) {
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
