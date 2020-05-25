@@ -3288,13 +3288,14 @@ bool CQnetLink::Init(const char *cfgfile)
 	if (qnDB.Open(fname.c_str()))
 		return true;
 	qnDB.ClearLS();
-	LoadGateways(gwys);
 
 	/* create our server */
 	if (!srv_open()) {
 		printf("srv_open() failed\n");
 		return true;
 	}
+
+	LoadGateways(gwys);
 
 	std::string index(announce_dir);
 	index.append("/index.dat");
