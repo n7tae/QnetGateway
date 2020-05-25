@@ -25,11 +25,13 @@ public:
 	CUnixPacket();
 	virtual bool Open(const char *name) = 0;
 	virtual void Close() = 0;
-	bool Write(const void *buffer, const ssize_t size) const;
+	bool Write(const void *buffer, const ssize_t size);
 	ssize_t Read(void *buffer, const ssize_t size);
 	int GetFD();
 protected:
+	bool Restart();
 	int m_fd;
+	char m_name[108];
 };
 
 class CUnixPacketServer : public CUnixPacket {
