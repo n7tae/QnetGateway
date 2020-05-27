@@ -36,9 +36,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "QnetRelay-523"
-
-std::atomic<bool> CQnetRelay::keep_running(true);
+#define RELAY_VERSION "QnetRelay-526"
 
 CQnetRelay::CQnetRelay(int mod) :
 assigned_module(mod),
@@ -55,10 +53,6 @@ bool CQnetRelay::Initialize(const char *cfgfile)
 {
 	if (ReadConfig(cfgfile))
 		return true;
-
-	std::signal(SIGTERM, SignalCatch);
-	std::signal(SIGINT,  SignalCatch);
-	std::signal(SIGHUP,  SignalCatch);
 
 	return false;
 }
@@ -116,7 +110,7 @@ bool CQnetRelay::Run(const char *cfgfile)
 	if (msock < 0)
 		return true;
 
-	if (ToGate.Open(togate.c_str()))
+	if (ToGate.Open(togate.c_str(), this))
 		return true;
 
 	int fd = ToGate.GetFD();
@@ -387,11 +381,6 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	cfg.GetValue("log_qso", estr, log_qso);
 
 	return false;
-}
-
-void CQnetRelay::SignalCatch(const int)
-{
-	keep_running = false;
 }
 
 int main(int argc, const char **argv)

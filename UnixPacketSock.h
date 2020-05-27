@@ -20,10 +20,12 @@
 
 #include <sys/types.h>
 
+#include "KRBase.h"
+
 class CUnixPacket {
 public:
 	CUnixPacket();
-	virtual bool Open(const char *name) = 0;
+	virtual bool Open(const char *name, CKRBase *host) = 0;
 	virtual void Close() = 0;
 	bool Write(const void *buffer, const ssize_t size);
 	ssize_t Read(void *buffer, const ssize_t size);
@@ -31,6 +33,7 @@ public:
 protected:
 	bool Restart();
 	int m_fd;
+	CKRBase *m_host;
 	char m_name[108];
 };
 
@@ -38,7 +41,7 @@ class CUnixPacketServer : public CUnixPacket {
 public:
 	CUnixPacketServer();
 	~CUnixPacketServer();
-	bool Open(const char *name);
+	bool Open(const char *name, CKRBase *host);
 	void Close();
 protected:
 	int m_server;
@@ -47,6 +50,6 @@ protected:
 class CUnixPacketClient : public CUnixPacket {
 public:
 	~CUnixPacketClient();
-	bool Open(const char *name);
+	bool Open(const char *name, CKRBase *host);
 	void Close();
 };

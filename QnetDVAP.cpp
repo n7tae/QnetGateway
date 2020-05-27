@@ -51,67 +51,14 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 #include "DStarDecode.h"
-#define DVAP_VERSION "QnetDVAP-523"
+#include "QnetDVAP.h"
+
+#define DVAP_VERSION "QnetDVAP-526"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
 
-typedef struct dvap_ack_arg_tag {
-	char mycall[8];
-	float ber;
-} SDVAP_ACK_ARG;
-
-// assigned module, must be A, B or C
-static int assigned_module;
-
-// unix sockets
-static std::string togate;
-static CUnixPacketClient ToGate;
-/* Default configuration data */
-static std::string RPTR;
-static std::string OWNER;
-static char RPTR_MOD;
-static std::string MODULE_SERIAL_NUMBER; /* APxxxxxx */
-static int MODULE_FREQUENCY; /* between 144000000 and 148000000 */
-static int MODULE_POWER; /* between  -12 and 10 */
-static int MODULE_SQUELCH; /* between  -128 and -45 */
-static int MODULE_OFFSET; /* between -2000 and 2000 */
-static int MODULE_PACKET_WAIT;   /* wait 25 ms in reading from local G2 */
-static int TIMING_TIMEOUT_REMOTE_G2;  /* 1 second */
-static int TIMING_PLAY_DELAY;
-static int TIMING_PLAY_WAIT;
-static bool MODULE_ACKNOWLEDGE;
-static double TIMING_TIMEOUT_LOCAL_RPTR;
-static bool LOG_DEBUG;
-static bool LOG_QSO;
-static int inactiveMax = 25;
-
-/* helper data */
-static unsigned char SND_TERM_ID;
-static char RPTR_and_G[9];
-static char RPTR_and_MOD[9];
-static int serfd = -1;
-static bool busy20000 = false;
-std::atomic<bool> keep_running(true);
-
-static unsigned int space = 0;
-
-/* helper routines */
-static bool ReadConfig(const char *cfgFile);
-static void sig_catch(int signum);
-static int open_sock();
-static void ReadFromGateway();
-static void calcPFCS(unsigned char *packet, unsigned char *pfcs);
-static void ReadDVAPThread();
-static void RptrAckThread(SDVAP_ACK_ARG *parg);
-
-/*** BER stuff ***/
-static CDStarDecode decode;
-
-static CDVAPDongle dongle;
-static CRandom Random;
-
-static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
+void CQnetDVAP::calcPFCS(unsigned char *packet, unsigned char *pfcs)
 {
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
@@ -148,13 +95,8 @@ static void calcPFCS(unsigned char *packet, unsigned char *pfcs)
 	return;
 }
 
-static void sig_catch(int)
-{
-	keep_running = false;
-}
-
 /* process configuration file */
-static bool ReadConfig(const char *cfgFile)
+bool CQnetDVAP::ReadConfig(const char *cfgFile)
 {
 	CQnetConfigure cfg;
 
@@ -250,17 +192,10 @@ static bool ReadConfig(const char *cfgFile)
 	return false;
 }
 
-static int open_sock()
+void CQnetDVAP::ReadFromGateway()
 {
-	if (ToGate.Open(togate.c_str()))
-		return 1;
-	return 0;
-}
-
-static void ReadFromGateway()
-{
-	static unsigned short streamid = 0U;
-	static int inactive = 0;
+	unsigned short streamid = 0U;
+	int inactive = 0;
 	int len = 0;
 	fd_set readfd;
 	struct timeval tv;
@@ -507,7 +442,7 @@ static void ReadFromGateway()
 	return;
 }
 
-static void RptrAckThread(SDVAP_ACK_ARG *parg)
+void CQnetDVAP::RptrAckThread(SDVAP_ACK_ARG *parg)
 {
 	char mycall[8];
 	memcpy(mycall, parg->mycall, 8);
@@ -519,10 +454,6 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	memcpy(RADIO_ID, "BER%", 4);
 
 	unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
-
-	std::signal(SIGTERM, sig_catch);
-	std::signal(SIGINT,  sig_catch);
-	std::signal(SIGHUP,  sig_catch);
 
 	sleep(TIMING_PLAY_WAIT);
 
@@ -618,7 +549,7 @@ static void RptrAckThread(SDVAP_ACK_ARG *parg)
 	return;
 }
 
-static void ReadDVAPThread()
+void CQnetDVAP::ReadDVAPThread()
 {
 	REPLY_TYPE reply;
 	SDSVT dsvt;
@@ -636,10 +567,6 @@ static void ReadDVAPThread()
 
 	int num_dv_frames = 0;
 	int num_bit_errors = 0;
-
-	std::signal(SIGTERM, sig_catch);
-	std::signal(SIGINT,  sig_catch);
-	std::signal(SIGHUP,  sig_catch);
 
 	while (keep_running) {
 
@@ -824,7 +751,7 @@ static void ReadDVAPThread()
 				if (the_end) {
 					// local RF user stopped talking
 					dvap_busy = false;
-					static SDVAP_ACK_ARG dvap_ack_arg;
+					SDVAP_ACK_ARG dvap_ack_arg;
 					dvap_ack_arg.ber = (num_dv_frames==0) ? 0.f : 100.f * (float)num_bit_errors / (float)(num_dv_frames * 24);
 					if (LOG_QSO)
 						printf("End of dvap audio,  ber=%.02f\n", dvap_ack_arg.ber);
@@ -832,7 +759,7 @@ static void ReadDVAPThread()
 					if (MODULE_ACKNOWLEDGE && !busy20000) {
 						memcpy(dvap_ack_arg.mycall, mycall, 8);
 						try {
-							std::async(std::launch::async, RptrAckThread, &dvap_ack_arg);
+							std::async(std::launch::async, &CQnetDVAP::RptrAckThread, this, &dvap_ack_arg);
 						} catch (const std::exception &e) {
 							printf("Failed to start RptrAckThread(). Exception: %s\n", e.what());
 						}
@@ -856,63 +783,22 @@ static void ReadDVAPThread()
 	return;
 }
 
-int main(int argc, const char **argv)
+bool CQnetDVAP::Init(const char *file, const int amod)
 {
-	int rc = -1;
-	short cnt = 0;
+	assigned_module = amod;
 
-	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("dvap_rptr VERSION %s\n", DVAP_VERSION);
-
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s dvap_rptr.cfg\n", argv[0]);
-		return 1;
-	}
-
-	if ('-' == argv[1][0]) {
-		printf("\nQnetDVAP Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVAP_VERSION);
-		printf("QnetDVAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
-		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
-		return 0;
-	}
-
-	const char *qn = strstr(argv[0], "qndvap");
-	if (NULL == qn) {
-		fprintf(stderr, "Error finding 'qndvap' in %s!\n", argv[0]);
-		return 1;
-	}
-	qn += 6;
-
-	switch (*qn) {
-		case NULL:
-			assigned_module = -1;
-			break;
-		case 'a':
-			assigned_module = 0;
-			break;
-		case 'b':
-			assigned_module = 1;
-			break;
-		case 'c':
-			assigned_module = 2;
-			break;
-		default:
-			fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
-			return 1;
-	}
-
-	if (ReadConfig(argv[1])) {
-		printf("Failed to process config file %s\n", argv[2]);
-		return 1;
+	if (ReadConfig(file)) {
+		printf("Failed to process config file %s\n", file);
+		return true;
 	}
 
 	if (RPTR.length() != 8) {
 		printf("Bad RPTR value, length must be exactly 8 bytes\n");
-		return 1;
+		return true;
 	}
 	if ((RPTR_MOD != 'A') && (RPTR_MOD != 'B') && (RPTR_MOD != 'C')) {
 		printf("Bad RPTR_MOD value, must be one of A or B or C\n");
-		return 1;
+		return true;
 	}
 
 	if (RPTR_MOD == 'A')
@@ -928,36 +814,35 @@ int main(int argc, const char **argv)
 	strcpy(RPTR_and_MOD, RPTR.c_str());
 	RPTR_and_MOD[7] = RPTR_MOD;
 
-	CTimer ackpoint;
-
-	std::signal(SIGTERM, sig_catch);
-	std::signal(SIGINT,  sig_catch);
-	std::signal(SIGHUP,  sig_catch);
-
 	/* open dvp */
 	if (!dongle.Initialize(MODULE_SERIAL_NUMBER.c_str(), MODULE_FREQUENCY, MODULE_OFFSET, MODULE_POWER, MODULE_SQUELCH))
-		return 1;
+		return true;
 
-	rc = open_sock();
-	if (rc != 0) {
+	if (ToGate.Open(togate.c_str(), this)) {
 		dongle.Stop();
 		close(serfd);
-		return 1;
+		return true;
 	}
 	printf("DVAP opened and initialized!\n");
+	return false;
+}
 
+void CQnetDVAP::Run()
+{
+	CTimer ackpoint;
 	std::future<void> readthread;
 	try {
-		readthread = std::async(std::launch::async, ReadDVAPThread);
+		readthread = std::async(std::launch::async, &CQnetDVAP::ReadDVAPThread, this);
 	} catch (const std::exception &e) {
 		printf("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
 		keep_running = false;
 	}
 	printf("Started ReadDVAPThread()\n");
 
+	int cnt = 0;
 	while (keep_running) {
 		if (ackpoint.time() > 2.5) {
-			rc = dongle.KeepAlive();
+			int rc = dongle.KeepAlive();
 			if (rc < 0) {
 				cnt ++;
 				if (cnt > 5) {
@@ -974,5 +859,55 @@ int main(int argc, const char **argv)
 	readthread.get();
 	ToGate.Close();
 	printf("QnetDVAP exiting\n");
-	return 0;
+	return;
+}
+
+int main(int argc, char *argv[])
+{
+	setvbuf(stdout, NULL, _IOLBF, 0);
+	printf("dvap_rptr VERSION %s\n", DVAP_VERSION);
+
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s dvap_rptr.cfg\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+
+	if ('-' == argv[1][0]) {
+		printf("\nQnetDVAP Version #%s Copyright (C) 2018-2020 by Thomas A. Early N7TAE\n", DVAP_VERSION);
+		printf("QnetDVAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
+		return EXIT_SUCCESS;
+	}
+
+	const char *qn = strstr(argv[0], "qndvap");
+	if (NULL == qn) {
+		fprintf(stderr, "Error finding 'qndvap' in %s!\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+	qn += 6;
+
+	int mod;
+	switch (*qn) {
+		case NULL:
+			mod = -1;
+			break;
+		case 'a':
+			mod = 0;
+			break;
+		case 'b':
+			mod = 1;
+			break;
+		case 'c':
+			mod = 2;
+			break;
+		default:
+			fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
+			return 1;
+	}
+
+	CQnetDVAP dvap;
+	if (dvap.Init(argv[1], mod))
+		return EXIT_FAILURE;
+	dvap.Run();
+	return EXIT_SUCCESS;
 }

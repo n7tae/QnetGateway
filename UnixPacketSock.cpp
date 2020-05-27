@@ -26,10 +26,12 @@
 
 #include "UnixPacketSock.h"
 
-CUnixPacket::CUnixPacket() : m_fd(-1) {}
+CUnixPacket::CUnixPacket() : m_fd(-1), m_host(NULL) {}
 
 ssize_t CUnixPacket::Read(void *buffer, const ssize_t size)
 {
+	if (0 > m_fd)
+		return -1;
 	ssize_t len = read(m_fd, buffer, size);
 	if (len < 1) {
 		if (-1 == len) {
@@ -47,6 +49,8 @@ ssize_t CUnixPacket::Read(void *buffer, const ssize_t size)
 
 bool CUnixPacket::Write(const void *buffer, const ssize_t size)
 {
+	if (0 > m_fd)
+		return true;
 	ssize_t written = write(m_fd, buffer, size);
 	if (written != size) {
 		if (-1 == written) {
@@ -64,7 +68,7 @@ bool CUnixPacket::Restart()
 	std::cout << "Restarting '" << m_name << "'... " << std::endl;
 	Close();
 	std::string name(m_name);
-	return Open(name.c_str());
+	return Open(name.c_str(), m_host);
 }
 
 int CUnixPacket::GetFD()
@@ -79,7 +83,7 @@ CUnixPacketServer::~CUnixPacketServer()
 	Close();
 }
 
-bool CUnixPacketServer::Open(const char *name)
+bool CUnixPacketServer::Open(const char *name, CKRBase *host)
 {
 	m_server = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	if (m_server < 0) {
@@ -110,6 +114,7 @@ bool CUnixPacketServer::Open(const char *name)
 		return true;
 	}
 
+	m_host = host;
 	strncpy(m_name, name, 108);
 	return false;
 }
@@ -131,7 +136,7 @@ CUnixPacketClient::~CUnixPacketClient()
 	Close();
 }
 
-bool CUnixPacketClient::Open(const char *name)
+bool CUnixPacketClient::Open(const char *name, CKRBase *host)
 {
 	m_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	if (m_fd < 0) {
@@ -158,8 +163,13 @@ bool CUnixPacketClient::Open(const char *name)
 				return true;
 			}
 		}
+		if (! m_host->IsRunning()) {
+			Close();
+			return true;
+		}
 	}
 
+	m_host = host;
 	strncpy(m_name, name, 108);
 	return false;
 }

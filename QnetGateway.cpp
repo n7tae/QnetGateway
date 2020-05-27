@@ -54,15 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-523");
-
-static std::atomic<bool> keep_running(true);
-
-/* signal catching function */
-static void sigCatch(int)
-{
-	keep_running = false;
-}
+const std::string GW_VERSION("QnetGateway-526");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -364,10 +356,10 @@ void CQnetGateway::GetIRCDataThread(const int i)
 	short threshold = 0;
 	bool not_announced[3];
 	for (int i=0; i<3; i++)
-		not_announced[i] = this->Rptr.mod[i].defined;	// announce to all modules that are defined!
+		not_announced[i] = Rptr.mod[i].defined;	// announce to all modules that are defined!
 	bool is_quadnet = (std::string::npos != ircddb[i].ip.find(".openquad.net"));
 	bool doFind = true;
-	while (keep_running) {
+	while (IsRunning()) {
 		int rc = ii[i]->getConnectionState();
 		if (rc > 5 && rc < 8 && is_quadnet) {
 			char ch = '\0';
@@ -422,7 +414,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 			threshold = 0;
 		}
 
-		while (((type = ii[i]->getMessageType()) != IDRT_NONE) && keep_running) {
+		while (((type = ii[i]->getMessageType()) != IDRT_NONE) && IsRunning()) {
 			switch (type) {
 				case IDRT_PING: {
 					std::string rptr, gate, addr;
@@ -446,7 +438,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 			default:
 				break;
 			}	// switch (type)
-		}	// while (keep_running)
+		}	// while (IsRunning())
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 	printf("GetIRCDataThread[%i] exiting...\n", i);
@@ -1841,16 +1833,16 @@ void CQnetGateway::Process()
 				irc_data_future[i] = std::async(std::launch::async, &CQnetGateway::GetIRCDataThread, this, i);
 			} catch (const std::exception &e) {
 				printf("Failed to start GetIRCDataThread[%d]. Exception: %s\n", i, e.what());
-				keep_running = false;
+				SetState(false);
 			}
-			if (keep_running)
+			if (IsRunning())
 				printf("get_irc_data thread[%d] started\n", i);
 
 			ii[i]->kickWatchdog(GW_VERSION);
 		}
 	}
 
-	while (keep_running) {
+	while (IsRunning()) {
 		ProcessTimeouts();
 
 		// wait 20 ms max
@@ -1876,7 +1868,7 @@ void CQnetGateway::Process()
 		for (int i=0; i<2; i++) {
 			if (g2_sock[i] < 0)
 				continue;
-			if (keep_running && FD_ISSET(g2_sock[i], &fdset)) {
+			if (IsRunning() && FD_ISSET(g2_sock[i], &fdset)) {
 				SDSVT dsvt;
 				socklen_t fromlen = sizeof(struct sockaddr_storage);
 				ssize_t g2buflen = recvfrom(g2_sock[i], dsvt.title, 56, 0, fromDstar.GetPointer(), &fromlen);
@@ -1889,7 +1881,7 @@ void CQnetGateway::Process()
 		}
 
 		// process packets from qnremote
-		if (keep_running && FD_ISSET(FromRemote.GetFD(), &fdset)) {
+		if (IsRunning() && FD_ISSET(FromRemote.GetFD(), &fdset)) {
 			SDSVT dsvt;
 			const ssize_t len = FromRemote.Read(dsvt.title, 56);
 			ProcessModem(len, dsvt);
@@ -1897,7 +1889,7 @@ void CQnetGateway::Process()
 		}
 
 		// process packets from qnlink
-		if (keep_running && FD_ISSET(ToLink.GetFD(), &fdset)) {
+		if (IsRunning() && FD_ISSET(ToLink.GetFD(), &fdset)) {
 			SDSVT dsvt;
 			ssize_t g2buflen = ToLink.Read(dsvt.title, 56);
             if (16==g2buflen && 0==memcmp(dsvt.title, "LINK", 4)) {
@@ -1919,7 +1911,7 @@ void CQnetGateway::Process()
 
 		// process packets coming from local repeater module(s)
 		for (int i=0; i<3; i++) {
-			if (keep_running && FD_ISSET(ToModem[i].GetFD(), &fdset)) {
+			if (IsRunning() && FD_ISSET(ToModem[i].GetFD(), &fdset)) {
 				SDSVT dsvt;
 				const ssize_t len = ToModem[i].Read(dsvt.title, 56);
 				if (Rptr.mod[i].defined)
@@ -1987,7 +1979,7 @@ void CQnetGateway::APRSBeaconThread()
 
 	time_t last_beacon_time = 0;
 	/* This thread is also saying to the APRS_HOST that we are ALIVE */
-	while (keep_running) {
+	while (IsRunning()) {
 		if (aprs->aprs_sock.GetFD() == -1) {
 			aprs->Open(OWNER);
 			if (aprs->aprs_sock.GetFD() == -1)
@@ -2038,7 +2030,7 @@ void CQnetGateway::APRSBeaconThread()
 						printf("APRS Beacon =[%s]\n", snd_buf);
 					strcat(snd_buf, "\r\n");
 
-					while (keep_running) {
+					while (IsRunning()) {
 						if (aprs->aprs_sock.GetFD() == -1) {
 							aprs->Open(OWNER);
 							if (aprs->aprs_sock.GetFD() == -1)
@@ -2289,16 +2281,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 
 	/* Used to validate MYCALL input */
-	try {
-		preg = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
-	} catch (std::regex_error &e) {
-		printf("Regular expression error: %s\n", e.what());
-		return true;
-	}
-
-	std::signal(SIGTERM, sigCatch);
-	std::signal(SIGINT,  sigCatch);
-	std::signal(SIGHUP,  sigCatch);
+	preg = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
 
 	for (i=0; i<3; i++) {
 		band_txt[i].streamID = 0;
@@ -2339,7 +2322,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 	// Open unix sockets between qngateway and qnremote
 	printf("Connecting to qnlink at %s\n", tolink.c_str());
-	if (ToLink.Open(tolink.c_str()))
+	if (ToLink.Open(tolink.c_str(), this))
 		return true;
 	printf("Opening remote port at %s\n", fromremote.c_str());
 	if (FromRemote.Open(fromremote.c_str()))
@@ -2348,7 +2331,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	for (i=0; i<3; i++) {
 		if (Rptr.mod[i].defined) {	// open unix sockets between qngateway and each defined modem
 			printf("Connecting to modem at %s\n", tomodem[i].c_str());
-			if (ToModem[i].Open(tomodem[i].c_str()))
+			if (ToModem[i].Open(tomodem[i].c_str(), this))
 				return true;
 		}
 		// recording for echotest on local repeater modules
@@ -2437,7 +2420,7 @@ bool CQnetGateway::Init(char *cfgfile)
 			} else
 				break;
 
-			if (!keep_running)
+			if (!IsRunning())
 				break;
 
 			if (i > 5) {
@@ -2764,7 +2747,6 @@ int main(int argc, char **argv)
 	}
 	CQnetGateway QnetGateway;
 	if (QnetGateway.Init(argv[1])) {
-		keep_running = false;	// shutdown any processes that may have been started
 		return 1;
 	}
 	QnetGateway.Process();

@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <cstring>
 #include <string>
 #include <queue>
@@ -28,6 +27,7 @@
 #include "UnixPacketSock.h"
 #include "QnetTypeDefs.h"
 #include "Timer.h"
+#include "KRBase.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -179,16 +179,13 @@ private:
 	SMODEM frame;
 };
 
-class CQnetModem
+class CQnetModem : CKRBase
 {
 public:
 	// functions
 	CQnetModem(int mod);
 	~CQnetModem();
 	void Run(const char *cfgfile);
-
-	// data
-	static std::atomic<bool> keep_running;
 
 private:
 	int assigned_module;
@@ -198,7 +195,6 @@ private:
 	// functions
 	bool VoicePacketIsSync(const unsigned char *);
 	bool Initialize(const char *cfgfile);
-	static void SignalCatch(const int signum);
 	void ProcessGateway(const SDSVT &dsvt);
 	bool ProcessModem(const SMODEM &frame);
 	int OpenModem();

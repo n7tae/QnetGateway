@@ -45,9 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-523"
-
-std::atomic<bool> CQnetITAP::keep_running(true);
+#define ITAP_VERSION "QnetITAP-526"
 
 CQnetITAP::CQnetITAP(int mod)
 : assigned_module(mod)
@@ -63,11 +61,7 @@ bool CQnetITAP::Initialize(const char *cfgfile)
 	if (ReadConfig(cfgfile))
 		return true;
 
-	std::signal(SIGTERM, CQnetITAP::SignalCatch);
-	std::signal(SIGHUP,  CQnetITAP::SignalCatch);
-	std::signal(SIGINT,  CQnetITAP::SignalCatch);
-
-	if (ToGate.Open(togate.c_str()))
+	if (ToGate.Open(togate.c_str(), this))
 		return true;
 
 	return false;
@@ -612,12 +606,6 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	cfg.GetValue("log_qso", estr, LOG_QSO);
 	cfg.GetValue("log_debug", estr, LOG_DEBUG);
 	return false;
-}
-
-void CQnetITAP::SignalCatch(const int signum)
-{
-	if ((signum == SIGTERM) || (signum == SIGINT)  || (signum == SIGHUP))
-		keep_running = false;
 }
 
 void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)

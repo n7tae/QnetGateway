@@ -23,7 +23,6 @@
 #include <map>
 #include <vector>
 #include <set>
-#include <atomic>
 #include <netinet/in.h>
 
 #include "QnetTypeDefs.h"
@@ -33,6 +32,7 @@
 #include "SockAddress.h"
 #include "Timer.h"
 #include "QnetDB.h"
+#include "KRBase.h"
 
 /*** version number must be x.xx ***/
 #define CALL_SIZE 8
@@ -73,7 +73,7 @@ using STRACING = struct tracing_tag {
 };
 
 
-class CQnetLink {
+class CQnetLink : CKRBase {
 public:
 	// functions
 	CQnetLink();
@@ -91,7 +91,6 @@ private:
 	bool ReadConfig(const char *);
 	bool srv_open();
 	void srv_close();
-	static void sigCatch(int signum);
 	void g2link(const char from_mod, const char *call, const char to_mod);
 	void send_heartbeat();
 	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
@@ -153,8 +152,6 @@ private:
 
 	fd_set fdset;
 	struct timeval tv;
-
-	static std::atomic<bool> keep_running;
 
 	// Used to validate incoming donglers
 	regex_t preg;

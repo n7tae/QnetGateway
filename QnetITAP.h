@@ -26,6 +26,7 @@
 #include <netinet/in.h>
 #include "Random.h"	// for streamid generation
 #include "UnixPacketSock.h"
+#include "KRBase.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -97,7 +98,7 @@ private:
 	SITAP frame;
 };
 
-class CQnetITAP
+class CQnetITAP : CKRBase
 {
 public:
 	// functions
@@ -111,8 +112,6 @@ private:
 	int assigned_module;
 	// functions
 	bool Initialize(const char *cfgfile);
-	static std::atomic<bool> keep_running;
-	static void SignalCatch(const int signum);
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessITAP(const unsigned char *raw);
 	int OpenITAP();

@@ -28,6 +28,7 @@
 #include "SockAddress.h"
 #include "QnetDB.h"
 #include "DStarDecode.h"
+#include "KRBase.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -78,7 +79,8 @@ using SBANDTXT = struct band_txt_tag {
 	int num_bit_errors;
 };
 
-class CQnetGateway {
+class CQnetGateway : public CKRBase
+{
 public:
 	CQnetGateway();
 	~CQnetGateway();

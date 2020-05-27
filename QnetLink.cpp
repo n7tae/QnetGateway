@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-523"
+#define LINK_VERSION "QnetLink-526"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -62,13 +62,8 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-std::atomic<bool> CQnetLink::keep_running(true);
-
 CQnetLink::CQnetLink()
 {
-	memset(tracing, 0, 3 * sizeof(struct tracing_tag));
-	memset(dtmf_mycall, 0, 3 * (CALL_SIZE+1));
-	memset(old_sid, 0, 6);
 }
 
 CQnetLink::~CQnetLink()
@@ -181,10 +176,6 @@ void CQnetLink::RptrAckThread(char *arg)
 	char RADIO_ID[21];
 	memcpy(RADIO_ID, arg + 1, 21);
 	unsigned char silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x16, 0x29, 0xf5 };
-
-	std::signal(SIGTERM, sigCatch);
-	std::signal(SIGINT,  sigCatch);
-	std::signal(SIGHUP,  sigCatch);
 
 	short int streamid_raw = Random.NewStreamID();
 
@@ -605,7 +596,7 @@ bool CQnetLink::srv_open()
 
 	/* create our gateway unix sockets */
 	printf("Connecting to qngateway at %s\n", togate.c_str());
-	if (ToGate.Open(togate.c_str())) {
+	if (ToGate.Open(togate.c_str(), this)) {
 		close(dcs_g2_sock);
 		dcs_g2_sock = -1;
 		close(xrf_g2_sock);
@@ -792,12 +783,6 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 		}
 	}
 	return;
-}
-
-/* signal catching function */
-void CQnetLink::sigCatch(int)
-{
-	keep_running = false;
 }
 
 void CQnetLink::Process()
@@ -3089,10 +3074,6 @@ void CQnetLink::PlayAudioNotifyThread(char *msg)
 
 void CQnetLink::AudioNotifyThread(SECHO &edata)
 {
-	std::signal(SIGTERM, sigCatch);
-	std::signal(SIGINT,  sigCatch);
-	std::signal(SIGHUP,  sigCatch);
-
 	char mod = edata.header.hdr.rpt1[7];
 
 	if ((mod != 'A') && (mod != 'B') && (mod != 'C')) {
@@ -3249,17 +3230,15 @@ bool CQnetLink::Init(const char *cfgfile)
 {
 	tzset();
 	setvbuf(stdout, (char *)NULL, _IOLBF, 0);
-
+	memset(tracing, 0, 3 * sizeof(struct tracing_tag));
+	memset(dtmf_mycall, 0, 3 * (CALL_SIZE+1));
+	memset(old_sid, 0, 6);
 
 	int rc = regcomp(&preg, "^(([1-9][A-Z])|([A-Z][0-9])|([A-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", REG_EXTENDED | REG_NOSUB);
 	if (rc != 0) {
 		printf("The IRC regular expression is NOT valid\n");
 		return true;
 	}
-
-	std::signal(SIGTERM, sigCatch);
-	std::signal(SIGINT,  sigCatch);
-	std::signal(SIGHUP,  sigCatch);
 
 	for (int i=0; i<3; i++) {
 		notify_msg[i][0] = '\0';

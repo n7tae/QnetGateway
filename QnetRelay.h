@@ -23,11 +23,12 @@
 #include <netinet/in.h>
 
 #include "UnixPacketSock.h"
+#include "KRBase.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
 
-class CQnetRelay
+class CQnetRelay : CKRBase
 {
 public:
 	// functions
@@ -35,13 +36,9 @@ public:
 	~CQnetRelay();
 	bool Run(const char *cfgfile);
 
-	// data
-	static std::atomic<bool> keep_running;
-
 private:
 	// functions
 	bool Initialize(const char *cfgfile);
-	static void SignalCatch(const int signum);
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessMMDVM(const int len, const unsigned char *raw);
 	int OpenSocket(const std::string &address, unsigned short port);

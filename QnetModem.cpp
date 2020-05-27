@@ -44,10 +44,8 @@
 #include "QnetModem.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-523"
+#define MODEM_VERSION "QnetModem-526"
 #define MAX_RESPONSES 30
-
-std::atomic<bool> CQnetModem::keep_running(true);
 
 const unsigned char FRAME_START  = 0xE0U;
 
@@ -218,12 +216,8 @@ bool CQnetModem::Initialize(const char *cfgfile)
 	if (ReadConfig(cfgfile))
 		return true;
 
-	std::signal(SIGTERM, SignalCatch);
-	std::signal(SIGINT,  SignalCatch);
-	std::signal(SIGHUP,  SignalCatch);
-
 	printf("Connecting to qngateway at %s\n", togate.c_str());
-	if (ToGate.Open(togate.c_str()))
+	if (ToGate.Open(togate.c_str(), this))
 		return true;
 
 	serfd = OpenModem();
@@ -835,11 +829,6 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	cfg.GetValue("log_debug", estr, LOG_DEBUG);
 
 	return false;
-}
-
-void CQnetModem::SignalCatch(const int)
-{
-	keep_running = false;
 }
 
 int main(int argc, const char **argv)

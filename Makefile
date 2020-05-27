@@ -26,10 +26,10 @@ SYSDIR=/lib/systemd/system
 IRC=ircddb
 
 # use this if you want debugging help in the case of a crash
-#CPPFLAGS=-g -ggdb -W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
+#CPPFLAGS=-ggdb -W -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
 
 # or, you can choose this for a much smaller executable without debugging help
-CPPFLAGS=-W -Wall -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
+CPPFLAGS=-W -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
 
 LDFLAGS=-L/usr/lib -lrt
 
@@ -49,32 +49,32 @@ dvrptr : qndvrptr
 itap   : qnitap
 modem  : qnmodem
 
-qngateway : QnetGateway.o aprs.o UnixDgramSocket.o UnixPacketSock.o TCPReaderWriterClient.o QnetConfigure.o QnetDB.o CacheManager.o DStarDecode.o $(IRCOBJS)
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
+qngateway : QnetGateway.o KRBase.o aprs.o UnixDgramSocket.o UnixPacketSock.o TCPReaderWriterClient.o QnetConfigure.o QnetDB.o CacheManager.o DStarDecode.o $(IRCOBJS)
+	g++ -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
 
-qnlink : QnetLink.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixPacketSock.o QnetConfigure.o QnetDB.o
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
+qnlink : QnetLink.o KRBase.o DPlusAuthenticator.o TCPReaderWriterClient.o UnixPacketSock.o QnetConfigure.o QnetDB.o
+	g++ -o $@ $^ $(LDFLAGS) -l sqlite3 -pthread
 
-qnrelay : QnetRelay.o UnixPacketSock.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
+qnrelay : QnetRelay.o KRBase.o UnixPacketSock.o QnetConfigure.o
+	g++ -o $@ $^ $(LDFLAGS)
 
-qnitap : QnetITAP.o UnixPacketSock.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
+qnitap : QnetITAP.o KRBase.o UnixPacketSock.o QnetConfigure.o
+	g++ -o $@ $^ $(LDFLAGS)
 
-qnmodem : QnetModem.o UnixPacketSock.o QnetConfigure.o
-		g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
+qnmodem : QnetModem.o KRBase.o UnixPacketSock.o QnetConfigure.o
+	g++ -o $@ $^ $(LDFLAGS)
 
-qndvap : QnetDVAP.o DVAPDongle.o UnixPacketSock.o QnetConfigure.o DStarDecode.o
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS) -pthread
+qndvap : QnetDVAP.o KRBase.o DVAPDongle.o UnixPacketSock.o QnetConfigure.o DStarDecode.o
+	g++ -o $@ $^ $(LDFLAGS) -pthread
 
-qndvrptr : QnetDVRPTR.o UnixPacketSock.o QnetConfigure.o DStarDecode.o
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
+qndvrptr : QnetDVRPTR.o KRBase.o UnixPacketSock.o QnetConfigure.o DStarDecode.o
+	g++ -o $@ $^ $(LDFLAGS)
 
 qnremote : QnetRemote.o UnixDgramSocket.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
+	g++ -o $@ $^ $(LDFLAGS)
 
 qnvoice : QnetVoice.o QnetConfigure.o
-	g++ $(CPPFLAGS) -o $@ $^ $(LDFLAGS)
+	g++ -o $@ $^ $(LDFLAGS)
 
 %.o : %.cpp
 	g++ $(CPPFLAGS) -MMD -MD -c $< -o $@
