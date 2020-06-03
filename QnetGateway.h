@@ -167,7 +167,6 @@ private:
 	unsigned int dtmf_counter[3];
 
 	bool VoicePacketIsSync(const unsigned char *text);
-	void AddFDSet(int &max, int newfd, fd_set *set);
 	int open_port(const SPORTIP *pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
 	void GetIRCDataThread(const int i);

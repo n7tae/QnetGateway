@@ -53,3 +53,10 @@ void CKRBase::SigHandler(int sig)
 			break;
 	}
 }
+
+void CKRBase::AddFDSet(int &max, int newfd, fd_set *set)
+{
+	if (newfd > max)
+		max = newfd;
+	FD_SET(newfd, set);
+}

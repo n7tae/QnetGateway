@@ -1798,13 +1798,6 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 	}
 }
 
-void CQnetGateway::AddFDSet(int &max, int newfd, fd_set *set)
-{
-	if (newfd > max)
-		max = newfd;
-	FD_SET(newfd, set);
-}
-
 /* run the main loop for QnetGateway */
 void CQnetGateway::Process()
 {

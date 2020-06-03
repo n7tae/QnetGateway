@@ -29,7 +29,8 @@
 #include "SEcho.h"
 #include "Random.h"
 #include "UnixPacketSock.h"
-#include "SockAddress.h"
+#include "UDPSocket.h"
+#include "UDPSocket.h"
 #include "Timer.h"
 #include "QnetDB.h"
 #include "KRBase.h"
@@ -98,11 +99,17 @@ private:
 	void PlayAudioNotifyThread(char *msg);
 	void AudioNotifyThread(SECHO &edata);
 	void RptrAckThread(char *arg);
+	void ProcessXRF(unsigned char *buf, const int length);
+	void ProcessDCS(unsigned char *buf, const int length);
+	void ProcessREF(unsigned char *buf, const int length);
+	void REFWrite(const void *buf, const size_t size, const CSockAddress &addr);
+	void DCSWrite(const void *buf, const size_t size, const CSockAddress &addr);
+	void XRFWrite(const void *buf, const size_t size, const CSockAddress &addr);
 
 	/* configuration data */
-	std::string login_call, owner, to_g2_external_ip, my_g2_link_ip, gwys, qnvoice_file, announce_dir;
+	std::string login_call, owner, to_g2_external_ip, gwys, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
-	bool dplus_authorize, dplus_reflectors, dplus_repeaters, dplus_priority;
+	bool dplus_authorize, dplus_reflectors, dplus_repeaters, dplus_priority, uses_ipv6;
 	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
     int delay_between, delay_before;
 	std::string link_at_startup[3];
@@ -140,17 +147,14 @@ private:
 	STRACING tracing[3];
 
 	// input from remote
-	int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
+	//int xrf_g2_sock, ref_g2_sock, dcs_g2_sock;
+	CUDPSocket XRFSock4, XRFSock6, DCSSock4, DCSSock6, REFSock4, REFSock6;
 	CSockAddress fromDst4;
 
 	// unix sockets to gateway
 	std::string togate;
 	CUnixPacketClient ToGate;
 
-	// input from our own local repeater
-	struct sockaddr_in fromRptr;
-
-	fd_set fdset;
 	struct timeval tv;
 
 	// Used to validate incoming donglers
@@ -175,4 +179,35 @@ private:
 	CRandom Random;
 	CQnetDB qnDB;
 	std::vector<unsigned long> speak;
+
+	// used for processing loop
+	time_t tnow;
+	unsigned char dcs_seq[3] = { 0x00, 0x00, 0x00 };
+	struct {
+		char mycall[9];
+		char sfx[5];
+		unsigned int dcs_rptr_seq;
+	} rptr_2_dcs[3] = {
+		{"        ", "    ", 0},
+		{"        ", "    ", 0},
+		{"        ", "    ", 0}
+	};
+	struct {
+		char mycall[9];
+		char sfx[5];
+		unsigned int dcs_rptr_seq;
+	} ref_2_dcs[3] = {
+		{"        ", "    ", 0},
+		{"        ", "    ", 0},
+		{"        ", "    ", 0}
+	};
+	struct {
+		char mycall[9];
+		char sfx[5];
+		unsigned int dcs_rptr_seq;
+	} xrf_2_dcs[3] = {
+		{"        ", "    ", 0},
+		{"        ", "    ", 0},
+		{"        ", "    ", 0}
+	};
 };

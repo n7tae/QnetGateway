@@ -20,6 +20,7 @@
 
 // base class for all modems
 
+#include <sys/select.h>
 #include <atomic>
 
 class CKRBase
@@ -31,4 +32,5 @@ public:
 protected:
 	static std::atomic<bool> keep_running;
 	static void SigHandler(int sig);
+	void AddFDSet(int &max, int newfd, fd_set *set);
 };

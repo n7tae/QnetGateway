@@ -145,7 +145,7 @@ public:
 		}
 	}
 
-	const char *GetAddress()
+	const char *GetAddress() const
 	{
 		if (straddr[0])
 			return straddr;
@@ -214,7 +214,22 @@ public:
 		memset(straddr, 0, INET6_ADDRSTRLEN);
 	}
 
+	operator const char *() const { return GetAddress(); }
+
+	friend std::ostream &operator<<(std::ostream &stream, const CSockAddress &addr)
+	{
+		const char *sz = addr;
+		if (AF_INET6 == addr.GetFamily())
+			stream << "[" << sz << "]";
+		else
+			stream << sz;
+		auto port = addr.GetPort();
+		if (port)
+			stream << ":" << port;
+		return stream;
+	}
+
 private:
 	struct sockaddr_storage addr;
-	char straddr[INET6_ADDRSTRLEN];
+	mutable char straddr[INET6_ADDRSTRLEN];
 };
