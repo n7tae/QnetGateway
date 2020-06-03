@@ -83,7 +83,6 @@ aprs_filter_d=''               # advanced feature
 #link_link_unlink_d=''       # if defined, comma-separated list of users that can link and unlink a repeater
 #link_no_link_unlink_d=''    # if defined, comma-separated list of users that cannot link or unlink, it's a blacklist
                              # if the blacklist is defined (even if it's empty), the link_unlink will not be read
-link_incoming_ip_d='0.0.0.0' # incoming ip address of qnlink, '0.0.0.0' means accepts any connection.
 link_ref_port_d=20001        # port for REF linking, don't change
 link_xrf_port_d=30001        # port for XRF linking, don't change
 link_dcs_port_d=30051        # port for DCS linking, don't change

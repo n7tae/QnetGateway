@@ -79,7 +79,6 @@ LinkMenu () {
 		echo -n "li : CSV of calls that can link and unlink = "; EvaluateVar link_link_unlink{,_d}
 		echo -n "n  : CSV of calls that cannot link&unlink  = "; EvaluateVar link_no_link_unlink{,_d}
 		if [ -n "$em" ]; then
-			echo -n "i  : Incoming IP address of QnetLink       = "; EvaluateVar link_incoming_ip{,_d}
 			echo -n "r  : UDP port for REF linking              = "; EvaluateVar link_ref_port{,_d}
 			echo -n "x  : UDP port for XRF linking              = "; EvaluateVar link_xrf_port{,_d}
 			echo -n "d  : DCS port for XRF linking              = "; EvaluateVar link_dcs_port{,_d}
@@ -101,7 +100,6 @@ LinkMenu () {
 		if   [[ "$key" == ad* ]]; then link_admin="${value^^}"
 		elif [[ "$key" == li* ]]; then link_link_unlink="${value^^}"
 		elif [[ "$key" == n*  ]]; then link_no_link_unlink="${value^^}"
-		elif [[ "$key" == i*  ]]; then link_incoming_ip="$value"
 		elif [[ "$key" == r*  ]]; then link_ref_port="$value"
 		elif [[ "$key" == x*  ]]; then link_xrf_port="$value"
 		elif [[ "$key" == d*  ]]; then link_dcs_port="$value"
@@ -117,7 +115,6 @@ LinkMenu () {
 			if   [[ "$value" == ad* ]]; then unset link_admin
 			elif [[ "$value" == li* ]]; then unset link_link_unlink
 			elif [[ "$value" == n*  ]]; then unset link_no_link_unlink
-			elif [[ "$value" == i*  ]]; then unset link_incoming_ip
 			elif [[ "$value" == r*  ]]; then unset link_ref_port
 			elif [[ "$value" == x*  ]]; then unset link_xrf_port
 			elif [[ "$value" == d*  ]]; then unset link_dcs_port
@@ -639,7 +636,6 @@ WriteCFGFile () {
 	[ -z "${link_admin+x}"          ] || echo "link_admin='${link_admin}'"                   >> $outFile
 	[ -z "${link_link_unlink+x}"    ] || echo "link_link_unlink='${link_link_unlink}'"       >> $outFile
 	[ -z "${link_no_link_unlink+x}" ] || echo "link_no_link_unlink='${link_no_link_unlink}'" >> $outFile
-	[ -z "${link_incoming_ip+x}"    ] || echo "link_incoming_ip='${link_incoming_ip}'"       >> $outFile
 	[ -z "${link_ref_port+x}"       ] || echo "link_ref_port=${link_ref_port}"               >> $outFile
 	[ -z "${link_xrf_port+x}"       ] || echo "link_xrf_port=${link_xrf_port}"               >> $outFile
 	[ -z "${link_dcs_port+x}"       ] || echo "link_dcs_port=${link_dcs_port}"               >> $outFile
@@ -706,7 +702,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#200518"
+	echo "           QnConfig Main Menu V#200603"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
