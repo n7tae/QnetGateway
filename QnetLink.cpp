@@ -2411,7 +2411,7 @@ void CQnetLink::Process()
 	auto heartbeat = time(NULL);
 
 	if (uses_ipv6)
-		printf("xrf6=%d, dcs4=%d, ref4=%d ", XRFSock6.GetSocket(), DCSSock6.GetSocket(), REFSock6.GetSocket());
+		printf("xrf6=%d, dcs6=%d, ref6=%d ", XRFSock6.GetSocket(), DCSSock6.GetSocket(), REFSock6.GetSocket());
 	printf("xrf4=%d, dcs4=%d, ref4=%d, gateway=%d\n", XRFSock4.GetSocket(), DCSSock4.GetSocket(), REFSock4.GetSocket(), ToGate.GetFD());
 
 	// initialize all request links
