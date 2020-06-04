@@ -25,26 +25,20 @@
 class CUDPSocket
 {
 public:
-	// constructor
 	CUDPSocket();
 
-	// destructor
 	~CUDPSocket();
 
-	// open & close
 	bool Open(const CSockAddress &addr);
 	void Close(void);
+
 	int GetSocket(void) const { return m_fd; }
 	unsigned short GetPort() const { return m_addr.GetPort(); }
 
-	// read
 	size_t Read(unsigned char *buf, const size_t size, CSockAddress &addr);
-
-	// write
 	void Write(const void *buf, const size_t size, const CSockAddress &addr) const;
 
 protected:
-	// data
 	int m_fd;
 	CSockAddress m_addr;
 };

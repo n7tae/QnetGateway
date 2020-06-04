@@ -101,12 +101,16 @@ size_t CUDPSocket::Read(unsigned char *buf, const size_t size, CSockAddress &Ip)
 	unsigned int len = sizeof(struct sockaddr_storage);
 	auto rval = recvfrom(m_fd, buf, size, 0, Ip.GetPointer(), &len);
 	if (0 > rval)
-		std::cerr << "Receive error on port " << m_addr << ": " << strerror(errno) << std::endl;
+		std::cerr << "Read error on port " << m_addr << ": " << strerror(errno) << std::endl;
 
 	return rval;
 }
 
 void CUDPSocket::Write(const void *Buffer, const size_t size, const CSockAddress &Ip) const
 {
-	sendto(m_fd, Buffer, size, 0, Ip.GetCPointer(), Ip.GetSize());
+	auto rval = sendto(m_fd, Buffer, size, 0, Ip.GetCPointer(), Ip.GetSize());
+	if (0 > rval)
+		std::cerr << "Write error to " << Ip << ", " << strerror(errno) << std::endl;
+	else if ((size_t)rval != size)
+		std::cerr << "Short write, " << rval << "<" << size << " to " << Ip << std::endl;
 }
