@@ -181,6 +181,7 @@ private:
 	std::vector<unsigned long> speak;
 
 	// used for processing loop
+	const unsigned char endbytes[6] = { 0x55U, 0x55U, 0x55U, 0x55U, 0xC8U, 0x7AU };
 	time_t tnow;
 	unsigned char dcs_seq[3] = { 0x00, 0x00, 0x00 };
 	struct {

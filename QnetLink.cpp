@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-603"
+#define LINK_VERSION "QnetLink-606"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -1195,9 +1195,8 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 						inbound->mod = dsvt.hdr.rpt1[7];
 					} else {
 						SREFDSVT rdsvt;
-						rdsvt.head[0] = (unsigned char)(58 & 0xFF);
-						rdsvt.head[1] = (unsigned char)(58 >> 8 & 0x1F);
-						rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+						rdsvt.head[0] = 58U;
+						rdsvt.head[1] = 0x80U;
 						memcpy(rdsvt.dsvt.title, dsvt.title, 56);
 
 						REFWrite(rdsvt.head, 58, inbound->addr);
@@ -1287,9 +1286,8 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 							to_remote_g2[i].in_streamid = dsvt.streamid;
 
 							SREFDSVT rdsvt;
-							rdsvt.head[0] = (unsigned char)(58 & 0xFF);
-							rdsvt.head[1] = (unsigned char)(58 >> 8 & 0x1F);
-							rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+							rdsvt.head[0] = 58U;
+							rdsvt.head[1] = 0x80U;
 
 							memcpy(rdsvt.dsvt.title, dsvt.title, 56);
 
@@ -1345,13 +1343,14 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 				SINBOUND *inbound = (SINBOUND *)pos->second;
 				if (fromDst4 != inbound->addr) {
 					SREFDSVT rdsvt;
-					rdsvt.head[0] = (unsigned char)(29 & 0xFF);
-					rdsvt.head[1] = (unsigned char)(29 >> 8 & 0x1F);
-					rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+					rdsvt.head[0] = (dsvt.ctrl & 0x40U) ? 32U : 29U;
+					rdsvt.head[1] = 0x80U;
 
 					memcpy(rdsvt.dsvt.title, dsvt.title, 27);
+					if (32U == rdsvt.head[0])
+						memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
 
-					REFWrite(rdsvt.head, 29, inbound->addr);
+					REFWrite(rdsvt.head, rdsvt.head[0], inbound->addr);
 				}
 			}
 
@@ -1384,13 +1383,13 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 						XRFWrite(dsvt.title, 27, to_remote_g2[i].addr);
 					} else if (to_remote_g2[i].addr.GetPort() == rmt_ref_port) {
 						SREFDSVT rdsvt;
-						rdsvt.head[0] = (unsigned char)(29 & 0xFF);
-						rdsvt.head[1] = (unsigned char)(29 >> 8 & 0x1F);
-						rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+						rdsvt.head[0] = (dsvt.ctrl & 0x40) ? 32U : 29U;
+						rdsvt.head[1] = 0x80U;
 
 						memcpy(rdsvt.dsvt.title, dsvt.title, 27);
-
-						REFWrite(rdsvt.head, 29, to_remote_g2[i].addr);
+						if (32U == rdsvt.head[0])
+							memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
+						REFWrite(rdsvt.head, rdsvt.head[0], to_remote_g2[i].addr);
 					} else if (to_remote_g2[i].addr.GetPort() == rmt_dcs_port) {
 						unsigned char dcs_buf[1000];
 						memset(dcs_buf, 0x00, 600);
@@ -1493,9 +1492,8 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 
 					/* generate our header */
 					SREFDSVT rdsvt;
-					rdsvt.head[0] = (unsigned char)(58 & 0xFF);
-					rdsvt.head[1] = (unsigned char)(58 >> 8 & 0x1F);
-					rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+					rdsvt.head[0] = 58U;
+					rdsvt.head[1] = 0x80U;
 					memcpy(rdsvt.dsvt.title, "DSVT", 4);
 					rdsvt.dsvt.config = 0x10;
 					rdsvt.dsvt.flaga[0] = rdsvt.dsvt.flaga[1] = rdsvt.dsvt.flaga[2] = 0x00;
@@ -1535,9 +1533,8 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 				if (0==memcmp(&to_remote_g2[i].in_streamid, dcs_buf+43, 2) && dcs_seq[i]!=dcs_buf[45]) {
 					dcs_seq[i] = dcs_buf[45];
 					SREFDSVT rdsvt;
-					rdsvt.head[0] = (unsigned char)(29 & 0xFF);
-					rdsvt.head[1] = (unsigned char)(29 >> 8 & 0x1F);
-					rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+					rdsvt.head[0] = (dcs_buf[45] & 0x40U) ? 32U : 29U;
+					rdsvt.head[1] = 0x80U;
 					memcpy(rdsvt.dsvt.title, "DSVT", 4);
 					rdsvt.dsvt.config = 0x20;
 					rdsvt.dsvt.flaga[0] = rdsvt.dsvt.flaga[1] = rdsvt.dsvt.flaga[2] = 0x00;
@@ -1553,6 +1550,8 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 					memcpy(&rdsvt.dsvt.streamid, dcs_buf+43, 2);
 					rdsvt.dsvt.ctrl = dcs_buf[45];
 					memcpy(rdsvt.dsvt.vasd.voice, dcs_buf+46, 12);
+					if (dcs_buf[45] & 0x40U)
+						memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
 
 					/* send the data to the local gateway/repeater */
 					ToGate.Write(rdsvt.dsvt.title, 27);
@@ -1560,7 +1559,7 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 					/* send the data to the donglers */
 					for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 						SINBOUND *inbound = (SINBOUND *)pos->second;
-						REFWrite(rdsvt.head, 29, inbound->addr);
+						REFWrite(rdsvt.head, rdsvt.head[0], inbound->addr);
 					}
 
 					if ((dcs_buf[45] & 0x40) != 0) {
@@ -2353,7 +2352,7 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 			for (pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
 				SINBOUND *inbound = (SINBOUND *)pos->second;
 				if (fromDst4 != inbound->addr) {
-					REFWrite(rdsvt.head, 29, inbound->addr);
+					REFWrite(rdsvt.head, rdsvt.head[0], inbound->addr);
 				}
 			}
 
@@ -2364,7 +2363,7 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 						rdsvt.dsvt.flagb[2] = to_remote_g2[i].from_mod;
 						XRFWrite(rdsvt.dsvt.title, 27, to_remote_g2[i].addr);
 					} else if (to_remote_g2[i].addr.GetPort() == rmt_ref_port)
-						REFWrite(rdsvt.head, 29,  to_remote_g2[i].addr);
+						REFWrite(rdsvt.head, rdsvt.head[0],  to_remote_g2[i].addr);
 					else if (to_remote_g2[i].addr.GetPort() == rmt_dcs_port) {
 						unsigned char dcs_buf[600];
 						memset(dcs_buf, 0x00, 600);
@@ -2734,9 +2733,8 @@ void CQnetLink::Process()
 					SREFDSVT rdsvt;
 					if (inbound_list.size() > 0) {
 						memset(rdsvt.head, 0U, 58U);
-						rdsvt.head[0] = (unsigned char)(58 & 0xFF);
-						rdsvt.head[1] = (unsigned char)(58 >> 8 & 0x1F);
-						rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+						rdsvt.head[0] = 58U;
+						rdsvt.head[1] = 0x80U;
 
 						memcpy(rdsvt.dsvt.title, dsvt.title, 56);
 						memcpy(rdsvt.dsvt.hdr.rpt1, owner.c_str(), CALL_SIZE);
@@ -2792,9 +2790,8 @@ void CQnetLink::Process()
 
 								if (to_remote_g2[i].addr.GetPort()==rmt_xrf_port || to_remote_g2[i].addr.GetPort()==rmt_ref_port) {
 									SREFDSVT rdsvt;
-									rdsvt.head[0] = (unsigned char)(58 & 0xFF);
-									rdsvt.head[1] = (unsigned char)(58 >> 8 & 0x1F);
-									rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+									rdsvt.head[0] = 58U;
+									rdsvt.head[1] = 0x80U;
 
 									memcpy(rdsvt.dsvt.title, dsvt.title, 56);
 									memset(rdsvt.dsvt.hdr.rpt1, ' ', CALL_SIZE);
@@ -2826,17 +2823,17 @@ void CQnetLink::Process()
 					}
 				}
 				else { // length is 27
-					if (inbound_list.size() > 0) {
-						SREFDSVT rdsvt;
-						rdsvt.head[0] = (unsigned char)(29 & 0xFF);
-						rdsvt.head[1] = (unsigned char)(29 >> 8 & 0x1F);
-						rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
+					SREFDSVT rdsvt;
+					rdsvt.head[0] = (dsvt.ctrl & 0x40U) ? 32U : 29U;
+					rdsvt.head[1] = 0x80U;
 
-						memcpy(rdsvt.dsvt.title, dsvt.title, 27);
+					memcpy(rdsvt.dsvt.title, dsvt.title, 27);
+					if (dsvt.ctrl & 0x40U)
+						memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
+					if (inbound_list.size() > 0) {
 
 						for (auto pos = inbound_list.begin(); pos != inbound_list.end(); pos++) {
-							SINBOUND *inbound = (SINBOUND *)pos->second;
-							REFWrite(rdsvt.head, 29, inbound->addr);
+							REFWrite(rdsvt.head, rdsvt.head[0], pos->second->addr);
 						}
 					}
 
@@ -2862,20 +2859,13 @@ void CQnetLink::Process()
 							}
 
 							if (to_remote_g2[i].addr.GetPort()==rmt_xrf_port || to_remote_g2[i].addr.GetPort()==rmt_ref_port) {
-								SREFDSVT rdsvt;
-								rdsvt.head[0] = (unsigned char)(29 & 0xFF);
-								rdsvt.head[1] = (unsigned char)(29 >> 8 & 0x1F);
-								rdsvt.head[1] = (unsigned char)(rdsvt.head[1] | 0xFFFFFF80);
-
-								memcpy(rdsvt.dsvt.title, dsvt.title, 27);
-
 								if (to_remote_g2[i].addr.GetPort() == rmt_xrf_port) {
 									/* inform XRF about the source */
 									rdsvt.dsvt.flagb[2] = to_remote_g2[i].from_mod;
 
-									XRFWrite(rdsvt.dsvt.title, 27, to_remote_g2[i].addr);
+									XRFWrite(dsvt.title, 27, to_remote_g2[i].addr);
 								} else if (to_remote_g2[i].addr.GetPort() == rmt_ref_port)
-									REFWrite(rdsvt.head, 29, to_remote_g2[i].addr);
+									REFWrite(rdsvt.head, rdsvt.head[0], to_remote_g2[i].addr);
 							} else if (to_remote_g2[i].addr.GetPort() == rmt_dcs_port) {
 								unsigned char dcs_buf[600];
 								memset(dcs_buf, 0x0, 600);

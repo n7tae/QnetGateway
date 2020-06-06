@@ -87,6 +87,10 @@ using SDSVT = struct dsvt_tag {
 			unsigned char voice[9]; // 15
 			unsigned char text[3];  // 24
 		} vasd;	// voice and slow data total 27
+		struct {
+			unsigned char voice[9];	// 15
+			unsigned char end[6];	// 24
+		} vend;	// voice and end seq total 32 (for DPlus)
 	};
 };
 #pragma pack(pop)
