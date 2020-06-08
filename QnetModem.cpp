@@ -44,7 +44,7 @@
 #include "QnetModem.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-526"
+#define MODEM_VERSION "QnetModem-608"
 #define MAX_RESPONSES 30
 
 const unsigned char FRAME_START  = 0xE0U;
@@ -68,7 +68,6 @@ const unsigned char TYPE_NACK    = 0x7FU;
 CQnetModem::CQnetModem(int mod)
 : assigned_module(mod)
 , dstarSpace(0U)
-, g2_is_active(false)
 {
 }
 
@@ -583,42 +582,38 @@ void CQnetModem::ProcessGateway(const SDSVT &dsvt)
 		memcpy(frame.header.pfcs, dsvt.hdr.pfcs,   2);
 		queue.push(CFrame(&frame.start));
 		PacketWait.start();
-		g2_is_active = true;
 		if (LOG_QSO)
 			printf("Queued to %s flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.flag[0], frame.header.flag[1], frame.header.flag[2], frame.header.ur, frame.header.r2, frame.header.r1, frame.header.my, frame.header.nm);
 	} else {	// write a voice data packet
-		if (g2_is_active) {
-			//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
-			if (dsvt.ctrl & 0x40U) {
-				if (LOG_DEBUG && superframe.size())
-					printf("Final order: %s\n", superframe.c_str());
-				frame.length = 3U;
-				frame.type = TYPE_EOT;
-				g2_is_active = false;
-				if (LOG_QSO)
-					printf("Queued modem end of transmission\n");
-			} else {
-				frame.length = 15U;
-				frame.type = TYPE_DATA;
-				memcpy(frame.voice.ambe, dsvt.vasd.voice, 12);
-				if (LOG_DEBUG) {
-					const unsigned int ctrl = dsvt.ctrl & 0x3FU;
-					if (VoicePacketIsSync(dsvt.vasd.text)) {
-						if (superframe.size() > 65) {
-							printf("Frame order: %s\n", superframe.c_str());
-							superframe.clear();
-						}
-						const char *ch = "#abcdefghijklmnopqrstuvwxyz";
-						superframe.append(1, (ctrl<27U) ? ch[ctrl] : '%');
-					} else {
-						const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-						superframe.append(1, (ctrl<27U) ? ch[ctrl] : '*');
+		//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
+		if (dsvt.ctrl & 0x40U) {
+			if (LOG_DEBUG && superframe.size())
+				printf("Final order: %s\n", superframe.c_str());
+			frame.length = 3U;
+			frame.type = TYPE_EOT;
+			if (LOG_QSO)
+				printf("Queued modem end of transmission\n");
+		} else {
+			frame.length = 15U;
+			frame.type = TYPE_DATA;
+			memcpy(frame.voice.ambe, dsvt.vasd.voice, 12);
+			if (LOG_DEBUG) {
+				const unsigned int ctrl = dsvt.ctrl & 0x3FU;
+				if (VoicePacketIsSync(dsvt.vasd.text)) {
+					if (superframe.size() > 65) {
+						printf("Frame order: %s\n", superframe.c_str());
+						superframe.clear();
 					}
+					const char *ch = "#abcdefghijklmnopqrstuvwxyz";
+					superframe.append(1, (ctrl<27U) ? ch[ctrl] : '%');
+				} else {
+					const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+					superframe.append(1, (ctrl<27U) ? ch[ctrl] : '*');
 				}
 			}
-			queue.push(CFrame(&frame.start));
-			PacketWait.start();
 		}
+		queue.push(CFrame(&frame.start));
+		PacketWait.start();
 	}
 }
 

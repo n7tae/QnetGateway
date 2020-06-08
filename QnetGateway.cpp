@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-603");
+const std::string GW_VERSION("QnetGateway-608");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -203,7 +203,7 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 		cfg.GetValue(p+"port", estr, ircddb[i].port, 1000, 65535);
 		cfg.GetValue(p+"password", estr, IRCDDB_PASSWORD[i], 0, 512);
 	}
-	if (0 == ircddb[0].ip.compare(ircddb[1].ip)) {
+	if ((ircddb[0].ip.size()+ircddb[1].ip.size() > 0) && (0 == ircddb[0].ip.compare(ircddb[1].ip))) {
 		fprintf(stderr, "IRC networks must be different\n");
 		return true;
 	}
@@ -1920,7 +1920,7 @@ void CQnetGateway::Process()
 			aprs_future.get();
 	}
 	for (int i=0; i<2; i++) {
-		if (ii[i])
+		if (ii[i] && irc_data_future[i].valid())
 			irc_data_future[i].get();
 	}
 }

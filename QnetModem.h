@@ -190,7 +190,6 @@ public:
 private:
 	int assigned_module;
 	unsigned int dstarSpace;
-	bool g2_is_active;
 
 	// functions
 	bool VoicePacketIsSync(const unsigned char *);
