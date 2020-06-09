@@ -94,7 +94,6 @@ private:
 	int af_family[2] = { AF_UNSPEC, AF_UNSPEC };
 	// text stuff
 	bool new_group[3] = { true, true, true };
-	unsigned char header_type = 0;
 	short to_print[3] = { 0, 0, 0 };
 	bool ABC_grp[3] = { false, false, false };
 	bool C_seen[3] = { false, false, false };

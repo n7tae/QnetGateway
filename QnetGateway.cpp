@@ -692,7 +692,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, const unsigned short sid
 		for (int i=0; i<3; i++) {
 			if (band_txt[i].streamID == sid) {
 				if (new_group[i]) {
-					header_type = c1 & 0xf0;
+					const unsigned char header_type = c1 & 0xf0;
 
 					//                 header                   squelch
 					if ((header_type == 0x50) || (header_type == 0xc0)) {
