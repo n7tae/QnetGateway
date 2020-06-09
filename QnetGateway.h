@@ -79,6 +79,20 @@ using SBANDTXT = struct band_txt_tag {
 	int num_bit_errors;
 };
 
+using SSD = struct sd_tag {
+	unsigned char header[41];
+	char message[21];
+	char gps[256];
+	int ih, im, ig;
+	unsigned char type;
+	bool first;
+	int size;
+	void Init() { ih = im = ig = 0; first = true; }
+};
+
+
+
+
 class CQnetGateway : public CKRBase
 {
 public:
@@ -137,7 +151,7 @@ private:
 	// must be fed into our local repeater modules.
 	STOREPEATER toRptr[3]; // 0=A, 1=B, 2=C
 
-	SDSVT end_of_audio;
+	SDSVT end_of_audio, sdheader;
 
 	// send packets to g2_link
 	struct sockaddr_in plug;
@@ -165,7 +179,7 @@ private:
 	int dtmf_last_frame[3];
 	unsigned int dtmf_counter[3];
 
-	bool VoicePacketIsSync(const unsigned char *text);
+	bool VoicePacketIsSync(const unsigned char *text) const;
 	int open_port(const SPORTIP *pip, int family);
 	void calcPFCS(unsigned char *packet, int len);
 	void GetIRCDataThread(const int i);
@@ -176,6 +190,7 @@ private:
 	void APRSBeaconThread();
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, const unsigned short sid);
+	void ProcessIncomingSD(const SDSVT &dsvt);
 	bool ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp);
 	void ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sock_source);
 	void ProcessModem(const ssize_t len, SDSVT &dsvt);
@@ -196,4 +211,7 @@ private:
 
 	void set_dest_rptr(const char mod, std::string &call);
 	bool validate_csum(SBANDTXT &bt, bool is_gps);
+
+	// for incoming slow header stuff;
+	SSD Sd[4];
 };
