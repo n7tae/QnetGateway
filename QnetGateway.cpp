@@ -1003,7 +1003,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					sd.size -= size;
 					if (c[1]=='\r' || c[2]=='\r') {
 						sd.gps[sd.ig + (c[1] == '\r') ? 0 : 1] = '\0';
-						printf("GPS String='%s'\n", sd.gps);
+						printf("GPS[%d] String='%s'\n", i, sd.gps);
 						sd.ig = sd.size = 0;
 					}
 				} else {
@@ -1018,7 +1018,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					sd.im += 2;
 					sd.size = 3;
 				} else {
-					printf("A message voiceframe, #%d, is out of order because message size is %d\n", sd.size, sd.im);
+					//printf("A message voiceframe, #%d, is out of order because message size is %d\n", sd.size, sd.im);
 					sd.im = sd.size = 0;
 				}
 				sd.first = false;
@@ -1028,13 +1028,13 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					memcpy(sd.header+sd.ih, c+1, size);
 					sd.ih += size;
 					if (sd.ih == 41) {
-						memcpy(sdheader.hdr.flag, sd.header, 39);
-						calcPFCS(sdheader.title, 56);
-						printf("Header: flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s %02x%02x?=%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx, sd.header[39], sd.header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
+						//memcpy(sdheader.hdr.flag, sd.header, 39);
+						//calcPFCS(sdheader.title, 56);
+						//printf("Header: flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s %02x%02x?=%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx, sd.header[39], sd.header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
 						sd.ih = sd.size = 0;
 					}
 				} else {
-					printf("Header overflow, message has %d bytes, trying to add %d more\n", sd.ih, sd.size);
+					//printf("Header overflow, message has %d bytes, trying to add %d more\n", sd.ih, sd.size);
 					sd.ih = sd.size = 0;
 				}
 				sd.first = false;
@@ -1057,7 +1057,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 						sd.gps[sd.ig+1] = '\0';
 					else
 						sd.gps[sd.ig+2] = '\0';
-					printf("GPS string='%s'\n", sd.gps);
+					printf("GPS[%d] string='%s'\n", i, sd.gps);
 					sd.ig = 0;
 				} else {
 					sd.ig += sd.size;
@@ -1068,7 +1068,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				sd.im += 3;
 				if (sd.im >= 20) {
 					sd.message[20] = '\0';
-					printf("Message='%s'\n", sd.message);
+					printf("Message[%d]='%s'\n", i, sd.message);
 					sd.im = 0;
 				}
 				break;
