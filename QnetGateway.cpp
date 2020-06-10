@@ -999,6 +999,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 			case 0x30U:	// GPS data
 				if (sd.size + sd.ig < 255) {
 					memcpy(sd.gps+sd.ig, c+1, size);
+					sd.ig += size;
 					if (c[1]=='\r' || c[2]=='\r') {
 						sd.gps[sd.ig + (c[1] == '\r') ? 0 : 1] = '\0';
 						printf("GPS String=%s\n", sd.gps);
@@ -1029,7 +1030,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					if (sd.ih == 41) {
 						memcpy(sdheader.hdr.flag, sd.header, 39);
 						calcPFCS(sdheader.title, 56);
-						printf("Header: flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s, my=%8.8s nm=%4.4s checksum=0x%02x%02x, calculated=0x%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx, sd.header[39], sd.header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
+						printf("Header: flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s %02x%02x?=%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx, sd.header[39], sd.header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
 						sd.ih = sd.size = 0;
 					}
 				} else {
@@ -1049,6 +1050,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		switch (sd.type) {
 			case 0x30U:	// GPS
 				memcpy(sd.gps+sd.ig, c, sd.size);
+				sd.ig += sd.size;
 				if (c[0]=='\r' || c[1]=='\r' || c[2]=='\r') {
 					if (c[0]=='\r')
 						sd.gps[sd.ig] = '\0';
