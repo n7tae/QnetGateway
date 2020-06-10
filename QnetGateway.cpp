@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-608");
+const std::string GW_VERSION("QnetGateway-610");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -987,10 +987,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
 	};	// unscramble
 
-	char X[4] = { 0 };
-	memcpy (X, c, 3);
-	printf("SD = %s\n", X);
-
 	if (sd.first) {
 		// this is the first of a two voice-packet pair
 		// get the "size" and type from the first byte
@@ -1019,8 +1015,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				if (sd.size * 5 == sd.im) {
 					memcpy(sd.message+sd.im, c+1, 2);
 					sd.im += 2;
-					sd.message[sd.im] = '\0';
-					printf("%s\n", sd.message);
+					sd.size = 3;
 				} else {
 					printf("A message voiceframe, #%d, is out of order because message size is %d\n", sd.size, sd.im);
 					sd.im = sd.size = 0;
@@ -1068,8 +1063,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 			case 0x40U:	// message
 				memcpy(sd.message+sd.im, c, 3);
 				sd.im += 3;
-				sd.message[sd.im] = '\0';
-				printf("%s\n", sd.message);
 				if (sd.im >= 20) {
 					sd.message[20] = '\0';
 					printf("Message='%s'\n", sd.message);
