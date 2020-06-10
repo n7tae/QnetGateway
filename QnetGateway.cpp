@@ -1013,8 +1013,10 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				break;
 			case 0x40U:	// 20 character user message
 				if (sd.size * 5 == sd.im) {
-					memcpy(sd.message+(5*size), c+1, 2);
+					memcpy(sd.message+sd.im, c+1, 2);
 					sd.im += 2;
+					sd.message[sd.im] = '\0';
+					printf("%s\n", sd.message);
 				} else {
 					printf("A message voiceframe, #%d, is out of order because message size is %d\n", sd.size, sd.im);
 					sd.im = sd.size = 0;
@@ -1062,6 +1064,8 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 			case 0x40U:	// message
 				memcpy(sd.message+sd.im, c, 3);
 				sd.im += 3;
+				sd.message[sd.im] = '\0';
+				printf("%s\n", sd.message);
 				if (sd.im >= 20) {
 					sd.message[20] = '\0';
 					printf("Message='%s'\n", sd.message);
