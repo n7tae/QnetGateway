@@ -1023,7 +1023,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				sd.first = false;
 				break;
 			case 0x50U:	// header
-				if (sd.size + sd.ih < 41) {
+				if (sd.size + sd.ih < 42) {
 					memcpy(sd.header+sd.ih, c+1, size);
 					sd.ih += size;
 					if (sd.ih == 41) {
