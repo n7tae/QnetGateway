@@ -1000,12 +1000,12 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				if (sd.size + sd.ig < 255) {
 					memcpy(sd.gps+sd.ig, c+1, size);
 					sd.ig += size;
+					sd.size -= size;
 					if (c[1]=='\r' || c[2]=='\r') {
 						sd.gps[sd.ig + (c[1] == '\r') ? 0 : 1] = '\0';
-						printf("GPS String=%s\n", sd.gps);
+						printf("GPS String='%s'\n", sd.gps);
 						sd.ig = sd.size = 0;
-					} else
-						sd.size -= size;
+					}
 				} else {
 					printf("GPS string is too large at %d bytes\n", sd.ig + sd.size);
 					sd.ig = sd.size = 0;
@@ -1050,7 +1050,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		switch (sd.type) {
 			case 0x30U:	// GPS
 				memcpy(sd.gps+sd.ig, c, sd.size);
-				sd.ig += sd.size;
 				if (c[0]=='\r' || c[1]=='\r' || c[2]=='\r') {
 					if (c[0]=='\r')
 						sd.gps[sd.ig] = '\0';
@@ -1058,8 +1057,10 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 						sd.gps[sd.ig+1] = '\0';
 					else
 						sd.gps[sd.ig+2] = '\0';
-					printf("GPS string=%s\n", sd.gps);
+					printf("GPS string='%s'\n", sd.gps);
 					sd.ig = 0;
+				} else {
+					sd.ig += sd.size;
 				}
 				break;
 			case 0x40U:	// message
