@@ -976,6 +976,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				break;
 	}
 	// if i==3, then the streamid of this voice packet didn't match any module
+	SSD &sd = Sd[i];
 
 	if (VoicePacketIsSync(dsvt.vasd.text))
 		return;
@@ -986,91 +987,92 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
 	};	// unscramble
 
-	if (Sd[i].first) {
-		Sd[i].size = 0x0FU & c[0];
-		int size = Sd[i].size;
+	if (sd.first) {
+		// this is the first of a two voice-packet pair
+		// get the "size" and type from the first byte
+		sd.size = 0x0FU & c[0];
+		int size = sd.size;
 		if (size > 2)
 			size = 2;
-		Sd[i].type = 0xF0U & c[0];
-		switch (Sd[i].type) {
+		sd.type = 0xF0U & c[0];
+		switch (sd.type) {
 			case 0x30U:	// GPS data
-				if (Sd[i].size + Sd[i].ig < 255) {
-					memcpy(Sd[i].gps+Sd[i].ig, c+1, size);
+				if (sd.size + sd.ig < 255) {
+					memcpy(sd.gps+sd.ig, c+1, size);
 					if (c[1]=='\r' || c[2]=='\r') {
-						Sd[i].gps[Sd[i].ig + (c[1] == '\r') ? 0 : 1] = '\0';
-						printf("GPS String=%s\n", Sd[i].gps);
-						Sd[i].ig = Sd[i].size = 0;
+						sd.gps[sd.ig + (c[1] == '\r') ? 0 : 1] = '\0';
+						printf("GPS String=%s\n", sd.gps);
+						sd.ig = sd.size = 0;
 					} else
-						Sd[i].size -= size;
+						sd.size -= size;
 				} else {
-					printf("GPS string is too large at %d bytes\n", Sd[i].ig + Sd[i].size);
-					Sd[i].size = 0;
+					printf("GPS string is too large at %d bytes\n", sd.ig + sd.size);
+					sd.ig = sd.size = 0;
 				}
-				Sd[i].first = false;
+				sd.first = false;
 				break;
 			case 0x40U:	// 20 character user message
-			if (Sd[i].size * 5 == Sd[i].im) {
-					memcpy(Sd[i].message+(5*size), c+1, 2);
-					Sd[i].im += 2;
+				if (sd.size * 5 == sd.im) {
+					memcpy(sd.message+(5*size), c+1, 2);
+					sd.im += 2;
 				} else {
-					printf("A message voiceframe, #%d, is out of order because message size is %d\n", Sd[i].size, Sd[i].im);
-					Sd[i].im = 0;
+					printf("A message voiceframe, #%d, is out of order because message size is %d\n", sd.size, sd.im);
+					sd.im = sd.size = 0;
 				}
-				Sd[i].first = false;
+				sd.first = false;
 				break;
 			case 0x50U:	// header
-				if (Sd[i].size + Sd[i].ih < 41) {
-					memcpy(Sd[i].header+Sd[i].ih, c+1, size);
-					Sd[i].ih += size;
-					if (Sd[i].ih == 41) {
-						memcpy(sdheader.hdr.flag, Sd[i].header, 39);
+				if (sd.size + sd.ih < 41) {
+					memcpy(sd.header+sd.ih, c+1, size);
+					sd.ih += size;
+					if (sd.ih == 41) {
+						memcpy(sdheader.hdr.flag, sd.header, 39);
 						calcPFCS(sdheader.title, 56);
-						printf("Header='%x:%x:%x %s' checksum=%02x%02x, calculated=%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, Sd[i].header[39], Sd[i].header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
-						Sd[i].ih = Sd[i].size = 0;
+						printf("Header: flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s, my=%8.8s nm=%4.4s checksum=0x%02x%02x, calculated=0x%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx, sd.header[39], sd.header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
+						sd.ih = sd.size = 0;
 					}
 				} else {
-					printf("Header overflow, %d bytes\n", Sd[i].size + Sd[i].ih);
-					Sd[i].ih = Sd[i].size = 0;
+					printf("Header overflow, message has %d bytes, trying to add %d more\n", sd.ih, sd.size);
+					sd.ih = sd.size = 0;
 				}
-				Sd[i].first = false;
+				sd.first = false;
 				break;
 			default:
 				return;
 		}
 	} else {
 		// this is the second of a two voice-frame pair
-		Sd[i].first = true;
-		if (0 == Sd[i].size)
+		sd.first = true;
+		if (0 == sd.size)
 			return;
-		switch (Sd[i].type) {
+		switch (sd.type) {
 			case 0x30U:	// GPS
-				memcpy(Sd[i].gps+Sd[i].ig, c, Sd[i].size);
+				memcpy(sd.gps+sd.ig, c, sd.size);
 				if (c[0]=='\r' || c[1]=='\r' || c[2]=='\r') {
 					if (c[0]=='\r')
-						Sd[i].gps[Sd[i].ig] = '\0';
+						sd.gps[sd.ig] = '\0';
 					else if (c[1]=='\r')
-						Sd[i].gps[Sd[i].ig+1] = '\0';
+						sd.gps[sd.ig+1] = '\0';
 					else
-						Sd[i].gps[Sd[i].ig+2] = '\0';
-					printf("GPS string=%s\n", Sd[i].gps);
-					Sd[i].ig = 0;
+						sd.gps[sd.ig+2] = '\0';
+					printf("GPS string=%s\n", sd.gps);
+					sd.ig = 0;
 				}
 				break;
 			case 0x40U:	// message
-				memcpy(Sd[i].message+Sd[i].im, c, 3);
-				Sd[i].im += 3;
-				if (Sd[i].im >= 20) {
-					Sd[i].message[20] = '\0';
-					printf("Message='%s'\n", Sd[i].message);
-					Sd[i].im = 0;
+				memcpy(sd.message+sd.im, c, 3);
+				sd.im += 3;
+				if (sd.im >= 20) {
+					sd.message[20] = '\0';
+					printf("Message='%s'\n", sd.message);
+					sd.im = 0;
 				}
 				break;
 			case 0x50U:	// header
-				if (Sd[i].size != 3) {
-					Sd[i].ih = 0;
+				if (sd.size) {
+					memcpy(sd.header+sd.ih, c, 3);
+					sd.ih += 3;
 				}
-				memcpy(Sd[i].header+Sd[i].ih, c, Sd[i].size);
-				Sd[i].ih += Sd[i].size;
 				break;
 		}
 	}
@@ -1084,8 +1086,8 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 	static std::string superframe[3];
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
-			for (int i=0; i<3; i++)
-				Sd[i].Init();	// only do the first three
+			for (int i=0; i<4; i++)
+				Sd[i].Init();	// with a header, we should reset all Sd structs
 			// Find out the local repeater module IP/port to send the data to
 			int i = g2buf.hdr.rpt1[7] - 'A';
 			/* valid repeater module? */
