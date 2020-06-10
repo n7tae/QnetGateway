@@ -987,6 +987,10 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
 	};	// unscramble
 
+	char X[4] = { 0 };
+	memcpy (X, c, 3);
+	printf("SD = %s\n", X);
+
 	if (sd.first) {
 		// this is the first of a two voice-packet pair
 		// get the "size" and type from the first byte
