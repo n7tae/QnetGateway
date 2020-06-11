@@ -1002,7 +1002,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					if (c[1]=='\r' || c[2]=='\r') {
 						sd.gps[sd.ig + (c[1] == '\r') ? 0 : 1] = '\0';
 						printf("GPS[%d] String='%s'\n", i, sd.gps);
-						memset(sd.gps, 0, 256);
 						sd.ig = sd.size = 0;
 					} else {
 						sd.ig += size;
@@ -1060,7 +1059,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					else
 						sd.gps[sd.ig+2] = '\0';
 					printf("GPS[%d] string='%s'\n", i, sd.gps);
-					memset(sd.gps, 0, 256);
 					sd.ig = 0;
 				} else {
 					sd.ig += sd.size;
