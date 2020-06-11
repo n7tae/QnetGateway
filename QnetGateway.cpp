@@ -994,7 +994,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		// get the "size" and type from the first byte
 		sd.size = 0x0FU & c[0];
 		if (sd.size > 5) {
-			printf("got a size of %d\n", sd.size);
 			sd.size = 5;
 		}
 		int size = sd.size;
@@ -1069,9 +1068,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				} else {
 					sd.ig += sd.size;
 					sd.gps[sd.ig] = 0;
-					for (int j=0; sd.gps[j]; j++)
-						printf("%c", sd.gps[j]);
-					printf("\n");
 				}
 				break;
 			case 0x40U:	// message
