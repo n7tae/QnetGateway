@@ -993,6 +993,13 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		// this is the first of a two voice-packet pair
 		// get the "size" and type from the first byte
 		sd.size = 0x0FU & c[0];
+		if (sd.size > 5) {
+			printf("got a size of %d\n", sd.size);
+			sd.size = 5;
+		} else if (sd.size < 0) {
+			printf("got a size of %d\n", sd.size);
+			sd.size = 0;
+		}
 		int size = sd.size;
 		if (size > 2)
 			size = 2;
