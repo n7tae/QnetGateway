@@ -996,9 +996,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		if (sd.size > 5) {
 			printf("got a size of %d\n", sd.size);
 			sd.size = 5;
-		} else if (sd.size < 0) {
-			printf("got a size of %d\n", sd.size);
-			sd.size = 0;
 		}
 		int size = sd.size;
 		if (size > 2)
@@ -1071,6 +1068,10 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					sd.ig = 0;
 				} else {
 					sd.ig += sd.size;
+					sd.gps[sd.ig] = 0;
+					for (int j=0; sd.gps[j]; j++)
+						printf("%c", sd.gps[j]);
+					printf("\n");
 				}
 				break;
 			case 0x40U:	// message

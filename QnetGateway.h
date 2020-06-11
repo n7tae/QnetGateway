@@ -81,12 +81,12 @@ using SBANDTXT = struct band_txt_tag {
 
 using SSD = struct sd_tag {
 	unsigned char header[41];
-	char message[21];
-	char gps[256];
-	int ih, im, ig;
+	unsigned char message[21];
+	unsigned char gps[256];
+	unsigned int ih, im, ig;
 	unsigned char type;
 	bool first;
-	int size;
+	unsigned int size;
 	void Init() { ih = im = ig = 0; first = true; }
 };
 
