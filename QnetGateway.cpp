@@ -970,6 +970,7 @@ void CQnetGateway::ProcessSlowData(unsigned char *data, const unsigned short sid
 
 void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 {
+	static unsigned char hold[6];
 	int i;
 	for (i=0; i<3; i++) {
 		if (Rptr.mod[i].defined && (toRptr[i].streamid == dsvt.streamid))
@@ -978,8 +979,10 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 	// if i==3, then the streamid of this voice packet didn't match any module
 	SSD &sd = Sd[i];
 
-	if (VoicePacketIsSync(dsvt.vasd.text))
+	if (VoicePacketIsSync(dsvt.vasd.text)) {
+		sd.first = true;
 		return;
+	}
 
 	const unsigned char c[3] = {
 		static_cast<unsigned char>(dsvt.vasd.text[0] ^ 0x70u),
@@ -998,6 +1001,8 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		switch (sd.type) {
 			case 0x30U:	// GPS data
 				if (sd.size + sd.ig < 255) {
+					memset(hold, 0, 6);
+					memcpy(hold, c, 3);
 					memcpy(sd.gps+sd.ig, c+1, size);
 					if (c[1]=='\r' || c[2]=='\r') {
 						sd.gps[sd.ig + (c[1] == '\r') ? 0 : 1] = '\0';
@@ -1050,6 +1055,8 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 			return;
 		switch (sd.type) {
 			case 0x30U:	// GPS
+				memcpy(hold+3, c, 3);
+				printf("hold=%02x%02x%02x%02x%02x%02x\n", hold[0], hold[1], hold[2], hold[3], hold[4], hold[5]);
 				memcpy(sd.gps+sd.ig, c, sd.size);
 				if (c[0]=='\r' || c[1]=='\r' || c[2]=='\r') {
 					if (c[0]=='\r')
