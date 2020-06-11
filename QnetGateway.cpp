@@ -1101,8 +1101,6 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 	static std::string superframe[3];
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
-			for (int i=0; i<4; i++)
-				Sd[i].Init();	// with a header, we should reset all Sd structs
 			// Find out the local repeater module IP/port to send the data to
 			int i = g2buf.hdr.rpt1[7] - 'A';
 			/* valid repeater module? */
@@ -1111,6 +1109,8 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 				// toRptr[i] is receiving data from a cross-band
 				if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
 					superframe[i].clear();
+					for (int z=0; z<4; z++)
+						Sd[z].Init();	// with a header, we should reset all Sd structs
 					if (LOG_QSO) {
 						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
 						if (source_sock >= 0)
