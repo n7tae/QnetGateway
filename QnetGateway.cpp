@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-610");
+const std::string GW_VERSION("QnetGateway-611");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -1034,9 +1034,9 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					memcpy(sd.header+sd.ih, c+1, size);
 					sd.ih += size;
 					if (sd.ih == 41) {
-						//memcpy(sdheader.hdr.flag, sd.header, 39);
-						//calcPFCS(sdheader.title, 56);
-						//printf("Header: flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s %02x%02x?=%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx, sd.header[39], sd.header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
+						memcpy(sdheader.hdr.flag, sd.header, 39);
+						calcPFCS(sdheader.title, 56);
+						printf("Header: flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s %02x%02x?=%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx, sd.header[39], sd.header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
 						sd.ih = sd.size = 0;
 					}
 				} else {
