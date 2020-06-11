@@ -984,10 +984,10 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 		return;
 	}
 
-	const unsigned char c[3] = {
-		static_cast<unsigned char>(dsvt.vasd.text[0] ^ 0x70u),
-		static_cast<unsigned char>(dsvt.vasd.text[1] ^ 0x4fu),
-		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
+	const char c[3] = {
+		static_cast<char>(char(dsvt.vasd.text[0]) ^ '\160'),
+		static_cast<char>(char(dsvt.vasd.text[1]) ^ '\117'),
+		static_cast<char>(char(dsvt.vasd.text[2]) ^ '\223')
 	};	// unscramble
 
 	if (sd.first) {
