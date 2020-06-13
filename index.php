@@ -166,7 +166,7 @@ foreach($showlist as $section) {
 			break;
 		case 'LH':
 			echo 'Last Heard:<br><code>', "\n";
-			$rstr = 'MyCall/Sfx    Message             Mod  Via       Location Time<br>';
+			$rstr = 'MyCall/Sfx    Message             Mod  Via    Location Time<br>';
 			echo str_replace(' ', '&nbsp;', $rstr), "\n";
 			$dbname = $cfgdir.'/qn.db';
 			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
