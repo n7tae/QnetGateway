@@ -29,6 +29,7 @@
 #include "QnetDB.h"
 #include "DStarDecode.h"
 #include "KRBase.h"
+#include "Location.h"
 
 #define MAXHOSTNAMELEN 64
 #define CALL_SIZE 8
@@ -160,6 +161,8 @@ private:
 	CIRCDDB *ii[2];
 	// for handling APRS stuff
 	CAPRS *aprs;
+	// for parsign GPS slow data
+	CLocation gps;
 
 	// text coming from local repeater bands
 	SBANDTXT band_txt[3]; // 0=A, 1=B, 2=C

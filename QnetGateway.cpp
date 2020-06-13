@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-611");
+const std::string GW_VERSION("QnetGateway-612");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -1006,7 +1006,14 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					memcpy(sd.gps+sd.ig, c+1, size);
 					if (c[1]=='\r' || c[2]=='\r') {
 						sd.gps[sd.ig + ((c[1] == '\r') ? 0 : 1)] = '\0';
-						printf("GPS[%d] String='%s'\n", i, sd.gps);
+						if (i < 3) {
+							if (showLastHeard && gps.Parse((const char *)&sd.ig)) {
+								char call[CALL_SIZE+1];
+								memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
+								call[CALL_SIZE] = '\0';
+								qnDB.UpdatePosition(call, gps.MaidenHead(), gps.Longitude(), gps.Longitude());
+							}
+						}
 						sd.ig = sd.size = 0;
 					} else {
 						sd.ig += size;
@@ -1030,18 +1037,38 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				sd.first = false;
 				break;
 			case 0x50U:	// header
-				if (sd.size + sd.ih < 42) {
-					memcpy(sd.header+sd.ih, c+1, size);
-					sd.ih += size;
-					if (sd.ih == 41) {
-						memcpy(sdheader.hdr.flag, sd.header, 39);
-						calcPFCS(sdheader.title, 56);
-						printf("Header: flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s %02x%02x?=%02x%02x\n", sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx, sd.header[39], sd.header[40], sdheader.hdr.pfcs[0], sdheader.hdr.pfcs[1]);
+				if (3 == i) {
+					if (sd.size + sd.ih < 42) {
+						memcpy(sd.header+sd.ih, c+1, size);
+						sd.ih += size;
+						if (sd.ih == 41) {
+							memcpy(sdheader.hdr.flag, sd.header, 39);
+							calcPFCS(sdheader.title, 56);
+							if (0 == memcmp(sd.header+39, sdheader.hdr.pfcs, 2)) {
+								int mod = sdheader.hdr.rpt2[CALL_SIZE-1] - 'A';
+								if (mod >= 0 && mod < 3 && Rptr.mod[mod].defined) {
+									unsigned char call[CALL_SIZE];
+									memcpy(call, sdheader.hdr.rpt1, CALL_SIZE);
+									memcpy(sdheader.hdr.rpt2, sdheader.hdr.rpt1, CALL_SIZE);
+									memcpy(sdheader.hdr.rpt1, call, CALL_SIZE);
+									calcPFCS(sdheader.title, 56);
+									ToModem[mod].Write(sdheader.title, 56);
+									toRptr[mod].streamid = sdheader.streamid;
+									toRptr[mod].addr = fromDstar;
+									toRptr[mod].sequence = sdheader.ctrl;
+									time(&toRptr[mod].last_time);
+									if (LOG_QSO)
+										printf("SD Header: id=0x%04x flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s\n", htons(sdheader.streamid), sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx);
+									sd.ih = sd.size = 0;
+								} else {
+									fprintf(stderr, "Got a valid slow data header but module %d doesn't exist\n", mod);
+								}
+							}
+						}
+					} else {
+						//printf("Header overflow, message has %d bytes, trying to add %d more\n", sd.ih, sd.size);
 						sd.ih = sd.size = 0;
 					}
-				} else {
-					//printf("Header overflow, message has %d bytes, trying to add %d more\n", sd.ih, sd.size);
-					sd.ih = sd.size = 0;
 				}
 				sd.first = false;
 				break;
@@ -1063,7 +1090,14 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 						sd.gps[sd.ig+1] = '\0';
 					else
 						sd.gps[sd.ig+2] = '\0';
-					printf("GPS[%d] string='%s'\n", i, sd.gps);
+					if (i < 3) {
+						if (showLastHeard && gps.Parse((const char *)&sd.ig)) {
+							char call[CALL_SIZE+1];
+							memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
+							call[CALL_SIZE] = '\0';
+							qnDB.UpdatePosition(call, gps.MaidenHead(), gps.Longitude(), gps.Longitude());
+						}
+					}
 					sd.ig = 0;
 				} else {
 					sd.ig += sd.size;
@@ -1075,12 +1109,17 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				sd.im += 3;
 				if (sd.im >= 20) {
 					sd.message[20] = '\0';
-					printf("Message[%d]='%s'\n", i, sd.message);
+					if (showLastHeard && (i < 3)) {
+						char call[CALL_SIZE+1];
+						memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
+						call[CALL_SIZE] = '\0';
+						qnDB.UpdateMessage(call, (const char *)&(sd.message));
+					}
 					sd.im = 0;
 				}
 				break;
 			case 0x50U:	// header
-				if (sd.size) {
+				if ((3 == i) && sd.size) {
 					memcpy(sd.header+sd.ih, c, 3);
 					sd.ih += 3;
 				}
@@ -2593,6 +2632,15 @@ bool CQnetGateway::Init(char *cfgfile)
 	memset(end_of_audio.title, 0U, 27U);
 	memcpy(end_of_audio.title, "DSVT", 4U);
 	end_of_audio.id = end_of_audio.config = 0x20U;
+
+	// and the slow data header
+	memcpy(sdheader.title, "DSVT", 4);
+	sdheader.config = 0x10;
+	memset(sdheader.flaga, 0, 3);
+	sdheader.id = 0x10U;
+	sdheader.flagb[0] = 0;
+	sdheader.flagb[1] = sdheader.flagb[2] = 0x1U;
+	sdheader.ctrl = 0x80;
 
 	/* to remote systems */
 	for (i = 0; i < 3; i++) {

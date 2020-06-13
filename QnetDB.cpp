@@ -38,6 +38,10 @@ bool CQnetDB::Init()
 	std::string sql("CREATE TABLE IF NOT EXISTS LHEARD("
 						"callsign	TEXT PRIMARY KEY, "
 						"sfx		TEXT, "
+						"message    TEXT, "
+						"maidenhead TEXT, "
+						"latitude   REAL, "
+						"longitude  REAL, "
 						"module		TEXT, "
 						"reflector	TEXT, "
 						"lasttime	INT NOT NULL"
@@ -95,6 +99,52 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
 		fprintf(stderr, "CQnetDB::UpdateLH error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
+	return false;
+}
+
+bool CQnetDB::UpdatePosition(const char *callsign, const char *maidenhead, double latitude, double longitude)
+{
+	if (NULL == db)
+		return false;
+	std::string sql("INSERT OR REPLACE INTO LHEARD (callsign,maidenhead,latitude,longitude,lasttime) VALUES('");
+	sql.append(callsign);
+	sql.append("','");
+	sql.append(maidenhead);
+	sql.append("',");
+	sql.append(std::to_string(latitude));
+	sql.append(",");
+	sql.append(std::to_string(longitude));
+	sql.append(",");
+	sql.append("strftime('%s','now'));");
+
+	char *eMsg;
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::UpdatePosition error: %s", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
+	return false;
+}
+
+bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
+{
+	if (NULL == db)
+		return false;
+	std::string sql("INSERT OR REPLACE INTO LHEARD (callsign,maidenhead,latitude,longitude,lasttime) VALUES('");
+	sql.append(callsign);
+	sql.append("','");
+	sql.append(message);
+	sql.append("',");
+	sql.append("strftime('%s','now'));");
+
+	char *eMsg;
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
+		fprintf(stderr, "CQnetDB::UpdateMessage error: %s", eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
