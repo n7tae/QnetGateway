@@ -1003,11 +1003,11 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					if (c[1]=='\r' || c[2]=='\r') {
 						sd.gps[sd.ig + ((c[1] == '\r') ? 0 : 1)] = '\0';
 						if (i < 3) {
-							if (showLastHeard && gps.Parse((const char *)&sd.ig)) {
+							if (showLastHeard && gps.Parse((const char *)&sd.gps)) {
 								char call[CALL_SIZE+1];
 								memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
 								call[CALL_SIZE] = '\0';
-								qnDB.UpdatePosition(call, gps.MaidenHead(), gps.Longitude(), gps.Longitude());
+								qnDB.UpdatePosition(call, gps.MaidenHead(), gps.Latitude(), gps.Longitude());
 							}
 						}
 						sd.ig = sd.size = 0;
@@ -1087,11 +1087,11 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					else
 						sd.gps[sd.ig+2] = '\0';
 					if (i < 3) {
-						if (showLastHeard && gps.Parse((const char *)&sd.ig)) {
+						if (showLastHeard && gps.Parse((const char *)&sd.gps)) {
 							char call[CALL_SIZE+1];
 							memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
 							call[CALL_SIZE] = '\0';
-							qnDB.UpdatePosition(call, gps.MaidenHead(), gps.Longitude(), gps.Longitude());
+							qnDB.UpdatePosition(call, gps.MaidenHead(), gps.Latitude(), gps.Longitude());
 						}
 					}
 					sd.ig = 0;
