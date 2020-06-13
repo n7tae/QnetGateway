@@ -111,7 +111,7 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 		sql.append(1, module);
 		sql.append("','");
 		sql.append(reflector);
-		sql.append("',")
+		sql.append("',");
 		sql.append("strftime('%s','now')) WHERE callsign='");
 		sql.append(callsign);
 		sql.append("';");
