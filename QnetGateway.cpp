@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-612");
+const std::string GW_VERSION("QnetGateway-613");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -567,19 +567,15 @@ void CQnetGateway::ProcessTimeouts()
 			//   so we could use either FROM_LOCAL_RPTR_TIMEOUT or FROM_REMOTE_G2_TIMEOUT
 			//   but FROM_REMOTE_G2_TIMEOUT makes more sense, probably is a bigger number
 			if ((t_now - toRptr[i].last_time) > TIMING_TIMEOUT_REMOTE_G2) {
-				printf("Inactivity to local rptr module %c, removing stream id %04x\n", 'A'+i, ntohs(toRptr[i].streamid));
+				printf("Inactivity to local rptr module %c, removing stream id %04x\n", 'A'+i, ntohs(toRptr[i].saved_hdr.streamid));
 
 				// Send end_of_audio to local repeater.
 				// Let the repeater re-initialize
-				end_of_audio.streamid = toRptr[i].streamid;
+				end_of_audio.streamid = toRptr[i].saved_hdr.streamid;
 				end_of_audio.ctrl = toRptr[i].sequence | 0x40;
 
-				for (int j=0; j<2; j++)
-					ToModem[i].Write(end_of_audio.title, 27);
+				ToModem[i].Write(end_of_audio.title, 27);
 
-
-				toRptr[i].streamid = 0;
-				toRptr[i].addr.ClearAddress();
 				toRptr[i].last_time = 0;
 			}
 		}
@@ -972,7 +968,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 {
 	int i;
 	for (i=0; i<3; i++) {
-		if (Rptr.mod[i].defined && (toRptr[i].streamid == dsvt.streamid))
+		if (Rptr.mod[i].defined && (toRptr[i].saved_hdr.streamid == dsvt.streamid))
 				break;
 	}
 	// if i==3, then the streamid of this voice packet didn't match any module
@@ -1049,16 +1045,16 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 								if (mod >= 0 && mod < 3 && Rptr.mod[mod].defined) {
 									unsigned char call[CALL_SIZE];
 									memcpy(call, sdheader.hdr.rpt1, CALL_SIZE);
-									memcpy(sdheader.hdr.rpt2, sdheader.hdr.rpt1, CALL_SIZE);
-									memcpy(sdheader.hdr.rpt1, call, CALL_SIZE);
+									memcpy(sdheader.hdr.rpt1, sdheader.hdr.rpt2, CALL_SIZE);
+									memcpy(sdheader.hdr.rpt2, call, CALL_SIZE);
 									calcPFCS(sdheader.title, 56);
+									memcpy(toRptr[mod].saved_hdr.title, sdheader.title, 56);
 									ToModem[mod].Write(sdheader.title, 56);
-									toRptr[mod].streamid = sdheader.streamid;
-									toRptr[mod].addr = fromDstar;
+
 									toRptr[mod].sequence = sdheader.ctrl;
 									time(&toRptr[mod].last_time);
 									if (LOG_QSO)
-										printf("SD Header: id=0x%04x flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s\n", htons(sdheader.streamid), sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx);
+										printf("Slow Data Header: id=0x%04x flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s\n", htons(sdheader.streamid), sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx);
 									sd.ih = sd.size = 0;
 								} else {
 									fprintf(stderr, "Got a valid slow data header but module %d doesn't exist\n", mod);
@@ -1180,11 +1176,6 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 						//}
 					}
 					memcpy(toRptr[i].saved_hdr.title, g2buf.title, 56);
-					toRptr[i].saved_addr = fromDstar;
-
-					/* This is the active streamid */
-					toRptr[i].streamid = g2buf.streamid;
-					toRptr[i].addr = fromDstar;;
 
 					/* time it, in case stream times out */
 					time(&toRptr[i].last_time);
@@ -1199,9 +1190,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 			for (i=0; i<3; i++) {
 				if (Rptr.mod[i].defined) {
 					/* streamid match ? */
-					bool match = (toRptr[i].streamid == g2buf.streamid);
-					if (source_sock >= 0)
-						match = match && (toRptr[i].addr == fromDstar);
+					bool match = (toRptr[i].saved_hdr.streamid == g2buf.streamid);
 					if (match) {
 						if (LOG_DEBUG) {
 							const unsigned int ctrl = g2buf.ctrl & 0x1FU;
@@ -1277,11 +1266,8 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 						if (g2buf.ctrl & 0x40U) {
 							/* clear the saved header */
 							memset(toRptr[i].saved_hdr.title, 0U, 56U);
-							toRptr[i].saved_addr.ClearAddress();
 
 							toRptr[i].last_time = 0;
-							toRptr[i].streamid = 0;
-							toRptr[i].addr.ClearAddress();
 							if (LOG_DEBUG && superframe[i].size()) {
 								printf("Final[%c]: %s\n", 'A'+i, superframe[i].c_str());
 								superframe[i].clear();
@@ -1308,8 +1294,6 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 							continue;
 						/* match saved stream ? */
 						bool match = (toRptr[i].saved_hdr.streamid == g2buf.streamid);
-						if (source_sock >= 0)
-							match = match && (toRptr[i].saved_addr == fromDstar);
 						if (match) {
 							/* repeater module is inactive ?  */
 							if (toRptr[i].last_time==0 && band_txt[i].last_time==0) {
@@ -1321,15 +1305,10 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 								/* send this audio packet to repeater */
 								ToModem[i].Write(g2buf.title, 27);
 
-								/* make sure that any more audio arriving will be accepted */
-								toRptr[i].streamid = g2buf.streamid;
-								toRptr[i].addr = fromDstar;
-
 								/* time it, in case stream times out */
 								time(&toRptr[i].last_time);
 
 								toRptr[i].sequence = g2buf.ctrl;
-
 							}
 							break;
 						}
@@ -1594,9 +1573,6 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 
 												    ToModem[i].Write(dsvt.title, 56);
 
-    												/* This is the active streamid */
-	    											toRptr[i].streamid = dsvt.streamid;
-
 		    										/* time it, in case stream times out */
 			    									time(&toRptr[i].last_time);
 
@@ -1749,9 +1725,6 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 							calcPFCS(dsvt.title, 56);
 
 							ToModem[i].Write(dsvt.title, 56);
-
-							/* This is the active streamid */
-							toRptr[i].streamid = dsvt.streamid;
 
 							/* time it, in case stream times out */
 							time(&toRptr[i].last_time);
@@ -1937,7 +1910,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 						}
 						break;
 					}
-					else if (toRptr[i].streamid == dsvt.streamid) {	// or maybe this is cross-banding data
+					else if (toRptr[i].saved_hdr.streamid == dsvt.streamid) {	// or maybe this is cross-banding data
 						ToModem[i].Write(dsvt.title, 27);
 
 						/* timeit */
@@ -1948,8 +1921,6 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 						/* End of stream ? */
 						if (dsvt.ctrl & 0x40) {
 							toRptr[i].last_time = 0;
-							toRptr[i].streamid = 0;
-							toRptr[i].addr.Clear();
 						}
 						break;
 					}
@@ -2512,13 +2483,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 		// the repeater modules run on these ports
 		memset(toRptr[i].saved_hdr.title, 0, 56);
-		toRptr[i].saved_addr.Clear();
-
-		toRptr[i].streamid = 0;
-		toRptr[i].addr.Clear();
-
 		toRptr[i].last_time = 0;
-
 		toRptr[i].sequence = 0x0;
 	}
 

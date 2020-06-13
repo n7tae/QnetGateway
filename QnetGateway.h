@@ -44,10 +44,6 @@ using STOREMOTEG2 = struct to_remote_g2_tag {
 using STOREPEATER = struct torepeater_tag {
 	// help with header re-generation
 	SDSVT saved_hdr; // repeater format
-	CSockAddress saved_addr;
-
-	unsigned short streamid;
-	CSockAddress addr;
 	time_t last_time;
 	unsigned char sequence;
 };
