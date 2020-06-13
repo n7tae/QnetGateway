@@ -1105,7 +1105,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				sd.im += 3;
 				if (sd.im >= 20) {
 					sd.message[20] = '\0';
-					if (showLastHeard && (i < 3)) {
+					if (showLastHeard && (i < 3) && memcmp(toRptr[i].saved_hdr.hdr.sfx, "RPTR", 4) && memcmp(sd.message, "VIA SMARTGP", 11)) {
 						char call[CALL_SIZE+1];
 						memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
 						call[CALL_SIZE] = '\0';
