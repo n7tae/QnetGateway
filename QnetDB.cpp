@@ -123,7 +123,7 @@ bool CQnetDB::UpdatePosition(const char *callsign, const char *maidenhead, doubl
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::UpdatePosition error: %s", eMsg);
+		fprintf(stderr, "CQnetDB::UpdatePosition error: %s\n", eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -135,7 +135,7 @@ bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
 {
 	if (NULL == db)
 		return false;
-	std::string sql("INSERT OR REPLACE INTO LHEARD (callsign,maidenhead,latitude,longitude,lasttime) VALUES('");
+	std::string sql("INSERT OR REPLACE INTO LHEARD (callsign,message,lasttime) VALUES('");
 	sql.append(callsign);
 	sql.append("','");
 	sql.append(message);
@@ -144,7 +144,7 @@ bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::UpdateMessage error: %s", eMsg);
+		fprintf(stderr, "CQnetDB::UpdateMessage error: %s\n", eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
