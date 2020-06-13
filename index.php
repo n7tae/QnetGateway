@@ -175,7 +175,7 @@ foreach($showlist as $section) {
 			if ($stmnt = $db->prepare($ss)) {
 				if ($result = $stmnt->execute()) {
 					while ($row = $result->FetchArray(SQLITE3_NUM)) {
-						$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].'  '.$row[3].'  '.$row[4].'    '.Maidenhead($row[5], $row[6], $row[7]).'    '.SecToString(intval($row[8])).'<br>';
+						$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].'  '.$row[3].'  '.$row[4].'   '.Maidenhead($row[5], $row[6], $row[7]).'     '.SecToString(intval($row[8])).'<br>';
 						echo str_replace('*', ' ', str_replace(' ', '&nbsp;', $rstr)), "\n";
 					}
 					$result->finalize();
