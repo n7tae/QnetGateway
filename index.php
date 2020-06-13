@@ -92,11 +92,11 @@ function MyAndSfxToQrz(string $my, string $sfx)
 	}
 	return $my;
 }
-//https://www.google.com/maps?q=+52.37745,+001.99960
-function Maidenhead(string $maid, double $lat, double $lon)
+//example URL: https://www.google.com/maps?q=+52.37745,+001.99960
+function Maidenhead(string $maid, float $lat, float $lon)
 {
 	$str = trim($maid);
-	if (7 != strlen($str))
+	if (6 > strlen($str))
 		return $maid;
 	if ($lat >= 0.0)
 		$slat = '+'.$lat;
@@ -166,7 +166,7 @@ foreach($showlist as $section) {
 			break;
 		case 'LH':
 			echo 'Last Heard:<br><code>', "\n";
-			$rstr = 'MyCall/Sfx   Message             Mod Via       Location Time<br>';
+			$rstr = 'MyCall/Sfx    Message             Mod  Via       Location Time<br>';
 			echo str_replace(' ', '&nbsp;', $rstr), "\n";
 			$dbname = $cfgdir.'/qn.db';
 			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
@@ -175,7 +175,7 @@ foreach($showlist as $section) {
 			if ($stmnt = $db->prepare($ss)) {
 				if ($result = $stmnt->execute()) {
 					while ($row = $result->FetchArray(SQLITE3_NUM)) {
-						$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].' '.$row[3].' '.$row[4].' '.Maidenhead($row[5], $row[6], $row[7]).' '.SecToString(intval($row[4])).'<br>';
+						$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].' '.$row[3].' '.$row[4].' '.Maidenhead($row[5], $row[6], $row[7]).'   '.SecToString(intval($row[8])).'<br>';
 						echo str_replace('*', ' ', str_replace(' ', '&nbsp;', $rstr)), "\n";
 					}
 					$result->finalize();
