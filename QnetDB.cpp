@@ -37,11 +37,11 @@ bool CQnetDB::Init()
 
 	std::string sql("CREATE TABLE IF NOT EXISTS LHEARD("
 						"callsign	TEXT PRIMARY KEY, "
-						"sfx		TEXT, "
-						"message    TEXT, "
-						"maidenhead TEXT, "
-						"latitude   REAL, "
-						"longitude  REAL, "
+						"sfx		TEXT DEFAULT '    ', "
+						"message    TEXT DEFAULT '                    ', "
+						"maidenhead TEXT DEFAULT '      ', "
+						"latitude   REAL DEFAULT 0.0, "
+						"longitude  REAL DEFAULT 0.0, "
 						"module		TEXT, "
 						"reflector	TEXT, "
 						"lasttime	INT NOT NULL"
@@ -81,22 +81,52 @@ bool CQnetDB::Init()
 	return false;
 }
 
+static int countcallback(void *count, int /*argc*/, char **argv, char **/*azColName*/) {
+    auto c = (int *)count;
+    *c = atoi(argv[0]);
+    return 0;
+}
+
 bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module, const char *reflector)
 {
 	if (NULL == db)
 		return false;
-	std::string sql("INSERT OR REPLACE INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('");
+	std::string sql("SELECT COUNT(*) FROM LHEARD WHERE callsign='");
 	sql.append(callsign);
-	sql.append("','");
-	sql.append(sfx);
-	sql.append("','");
-	sql.append(1, module);
-	sql.append("','");
-	sql.append(reflector);
-	sql.append("',");
-	sql.append("strftime('%s','now'));");
+	sql.append("';");
+
+	int count = 0;
 
 	char *eMsg;
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), countcallback, &count, &eMsg)) {
+		fprintf(stderr, "CQnetDB::Count error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
+	if (count) {
+		sql.assign("UPDATE LHEARD SET (sfx,module,reflector,lasttime) VALUES('");
+		sql.append(sfx);
+		sql.append("','");
+		sql.append(1, module);
+		sql.append("','");
+		sql.append(reflector);
+		sql.append("strftime('%s','now')) WHERE callsign='");
+		sql.append(callsign);
+		sql.append("';");
+	} else {
+		sql.assign("INSERT INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('");
+		sql.append(callsign);
+		sql.append("','");
+		sql.append(sfx);
+		sql.append("','");
+		sql.append(1, module);
+		sql.append("','");
+		sql.append(reflector);
+		sql.append("',");
+		sql.append("strftime('%s','now'));");
+	}
+
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
 		fprintf(stderr, "CQnetDB::UpdateLH error: %s\n", eMsg);
 		sqlite3_free(eMsg);
@@ -110,16 +140,16 @@ bool CQnetDB::UpdatePosition(const char *callsign, const char *maidenhead, doubl
 {
 	if (NULL == db)
 		return false;
-	std::string sql("INSERT OR REPLACE INTO LHEARD (callsign,maidenhead,latitude,longitude,lasttime) VALUES('");
-	sql.append(callsign);
-	sql.append("','");
+	std::string sql("UPDATE LHEARD SET (maidenhead,latitude,longitude,lasttime) VALUES('");
 	sql.append(maidenhead);
 	sql.append("',");
 	sql.append(std::to_string(latitude));
 	sql.append(",");
 	sql.append(std::to_string(longitude));
 	sql.append(",");
-	sql.append("strftime('%s','now'));");
+	sql.append("strftime('%s','now')) WHERE callsign='");
+	sql.append(callsign);
+	sql.append("';");
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
@@ -135,12 +165,12 @@ bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
 {
 	if (NULL == db)
 		return false;
-	std::string sql("INSERT OR REPLACE INTO LHEARD (callsign,message,lasttime) VALUES('");
-	sql.append(callsign);
-	sql.append("','");
+	std::string sql("UPDATE LHEARD SET (message,lasttime) VALUES('");
 	sql.append(message);
 	sql.append("',");
-	sql.append("strftime('%s','now'));");
+	sql.append("strftime('%s','now')) WHERE callsign='");
+	sql.append(callsign);
+	sql.append("';");
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
@@ -369,12 +399,6 @@ void CQnetDB::ClearGW()
 	}
 }
 
-static int countcallback(void *count, int /*argc*/, char **argv, char **/*azColName*/) {
-    auto c = (int *)count;
-    *c = atoi(argv[0]);
-    return 0;
-}
-
 int CQnetDB::Count(const char *table)
 {
 	if (NULL == db)
@@ -387,10 +411,10 @@ int CQnetDB::Count(const char *table)
 	int count = 0;
 
 	char *eMsg;
-    if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), countcallback, &count, &eMsg)) {
-        fprintf(stderr, "CQnetDB::Count error: %s\n", eMsg);
-        sqlite3_free(eMsg);
-    }
+	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), countcallback, &count, &eMsg)) {
+		fprintf(stderr, "CQnetDB::Count error: %s\n", eMsg);
+		sqlite3_free(eMsg);
+	}
 
     return count;
 }
