@@ -92,6 +92,23 @@ function MyAndSfxToQrz(string $my, string $sfx)
 	}
 	return $my;
 }
+//https://www.google.com/maps?q=+52.37745,+001.99960
+function Maidenhead(string $maid, double $lat, double $lon)
+{
+	$str = trim($maid);
+	if (7 != strlen($str))
+		return $maid;
+	if ($lat >= 0.0)
+		$slat = '+'.$lat;
+	else
+		$slat = $lat;
+	if ($lon >= 0.0)
+		$slon = '+'.$lon;
+	else
+		$slon = $lon;
+	$str = '<a*target="_blank"*href="https://www.google.com/maps?q='.$slat.','.$slon.'">'.$maid.'</a>';
+	return $str;
+}
 
 ParseKVFile($cfgdir.'/qn.cfg', $cfg);
 ParseKVFile($cfgdir.'/defaults', $defaults);
@@ -149,15 +166,16 @@ foreach($showlist as $section) {
 			break;
 		case 'LH':
 			echo 'Last Heard:<br><code>', "\n";
-			$rstr = 'MyCall/Sfx   Mod Via       Time<br>';
+			$rstr = 'MyCall/Sfx   Message             Mod Via       Location Time<br>';
 			echo str_replace(' ', '&nbsp;', $rstr), "\n";
 			$dbname = $cfgdir.'/qn.db';
 			$db = new SQLite3($dbname, SQLITE3_OPEN_READONLY);
-			$ss = 'SELECT callsign,sfx,module,reflector,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 5 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
+			//               0       1    2      3        4        5           6       7        8
+			$ss = 'SELECT callsign,sfx,message,module,reflector,maidenhead,latitude,longitude,strftime("%s","now")-lasttime FROM LHEARD ORDER BY 9 LIMIT '.GetCFGValue('dash_lastheard_count').' ';
 			if ($stmnt = $db->prepare($ss)) {
 				if ($result = $stmnt->execute()) {
 					while ($row = $result->FetchArray(SQLITE3_NUM)) {
-						$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].'  '.$row[3].' '.SecToString(intval($row[4])).'<br>';
+						$rstr = MyAndSfxToQrz($row[0], $row[1]).' '.$row[2].' '.$row[3].' '.$row[4].' '.Maidenhead($row[5], $row[6], $row[7]).' '.SecToString(intval($row[4])).'<br>';
 						echo str_replace('*', ' ', str_replace(' ', '&nbsp;', $rstr)), "\n";
 					}
 					$result->finalize();
@@ -254,6 +272,6 @@ foreach($showlist as $section) {
 }
 ?>
 <br>
-<p align="right">QnetGateway Dashboard Version 525 Copyright &copy; by Thomas A. Early, N7TAE.</p>
+<p align="right">QnetGateway Dashboard Version 613 Copyright &copy; by Thomas A. Early, N7TAE.</p>
 </body>
 </html>
