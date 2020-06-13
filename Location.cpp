@@ -26,8 +26,8 @@
 
 CLocation::CLocation()
 {
-	crc = std::regex("^.*([0-9]{1,2})([0-9]{2}\\.[0-9]{1,})([NS])/([0-9]{1,3})([0-9]{2}\\.[0-9]{1,})([WE]).*$", std::regex::extended);
-	rmc = std::regex("^.*,([0-9]{1,2})([0-9]{2}\\.[0-9]{1,}),([NS]),([0-9]{1,3})([0-9]{2}\\.[0-9]{1,}),([WE]),.*$", std::regex::extended);
+	crc = std::regex("[^0-9]([0-9]{1,2})([0-9]{2}\\.[0-9]{1,})([NS])/([0-9]{1,3})([0-9]{2}\\.[0-9]{1,})([WE])", std::regex::extended);
+	rmc = std::regex("[^0-9]([0-9]{1,2})([0-9]{2}\\.[0-9]{1,}),([NS]),([0-9]{1,3})([0-9]{2}\\.[0-9]{1,}),([WE]),", std::regex::extended);
 }
 
 // returns true on success
@@ -38,9 +38,9 @@ bool CLocation::Parse(const char *instr)
 	trim(s);
 
 	if (0 == s.find("$$CRC")) {
-		std::regex_match(s.c_str(), cm, crc, std::regex_constants::match_default);
+		std::regex_search(s.c_str(), cm, crc, std::regex_constants::match_default);
 	} else if ((0 == s.find("$GPGGA")) || (0 == s.find("$GPRMC"))) {
-		std::regex_match(s.c_str(), cm, rmc, std::regex_constants::match_default);
+		std::regex_search(s.c_str(), cm, rmc, std::regex_constants::match_default);
 	} else {
 		if ('$' == s.at(0))
 			std::cerr << "can't parse GPS string: " << s << std::endl;
