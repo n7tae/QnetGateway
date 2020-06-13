@@ -105,7 +105,7 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 	}
 
 	if (count) {
-		sql.assign("UPDATE LHEARD SET (sfx,module,reflector,lasttime) VALUES('");
+		sql.assign("UPDATE LHEARD SET (sfx,module,reflector,lasttime) = ('");
 		sql.append(sfx);
 		sql.append("','");
 		sql.append(1, module);
@@ -140,7 +140,7 @@ bool CQnetDB::UpdatePosition(const char *callsign, const char *maidenhead, doubl
 {
 	if (NULL == db)
 		return false;
-	std::string sql("UPDATE LHEARD SET (maidenhead,latitude,longitude,lasttime) VALUES('");
+	std::string sql("UPDATE LHEARD SET (maidenhead,latitude,longitude,lasttime) = ('");
 	sql.append(maidenhead);
 	sql.append("',");
 	sql.append(std::to_string(latitude));
@@ -165,7 +165,7 @@ bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
 {
 	if (NULL == db)
 		return false;
-	std::string sql("UPDATE LHEARD SET (message,lasttime) VALUES('");
+	std::string sql("UPDATE LHEARD SET (message,lasttime) = ('");
 	sql.append(message);
 	sql.append("',");
 	sql.append("strftime('%s','now')) WHERE callsign='");
