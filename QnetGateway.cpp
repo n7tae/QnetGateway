@@ -1033,25 +1033,25 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				sd.first = false;
 				break;
 			case 0x50U:	// header
-				if (3 == i) {
-					if (sd.size + sd.ih < 42) {
+				if (3 == i) {	// only when the streamid can't be matched
+					if (sd.size + sd.ih < 42) {	// make sure there's room
 						memcpy(sd.header+sd.ih, c+1, size);
 						sd.ih += size;
-						if (sd.ih == 41) {
+						if (sd.ih == 41) {	// we have liftoff, calculate the checksum
 							memcpy(sdheader.hdr.flag, sd.header, 39);
 							calcPFCS(sdheader.title, 56);
-							if (0 == memcmp(sd.header+39, sdheader.hdr.pfcs, 2)) {
-								int mod = sdheader.hdr.rpt2[CALL_SIZE-1] - 'A';
+							if (0 == memcmp(sd.header+39, sdheader.hdr.pfcs, 2)) {	// checksum looks okay
+								printf("Got a slow data header: %39.39s\n", sd.header);
+								int mod = sdheader.hdr.rpt2[CALL_SIZE-1] - 'A';		// the sd header lists the gateway first, so we check here to see if there's a match
 								if (mod >= 0 && mod < 3 && Rptr.mod[mod].defined) {
-									unsigned char call[CALL_SIZE];
+									unsigned char call[CALL_SIZE];	// swap rpt1 and rpt2
 									memcpy(call, sdheader.hdr.rpt1, CALL_SIZE);
 									memcpy(sdheader.hdr.rpt1, sdheader.hdr.rpt2, CALL_SIZE);
 									memcpy(sdheader.hdr.rpt2, call, CALL_SIZE);
 									calcPFCS(sdheader.title, 56);
-									memcpy(toRptr[mod].saved_hdr.title, sdheader.title, 56);
-									ToModem[mod].Write(sdheader.title, 56);
-
-									toRptr[mod].sequence = sdheader.ctrl;
+									memcpy(toRptr[mod].saved_hdr.title, sdheader.title, 56);	// copy to enable this and subsequent voice pacekets
+									ToModem[mod].Write(sdheader.title, 56);						// send it to the mdeom
+									toRptr[mod].sequence = dsvt.ctrl;
 									time(&toRptr[mod].last_time);
 									if (LOG_QSO)
 										printf("Slow Data Header: id=0x%04x flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s\n", htons(sdheader.streamid), sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx);

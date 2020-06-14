@@ -37,13 +37,18 @@ bool CLocation::Parse(const char *instr)
 	std::cmatch cm;
 	trim(s);
 
+	bool success;
 	if (0 == s.find("$$CRC")) {
-		std::regex_search(s.c_str(), cm, crc, std::regex_constants::match_default);
+		success = std::regex_search(s.c_str(), cm, crc, std::regex_constants::match_default);
 	} else if ((0 == s.find("$GPGGA")) || (0 == s.find("$GPRMC"))) {
-		std::regex_search(s.c_str(), cm, rmc, std::regex_constants::match_default);
+		success = std::regex_search(s.c_str(), cm, rmc, std::regex_constants::match_default);
 	} else {
-		if ('$' == s.at(0))
-			std::cerr << "can't parse GPS string: " << s << std::endl;
+		std::cerr << "Unrecognized GPS string: " << s << std::endl;
+		return false;
+	}
+
+	if (! success) {
+		std::cerr << "Unsuccessful gps parse of '" << s << "'" << std::endl;
 		return false;
 	}
 
@@ -70,7 +75,7 @@ bool CLocation::Parse(const char *instr)
 
 	latitude = deg + min / 60.0;
 	if ('S' == cm[3])
-		latitude = 0 - latitude;
+		latitude = 0.0 - latitude;
 
 	deg = stod(cm[4]);
 	if (180.0 < deg) {
@@ -86,7 +91,7 @@ bool CLocation::Parse(const char *instr)
 
 	longitude = deg + min / 60.0;
 	if ('W' == cm[6])
-		longitude = 0 - longitude;
+		longitude = 0.0 - longitude;
 
 	double lat = latitude + 90.0;
 	double lon = longitude + 180.0;
