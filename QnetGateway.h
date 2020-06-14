@@ -187,6 +187,7 @@ private:
 	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
+	bool Printable(unsigned char *string);
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, const unsigned short sid);
 	void ProcessIncomingSD(const SDSVT &dsvt);

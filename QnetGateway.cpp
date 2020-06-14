@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-613");
+const std::string GW_VERSION("QnetGateway-614");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -69,6 +69,18 @@ int CQnetGateway::FindIndex(const int i) const
         }
     }
     return index;
+}
+
+bool CQnetGateway::Printable(unsigned char *s)
+{
+	bool rval = false;
+	for (unsigned i=0; s[i]; i++) {
+		if (0 == isprint(s[i])) {
+			rval = true;
+			s[i] = '?';
+		}
+	}
+	return rval;
 }
 
 bool CQnetGateway::VoicePacketIsSync(const unsigned char *text) const
@@ -1003,6 +1015,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					if (c[1]=='\r' || c[2]=='\r') {
 						sd.gps[sd.ig + ((c[1] == '\r') ? 0 : 1)] = '\0';
 						if (i < 3) {
+							Printable(sd.gps);
 							if (showLastHeard && gps.Parse((const char *)&sd.gps)) {
 								char call[CALL_SIZE+1];
 								memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
@@ -1087,6 +1100,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 					else
 						sd.gps[sd.ig+2] = '\0';
 					if (i < 3) {
+						Printable(sd.gps);
 						if (showLastHeard && gps.Parse((const char *)&sd.gps)) {
 							char call[CALL_SIZE+1];
 							memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
@@ -1105,6 +1119,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				sd.im += 3;
 				if (sd.im >= 20) {
 					sd.message[20] = '\0';
+					Printable(sd.message);
 					if (showLastHeard && (i < 3) && memcmp(toRptr[i].saved_hdr.hdr.sfx, "RPTR", 4) && memcmp(sd.message, "VIA SMARTGP", 11)) {
 						char call[CALL_SIZE+1];
 						memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
