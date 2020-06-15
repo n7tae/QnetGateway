@@ -36,11 +36,13 @@ bool CLocation::Parse(const char *instr)
 	std::string s(instr);
 	std::cmatch cm;
 	trim(s);
+	if (s.size() < 20)
+		return false;
 
 	bool success;
-	if (0 == s.find("$$CRC")) {
+	if (3 > s.find("$$CRC")) {
 		success = std::regex_search(s.c_str(), cm, crc, std::regex_constants::match_default);
-	} else if ((0 == s.find("$GPGGA")) || (0 == s.find("$GPRMC"))) {
+	} else if ((3 > s.find("$GPGGA")) || (3 > s.find("$GPRMC"))) {
 		success = std::regex_search(s.c_str(), cm, rmc, std::regex_constants::match_default);
 	} else {
 		std::cerr << "Unrecognized GPS string: " << s << std::endl;

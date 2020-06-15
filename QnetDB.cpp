@@ -48,7 +48,7 @@ bool CQnetDB::Init()
 					") WITHOUT ROWID;");
 
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open create table LHEARD error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::Init [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -62,7 +62,7 @@ bool CQnetDB::Init()
 				") WITHOUT ROWID;");
 
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open create table LINKSTATUS error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::Init [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -74,7 +74,7 @@ bool CQnetDB::Init()
 				") WITHOUT ROWID;");
 
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Open create table GATEWAYS error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::Init [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -99,7 +99,7 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), countcallback, &count, &eMsg)) {
-		fprintf(stderr, "CQnetDB::Count error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::UpdateLH [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -129,7 +129,7 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 	}
 
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::UpdateLH error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::UpdateLH [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -154,7 +154,7 @@ bool CQnetDB::UpdatePosition(const char *callsign, const char *maidenhead, doubl
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::UpdatePosition error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::UpdatePosition [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -175,7 +175,7 @@ bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::UpdateMessage error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::UpdateMessage [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -201,7 +201,7 @@ bool CQnetDB::UpdateLS(const char *address, const char from_mod, const char *to_
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::UpdateLS error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::UpdateLS [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -225,7 +225,7 @@ bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short por
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::UpdateGW error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::UpdateGW [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -268,7 +268,7 @@ bool CQnetDB::DeleteLS(const char *address)
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg)) {
-		fprintf(stderr, "CQnetDB::DeleteLS error: %s\n", eMsg);
+		fprintf(stderr, "CQnetDB::DeleteLS [%s] error: %s\n", sql.c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -287,7 +287,7 @@ bool CQnetDB::FindLS(const char mod, std::list<CLink> &linklist)
 	sqlite3_stmt *stmt;
 	int rval = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
 	if (SQLITE_OK != rval) {
-		fprintf(stderr, "CQnetDB::FindLS prepare_v2 error\n");
+		fprintf(stderr, "CQnetDB::FindLS [%s] error\n", sql.c_str());
 		return true;
 	}
 
