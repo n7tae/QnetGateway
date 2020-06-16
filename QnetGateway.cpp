@@ -1054,7 +1054,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 							memcpy(sdheader.hdr.flag, sd.header, 39);
 							calcPFCS(sdheader.title, 56);
 							if (0 == memcmp(sd.header+39, sdheader.hdr.pfcs, 2)) {	// checksum looks okay
-								printf("Got a slow data header: %39.39s\n", sd.header);
+								printf("Got a slow data header: %36.36s\n", sd.header+3);
 								int mod = sdheader.hdr.rpt2[CALL_SIZE-1] - 'A';		// the sd header lists the gateway first, so we check here to see if there's a match
 								if (mod >= 0 && mod < 3 && Rptr.mod[mod].defined) {
 									unsigned char call[CALL_SIZE];	// swap rpt1 and rpt2
