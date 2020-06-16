@@ -26,8 +26,7 @@
 
 CLocation::CLocation()
 {
-	crc = std::regex("[^0-9]([0-9]{1,2})([0-9]{2}\\.[0-9]{1,})([NS])/([0-9]{1,3})([0-9]{2}\\.[0-9]{1,})([WE])", std::regex::extended);
-	rmc = std::regex("[^0-9]([0-9]{1,2})([0-9]{2}\\.[0-9]{1,}),([NS]),([0-9]{1,3})([0-9]{2}\\.[0-9]{1,}),([WE]),", std::regex::extended);
+	gps = std::regex("[^0-9]([0-9]{1,2})([0-9]{2}\\.[0-9]{1,}),?([NS])[/,]([0-9]{1,3})([0-9]{2}\\.[0-9]{1,}),?([WE])", std::regex::extended);
 }
 
 // returns true on success
@@ -39,17 +38,7 @@ bool CLocation::Parse(const char *instr)
 	if (s.size() < 20)
 		return false;
 
-	bool success;
-	if (3 > s.find("$$CRC")) {
-		success = std::regex_search(s.c_str(), cm, crc, std::regex_constants::match_default);
-	} else if ((3 > s.find("$GPGGA")) || (3 > s.find("$GPRMC"))) {
-		success = std::regex_search(s.c_str(), cm, rmc, std::regex_constants::match_default);
-	} else {
-		std::cerr << "Unrecognized GPS string: " << s << std::endl;
-		return false;
-	}
-
-	if (! success) {
+	if (! std::regex_search(s.c_str(), cm, gps, std::regex_constants::match_default)) {
 		std::cerr << "Unsuccessful gps parse of '" << s << "'" << std::endl;
 		return false;
 	}

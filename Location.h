@@ -29,5 +29,5 @@ public:
 private:
 	char maidenhead[7];
 	double latitude, longitude;
-	std::regex crc, rmc;
+	std::regex gps;
 };
