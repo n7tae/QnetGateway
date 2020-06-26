@@ -879,6 +879,8 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt)
 					} else {
 						sd.ig += size;
 						sd.size -= size;
+						sd.gps[sd.ig] = 0;
+						printf("gps=%s\n", (const char *)sd.gps);
 					}
 				} else {
 					printf("GPS string is too large at %d bytes\n", sd.ig + sd.size);
@@ -942,6 +944,7 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt)
 				} else {
 					sd.ig += sd.size;
 					sd.gps[sd.ig] = 0;
+					printf("gps=%s\n", (const char *)sd.gps);
 				}
 				break;
 			case 0x40U:	// message
@@ -966,6 +969,9 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt)
 						qnDB.UpdateMessage(call, (const char *)&(sd.message));
 					}
 					sd.im = 0;
+				} else {
+					sd.message[sd.im] = '\0';
+					printf("msg=%s\n", (const char *)sd.message);
 				}
 				break;
 		}
