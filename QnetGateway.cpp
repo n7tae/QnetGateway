@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-616");
+const std::string GW_VERSION("QnetGateway-626");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -600,24 +600,7 @@ void CQnetGateway::ProcessTimeouts()
 				if (to_remote_g2[i].toDstar.AddressIsZero())
 					printf("Inactivity from local rptr module %c, removing stream id %04x\n", 'A'+i, ntohs(band_txt[i].streamID));
 
-				band_txt[i].streamID = 0;
-				band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0x0;
-				band_txt[i].lh_mycall[0] = '\0';
-				band_txt[i].lh_sfx[0] = '\0';
-				band_txt[i].lh_yrcall[0] = '\0';
-				band_txt[i].lh_rpt1[0] = '\0';
-				band_txt[i].lh_rpt2[0] = '\0';
-
-				band_txt[i].last_time = 0;
-
-				band_txt[i].txt[0] = '\0';
-				band_txt[i].txt_cnt = 0;
-
-				band_txt[i].dest_rptr[0] = '\0';
-
-				band_txt[i].num_dv_frames = 0;
-				band_txt[i].num_dv_silent_frames = 0;
-				band_txt[i].num_bit_errors = 0;
+				band_txt[i].Initialize();
 			}
 		}
 
@@ -682,301 +665,7 @@ bool CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod, std::s
 	return false;
 }
 
-// new_group is true if we are processing the first voice packet of a 2-voice packet pair. The high order nibble of the first byte of
-// this first packet specifed the type of slow data that is being sent.
-// the to_print is an integer that counts down how many 2-voice-frame pairs remain to be processed.
-// ABC_grp means that we are processing a 20-character message.
-// C_seen means that we are processing the last 2-voice-frame packet on a 20 character message.
-void CQnetGateway::ProcessSlowData(unsigned char *data, const unsigned short sid)
-{
-	/* extract 20-byte RADIO ID */
-	if (VoicePacketIsSync(data))
-		return;
-
-	// first, unscramble
-	const unsigned char c1 = data[0] ^ 0x70u;
-	const unsigned char c2 = data[1] ^ 0x4fu;
-	const unsigned char c3 = data[2] ^ 0x93u;
-
-	for (int i=0; i<3; i++) {
-		if (band_txt[i].streamID == sid) {
-			if (new_group[i]) {
-				const unsigned char header_type = c1 & 0xf0;
-
-				//                 header                   squelch
-				if ((header_type == 0x50) || (header_type == 0xc0)) {
-					new_group[i] = false;
-					to_print[i] = 0;
-					ABC_grp[i] = false;
-				}
-				else if (header_type == 0x30) { /* GPS or GPS id or APRS */
-					new_group[i] = false;
-					to_print[i] = c1 & 0x0f;
-					ABC_grp[i] = false;
-					if (to_print[i] > 5)
-						to_print[i] = 5;
-					else if (to_print[i] < 1)
-						to_print[i] = 1;
-
-					if ((to_print[i] > 1) && (to_print[i] <= 5)) {
-						/* something went wrong? all bets are off */
-						if (band_txt[i].temp_line_cnt > 200) {
-							printf("Reached the limit in the OLD gps mode\n");
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						}
-
-						/* fresh GPS string, re-initialize */
-						if ((to_print[i] == 5) && (c2 == '$')) {
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						}
-
-						/* do not copy CR, NL */
-						if ((c2 != '\r') && (c2 != '\n')) {
-							band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c2;
-						}
-						if ((c3 != '\r') && (c3 != '\n')) {
-							band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c3;
-						}
-
-						if ((c2 == '\r') || (c3 == '\r')) {
-							if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-								memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-								band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-							} else if (band_txt[i].temp_line[0] != '$') {
-								memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-								band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-								if (APRS_ENABLE && !band_txt[i].is_gps_sent)
-									gps_send(i);
-							}
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						} else if ((c2 == '\n') || (c3 == '\n')) {
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						}
-						to_print[i] -= 2;
-					} else {
-						/* something went wrong? all bets are off */
-						if (band_txt[i].temp_line_cnt > 200) {
-							printf("Reached the limit in the OLD gps mode\n");
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						}
-
-						/* do not copy CR, NL */
-						if ((c2 != '\r') && (c2 != '\n')) {
-							band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c2;
-						}
-
-						if (c2 == '\r') {
-							if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-								memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-								band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-							} else if (band_txt[i].temp_line[0] != '$') {
-								memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-								band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-								if (APRS_ENABLE && !band_txt[i].is_gps_sent)
-									gps_send(i);
-							}
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						} else if (c2 == '\n') {
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						}
-						to_print[i] --;
-					}
-				}
-				else if (header_type == 0x40) { /* ABC text */
-					new_group[i] = false;
-					to_print[i] = 3;
-					ABC_grp[i] = true;
-					C_seen[i] = ((c1 & 0x0f) == 0x03) ? true : false;
-
-					band_txt[i].txt[band_txt[i].txt_cnt++] = c2;
-
-					band_txt[i].txt[band_txt[i].txt_cnt++] = c3;
-
-					/* We should NOT see any more text,
-						if we already processed text,
-						so blank out the codes. */
-					if (band_txt[i].sent_key_on_msg) {
-						data[0] = 0x70;
-						data[1] = 0x4f;
-						data[2] = 0x93;
-					}
-
-					if (band_txt[i].txt_cnt >= 20) {
-						band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
-						band_txt[i].txt_cnt = 0;
-					}
-				}
-				else {	// header type is not header, squelch, gps or message
-					new_group[i] = false;
-					to_print[i] = 0;
-					ABC_grp[i] = false;
-				}
-			}
-			else { // not a new_group, this is the second of a two-voice-frame pair
-				if (! band_txt[i].sent_key_on_msg && vPacketCount[i] > 100) {
-					// 100 voice packets received and still no 20-char message!
-					/*** if YRCALL is CQCQCQ, set dest_rptr ***/
-					band_txt[i].txt[0] = '\0';
-					if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0)
-						set_dest_rptr(i+'A', band_txt[i].dest_rptr);
-
-					int x = FindIndex(i);
-					if (x >= 0)
-						ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], IS_HF[i] ? "" : band_txt[i].dest_rptr, band_txt[i].txt);
-					band_txt[i].sent_key_on_msg = true;
-				}
-				if (to_print[i] == 3) {
-					if (ABC_grp[i]) {
-						band_txt[i].txt[band_txt[i].txt_cnt++] = c1;
-
-						band_txt[i].txt[band_txt[i].txt_cnt++] = c2;
-
-						band_txt[i].txt[band_txt[i].txt_cnt++] = c3;
-
-						/* We should NOT see any more text,
-							if we already processed text,
-							so blank out the codes. */
-						if (band_txt[i].sent_key_on_msg) {
-							data[0] = 0x70;
-							data[1] = 0x4f;
-							data[2] = 0x93;
-						}
-
-						if ((band_txt[i].txt_cnt >= 20) || C_seen[i]) {
-							band_txt[i].txt[band_txt[i].txt_cnt] = '\0';
-							if ( ! band_txt[i].sent_key_on_msg) {
-								/*** if YRCALL is CQCQCQ, set dest_rptr ***/
-								if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0)
-									set_dest_rptr(i+'A', band_txt[i].dest_rptr);
-
-								// we have the 20-character message, send it to the server...
-								int x = FindIndex(i);
-								if (x >= 0)
-									ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], IS_HF[i] ? "" : band_txt[i].dest_rptr, band_txt[i].txt);
-								band_txt[i].sent_key_on_msg = true;
-							}
-							band_txt[i].txt_cnt = 0;
-						}
-						if (C_seen[i])
-							C_seen[i] = false;
-					} else {
-						/* something went wrong? all bets are off */
-						if (band_txt[i].temp_line_cnt > 200) {
-							printf("Reached the limit in the OLD gps mode\n");
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						}
-
-						/* do not copy carrige return or newline */
-						if ((c1 != '\r') && (c1 != '\n')) {
-							band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c1;
-						}
-						if ((c2 != '\r') && (c2 != '\n')) {
-							band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c2;
-						}
-						if ((c3 != '\r') && (c3 != '\n')) {
-							band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c3;
-						}
-
-						if ( (c1 == '\r') || (c2 == '\r') || (c3 == '\r') ) {
-							if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-								memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-								band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-							} else if (band_txt[i].temp_line[0] != '$') {
-								memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-								band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-								if (APRS_ENABLE && !band_txt[i].is_gps_sent)
-									gps_send(i);
-							}
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						}
-						else if ((c1 == '\n') || (c2 == '\n') ||(c3 == '\n')) {
-							band_txt[i].temp_line[0] = '\0';
-							band_txt[i].temp_line_cnt = 0;
-						}
-					}
-				} else if (to_print[i] == 2) {
-					/* something went wrong? all bets are off */
-					if (band_txt[i].temp_line_cnt > 200) {
-						printf("Reached the limit in the OLD gps mode\n");
-						band_txt[i].temp_line[0] = '\0';
-						band_txt[i].temp_line_cnt = 0;
-					}
-
-					/* do not copy CR, NL */
-					if ((c1 != '\r') && (c1 != '\n')) {
-						band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c1;
-						band_txt[i].temp_line_cnt++;
-					}
-					if ((c2 != '\r') && (c2 != '\n')) {
-						band_txt[i].temp_line[band_txt[i].temp_line_cnt] = c2;
-						band_txt[i].temp_line_cnt++;
-					}
-
-					if ((c1 == '\r') || (c2 == '\r')) {
-						if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-							memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-							band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-						} else if (band_txt[i].temp_line[0] != '$') {
-							memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-							band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-							if (APRS_ENABLE && !band_txt[i].is_gps_sent)
-								gps_send(i);
-						}
-						band_txt[i].temp_line[0] = '\0';
-						band_txt[i].temp_line_cnt = 0;
-					} else if ((c1 == '\n') || (c2  == '\n')) {
-						band_txt[i].temp_line[0] = '\0';
-						band_txt[i].temp_line_cnt = 0;
-					}
-				} else if (to_print[i] == 1) {
-					/* something went wrong? all bets are off */
-					if (band_txt[i].temp_line_cnt > 200) {
-						printf("Reached the limit in the OLD gps mode\n");
-						band_txt[i].temp_line[0] = '\0';
-						band_txt[i].temp_line_cnt = 0;
-					}
-
-					/* do not copy CR, NL */
-					if ((c1 != '\r') && (c1 != '\n')) {
-						band_txt[i].temp_line[band_txt[i].temp_line_cnt++] = c1;
-					}
-
-					if (c1 == '\r') {
-						if (memcmp(band_txt[i].temp_line, "$GPRMC", 6) == 0) {
-							memcpy(band_txt[i].gprmc, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-							band_txt[i].gprmc[band_txt[i].temp_line_cnt] = '\0';
-						} else if (band_txt[i].temp_line[0] != '$') {
-							memcpy(band_txt[i].gpid, band_txt[i].temp_line, band_txt[i].temp_line_cnt);
-							band_txt[i].gpid[band_txt[i].temp_line_cnt] = '\0';
-							if (APRS_ENABLE && !band_txt[i].is_gps_sent)
-								gps_send(i);
-						}
-						band_txt[i].temp_line[0] = '\0';
-						band_txt[i].temp_line_cnt = 0;
-					} else if (c1 == '\n') {
-						band_txt[i].temp_line[0] = '\0';
-						band_txt[i].temp_line_cnt = 0;
-					}
-				}
-				new_group[i] = true;
-				to_print[i] = 0;
-				ABC_grp[i] = false;
-			}
-			break;
-		}
-	}
-}
-
-void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
+void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt, const int source_sock)
 {
 	int i;
 	for (i=0; i<3; i++) {
@@ -984,7 +673,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				break;
 	}
 	// if i==3, then the streamid of this voice packet didn't match any module
-	SSD &sd = Sd[i];
+	SSD &sd = sdin[i];
 
 	if (VoicePacketIsSync(dsvt.vasd.text)) {
 		sd.first = true;
@@ -1054,20 +743,15 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 							memcpy(sdheader.hdr.flag, sd.header, 39);
 							calcPFCS(sdheader.title, 56);
 							if (0 == memcmp(sd.header+39, sdheader.hdr.pfcs, 2)) {	// checksum looks okay
-								printf("Got a slow data header: %36.36s\n", sd.header+3);
 								int mod = sdheader.hdr.rpt2[CALL_SIZE-1] - 'A';		// the sd header lists the gateway first, so we check here to see if there's a match
 								if (mod >= 0 && mod < 3 && Rptr.mod[mod].defined) {
+									printf("Got a slow data header: %36.36s\n", sd.header+3);
 									unsigned char call[CALL_SIZE];	// swap rpt1 and rpt2
 									memcpy(call, sdheader.hdr.rpt1, CALL_SIZE);
 									memcpy(sdheader.hdr.rpt1, sdheader.hdr.rpt2, CALL_SIZE);
 									memcpy(sdheader.hdr.rpt2, call, CALL_SIZE);
 									calcPFCS(sdheader.title, 56);
-									memcpy(toRptr[mod].saved_hdr.title, sdheader.title, 56);	// copy to enable this and subsequent voice pacekets
-									ToModem[mod].Write(sdheader.title, 56);						// send it to the mdeom
-									toRptr[mod].sequence = dsvt.ctrl;
-									time(&toRptr[mod].last_time);
-									if (LOG_QSO)
-										printf("Slow Data Header: id=0x%04x flags=%x:%x:%x r1=%8.8s r2=%8.8s ur=%8.8s my=%8.8s nm=%4.4s\n", htons(sdheader.streamid), sdheader.hdr.flag[0], sdheader.hdr.flag[1], sdheader.hdr.flag[2], sdheader.hdr.rpt1, sdheader.hdr.rpt2, sdheader.hdr.urcall, sdheader.hdr.mycall, sdheader.hdr.sfx);
+									ProcessG2Header(sdheader, source_sock);	// start the voice stream
 									sd.ih = sd.size = 0;
 								} else {
 									fprintf(stderr, "Got a valid slow data header but module %d doesn't exist\n", mod);
@@ -1081,8 +765,6 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 				}
 				sd.first = false;
 				break;
-			default:
-				return;
 		}
 	} else {
 		// this is the second of a two voice-frame pair
@@ -1139,67 +821,219 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt)
 	}
 }
 
+void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt)
+{
+	int i;
+	for (i=0; i<3; i++) {
+		if (Rptr.mod[i].defined && (toRptr[i].saved_hdr.streamid == dsvt.streamid))
+				break;
+	}
+	// if i==3, then the streamid of this voice packet didn't match any module
+	if (i > 2)
+		return;
+	SSD &sd = sdout[i];
+
+	if (VoicePacketIsSync(dsvt.vasd.text)) {
+		sd.first = true;
+		return;
+	}
+
+	const unsigned char c[3] = {
+		static_cast<unsigned char>(dsvt.vasd.text[0] ^ 0x70u),
+		static_cast<unsigned char>(dsvt.vasd.text[1] ^ 0x4fu),
+		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
+	};	// unscramble
+
+	if (sd.first) {
+		// this is the first of a two voice-packet pair
+		// get the "size" and type from the first byte
+		sd.size = 0x0FU & c[0];
+		if (sd.size > 5) {
+			sd.size = 5;
+		}
+		int size = sd.size;
+		if (size > 2)
+			size = 2;
+		sd.type = 0xF0U & c[0];
+		switch (sd.type) {
+			case 0x30U:	// GPS data
+				if (sd.size + sd.ig < 255) {
+					memcpy(sd.gps+sd.ig, c+1, size);
+					if (c[1]=='\r' || c[2]=='\r') {
+						sd.gps[sd.ig + ((c[1] == '\r') ? 0 : 1)] = '\0';
+						if (i < 3) {
+							Printable(sd.gps);
+							if (showLastHeard && gps.Parse((const char *)&sd.gps)) {
+								qnDB.UpdatePosition(band_txt[i].mycall.c_str(), gps.MaidenHead(), gps.Latitude(), gps.Longitude());
+								if (APRS_ENABLE && (! band_txt[i].is_gps_sent) && (time(NULL) - band_txt[i].gps_last_time > 30)) {
+									std::string call(band_txt[i].mycall);
+									const char *s = gps.APRS(call, Rptr.mod[i].call.c_str());
+									if (! aprs->aprs_sock.Write((unsigned char *)s, strlen(s))) {
+										time(&band_txt[i].gps_last_time);
+										band_txt[i].is_gps_sent = true;
+									}
+								}
+							}
+						}
+						sd.ig = sd.size = 0;
+					} else {
+						sd.ig += size;
+						sd.size -= size;
+					}
+				} else {
+					printf("GPS string is too large at %d bytes\n", sd.ig + sd.size);
+					sd.ig = sd.size = 0;
+				}
+				sd.first = false;
+				break;
+			case 0x40U:	// 20 character user message
+				if (sd.size * 5 == sd.im) {
+					memcpy(sd.message+sd.im, c+1, 2);
+					sd.im += 2;
+					sd.size = 3;
+				} else {
+					//printf("A message voiceframe, #%d, is out of order because message size is %d\n", sd.size, sd.im);
+					sd.im = sd.size = 0;
+				}
+				sd.first = false;
+				break;
+		}
+	} else {
+		if (! band_txt[i].sent_key_on_msg && vPacketCount[i] > 100) {
+			// 100 voice packets received and still no 20-char message!
+			band_txt[i].txt.clear();
+			if (0 == band_txt[i].urcall.compare(0, 6, "CQCQCQ"))
+				set_dest_rptr(i+'A', band_txt[i].dest_rptr);
+
+			int x = FindIndex(i);
+			if (x >= 0)
+				ii[x]->sendHeardWithTXMsg(band_txt[i].mycall, band_txt[i].sfx, band_txt[i].urcall, band_txt[i].rpt1, band_txt[i].rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], IS_HF[i] ? "" : band_txt[i].dest_rptr, band_txt[i].txt);
+			band_txt[i].sent_key_on_msg = true;
+		}
+		// this is the second of a two voice-frame pair
+		sd.first = true;
+		if (0 == sd.size)
+			return;
+		switch (sd.type) {
+			case 0x30U:	// GPS
+				memcpy(sd.gps+sd.ig, c, sd.size);
+				if (c[0]=='\r' || c[1]=='\r' || c[2]=='\r') {
+					if (c[0]=='\r')
+						sd.gps[sd.ig] = '\0';
+					else if (c[1]=='\r')
+						sd.gps[sd.ig+1] = '\0';
+					else
+						sd.gps[sd.ig+2] = '\0';
+					if (i < 3) {
+						Printable(sd.gps);
+						if (showLastHeard && gps.Parse((const char *)&sd.gps)) {
+							qnDB.UpdatePosition(band_txt[i].mycall.c_str(), gps.MaidenHead(), gps.Latitude(), gps.Longitude());
+							if (APRS_ENABLE && (! band_txt[i].is_gps_sent) && (time(NULL) - band_txt[i].gps_last_time > 30)) {
+								std::string call(band_txt[i].mycall);
+								const char *s = gps.APRS(call, Rptr.mod[i].call.c_str());
+								if (! aprs->aprs_sock.Write((unsigned char *)s, strlen(s))) {
+									time(&band_txt[i].gps_last_time);
+									band_txt[i].is_gps_sent = true;
+								}
+							}
+						}
+					}
+					sd.ig = 0;
+				} else {
+					sd.ig += sd.size;
+					sd.gps[sd.ig] = 0;
+				}
+				break;
+			case 0x40U:	// message
+				memcpy(sd.message+sd.im, c, 3);
+				sd.im += 3;
+				if (sd.im >= 20) {
+					sd.message[20] = '\0';
+					Printable(sd.message);
+					if (! band_txt[i].sent_key_on_msg) {
+						if (0 == band_txt[i].urcall.compare(0, 6, "CQCQCQ"))
+							set_dest_rptr(i+'A', band_txt[i].dest_rptr);
+
+						int x = FindIndex(i);
+						if (x >= 0)
+							ii[x]->sendHeardWithTXMsg(band_txt[i].mycall, band_txt[i].sfx, band_txt[i].urcall, band_txt[i].rpt1, band_txt[i].rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], IS_HF[i] ? "" : band_txt[i].dest_rptr, (const char *)sd.message);
+						band_txt[i].sent_key_on_msg = true;
+					}
+					if (showLastHeard && (i < 3) && memcmp(toRptr[i].saved_hdr.hdr.sfx, "RPTR", 4) && memcmp(sd.message, "VIA SMARTGP", 11)) {
+						char call[CALL_SIZE+1];
+						memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
+						call[CALL_SIZE] = '\0';
+						qnDB.UpdateMessage(call, (const char *)&(sd.message));
+					}
+					sd.im = 0;
+				}
+				break;
+		}
+	}
+}
+
+void CQnetGateway::ProcessG2Header(const SDSVT &g2buf, const int source_sock)
+{
+	// Find out the local repeater module IP/port to send the data to
+	int i = g2buf.hdr.rpt1[7] - 'A';
+	/* valid repeater module? */
+	if (i>=0 && i<3 && Rptr.mod[i].defined) {
+		// toRptr[i] is active if a remote system is talking to it or
+		// toRptr[i] is receiving data from a cross-band
+		if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
+			superframe[i].clear();
+			sdin[i].Init();	// with a header, we should reset the Sd structs
+			if (LOG_QSO) {
+				printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
+				if (source_sock >= 0)
+					printf("IP=[%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
+				else
+					printf("UnixSock=%s\n", tolink.c_str());
+			}
+			lhcallsign[i].assign((const char *)g2buf.hdr.mycall, 8);
+			if (showLastHeard && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(lhcallsign[i].c_str(), preg)) {
+				lhsfx[i].assign((const char *)g2buf.hdr.sfx, 4);
+				std::string  reflector((const char *)g2buf.hdr.urcall, 8);
+				if (0 == reflector.compare("CQCQCQ  "))
+					set_dest_rptr('A'+i, reflector);
+				else if (0 == reflector.compare(OWNER))
+					reflector.assign("CSRoute");
+				qnDB.UpdateLH(lhcallsign[i].c_str(), lhsfx[i].c_str(), 'A'+i, reflector.c_str());
+			}
+
+			ToModem[i].Write(g2buf.title, 56);
+			nextctrl[i] = 0U;
+
+			/* save the header */
+			if (source_sock < 0) {
+				//if (AF_INET == af_family) {
+					char address[16];
+					snprintf(address, 16, "%d.0.0.0", i);
+					fromDstar.Initialize(AF_INET, 40000U, address);
+				//} else {
+				//	char address[8];
+				//	snprintf(address, 8, "%d::", i);
+				//	fromDstar.Initialize(AF_INET6, 40000U, address);
+				//}
+			}
+			memcpy(toRptr[i].saved_hdr.title, g2buf.title, 56);
+
+			/* time it, in case stream times out */
+			time(&toRptr[i].last_time);
+
+			toRptr[i].sequence = g2buf.ctrl;
+		}
+	}
+}
+
 void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int source_sock)
 // source_sock is the socket number of the incoming data, or -1 if it's a unix socket
 {
-	static std::string lhcallsign[3], lhsfx[3];
-	static unsigned char nextctrl[3] = { 0U, 0U, 0U };
-	static std::string superframe[3];
 	if ( (g2buflen==56 || g2buflen==27) && 0==memcmp(g2buf.title, "DSVT", 4) && (g2buf.config==0x10 || g2buf.config==0x20) && g2buf.id==0x20) {
 		if (g2buflen == 56) {
-			// Find out the local repeater module IP/port to send the data to
-			int i = g2buf.hdr.rpt1[7] - 'A';
-			/* valid repeater module? */
-			if (i>=0 && i<3 && Rptr.mod[i].defined) {
-				// toRptr[i] is active if a remote system is talking to it or
-				// toRptr[i] is receiving data from a cross-band
-				if (0==toRptr[i].last_time && 0==band_txt[i].last_time && (Flag_is_ok(g2buf.hdr.flag[0]) || 0x01U==g2buf.hdr.flag[0] || 0x40U==g2buf.hdr.flag[0])) {
-					superframe[i].clear();
-					for (int z=0; z<4; z++)
-						Sd[z].Init();	// with a header, we should reset all Sd structs
-					if (LOG_QSO) {
-						printf("id=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s ", ntohs(g2buf.streamid), g2buf.hdr.flag[0], g2buf.hdr.flag[1], g2buf.hdr.flag[2], g2buf.hdr.urcall, g2buf.hdr.rpt1, g2buf.hdr.rpt2, g2buf.hdr.mycall, g2buf.hdr.sfx);
-						if (source_sock >= 0)
-							printf("IP=[%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
-						else
-							printf("UnixSock=%s\n", tolink.c_str());
-					}
-					lhcallsign[i].assign((const char *)g2buf.hdr.mycall, 8);
-					if (showLastHeard && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(lhcallsign[i].c_str(), preg)) {
-						lhsfx[i].assign((const char *)g2buf.hdr.sfx, 4);
-						std::string  reflector((const char *)g2buf.hdr.urcall, 8);
-						if (0 == reflector.compare("CQCQCQ  "))
-							set_dest_rptr('A'+i, reflector);
-						else if (0 == reflector.compare(OWNER))
-							reflector.assign("CSRoute");
-						qnDB.UpdateLH(lhcallsign[i].c_str(), lhsfx[i].c_str(), 'A'+i, reflector.c_str());
-					}
-
-					ToModem[i].Write(g2buf.title, 56);
-					nextctrl[i] = 0U;
-
-					/* save the header */
-					if (source_sock < 0) {
-						//if (AF_INET == af_family) {
-							char address[16];
-							snprintf(address, 16, "%d.0.0.0", i);
-							fromDstar.Initialize(AF_INET, 40000U, address);
-						//} else {
-						//	char address[8];
-						//	snprintf(address, 8, "%d::", i);
-						//	fromDstar.Initialize(AF_INET6, 40000U, address);
-						//}
-					}
-					memcpy(toRptr[i].saved_hdr.title, g2buf.title, 56);
-
-					/* time it, in case stream times out */
-					time(&toRptr[i].last_time);
-
-					toRptr[i].sequence = g2buf.ctrl;
-				}
-			}
+			ProcessG2Header(g2buf, source_sock);
 		} else {	// g2buflen == 27
-			ProcessIncomingSD(g2buf);
+			ProcessIncomingSD(g2buf, source_sock);
 			/* find out which repeater module to send the data to */
 			int i;
 			for (i=0; i<3; i++) {
@@ -1287,7 +1121,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 								printf("Final[%c]: %s\n", 'A'+i, superframe[i].c_str());
 								superframe[i].clear();
 							}
-							Sd[3].Init();
+							sdin[3].Init();
 							if (LOG_QSO)
 								printf("id=%04x END\n", ntohs(g2buf.streamid));
 						}
@@ -1383,48 +1217,36 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 
 						memcpy(band_txt[i].flags, dsvt.hdr.flag, 3);
 
-						memcpy(band_txt[i].lh_mycall, dsvt.hdr.mycall, 8);
-						band_txt[i].lh_mycall[8] = '\0';
-
-						memcpy(band_txt[i].lh_sfx, dsvt.hdr.sfx, 4);
-						band_txt[i].lh_sfx[4] = '\0';
-
-						memcpy(band_txt[i].lh_yrcall, dsvt.hdr.urcall, 8);
-						band_txt[i].lh_yrcall[8] = '\0';
-
-						memcpy(band_txt[i].lh_rpt1, dsvt.hdr.rpt1, 8);
-						band_txt[i].lh_rpt1[8] = '\0';
-
-						memcpy(band_txt[i].lh_rpt2, dsvt.hdr.rpt2, 8);
-						band_txt[i].lh_rpt2[8] = '\0';
+						band_txt[i].mycall.assign((const char *)dsvt.hdr.mycall, 8);
+						band_txt[i].sfx.assign((const char *)dsvt.hdr.sfx, 4);
+						band_txt[i].urcall.assign((const char *)dsvt.hdr.urcall, 8);
+						band_txt[i].rpt1.assign((const char *)dsvt.hdr.rpt1, 8);
+						band_txt[i].rpt2.assign((const char *)dsvt.hdr.rpt2, 8);
 
 						time(&band_txt[i].last_time);
 
-						band_txt[i].txt[0] = '\0';
-						band_txt[i].txt_cnt = 0;
+						band_txt[i].txt.clear();
 						band_txt[i].sent_key_on_msg = false;
 
 						band_txt[i].dest_rptr[0] = '\0';
 
 						/* try to process GPS mode: GPRMC and ID */
-						band_txt[i].temp_line[0] = '\0';
-						band_txt[i].temp_line_cnt = 0;
-						band_txt[i].gprmc[0] = '\0';
-						band_txt[i].gpid[0] = '\0';
 						band_txt[i].is_gps_sent = false;
 						// band_txt[i].gps_last_time = 0; DO NOT reset it
 
-						new_group[i] = true;
-						to_print[i] = 0;
-						ABC_grp[i] = false;
 
 						band_txt[i].num_dv_frames = 0;
 						band_txt[i].num_dv_silent_frames = 0;
 						band_txt[i].num_bit_errors = 0;
 
+						sdout[i].Init();
+
 						/* select the band for aprs processing, and lock on the stream ID */
 						if (APRS_ENABLE)
 							aprs->SelectBand(i, ntohs(dsvt.streamid));
+						if (std::regex_match(band_txt[i].mycall, preg)) {
+							qnDB.UpdateLH(band_txt[i].mycall.c_str(), band_txt[i].sfx.c_str(), 'A'+i, "Module  ");
+						}
 					}
 				}
 
@@ -1765,14 +1587,14 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 									printf("Saving dtmfs=[%s] into file: [%s]\n", dtmf_buf[i], dtmf_file.c_str());
 								FILE *dtmf_fp = fopen(dtmf_file.c_str(), "w");
 								if (dtmf_fp) {
-									fprintf(dtmf_fp, "%s\n%s", dtmf_buf[i], band_txt[i].lh_mycall);
+									fprintf(dtmf_fp, "%s\n%s", dtmf_buf[i], band_txt[i].mycall.c_str());
 									fclose(dtmf_fp);
 								} else
 									printf("Failed to create dtmf file %s\n", dtmf_file.c_str());
 
 
 								if (LOG_DTMF)
-									printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].lh_mycall);
+									printf("resetting dtmf[%d] (printed dtmf code %s from %s)\n", i, dtmf_buf[i], band_txt[i].mycall.c_str());
 								memset(dtmf_buf[i], 0, sizeof(dtmf_buf[i]));
 								dtmf_buf_count[i] = 0;
 								dtmf_counter[i] = 0;
@@ -1780,12 +1602,12 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 							}
 							if (! band_txt[i].sent_key_on_msg) {
 								band_txt[i].txt[0] = '\0';
-								if (memcmp(band_txt[i].lh_yrcall, "CQCQCQ", 6) == 0) {
+								if (0 == band_txt[i].urcall.compare(0, 6, "CQCQCQ")) {
 									set_dest_rptr(i+'A', band_txt[i].dest_rptr);
 								}
                                 int x = FindIndex(i);
 								if (x >= 0)
-									ii[x]->sendHeardWithTXMsg(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], IS_HF[i] ? "" : band_txt[i].dest_rptr, band_txt[i].txt);
+									ii[x]->sendHeardWithTXMsg(band_txt[i].mycall, band_txt[i].sfx, band_txt[i].urcall, band_txt[i].rpt1, band_txt[i].rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], IS_HF[i] ? "" : band_txt[i].dest_rptr, band_txt[i].txt);
 								band_txt[i].sent_key_on_msg = true;
 							}
 							// send the "key off" message, this will end up in the openquad.net Last Heard webpage.
@@ -1798,36 +1620,19 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
                                 }
                             }
 							if (index >= 0)
-								ii[index]->sendHeardWithTXStats(band_txt[i].lh_mycall, band_txt[i].lh_sfx, band_txt[i].lh_yrcall, band_txt[i].lh_rpt1, band_txt[i].lh_rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
+								ii[index]->sendHeardWithTXStats(band_txt[i].mycall, band_txt[i].sfx, band_txt[i].urcall, band_txt[i].rpt1, band_txt[i].rpt2, band_txt[i].flags[0], band_txt[i].flags[1], band_txt[i].flags[2], band_txt[i].num_dv_frames, band_txt[i].num_dv_silent_frames, band_txt[i].num_bit_errors);
 
 							if (playNotInCache) {
 								// Not in cache, please try again!
 								FILE *fp = fopen(FILE_QNVOICE_FILE.c_str(), "w");
 								if (fp) {
-									fprintf(fp, "%c_notincache.dat_NOT_IN_CACHE\n", band_txt[i].lh_rpt1[7]);
+									fprintf(fp, "%c_notincache.dat_NOT_IN_CACHE\n", band_txt[i].rpt1.at(7));
 									fclose(fp);
 								}
 								playNotInCache = false;
 							}
 
-							band_txt[i].streamID = 0;
-							band_txt[i].flags[0] = band_txt[i].flags[1] = band_txt[i].flags[2] = 0;
-							band_txt[i].lh_mycall[0] = '\0';
-							band_txt[i].lh_sfx[0] = '\0';
-							band_txt[i].lh_yrcall[0] = '\0';
-							band_txt[i].lh_rpt1[0] = '\0';
-							band_txt[i].lh_rpt2[0] = '\0';
-
-							band_txt[i].last_time = 0;
-
-							band_txt[i].txt[0] = '\0';
-							band_txt[i].txt_cnt = 0;
-
-							band_txt[i].dest_rptr.clear();
-
-							band_txt[i].num_dv_frames = 0;
-							band_txt[i].num_dv_silent_frames = 0;
-							band_txt[i].num_bit_errors = 0;
+							band_txt[i].Initialize();
 						}
 						else
 						{	// not the end of the voice stream
@@ -1863,7 +1668,8 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 					}
                     vPacketCount[i]++;
 				}
-				ProcessSlowData(dsvt.vasd.text,  dsvt.streamid);
+				ProcessOutGoingSD(dsvt);
+				//ProcessSlowData(dsvt.vasd.text,  dsvt.streamid);
 
 				/* send data to qnlink */
 				ToLink.Write(dsvt.title, 27);
@@ -1940,9 +1746,10 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 						break;
 					}
 				}
-
-				if (LOG_QSO && dsvt.ctrl&0x40U)
-					printf("id=%04x END RPTR\n", ntohs(dsvt.streamid));
+				if (0x40U & dsvt.ctrl) {
+					if (LOG_QSO)
+						printf("id=%04x END RPTR\n", ntohs(dsvt.streamid));
+				}
 			}
 		}
 	}
@@ -2427,27 +2234,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	preg = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z][ ]*[ A-RT-Z]$", std::regex::extended);
 
 	for (i=0; i<3; i++) {
-		band_txt[i].streamID = 0;
-		memset(band_txt[i].flags, 0, 3);
-		memset(band_txt[i].lh_mycall, 0, 9);
-		memset(band_txt[i].lh_sfx, 0, 5);
-		memset(band_txt[i].lh_yrcall, 0, 9);
-		memset(band_txt[i].lh_rpt1, 0, 9);
-		memset(band_txt[i].lh_rpt2, 0, 9);
-		band_txt[i].last_time = 0;
-		memset(band_txt[i].txt, 0, 64);   // Only 20 are used
-		band_txt[i].txt_cnt = 0;
-		band_txt[i].sent_key_on_msg = false;
-		band_txt[i].dest_rptr.clear();
-		memset(band_txt[i].temp_line, 0, 256);
-		band_txt[i].temp_line_cnt = 0U;
-		memset(band_txt[i].gprmc, 0, 256);
-		memset(band_txt[i].gpid, 0, 256);
-		band_txt[i].is_gps_sent = false;
-		band_txt[i].gps_last_time = 0;
-		band_txt[i].num_dv_frames = 0;
-		band_txt[i].num_dv_silent_frames = 0;
-		band_txt[i].num_bit_errors = 0;
+		band_txt[i].Initialize();
 	}
 
 	/* process configuration file */
@@ -2634,8 +2421,11 @@ bool CQnetGateway::Init(char *cfgfile)
 	if (GATEWAY_SEND_QRGS_MAP)
 		qrgs_and_maps();
 
-	for (int i=0; i<4; i++)
-		Sd[i].Init();
+	for (int i=0; i<3; i++) {
+		sdin[i].Init();
+		sdout[i].Init();
+	}
+	sdin[3].Init();
 
 	return false;
 }
@@ -2683,209 +2473,6 @@ CQnetGateway::~CQnetGateway()
 	}
 
 	printf("QnetGateway exiting\n");
-}
-
-bool CQnetGateway::validate_csum(SBANDTXT &bt, bool is_gps)
-{
-	const char *name = is_gps ? "GPS" : "GPRMC";
-	char *s = is_gps ? bt.gpid : bt.gprmc;
-	char *p = strrchr(s, '*');
-	if (!p) {
-		// BAD news, something went wrong
-		printf("Missing asterisk before checksum in %s\n", name);
-		bt.gprmc[0] = bt.gpid[0] = '\0';
-		return true;
-	} else {
-		*p = '\0';
-		// verify csum in GPRMC
-		bool ok = verify_gps_csum(s + 1, p + 1);
-		if (!ok) {
-			printf("csum in %s not good\n", name);
-			bt.gprmc[0] = bt.gpid[0] = '\0';
-			return true;
-		}
-	}
-	return false;
-}
-
-void CQnetGateway::gps_send(short int rptr_idx)
-{
-	time_t tnow = 0;
-	static char old_mycall[CALL_SIZE + 1] = { "        " };
-
-	if ((rptr_idx < 0) || (rptr_idx > 2)) {
-		printf("ERROR in gps_send: rptr_idx %d is invalid\n", rptr_idx);
-		return;
-	}
-
-	if (band_txt[rptr_idx].gprmc[0] == '\0') {
-		band_txt[rptr_idx].gpid[0] = '\0';
-		printf("missing GPS ID\n");
-		return;
-	}
-	if (band_txt[rptr_idx].gpid[0] == '\0') {
-		band_txt[rptr_idx].gprmc[0] = '\0';
-		printf("Missing GPSRMC\n");
-		return;
-	}
-	if (memcmp(band_txt[rptr_idx].gpid, band_txt[rptr_idx].lh_mycall, CALL_SIZE) != 0) {
-		printf("MYCALL [%s] does not match first 8 characters of GPS ID [%.8s]\n", band_txt[rptr_idx].lh_mycall, band_txt[rptr_idx].gpid);
-		band_txt[rptr_idx].gprmc[0] = '\0';
-		band_txt[rptr_idx].gpid[0] = '\0';
-		return;
-	}
-
-	/* if new station, reset last time */
-	if (strcmp(old_mycall, band_txt[rptr_idx].lh_mycall) != 0) {
-		strcpy(old_mycall, band_txt[rptr_idx].lh_mycall);
-		band_txt[rptr_idx].gps_last_time = 0;
-	}
-
-	/* do NOT process often */
-	time(&tnow);
-	if ((tnow - band_txt[rptr_idx].gps_last_time) < 31)
-		return;
-
-	printf("GPRMC=[%s]\n", band_txt[rptr_idx].gprmc);
-	printf("GPS id=[%s]\n",band_txt[rptr_idx].gpid);
-
-	if (validate_csum(band_txt[rptr_idx], false))	// || validate_csum(band_txt[rptr_idx], true))
-		return;
-
-	/* now convert GPS into APRS and send it */
-	build_aprs_from_gps_and_send(rptr_idx);
-
-	band_txt[rptr_idx].is_gps_sent = true;
-	time(&(band_txt[rptr_idx].gps_last_time));
-	return;
-}
-
-void CQnetGateway::build_aprs_from_gps_and_send(short int rptr_idx)
-{
-	char buf[512];
-	const char *delim = ",";
-
-	char *saveptr = NULL;
-
-	/*** dont care about the rest */
-
-	strcpy(buf, band_txt[rptr_idx].lh_mycall);
-	char *p = strchr(buf, ' ');
-	if (p) {
-		if (band_txt[rptr_idx].lh_mycall[7] != ' ') {
-			*p = '-';
-			*(p + 1) = band_txt[rptr_idx].lh_mycall[7];
-			*(p + 2) = '>';
-			*(p + 3) = '\0';
-		} else {
-			*p = '>';
-			*(p + 1) = '\0';
-		}
-	} else
-		strcat(buf, ">");
-
-	strcat(buf, "APDPRS,DSTAR*,qAR,");
-	strcat(buf, Rptr.mod[rptr_idx].call.c_str());
-	strcat(buf, ":!");
-
-	//GPRMC =
-	strtok_r(band_txt[rptr_idx].gprmc, delim, &saveptr);
-	//time_utc =
-	strtok_r(NULL, delim, &saveptr);
-	//nav =
-	strtok_r(NULL, delim, &saveptr);
-	char *lat_str = strtok_r(NULL, delim, &saveptr);
-	char *lat_NS = strtok_r(NULL, delim, &saveptr);
-	char *lon_str = strtok_r(NULL, delim, &saveptr);
-	char *lon_EW = strtok_r(NULL, delim, &saveptr);
-
-	if (lat_str && lat_NS) {
-		if ((*lat_NS != 'N') && (*lat_NS != 'S')) {
-			printf("Invalid North or South indicator in latitude\n");
-			return;
-		}
-		if (strlen(lat_str) > 9) {
-			printf("Invalid latitude\n");
-			return;
-		}
-		if (lat_str[4] != '.') {
-			printf("Invalid latitude\n");
-			return;
-		}
-		lat_str[7] = '\0';
-		strcat(buf, lat_str);
-		strcat(buf, lat_NS);
-	} else {
-		printf("Invalid latitude\n");
-		return;
-	}
-	/* secondary table */
-	strcat(buf, "/");
-
-	if (lon_str && lon_EW) {
-		if ((*lon_EW != 'E') && (*lon_EW != 'W')) {
-			printf("Invalid East or West indicator in longitude\n");
-			return;
-		}
-		if (strlen(lon_str) > 10) {
-			printf("Invalid longitude\n");
-			return;
-		}
-		if (lon_str[5] != '.') {
-			printf("Invalid longitude\n");
-			return;
-		}
-		lon_str[8] = '\0';
-		strcat(buf, lon_str);
-		strcat(buf, lon_EW);
-	} else {
-		printf("Invalid longitude\n");
-		return;
-	}
-
-	/* Just this symbolcode only */
-	strcat(buf, "/");
-	strncat(buf, band_txt[rptr_idx].gpid + 13, 32);
-
-	// printf("Built APRS from old GPS mode=[%s]\n", buf);
-	strcat(buf, "\r\n");
-
-	if (aprs->aprs_sock.Write((unsigned char *)buf, strlen(buf))) {
-		if ((errno == EPIPE) || (errno == ECONNRESET) || (errno == ETIMEDOUT) || (errno == ECONNABORTED) ||
-		    (errno == ESHUTDOWN) || (errno == EHOSTUNREACH) || (errno == ENETRESET) || (errno == ENETDOWN) ||
-		    (errno == ENETUNREACH) || (errno == EHOSTDOWN) || (errno == ENOTCONN)) {
-			printf("build_aprs_from_gps_and_send: APRS_HOST closed connection, error=%d\n", errno);
-			aprs->aprs_sock.Close();
-		} else
-			printf("build_aprs_from_gps_and_send: send error=%d\n", errno);
-	}
-	return;
-}
-
-bool CQnetGateway::verify_gps_csum(char *gps_text, char *csum_text)
-{
-	short computed_csum = 0;
-	char computed_csum_text[16];
-
-	short int len = strlen(gps_text);
-	for (short int i=0; i<len; i++) {
-		char c = gps_text[i];
-		if (computed_csum == 0)
-			computed_csum = (char)c;
-		else
-			computed_csum = computed_csum ^ ((char)c);
-	}
-	sprintf(computed_csum_text, "%02X", computed_csum);
-	// printf("computed_csum_text=[%s]\n", computed_csum_text);
-
-	char *p = strchr(csum_text, ' ');
-	if (p)
-		*p = '\0';
-
-	if (strcmp(computed_csum_text, csum_text) == 0)
-		return true;
-	else
-		return false;
 }
 
 int main(int argc, char **argv)

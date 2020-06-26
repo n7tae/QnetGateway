@@ -185,7 +185,7 @@ bool CTCPReaderWriterClient::Write(const unsigned char *buffer, const unsigned i
 	ssize_t ret = send(m_fd, (char *)buffer, length, 0);
 	if (ret != ssize_t(length)) {
 		if (ret < 0)
-			fprintf(stderr, "Error returned from send, err=%d\n", errno);
+			fprintf(stderr, "Error returned from send, err=%s\n", strerror(errno));
 		else
 			fprintf(stderr, "Error only wrote %d of %d bytes\n", int(ret), int(length));
 		return true;

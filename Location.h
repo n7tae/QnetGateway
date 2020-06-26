@@ -18,6 +18,8 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <string>
+
 class CLocation
 {
 public:
@@ -26,8 +28,10 @@ public:
 	double Latitude() const;
 	double Longitude() const;
 	const char* MaidenHead() const;
+	const char* APRS(std::string &call, const char *station);
 private:
 	char maidenhead[7];
+	char aprs[128];
 	double latitude, longitude;
 	std::regex gps;
 };

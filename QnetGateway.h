@@ -51,29 +51,29 @@ using STOREPEATER = struct torepeater_tag {
 using SBANDTXT = struct band_txt_tag {
 	unsigned short streamID;
 	unsigned char flags[3];
-	char lh_mycall[CALL_SIZE + 1];
-	char lh_sfx[5];
-	char lh_yrcall[CALL_SIZE + 1];
-	char lh_rpt1[CALL_SIZE + 1];
-	char lh_rpt2[CALL_SIZE + 1];
-	time_t last_time;
-	char txt[64];   // Only 20 are used
-	unsigned short txt_cnt;
-	bool sent_key_on_msg;
-
-	std::string dest_rptr;
-
-	// try to process GPS mode: GPRMC and ID
-	char temp_line[256];
-	unsigned short temp_line_cnt;
-	char gprmc[256];
-	char gpid[256];
-	bool is_gps_sent;
-	time_t gps_last_time;
+	std::string mycall, sfx, urcall, rpt1, rpt2, txt, dest_rptr;
+	time_t last_time, gps_last_time;
+	bool sent_key_on_msg, is_gps_sent;
 
 	int num_dv_frames;
 	int num_dv_silent_frames;
 	int num_bit_errors;
+
+	void Initialize()
+	{
+		streamID = 0x0U;
+		last_time = gps_last_time = 0;
+		is_gps_sent = sent_key_on_msg = false;
+		num_dv_frames = num_dv_silent_frames = num_bit_errors = 0;
+		flags[0] = flags[1] = flags[2] = 0x0U;
+		mycall.clear();
+		sfx.clear();
+		urcall.clear();
+		rpt1.clear();
+		rpt2.clear();
+		txt.clear();
+		dest_rptr.clear();
+	}
 };
 
 using SSD = struct sd_tag {
@@ -86,9 +86,6 @@ using SSD = struct sd_tag {
 	unsigned int size;
 	void Init() { ih = im = ig = 0; first = true; }
 };
-
-
-
 
 class CQnetGateway : public CKRBase
 {
@@ -103,11 +100,7 @@ private:
     int link_family[3] = { AF_UNSPEC, AF_UNSPEC, AF_UNSPEC };
 	// network type
 	int af_family[2] = { AF_UNSPEC, AF_UNSPEC };
-	// text stuff
-	bool new_group[3] = { true, true, true };
-	short to_print[3] = { 0, 0, 0 };
-	bool ABC_grp[3] = { false, false, false };
-	bool C_seen[3] = { false, false, false };
+
     int Index[3] = { -1, -1, -1 };
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
@@ -172,6 +165,11 @@ private:
 	// for bit error rate calcs
 	CDStarDecode decode;
 
+	// g2 data
+	std::string lhcallsign[3], lhsfx[3];
+	unsigned char nextctrl[3] = { 0U, 0U, 0U };
+	std::string superframe[3];
+
 	// dtmf stuff
 	int dtmf_buf_count[3];
 	char dtmf_buf[3][MAX_DTMF_BUF + 1];
@@ -190,9 +188,11 @@ private:
 	bool Printable(unsigned char *string);
 	void ProcessTimeouts();
 	void ProcessSlowData(unsigned char *data, const unsigned short sid);
-	void ProcessIncomingSD(const SDSVT &dsvt);
+	void ProcessIncomingSD(const SDSVT &dsvt, const int source_sock);
+	void ProcessOutGoingSD(const SDSVT &dsvt);
 	bool ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp);
 	void ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sock_source);
+	void ProcessG2Header(const SDSVT &g2buf, const int source_sock);
 	void ProcessModem(const ssize_t len, SDSVT &dsvt);
 	bool Flag_is_ok(unsigned char flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
@@ -202,16 +202,10 @@ private:
 	// read configuration file
 	bool ReadConfig(char *);
 
-/* aprs functions, borrowed from my retired IRLP node 4201 */
-	void gps_send(short int rptr_idx);
-	bool verify_gps_csum(char *gps_text, char *csum_text);
-	void build_aprs_from_gps_and_send(short int rptr_idx);
-
 	void qrgs_and_maps();
 
 	void set_dest_rptr(const char mod, std::string &call);
-	bool validate_csum(SBANDTXT &bt, bool is_gps);
 
 	// for incoming slow header stuff;
-	SSD Sd[4];
+	SSD sdin[4], sdout[3];
 };
