@@ -954,7 +954,7 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 					}
 					if (showLastHeard && (i < 3) && memcmp(toRptr[i].saved_hdr.hdr.sfx, "RPTR", 4) && memcmp(sd.message, "VIA SMARTGP", 11)) {
 						char call[CALL_SIZE+1];
-						memcpy(call, toRptr[i].saved_hdr.hdr.mycall, CALL_SIZE);
+						memcpy(call, band_txt[i].mycall.c_str(), CALL_SIZE);
 						call[CALL_SIZE] = '\0';
 						qnDB.UpdateMessage(call, (const char *)&(sd.message));
 					}
