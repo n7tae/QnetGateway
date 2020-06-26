@@ -821,14 +821,8 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt, const int source_sock)
 	}
 }
 
-void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt)
+void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 {
-	int i;
-	for (i=0; i<3; i++) {
-		if (Rptr.mod[i].defined && (toRptr[i].saved_hdr.streamid == dsvt.streamid))
-				break;
-	}
-	// if i==3, then the streamid of this voice packet didn't match any module
 	if (i > 2)
 		return;
 	SSD &sd = sdout[i];
@@ -879,8 +873,6 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt)
 					} else {
 						sd.ig += size;
 						sd.size -= size;
-						sd.gps[sd.ig] = 0;
-						printf("gps=%s\n", (const char *)sd.gps);
 					}
 				} else {
 					printf("GPS string is too large at %d bytes\n", sd.ig + sd.size);
@@ -943,8 +935,6 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt)
 					sd.ig = 0;
 				} else {
 					sd.ig += sd.size;
-					sd.gps[sd.ig] = 0;
-					printf("gps=%s\n", (const char *)sd.gps);
 				}
 				break;
 			case 0x40U:	// message
@@ -969,9 +959,6 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt)
 						qnDB.UpdateMessage(call, (const char *)&(sd.message));
 					}
 					sd.im = 0;
-				} else {
-					sd.message[sd.im] = '\0';
-					printf("msg=%s\n", (const char *)sd.message);
 				}
 				break;
 		}
@@ -1670,12 +1657,10 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 							} else
 								dtmf_counter[i] = 0;
 						}
-						break;
+						ProcessOutGoingSD(dsvt, i);
 					}
                     vPacketCount[i]++;
 				}
-				ProcessOutGoingSD(dsvt);
-				//ProcessSlowData(dsvt.vasd.text,  dsvt.streamid);
 
 				/* send data to qnlink */
 				ToLink.Write(dsvt.title, 27);
