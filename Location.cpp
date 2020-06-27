@@ -39,7 +39,7 @@ bool CLocation::Parse(const char *instr)
 		return false;
 
 	if (! std::regex_search(s.c_str(), cm, gps, std::regex_constants::match_default)) {
-		std::cerr << "Unsuccessful gps parse of '" << s << "'" << std::endl;
+		//std::cerr << "Unsuccessful gps parse of '" << s << "'" << std::endl;
 		return false;
 	}
 
