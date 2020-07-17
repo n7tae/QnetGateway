@@ -448,14 +448,16 @@ GatewayMenu () {
 		local refcount=$( grep -s "^REF" gwys.txt | wc -l )
 		local dcscount=$( grep -s "^DCS" gwys.txt | wc -l )
 		local xrfcount=$( grep -s "^XRF" gwys.txt | wc -l )
-		local repcount=$( grep -s -v "^#" gwys.txt | grep -s -v -e "^REF" -e "^DCS" -e "^XRF" | wc -l )
+		local xlxcount=$( grep -s "^XLX" gwys.txt | wc -l )
+		local repcount=$( grep -s -v "^#" gwys.txt | grep -s -v -e "^REF" -e "^DCS" -e "^XRF" -e "^XLX" | wc -l )
 		clear
 		echo
 		echo "            Gateway File"
 		echo
-		echo "     $refcount REF, $dcscount DCS, $xrfcount XRF and $repcount Repeaters"
+		echo "     $refcount REF, $dcscount DCS, $xrfcount XRF, $xlxcount XLX and $repcount Repeaters"
 		echo
 		echo "     All initialization will overwrite any existing file!"
+		echo "i6 : Initialize gwys.txt using www.PiStar.uk, xlxapi.rlx.lu and IPv6 from QuadNet"
 		echo "ip : Initialize gwys.txt using www.PiStar.uk/downloads and xlxapi.rlx.lu"
 		echo "iv : Initialize gwys.txt using VA3UV.com (includes a large # of repeaters)"
 		echo "ir : Initialize gwys.txt using VA3UV.com (but just the reflectors)"
@@ -465,7 +467,24 @@ GatewayMenu () {
 		echo "q  : Quit and return to Main Menu"
 		echo
 		read -p "Command: " ans
-		if   [[ "$ans" == ip* ]]; then
+		if   [[ "$ans" == i6* ]]; then
+			wget -O XLX_Hosts.txt http://xlxapi.rlx.lu/api.php?do=GetXLXDMRMaster
+			wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
+			wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
+			wget http://www.pistar.uk/downloads/DCS_Hosts.txt
+			wget https://hosts.openquad.net/ipv6-hosts.txt
+			/bin/rm -f gwys.txt
+			echo "# Downloaded from www.pistar.uk and xlxapi.rlx.lu `date`" > gwys.txt
+			awk '$1 ~ /^XLX/ { gsub("\r", ""); printf "%s %s 30001\n", $1, $2 }' XLX_Hosts.txt >> gwys.txt
+			awk '$1 ~ /^XRF/ { printf "%s %s 30001\n", $1, $2 }' DExtra_Hosts.txt >> gwys.txt
+			awk '$1 ~ /^DCS/ { printf "%s %s 30051\n", $1, $2 }' DCS_Hosts.txt >> gwys.txt
+			awk '$1 ~ /^REF/ { printf "%s %s 20001\n", $1, $2 }' DPlus_Hosts.txt >> gwys.txt
+			cat ipv6-hosts.txt >> gwys.txt
+			if [ -e My_Hosts.txt ]; then
+				cat My_Hosts.txt >> gwys.txt
+			fi
+			/bin/rm -f {XLX,DExtra,DPlus,DCS}_Hosts.txt ipv6-hosts.txt
+		elif [[ "$ans" == ip* ]]; then
 			wget -O XLX_Hosts.txt http://xlxapi.rlx.lu/api.php?do=GetXLXDMRMaster
 			wget http://www.pistar.uk/downloads/DExtra_Hosts.txt
 			wget http://www.pistar.uk/downloads/DPlus_Hosts.txt
