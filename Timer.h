@@ -26,10 +26,12 @@ class CTimer
 public:
 	CTimer() { start(); }
 	~CTimer() {}
-	void start() {
+	void start()
+	{
 		starttime = std::chrono::steady_clock::now();
 	}
-	double time() {
+	double time()
+	{
 		std::chrono::duration<double> elapsed(std::chrono::steady_clock::now() - starttime);
 		return elapsed.count();
 	}

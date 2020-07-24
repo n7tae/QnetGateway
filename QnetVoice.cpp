@@ -37,13 +37,16 @@ bool read_config(const char *cfgFile)
 	if (cfg.Initialize(cfgFile))
 		return true;
 
-	for (int m=0; m<3; m++) {
+	for (int m=0; m<3; m++)
+	{
 		std::string path("module_");
 		path.append(std::to_string(m));
 		std::string type;
-		if (cfg.KeyExists(path)) {
+		if (cfg.KeyExists(path))
+		{
 			cfg.GetValue(path, "", type, 1, 16);
-			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm") && strcasecmp(type.c_str(), "itap")) {
+			if (strcasecmp(type.c_str(), "dvap") && strcasecmp(type.c_str(), "dvrptr") && strcasecmp(type.c_str(), "mmdvm") && strcasecmp(type.c_str(), "itap"))
+			{
 				printf("module type '%s' is invalid\n", type.c_str());
 				return true;
 			}
@@ -69,7 +72,8 @@ int main(int argc, char *argv[])
 {
 	char RADIO_ID[21];
 
-	if (argc != 4) {
+	if (argc != 4)
+	{
 		printf("Usage: %s <module> <datFile> <txtMsg>\n", argv[0]);
 		printf("Where...\n");
 		printf("        <module>  is one of your modules: A, B or C\n");
@@ -87,7 +91,8 @@ int main(int argc, char *argv[])
 
 	if (islower(module))
 		module = toupper(module);
-	if ((module != 'A') && (module != 'B') && (module != 'C')) {
+	if ((module != 'A') && (module != 'B') && (module != 'C'))
+	{
 		printf("module must be one of A B C\n");
 		return 1;
 	}
@@ -96,7 +101,8 @@ int main(int argc, char *argv[])
 	snprintf(pathname, FILENAME_MAX, "%s/%s", announce_dir.c_str(), argv[2]);
 
 	FILE *fp = fopen(pathname, "rb");
-	if (!fp) {
+	if (!fp)
+	{
 		printf("Failed to find file %s for reading\n", pathname);
 		return 1;
 	}
@@ -112,10 +118,13 @@ int main(int argc, char *argv[])
 			RADIO_ID[i] = '_';
 
 	fp = fopen(qnvoice_file.c_str(), "w");
-	if (fp) {
+	if (fp)
+	{
 		fprintf(fp, "%c_%s_%s\n", module, argv[2], RADIO_ID);
 		fclose(fp);
-	} else {
+	}
+	else
+	{
 		printf("Failed to open %s for writing", qnvoice_file.c_str());
 		return 1;
 	}

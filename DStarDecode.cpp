@@ -26,7 +26,8 @@
 #define MASK12          0xfffff800   /* auxiliary vector for testing */
 #define GENPOL          0x00000c75   /* generator polinomial, g(x) */
 
-static const int bit_pos1[] = {
+static const int bit_pos1[] =
+{
 	0, 0,  1, 1,  2, 2,
 	0, 0,  1, 1,  2, 2,
 	0, 0,  1, 1,  2, 2,
@@ -42,7 +43,8 @@ static const int bit_pos1[] = {
 	0, 0,  1, 1,  2, 2
 };
 
-static const int bit_pos2[] = {
+static const int bit_pos2[] =
+{
 	23, 11, 23, 11, 23, 11,
 	22, 10, 22, 10, 22, 10,
 	21,  9, 21,  9, 21,  9,
@@ -66,7 +68,8 @@ CDStarDecode::CDStarDecode(void)
 	decoding_table[0] = 0;
 	decoding_table[1] = 1;
 	temp = 1;
-	for (i=2; i<= 23; i++) {
+	for (i=2; i<= 23; i++)
+	{
 		temp = temp << 1;
 		decoding_table[get_syndrome(temp)] = temp;
 	}
@@ -75,7 +78,8 @@ CDStarDecode::CDStarDecode(void)
 	a[2] = 2;
 	temp = arr2int(a,2);
 	decoding_table[get_syndrome(temp)] = temp;
-	for (i=1; i<253; i++) {
+	for (i=1; i<253; i++)
+	{
 		nextcomb(23,2,a);
 		temp = arr2int(a,2);
 		decoding_table[get_syndrome(temp)] = temp;
@@ -86,13 +90,15 @@ CDStarDecode::CDStarDecode(void)
 	a[3] = 3;
 	temp = arr2int(a,3);
 	decoding_table[get_syndrome(temp)] = temp;
-	for (i=1; i<1771; i++) {
+	for (i=1; i<1771; i++)
+	{
 		nextcomb(23,3,a);
 		temp = arr2int(a,3);
 		decoding_table[get_syndrome(temp)] = temp;
 	}
 
-	for (i=0; i < 4096; i++) {
+	for (i=0; i < 4096; i++)
+	{
 		int mask = 0x800000;
 		int j;
 		int pr;
@@ -100,10 +106,12 @@ CDStarDecode::CDStarDecode(void)
 		prng[i] = 0;
 		pr = i << 4;
 
-		for (j=0; j < 24; j++) {
+		for (j=0; j < 24; j++)
+		{
 			pr = ((173 * pr) + 13849) & 0xFFFF;
 
-			if ((pr & 0x8000) != 0) {
+			if ((pr & 0x8000) != 0)
+			{
 				prng[i] |= mask;
 			}
 
@@ -121,7 +129,8 @@ long CDStarDecode::arr2int(int *a, int r)
 	int i;
 	long mul, result = 0, temp;
 
-	for (i=1; i<=r; i++) {
+	for (i=1; i<=r; i++)
+	{
 		mul = 1;
 		temp = a[i]-1;
 		while (temp--)
@@ -164,7 +173,8 @@ long CDStarDecode::get_syndrome(long pattern)
 	long aux = X22;
 
 	if (pattern >= X11)
-		while (pattern & MASK12) {
+		while (pattern & MASK12)
+		{
 			while (!(aux & pattern))
 				aux = aux >> 1;
 			pattern ^= (aux/X11) * GENPOL;
@@ -181,22 +191,26 @@ int CDStarDecode::golay2412(int data, int *decoded)
 	int parity_corr = 0;
 	int i;
 
-	for (i = 0; i < 23; i++) {
+	for (i = 0; i < 23; i++)
+	{
 		int mask = 1 << i;
 
 		int bit_rcvd = block & mask;
 		int bit_corr = corrected_block & mask;
 
-		if (bit_corr != 0) {
+		if (bit_corr != 0)
+		{
 			parity_corr ++;
 		}
 
-		if (bit_rcvd != bit_corr) {
+		if (bit_rcvd != bit_corr)
+		{
 			errs ++;
 		}
 	}
 
-	if ((parity_corr & 0x01) != (data & 0x01)) {
+	if ((parity_corr & 0x01) != (data & 0x01))
+	{
 		errs ++;
 	}
 
@@ -211,11 +225,13 @@ int CDStarDecode::Decode(const unsigned char *d, int data[3])
 	int i;
 	int errs;
 
-	for (i=0; i < 3; i++) {
+	for (i=0; i < 3; i++)
+	{
 		bits[i] = 0;
 	}
 
-	for (i=0; i < 72; i++) {
+	for (i=0; i < 72; i++)
+	{
 		bits[ bit_pos1[i] ] |= (d[ i >> 3 ] & (0x80 >> (i & 0x07))) ? (1 << bit_pos2[i]) : 0;
 	}
 

@@ -20,7 +20,8 @@
 
 #include "KRBase.h"
 
-using SDVAP_ACK_ARG = struct davp_ack_arg_tag {
+using SDVAP_ACK_ARG = struct davp_ack_arg_tag
+{
 	char mycall[8];
 	float ber;
 };

@@ -56,16 +56,19 @@ void IRCMessage::parsePrefix()
 {
 	unsigned int i;
 
-	for (i=0; i < 3; i++) {
+	for (i=0; i < 3; i++)
+	{
 		prefixComponents.push_back("");
 	}
 
 	int state = 0;
 
-	for (i=0; i < prefix.length(); i++) {
+	for (i=0; i < prefix.length(); i++)
+	{
 		char c = prefix.at(i);
 
-		switch (c) {
+		switch (c)
+		{
 		case '!':
 			state = 1; // next is name
 			break;
@@ -85,7 +88,8 @@ void IRCMessage::parsePrefix()
 
 std::string &IRCMessage::getPrefixNick()
 {
-	if (!prefixParsed) {
+	if (!prefixParsed)
+	{
 		parsePrefix();
 	}
 
@@ -94,7 +98,8 @@ std::string &IRCMessage::getPrefixNick()
 
 std::string &IRCMessage::getPrefixName()
 {
-	if (!prefixParsed) {
+	if (!prefixParsed)
+	{
 		parsePrefix();
 	}
 
@@ -103,7 +108,8 @@ std::string &IRCMessage::getPrefixName()
 
 std::string &IRCMessage::getPrefixHost()
 {
-	if (!prefixParsed) {
+	if (!prefixParsed)
+	{
 		parsePrefix();
 	}
 
@@ -114,16 +120,21 @@ void IRCMessage::composeMessage(std::string &output)
 {
 	std::string o;
 
-	if (prefix.length() > 0) {
+	if (prefix.length() > 0)
+	{
 		o = std::string(":") + prefix + ' ';
 	}
 
 	o += command;
 
-	for (int i=0; i < numParams; i++) {
-		if (i == (numParams - 1)) {
+	for (int i=0; i < numParams; i++)
+	{
+		if (i == (numParams - 1))
+		{
 			o += (std::string(" :") + params[i]);
-		} else {
+		}
+		else
+		{
 			o += (std::string(" ") + params[i]);
 		}
 	}

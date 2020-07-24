@@ -31,7 +31,8 @@
 #define CALL_SIZE 8
 #define IP_SIZE 15
 
-enum REPLY_TYPE {
+enum REPLY_TYPE
+{
 	RT_TIMEOUT,
 	RT_ERROR,
 	RT_UNKNOWN,
@@ -44,22 +45,25 @@ enum REPLY_TYPE {
 
 // Icom Terminal and Access Point Mode data structure
 #pragma pack(push, 1)
-using SITAP = struct itap_tag {
+using SITAP = struct itap_tag
+{
 	unsigned char length;
-		// 41 for header
-		// 16 for voice
+	// 41 for header
+	// 16 for voice
 	unsigned char type;
-		// 0x03U pong
-		// 0x10U header from icom
-		// 0x11U acknowledgment
-		// 0x12U data   from icom (it's EOT if voice.sequence bit 0x40 is set)
-		// 0x13U acknowledgment
-		// 0x20U header to icom
-		// 0x21U header acknowledgment
-		// 0x22U   data to icom
-		// 0x23U   data acknowledgment
-	union {
-		struct {
+	// 0x03U pong
+	// 0x10U header from icom
+	// 0x11U acknowledgment
+	// 0x12U data   from icom (it's EOT if voice.sequence bit 0x40 is set)
+	// 0x13U acknowledgment
+	// 0x20U header to icom
+	// 0x21U header acknowledgment
+	// 0x22U   data to icom
+	// 0x23U   data acknowledgment
+	union
+	{
+		struct
+		{
 			unsigned char flag[3];
 			unsigned char r2[8];
 			unsigned char r1[8];
@@ -67,7 +71,8 @@ using SITAP = struct itap_tag {
 			unsigned char my[8];
 			unsigned char nm[4];
 		} header;
-		struct {
+		struct
+		{
 			unsigned char counter;	// ordinal counter is reset with each header
 			unsigned char sequence;	// is modulo 21
 			unsigned char ambe[9];
@@ -80,11 +85,13 @@ using SITAP = struct itap_tag {
 class CFrame
 {
 public:
-	CFrame(const unsigned char *buf) {
+	CFrame(const unsigned char *buf)
+	{
 		memcpy(&frame.length, buf, buf[0]);
 	}
 
-	CFrame(const CFrame &from) {
+	CFrame(const CFrame &from)
+	{
 		memcpy(&frame.length, from.data(), from.size());
 	}
 

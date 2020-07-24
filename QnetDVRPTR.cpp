@@ -45,7 +45,8 @@
 #define BAUD B115200
 #define IP_SIZE 15
 
-static const uint32_t ENCODING_TABLE_24128[] = {
+static const uint32_t ENCODING_TABLE_24128[] =
+{
 	0x000000U, 0x0018EBU, 0x00293EU, 0x0031D5U, 0x004A97U, 0x00527CU, 0x0063A9U, 0x007B42U, 0x008DC6U, 0x00952DU,
 	0x00A4F8U, 0x00BC13U, 0x00C751U, 0x00DFBAU, 0x00EE6FU, 0x00F684U, 0x010367U, 0x011B8CU, 0x012A59U, 0x0132B2U,
 	0x0149F0U, 0x01511BU, 0x0160CEU, 0x017825U, 0x018EA1U, 0x01964AU, 0x01A79FU, 0x01BF74U, 0x01C436U, 0x01DCDDU,
@@ -471,8 +472,10 @@ static const uint32_t ENCODING_TABLE_24128[] = {
 uint32_t CQnetDVRPTR::get_syndrome_23127(uint32_t pattern)
 {
 	uint32_t aux = GORLAY_X22;
-	if (pattern >= GORLAY_X11) {
-		while (pattern & GORLAY_MASK12) {
+	if (pattern >= GORLAY_X11)
+	{
+		while (pattern & GORLAY_MASK12)
+		{
 			while ((aux & pattern)==0) aux >>= 1;
 			pattern ^= (aux / GORLAY_X11) * GORLAY_GENPOL;
 		}
@@ -482,7 +485,8 @@ uint32_t CQnetDVRPTR::get_syndrome_23127(uint32_t pattern)
 
 unsigned int CQnetDVRPTR::gorlay_decode23127(unsigned int code)
 {
-	const uint32_t DECODING_TABLE_23127[] = {
+	const uint32_t DECODING_TABLE_23127[] =
+	{
 		0x000000U, 0x000001U, 0x000002U, 0x000003U, 0x000004U, 0x000005U, 0x000006U, 0x000007U, 0x000008U, 0x000009U,
 		0x00000AU, 0x00000BU, 0x00000CU, 0x00000DU, 0x00000EU, 0x024020U, 0x000010U, 0x000011U, 0x000012U, 0x000013U,
 		0x000014U, 0x000015U, 0x000016U, 0x412000U, 0x000018U, 0x000019U, 0x00001AU, 0x180800U, 0x00001CU, 0x200300U,
@@ -706,7 +710,8 @@ unsigned int CQnetDVRPTR::gorlay_decode24128(unsigned int code)
 	return gorlay_decode23127(code >> 1);
 }
 
-const uint32_t PRNG_TABLE[] = {
+const uint32_t PRNG_TABLE[] =
+{
 	0x42CC47U, 0x19D6FEU, 0x304729U, 0x6B2CD0U, 0x60BF47U, 0x39650EU, 0x7354F1U, 0xEACF60U, 0x819C9FU, 0xDE25CEU,
 	0xD7B745U, 0x8CC8B8U, 0x8D592BU, 0xF71257U, 0xBCA084U, 0xA5B329U, 0xEE6AFAU, 0xF7D9A7U, 0xBCC21CU, 0x4712D9U,
 	0x4F2922U, 0x14FA37U, 0x5D43ECU, 0x564115U, 0x299A92U, 0x20A9EBU, 0x7B707DU, 0x3BE3A4U, 0x20D95BU, 0x6B085AU,
@@ -1124,7 +1129,8 @@ void CQnetDVRPTR::ambefec_deinterleave(tambevoicefec result, const tambevoicefec
 	uint32_t bitpos, bytcnt;
 	memset(result, 0, sizeof(tambevoicefec));		// init result
 	bitpos = 0;
-	for (bytcnt = 0; bytcnt < sizeof(tambevoicefec); bytcnt++) {
+	for (bytcnt = 0; bytcnt < sizeof(tambevoicefec); bytcnt++)
+	{
 		char voice_dsr = voice[bytcnt];
 		if (voice_dsr & 0x80) result[bitpos>>3] |= (0x80 >> (bitpos&7));
 		interleaveambe12(bitpos);
@@ -1149,7 +1155,8 @@ void CQnetDVRPTR::ambefec_interleave(tambevoicefec result, const tambevoicefec r
 {
 	uint32_t bitpos, bytcnt;
 	bitpos = 0;
-	for (bytcnt = 0; bytcnt < sizeof(tambevoicefec); bytcnt++) {
+	for (bytcnt = 0; bytcnt < sizeof(tambevoicefec); bytcnt++)
+	{
 		char voice_dsr = (raw_voice[bitpos>>3] & (0x80 >> (bitpos&7)))?0x80:0x00;
 		interleaveambe12(bitpos);
 		if (raw_voice[bitpos>>3] & (0x80 >> (bitpos&7))) voice_dsr |= 0x40;
@@ -1191,14 +1198,16 @@ void CQnetDVRPTR::ambefec_regenerate(tambevoicefec voice)
 
 const unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 
-void CQnetDVRPTR::CleanCall(std::string &callsign) {
+void CQnetDVRPTR::CleanCall(std::string &callsign)
+{
 	for (auto it=callsign.begin(); it!=callsign.end(); it++)
 		if (islower(*it))
 			*it = toupper(*it);
 	callsign.resize(CALL_SIZE, ' ');
 }
 
-const unsigned short crc_tabccitt[256] = {
+const unsigned short crc_tabccitt[256] =
+{
 	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 	0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
 	0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
@@ -1223,7 +1232,8 @@ void CQnetDVRPTR::calcPFCS(unsigned char *packet)	//Netzwerk CRC
 	unsigned short tmp, short_c;
 	int i;
 
-	for (i = 17; i < 56 ; i++) {
+	for (i = 17; i < 56 ; i++)
+	{
 		short_c = 0x00ff & (unsigned short)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
@@ -1249,12 +1259,15 @@ bool CQnetDVRPTR::ReadConfig(const char *cfgFile)
 	const std::string estr;	// an empty string
 	std::string type;
 	std::string path("module_");
-	if (0 > assigned_module) {
+	if (0 > assigned_module)
+	{
 		// we need to find the lone dvrptr module
-		for (int i=0; i<3; i++) {
+		for (int i=0; i<3; i++)
+		{
 			std::string test(path);
 			test.append(1, 'a'+i);
-			if (cfg.KeyExists(test)) {
+			if (cfg.KeyExists(test))
+			{
 				cfg.GetValue(test, estr, type, 1, 16);
 				if (type.compare("dvrptr"))
 					continue;	// this ain't it!
@@ -1263,20 +1276,27 @@ bool CQnetDVRPTR::ReadConfig(const char *cfgFile)
 				break;
 			}
 		}
-		if (0 > assigned_module) {
+		if (0 > assigned_module)
+		{
 			fprintf(stderr, "Error: no 'dvrptr' module found\n!");
 			return true;
 		}
-	} else {
+	}
+	else
+	{
 		// make sure dvrptr module is defined
 		path.append(1, 'a' + assigned_module);
-		if (cfg.KeyExists(path)) {
+		if (cfg.KeyExists(path))
+		{
 			cfg.GetValue(path, estr, type, 1, 16);
-			if (type.compare("dvrptr")) {
+			if (type.compare("dvrptr"))
+			{
 				fprintf(stderr, "%s = %s is not 'dvrptr' type!\n", path.c_str(), type.c_str());
 				return true;
 			}
-		} else {
+		}
+		else
+		{
 			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
 			return true;
 		}
@@ -1291,12 +1311,15 @@ bool CQnetDVRPTR::ReadConfig(const char *cfgFile)
 	CleanCall(call);
 	strncpy(DVCALL, call.c_str(), CALL_SIZE+1);
 
-	if (cfg.KeyExists(path+"_callsign")) {
+	if (cfg.KeyExists(path+"_callsign"))
+	{
 		if (cfg.GetValue(path+"_callsign", type, call, 3, 6))
 			return true;
 		CleanCall(call);
 		strncpy(RPTR, call.c_str(), CALL_SIZE+1);
-	} else {
+	}
+	else
+	{
 		strncpy(RPTR, DVCALL, CALL_SIZE+1);
 	}
 
@@ -1345,16 +1368,20 @@ char *CQnetDVRPTR::cleanstr(char *Text)
 	static char cbuf[250];
 	memset(cbuf, 0U, 250U);
 
-	for (unsigned int x=0; x < strlen(Text); x++) {
-		if ((Text[x] > 0x1F) && (Text[x] < 0x7F)) {
-			if (Text[x] == '\'') {
+	for (unsigned int x=0; x < strlen(Text); x++)
+	{
+		if ((Text[x] > 0x1F) && (Text[x] < 0x7F))
+		{
+			if (Text[x] == '\'')
+			{
 				strcat(cbuf, "\\");
 			}
 			strncat(cbuf, &Text[x], 1);
 		}
 	}
 
-	for (unsigned int x=0; x < strlen(cbuf); x++) {
+	for (unsigned int x=0; x < strlen(cbuf); x++)
+	{
 		if (!isdigit(cbuf[x]) && !isupper(cbuf[x]) && (cbuf[x] != '/'))
 			cbuf[x] = ' ';
 	}
@@ -1368,9 +1395,10 @@ int CQnetDVRPTR::open_port(char *dvrptr_device)
 	struct termios terminal;
 
 	fd_ser = open(dvrptr_device, O_RDWR | O_NOCTTY | O_NONBLOCK |  O_NDELAY);
-	if (fd_ser < 0) {
+	if (fd_ser < 0)
+	{
 		printf("Can not open the serial port %s, error=%d(%s)\n",
-		        dvrptr_device, errno, strerror(errno));
+			   dvrptr_device, errno, strerror(errno));
 		return -1;
 	}
 	printf("Success in opening device %s\n", dvrptr_device);
@@ -1399,10 +1427,12 @@ int CQnetDVRPTR::read_port(int *fd_ser,unsigned char* buffera)
 	tva.tv_usec = 50;
 
 	select(*fd_ser + 1,&rfds,NULL,NULL,&tva);
-	if (FD_ISSET(*fd_ser, &rfds)) {
+	if (FD_ISSET(*fd_ser, &rfds))
+	{
 		a = read(*fd_ser,buffera,200);
 		return a;
-	} else
+	}
+	else
 		return 0;
 }
 
@@ -1440,7 +1470,8 @@ void CQnetDVRPTR::send_ack(char *a_call, float ber)
 	memcpy(Send_Modem_Header + 35, DVCALL_and_MOD, 8);
 	memcpy(Send_Modem_Header + 43, "RPTR", 4);
 
-	if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
+	if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0)
+	{
 		memcpy(Send_Modem_Header + 11, RPTR, 7);
 		memcpy(Send_Modem_Header + 19, RPTR, 7);
 
@@ -1456,9 +1487,11 @@ void CQnetDVRPTR::send_ack(char *a_call, float ber)
 	write(fd_ser, start_Header, sizeof (start_Header));
 	write(fd_ser, Send_Modem_Header, sizeof (Send_Modem_Header));
 
-	for (i = 0; i < 16; i++) {
+	for (i = 0; i < 16; i++)
+	{
 		usleep(DELAY_BETWEEN);
-		if (i == 0) {
+		if (i == 0)
+		{
 			writevoice[0] =0xD0;
 			writevoice[1] =0x13;
 			writevoice[2] =0x00;
@@ -1482,7 +1515,8 @@ void CQnetDVRPTR::send_ack(char *a_call, float ber)
 			write(fd_ser, writevoice, sizeof (writevoice));
 		}
 
-		if ((i < 9) && ( i > 0 )) {
+		if ((i < 9) && ( i > 0 ))
+		{
 			writevoice[0] =0xD0;
 			writevoice[1] =0x13;
 			writevoice[2] =0x00;
@@ -1493,35 +1527,50 @@ void CQnetDVRPTR::send_ack(char *a_call, float ber)
 			writevoice[7] =0x00;
 			memcpy(writevoice + 8, silence, 9);
 
-			if (i == 1) {
+			if (i == 1)
+			{
 				writevoice[17] = '@' ^ 0x70;
 				writevoice[18] = RADIO_ID[0] ^ 0x4f;
 				writevoice[19] = RADIO_ID[1] ^ 0x93;
-			} else if (i == 2) {
+			}
+			else if (i == 2)
+			{
 				writevoice[17] = RADIO_ID[2] ^ 0x70;
 				writevoice[18] = RADIO_ID[3] ^ 0x4f;
 				writevoice[19] = RADIO_ID[4] ^ 0x93;
-			} else if (i == 3) {
+			}
+			else if (i == 3)
+			{
 				writevoice[17] = 'A' ^ 0x70;
 				writevoice[18] = RADIO_ID[5] ^ 0x4f;
 				writevoice[19] = RADIO_ID[6] ^ 0x93;
-			} else if (i == 4) {
+			}
+			else if (i == 4)
+			{
 				writevoice[17] = RADIO_ID[7] ^ 0x70;
 				writevoice[18] = RADIO_ID[8] ^ 0x4f;
 				writevoice[19] = RADIO_ID[9] ^ 0x93;
-			} else if (i == 5) {
+			}
+			else if (i == 5)
+			{
 				writevoice[17] = 'B' ^ 0x70;
 				writevoice[18] = RADIO_ID[10] ^ 0x4f;
 				writevoice[19] = RADIO_ID[11] ^ 0x93;
-			} else if (i == 6) {
+			}
+			else if (i == 6)
+			{
 				writevoice[17] = RADIO_ID[12] ^ 0x70;
 				writevoice[18] = RADIO_ID[13] ^ 0x4f;
 				writevoice[19] = RADIO_ID[14] ^ 0x93;
-			} else if (i == 7) {
+			}
+			else if (i == 7)
+			{
 				writevoice[17] = 'C' ^ 0x70;
 				writevoice[18] = RADIO_ID[15] ^ 0x4f;
 				writevoice[19] = RADIO_ID[16] ^ 0x93;
-			} else if (i == 8) {
+			}
+			else if (i == 8)
+			{
 				writevoice[17] = RADIO_ID[17] ^ 0x70;
 				writevoice[18] = RADIO_ID[18] ^ 0x4f;
 				writevoice[19] = RADIO_ID[19] ^ 0x93;
@@ -1538,7 +1587,8 @@ void CQnetDVRPTR::send_ack(char *a_call, float ber)
 			write(fd_ser, writevoice, sizeof (writevoice));
 		}
 
-		if (i == 9) {
+		if (i == 9)
+		{
 			writevoice[0] =0xD0;
 			writevoice[1] =0x13;
 			writevoice[2] =0x00;
@@ -1563,7 +1613,8 @@ void CQnetDVRPTR::send_ack(char *a_call, float ber)
 			write(fd_ser, writevoice, sizeof (writevoice));
 		}
 
-		if (i == 15) {
+		if (i == 15)
+		{
 			write(fd_ser, ptt_off, sizeof(ptt_off));
 			seq_no1 ++;
 			if (seq_no1 == 250)
@@ -1586,7 +1637,8 @@ void CQnetDVRPTR::readFrom20000()
 	bool written_to_q = false;
 
 	int fd = ToGate.GetFD();
-	while (keep_running) {
+	while (keep_running)
+	{
 		written_to_q = false;
 
 		tv.tv_sec = 0;
@@ -1594,23 +1646,28 @@ void CQnetDVRPTR::readFrom20000()
 		FD_ZERO (&readfd);
 		FD_SET (fd, &readfd);
 		select(fd + 1, &readfd, NULL, NULL, &tv);
-		if (FD_ISSET(fd, &readfd)) {
+		if (FD_ISSET(fd, &readfd))
+		{
 			len = ToGate.Read(recv_buf.title, 56);
-			if (len == 56) {
-				if (busy20000) {
+			if (len == 56)
+			{
+				if (busy20000)
+				{
 					FD_CLR (fd, &readfd);
 					continue;
 				}
 
 				/* check the module and gateway */
-				if (recv_buf.hdr.rpt1[7] != DVRPTR_MOD) {
+				if (recv_buf.hdr.rpt1[7] != DVRPTR_MOD)
+				{
 					fprintf(stderr, "rpt1=%.8s != %c, ignoring\n", recv_buf.hdr.rpt1, DVRPTR_MOD);
 					FD_CLR (fd, &readfd);
 					break;
 				}
 				memcpy(recv_buf.hdr.rpt2, DVCALL_and_G, 8);
 
-				if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
+				if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0)
+				{
 					memcpy(recv_buf.hdr.rpt1, RPTR, 7);
 					memcpy(recv_buf.hdr.rpt2, RPTR, 7);
 
@@ -1623,16 +1680,18 @@ void CQnetDVRPTR::readFrom20000()
 				}
 
 				if ((recv_buf.hdr.flag[0] != 0x00) &&
-				        (recv_buf.hdr.flag[0] != 0x01) &&
-				        (recv_buf.hdr.flag[0] != 0x08) &&
-				        (recv_buf.hdr.flag[0] != 0x20) &&
-				        (recv_buf.hdr.flag[0] != 0x28) &&
-				        (recv_buf.hdr.flag[0] != 0x40)) {
+						(recv_buf.hdr.flag[0] != 0x01) &&
+						(recv_buf.hdr.flag[0] != 0x08) &&
+						(recv_buf.hdr.flag[0] != 0x20) &&
+						(recv_buf.hdr.flag[0] != 0x28) &&
+						(recv_buf.hdr.flag[0] != 0x40))
+				{
 					FD_CLR (fd, &readfd);
 					break;
 				}
 
-				if ((memcmp(recv_buf.title, "DSVT", 4) != 0) || (recv_buf.id != 0x20)) {
+				if ((memcmp(recv_buf.title, "DSVT", 4) != 0) || (recv_buf.id != 0x20))
+				{
 					FD_CLR (fd, &readfd);
 					break;
 				}
@@ -1653,7 +1712,8 @@ void CQnetDVRPTR::readFrom20000()
 				Send_Modem_Header[6] =0x00;
 				Send_Modem_Header[7] =0x00;
 
-				if (recv_buf.hdr.flag[0] != 0x1U) {
+				if (recv_buf.hdr.flag[0] != 0x1U)
+				{
 					if (recv_buf.hdr.flag[0] == 0x0U)
 						recv_buf.hdr.flag[0] = 0x40U;
 					else if (recv_buf.hdr.flag[0] == 0x8U)
@@ -1692,9 +1752,12 @@ void CQnetDVRPTR::readFrom20000()
 				write(fd_ser, Send_Modem_Header, sizeof (Send_Modem_Header));
 				inactive = 0;
 				seq_no = 0;
-			} else if (len == 27) {
+			}
+			else if (len == 27)
+			{
 				seq_no = recv_buf.ctrl & 0x1f;
-				if ((seq_no < 3) && (old_seq_no > 17)) {
+				if ((seq_no < 3) && (old_seq_no > 17))
+				{
 					block ++;
 					if (block >= 12)
 						block = 0;
@@ -1702,12 +1765,17 @@ void CQnetDVRPTR::readFrom20000()
 				old_seq_no = seq_no;
 				seq_no = block * 21 + seq_no;
 
-				if (busy20000) {
-					if (recv_buf.streamid == streamid) {
-						if ((recv_buf.ctrl <= ctrl_in) && (ctrl_in != 0x80)) {
+				if (busy20000)
+				{
+					if (recv_buf.streamid == streamid)
+					{
+						if ((recv_buf.ctrl <= ctrl_in) && (ctrl_in != 0x80))
+						{
 							/* do not update written_to_q, ctrl_in */
 							; // printf("dup\n");
-						} else {
+						}
+						else
+						{
 							ctrl_in = recv_buf.ctrl;
 							if (ctrl_in == 0x14)
 								ctrl_in = 0x80;
@@ -1733,7 +1801,8 @@ void CQnetDVRPTR::readFrom20000()
 							write(fd_ser, writevoice, sizeof (writevoice));
 							inactive = 1;
 
-							if ((recv_buf.ctrl & 0x40) != 0) {
+							if ((recv_buf.ctrl & 0x40) != 0)
+							{
 								printf("End G2: streamid=%04x\n",ntohs(recv_buf.streamid));
 
 								ptt_off[4] = Send_Modem_Header[4];
@@ -1748,12 +1817,17 @@ void CQnetDVRPTR::readFrom20000()
 							}
 						}
 					}
-				} else {
+				}
+				else
+				{
 					FD_CLR (fd, &readfd);
 					break;
 				}
-			} else {
-				if (!busy20000) {
+			}
+			else
+			{
+				if (!busy20000)
+				{
 					FD_CLR (fd, &readfd);
 					break;
 				}
@@ -1765,9 +1839,12 @@ void CQnetDVRPTR::readFrom20000()
 		   If we received a dup or select() timed out or streamids dont match,
 		   then written_to_q is false
 		*/
-		if (!written_to_q) { /* nothing was written to the adapter */
-			if (busy20000) {
-				if (++inactive == inactiveMax) {
+		if (!written_to_q)   /* nothing was written to the adapter */
+		{
+			if (busy20000)
+			{
+				if (++inactive == inactiveMax)
+				{
 					printf("G2 Timeout...\n");
 					ptt_off[4] = Send_Modem_Header[4];
 					write(fd_ser, ptt_off, 8);
@@ -1778,7 +1855,8 @@ void CQnetDVRPTR::readFrom20000()
 					inactive = 0;
 					break;
 				}
-			} else
+			}
+			else
 				break;
 		}
 	}
@@ -1792,7 +1870,8 @@ bool CQnetDVRPTR::check_serial()
 	bool match = false;
 	unsigned char puffer[200];
 
-	for (int i = 0; i < 32; i++) {
+	for (int i = 0; i < 32; i++)
+	{
 		sprintf(dvrptr_device, "/dev/ttyACM%d", i);
 		if (access(dvrptr_device, R_OK | W_OK) != 0)
 			continue;
@@ -1804,14 +1883,16 @@ bool CQnetDVRPTR::check_serial()
 
 		if  (RX_Inverse == true)
 			Modem_Init2[6]=0x01;
-		if  (TX_Inverse == true) {
+		if  (TX_Inverse == true)
+		{
 			if (Modem_Init2[6]==0x01)
 				Modem_Init2[6]=0x03;
 			else
 				Modem_Init2[6]=0x02;
 		}
 
-		if (flock(fd_ser, LOCK_EX | LOCK_NB) != 0) {
+		if (flock(fd_ser, LOCK_EX | LOCK_NB) != 0)
+		{
 			close(fd_ser);
 			fd_ser = -1;
 			printf("Device %s is already locked/used by other dvrptr repeater\n", dvrptr_device);
@@ -1820,20 +1901,25 @@ bool CQnetDVRPTR::check_serial()
 		printf("Device %s now locked for exclusive use\n", dvrptr_device);
 
 		int loop_count = 0;
-		while (true) {
-			if (InitCount == 4 ) {
+		while (true)
+		{
+			if (InitCount == 4 )
+			{
 				write(fd_ser, Modem_SERIAL, sizeof (Modem_SERIAL));
 				InitCount = 0;
 			}
-			if (InitCount == 3 ) {
+			if (InitCount == 3 )
+			{
 				write(fd_ser, Modem_Init0, sizeof (Modem_Init0));
 				InitCount = 4;
 			}
-			if (InitCount == 2 ) {
+			if (InitCount == 2 )
+			{
 				write(fd_ser, Modem_Init1, sizeof (Modem_Init1));
 				InitCount = 3;
 			}
-			if (InitCount == 1 ) {
+			if (InitCount == 1 )
+			{
 				write(fd_ser, Modem_Init2, sizeof (Modem_Init2));
 				InitCount = 2;
 			}
@@ -1843,26 +1929,28 @@ bool CQnetDVRPTR::check_serial()
 			(void)read_port(&fd_ser,puffer);
 
 			if ((puffer[0] == 0xD0) &&
-			        (puffer[1] == 0x17) &&
-			        (puffer[2] == 0x00) &&
-			        (puffer[3] == 0x91))
+					(puffer[1] == 0x17) &&
+					(puffer[2] == 0x00) &&
+					(puffer[3] == 0x91))
 				puffer[1] = 0x00;
 
 			if ((puffer[0] == 0xD0) &&
-			        ((puffer[1] == 0x07) || (puffer[1] == 0x08)) &&
-			        (puffer[2] == 0x00) &&
-			        (puffer[3] == 0x90))
+					((puffer[1] == 0x07) || (puffer[1] == 0x08)) &&
+					(puffer[2] == 0x00) &&
+					(puffer[3] == 0x90))
 				puffer[1] = 0x00;
 
 			if ((puffer[0] == 0xD0) &&
-			        (puffer[1] == 0x05) &&
-			        (puffer[2] == 0x00) &&
-			        (puffer[3] == 0x92)) {
+					(puffer[1] == 0x05) &&
+					(puffer[2] == 0x00) &&
+					(puffer[3] == 0x92))
+			{
 				puffer[1] = 0x00;
 				char temp_dvrptr_serial[16];
 				sprintf(temp_dvrptr_serial, "%02X.%02X.%02X.%02X", puffer[4], puffer[5], puffer[6], puffer[7]);
 				printf("Device %s has serial=[%s]\n", dvrptr_device, temp_dvrptr_serial);
-				if (strcmp(temp_dvrptr_serial, DVRPTR_SERIAL.c_str()) == 0) {
+				if (strcmp(temp_dvrptr_serial, DVRPTR_SERIAL.c_str()) == 0)
+				{
 					printf("Device %s serial number matches DVRPTR_SERIAL in dvrptr.cfg\n", dvrptr_device);
 					match = true;
 				}
@@ -1870,13 +1958,15 @@ bool CQnetDVRPTR::check_serial()
 			}
 
 			loop_count ++;
-			if (loop_count > 50) {
+			if (loop_count > 50)
+			{
 				printf("Waited 5 seconds to receive serial number from device %s, ...aborting\n", dvrptr_device);
 				break;
 			}
 		}
 
-		if (match) {
+		if (match)
+		{
 			printf("Found a match after %d loops\n", loop_count);
 			break;
 		}
@@ -1895,12 +1985,14 @@ int main(int argc, const char **argv)
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	printf("dvrptr VERSION %s\n", DVRPTR_VERSION);
 
-	if (argc != 2) {
+	if (argc != 2)
+	{
 		fprintf(stderr, "Usage: %s <config_file>\n", argv[0]);
 		return 1;
 	}
 
-	if ('-' == argv[1][0]) {
+	if ('-' == argv[1][0])
+	{
 		printf("\nQnetDVRPTR Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVRPTR_VERSION);
 		printf("QnetDVRPTR comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
@@ -1908,27 +2000,29 @@ int main(int argc, const char **argv)
 	}
 
 	const char *qn = strstr(argv[0], "qndvrptr");
-	if (NULL == qn) {
+	if (NULL == qn)
+	{
 		fprintf(stderr, "Error finding 'qndvrptr' in %s!\n", argv[0]);
 		return 1;
 	}
 	qn += 8;
 
 	int mod;
-	switch (*qn) {
-		case NULL:
-			mod = -1;
-			break;
-		case 'a':
-			mod = 0;
-			break;
-		case 'b':
-			mod = 1;
-			break;
-		case 'c':
-			mod = 2;
-			break;
-		default:
+	switch (*qn)
+	{
+	case NULL:
+		mod = -1;
+		break;
+	case 'a':
+		mod = 0;
+		break;
+	case 'b':
+		mod = 1;
+		break;
+	case 'c':
+		mod = 2;
+		break;
+	default:
 		fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
 		return 1;
 	}
@@ -1944,21 +2038,25 @@ int main(int argc, const char **argv)
 bool CQnetDVRPTR::Init(const char *file, int mod)
 {
 	assigned_module = mod;
-	if (ReadConfig(file)) {
+	if (ReadConfig(file))
+	{
 		fprintf(stderr, "Failed to process config file %s\n", file);
 		return true;
 	}
 
-	if (!check_serial()) {
+	if (!check_serial())
+	{
 		fprintf(stderr, "Cant find any FREE ACMx device that matches\n");
 		return true;
 	}
 
-	if (strlen(DVCALL) != 8) {
+	if (strlen(DVCALL) != 8)
+	{
 		fprintf(stderr, "Bad DVCALL value, length must be exactly 8 bytes\n");
 		return true;
 	}
-	if ((DVRPTR_MOD != 'A') && (DVRPTR_MOD != 'B') && (DVRPTR_MOD != 'C')) {
+	if ((DVRPTR_MOD != 'A') && (DVRPTR_MOD != 'B') && (DVRPTR_MOD != 'C'))
+	{
 		fprintf(stderr, "Bad DVCALL_MOD value, must be one of A or B or C\n");
 		return true;
 	}
@@ -1979,11 +2077,13 @@ bool CQnetDVRPTR::Init(const char *file, int mod)
 	if (ToGate.Open(togate.c_str(), this))
 		return true;
 
-	if  (RX_Inverse == true) {
+	if  (RX_Inverse == true)
+	{
 		Modem_Init2[6]=0x01;
 	}
 
-	if  (TX_Inverse == true) {
+	if  (TX_Inverse == true)
+	{
 		if (Modem_Init2[6]==0x01)
 			Modem_Init2[6]=0x03;
 		else
@@ -2000,16 +2100,19 @@ void CQnetDVRPTR::Run()
 	time_t time_rqst = tNow;
 	time_t last_RF_time = tNow;
 
-	while (keep_running) {
+	while (keep_running)
+	{
 		time(&tNow);
-		if ((tNow - time_rqst) > 2) {
+		if ((tNow - time_rqst) > 2)
+		{
 			if (rqst_count < (RQST_COUNT - 2))
 				write(fd_ser, Modem_SERIAL, sizeof(Modem_SERIAL));
 
 			time_rqst = tNow;
 
 			rqst_count --;
-			if (rqst_count < 0) {
+			if (rqst_count < 0)
+			{
 				printf("Modem is not responding... shuttting down\n");
 				close(fd_ser);
 				break;
@@ -2017,19 +2120,23 @@ void CQnetDVRPTR::Run()
 		}
 
 		// init Modem
-		if (InitCount == 4 ) {
+		if (InitCount == 4 )
+		{
 			write(fd_ser, Modem_STATUS, sizeof (Modem_STATUS));
 			InitCount = 0;
 		}
-		if (InitCount == 3 ) {
+		if (InitCount == 3 )
+		{
 			write(fd_ser, Modem_Init0, sizeof (Modem_Init0));
 			InitCount = 4;
 		}
-		if (InitCount == 2 ) {
+		if (InitCount == 2 )
+		{
 			write(fd_ser, Modem_Init1, sizeof (Modem_Init1));
 			InitCount = 3;
 		}
-		if (InitCount == 1 ) {
+		if (InitCount == 1 )
+		{
 			write(fd_ser, Modem_Init2, sizeof (Modem_Init2));
 			InitCount = 2;
 		}
@@ -2040,8 +2147,10 @@ void CQnetDVRPTR::Run()
 		int seq_no = 0;
 		bool ok = false;
 
-		if (bytes2 > 0) {
-			switch (bytes2) {
+		if (bytes2 > 0)
+		{
+			switch (bytes2)
+			{
 			case 52:
 
 				num_dv_frames = 0;
@@ -2059,7 +2168,7 @@ void CQnetDVRPTR::Run()
 				strcpy (myCall, cleanstr (Temp_Text));
 
 				strcpy (Temp_Text,"");
-				strncat (Temp_Text ,(char *) puffer + 43,4);
+				strncat (Temp_Text,(char *) puffer + 43,4);
 				strcpy (myCall2, cleanstr (Temp_Text));
 
 				strcpy (Temp_Text,"");
@@ -2074,36 +2183,41 @@ void CQnetDVRPTR::Run()
 				/* just in case the data arrived from another repeater over RF */
 				/* Also, just in case our local RF user's radio is messed up */
 				if ((puffer[8] != 0x00) &&
-				        (puffer[8] != 0x08) &&
-				        (puffer[8] != 0x20) &&
-				        (puffer[8] != 0x28) &&
-				        (puffer[8] != 0x40) &&
-				        (puffer[8] != 0x48) &&
-				        (puffer[8] != 0x60) &&
-				        (puffer[8] != 0x68)) {
+						(puffer[8] != 0x08) &&
+						(puffer[8] != 0x20) &&
+						(puffer[8] != 0x28) &&
+						(puffer[8] != 0x40) &&
+						(puffer[8] != 0x48) &&
+						(puffer[8] != 0x60) &&
+						(puffer[8] != 0x68))
+				{
 					// printf("flags look BAD\n");
 					ok = false;
 				}
 
-				if ((puffer[9] != 0x00) || (puffer[10] != 0x00)) {
+				if ((puffer[9] != 0x00) || (puffer[10] != 0x00))
+				{
 					// printf("flags look BAD\n");
 					ok = false;
 				}
 
-				if (ok) {
-					if ((puffer[5] & 0x80) == 0x80) {
+				if (ok)
+				{
+					if ((puffer[5] & 0x80) == 0x80)
+					{
 						printf("From RF: flags=%02x:%02x:%02x, myCall=%s/%s, yrCall=%s, rpt1=%s, rpt2=%s\n",
-						        puffer[8], puffer[9], puffer[10], myCall, myCall2, myUR, myRPT1, myRPT2);
+							   puffer[8], puffer[9], puffer[10], myCall, myCall2, myUR, myRPT1, myRPT2);
 						printf("CRC checksum is BAD, will NOT process this QSO\n");
 						ok = false;
 					}
 				}
 
-				if (ok) {
+				if (ok)
+				{
 					time(&last_RF_time);
 
 					printf("From RF: flags=%02x:%02x:%02x, myCall=%s/%s, yrCall=%s, rpt1=%s, rpt2=%s\n",
-					        puffer[8], puffer[9], puffer[10], myCall, myCall2, myUR, myRPT1, myRPT2);
+						   puffer[8], puffer[9], puffer[10], myCall, myCall2, myUR, myRPT1, myRPT2);
 
 					/*
 					   If rpt1 is equal to rpt2, but the first 7 bytes is not our system,
@@ -2111,36 +2225,42 @@ void CQnetDVRPTR::Run()
 					   in this case, set rpt1 and rpt2 to our values,
 					   because the remote standalone repeater does not have a gateway.
 					*/
-					if (memcmp(myRPT1, myRPT2, 7) == 0) {
+					if (memcmp(myRPT1, myRPT2, 7) == 0)
+					{
 						if ((memcmp(myRPT1, DVCALL, 7) != 0) &&
-						        (memcmp(myRPT1, RPTR, 7) != 0)) {
+								(memcmp(myRPT1, RPTR, 7) != 0))
+						{
 							memcpy(myRPT1, DVCALL_and_MOD, 8);
 							memcpy(myRPT2, DVCALL_and_G, 8);
 						}
 					}
 				}
 
-				if (ok) {
+				if (ok)
+				{
 					/* RPT1 must always be the repeater + module */
 					memcpy(myRPT1, DVCALL_and_MOD, 8);
 
 					/* RPT2 must also be valid */
 					if ((myRPT2[7] == 'A') ||
-					        (myRPT2[7] == 'B') ||
-					        (myRPT2[7] == 'C') ||
-					        (myRPT2[7] == 'G'))
+							(myRPT2[7] == 'B') ||
+							(myRPT2[7] == 'C') ||
+							(myRPT2[7] == 'G'))
 						memcpy(myRPT2, DVCALL, 7);
-					else {
+					else
+					{
 						printf("myRPT2=%.8s not A, B, C or G, blanking it\n", myRPT2);
 						memset(myRPT2, ' ', 8);
 					}
 
-					if ((memcmp(myUR, "CQCQCQ", 6) != 0) && (myRPT2[0] != ' ')) {
+					if ((memcmp(myUR, "CQCQCQ", 6) != 0) && (myRPT2[0] != ' '))
+					{
 						memcpy(myRPT2, DVCALL_and_G, 8);
 					}
 
 					/* 8th in rpt1, rpt2 must be diff */
-					if (myRPT2[7] == myRPT1[7]) {
+					if (myRPT2[7] == myRPT1[7])
+					{
 						memset(myRPT2, ' ', 8);
 						printf("%.8s==%.8s, blanking myRPT2\n", myRPT2, myRPT1);
 					}
@@ -2152,22 +2272,29 @@ void CQnetDVRPTR::Run()
 					   that means that mycall, rpt1, rpt2 must be equal to RPTR
 					   otherwise we drop the rf data
 					*/
-					if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0) {
-						if (memcmp(myCall, RPTR, CALL_SIZE) != 0) {
+					if (memcmp(RPTR, DVCALL, CALL_SIZE) != 0)
+					{
+						if (memcmp(myCall, RPTR, CALL_SIZE) != 0)
+						{
 							printf("mycall=[%.8s], not equal to %s\n", myCall, RPTR);
 							ok = false;
 						}
-					} else if (memcmp(myCall, "        ", 8) == 0) {
+					}
+					else if (memcmp(myCall, "        ", 8) == 0)
+					{
 						printf("Invalid value for mycall=[%.8s]\n", myCall);
 						ok = false;
 					}
 				}
 
-				if (ok) {
-					for (int i = 0; i < 8; i++) {
+				if (ok)
+				{
+					for (int i = 0; i < 8; i++)
+					{
 						if (!isupper(myCall[i]) &&
-						        !isdigit(myCall[i]) &&
-						        (myCall[i] != ' ')) {
+								!isdigit(myCall[i]) &&
+								(myCall[i] != ' '))
+						{
 							memset(myCall, ' ', 8);
 							ok = false;
 							printf("Invalid value for MYCALL\n");
@@ -2175,20 +2302,24 @@ void CQnetDVRPTR::Run()
 						}
 					}
 
-					for (int i = 0; i < 4; i++) {
+					for (int i = 0; i < 4; i++)
+					{
 						if (!isupper(myCall2[i]) &&
-						        !isdigit(myCall2[i]) &&
-						        (myCall2[i] != ' ')) {
+								!isdigit(myCall2[i]) &&
+								(myCall2[i] != ' '))
+						{
 							memset(myCall2, ' ', 4);
 							break;
 						}
 					}
 
-					for (int i = 0; i < 8; i++) {
+					for (int i = 0; i < 8; i++)
+					{
 						if (!isupper(myUR[i]) &&
-						        !isdigit(myUR[i]) &&
-						        (myUR[i] != ' ') &&
-						        (myUR[i] != '/')) {
+								!isdigit(myUR[i]) &&
+								(myUR[i] != ' ') &&
+								(myUR[i] != '/'))
+						{
 							memcpy(myUR, "CQCQCQ  ", 8);
 							break;
 						}
@@ -2199,11 +2330,15 @@ void CQnetDVRPTR::Run()
 						memcpy(myUR, "CQCQCQ  ", 8);
 				}
 
-				if (ok) {
-					if ((memcmp(myUR, ENABLE_RF, 8) == 0) && (ENABLE_RF[0] != ' ')) {
+				if (ok)
+				{
+					if ((memcmp(myUR, ENABLE_RF, 8) == 0) && (ENABLE_RF[0] != ' '))
+					{
 						IS_ENABLED = true;
 						memcpy(myUR, "CQCQCQ  ", 8);
-					} else if ((memcmp(myUR, DISABLE_RF, 8) == 0) && (DISABLE_RF[0] != ' ')) {
+					}
+					else if ((memcmp(myUR, DISABLE_RF, 8) == 0) && (DISABLE_RF[0] != ' '))
+					{
 						IS_ENABLED = false;
 						memcpy(myUR, "CQCQCQ  ", 8);
 					}
@@ -2217,7 +2352,7 @@ void CQnetDVRPTR::Run()
 				if (myRPT2[7] != ' ')
 					memcpy(myRPT2, DVCALL, 7);
 
-				memcpy(Send_Network_Header.title , "DSVT", 4);
+				memcpy(Send_Network_Header.title, "DSVT", 4);
 				Send_Network_Header.config = 0x10U;
 				memset(Send_Network_Header.flaga, 0U, 3U);
 				Send_Network_Header.id = 0x20U;
@@ -2249,8 +2384,10 @@ void CQnetDVRPTR::Run()
 				memcpy(Send_Network_Header.hdr.sfx, myCall2, 4);
 				calcPFCS(Send_Network_Header.title);
 
-				if (ok) {
-					if (IS_ENABLED) {
+				if (ok)
+				{
+					if (IS_ENABLED)
+					{
 						ToGate.Write(Send_Network_Header.title, 56);
 					}
 				}
@@ -2259,7 +2396,8 @@ void CQnetDVRPTR::Run()
 
 				bytes2 = 0;
 
-				if (DUPLEX && !busy20000) {
+				if (DUPLEX && !busy20000)
+				{
 					Send_Modem_Header[0] =0xd0;
 					Send_Modem_Header[1] =0x2f;
 					Send_Modem_Header[2] =0x00;
@@ -2279,8 +2417,10 @@ void CQnetDVRPTR::Run()
 					ptt_off[4] = seq_no1;
 					start_Header[4]=seq_no1;
 
-					if (ok) {
-						if (IS_ENABLED) {
+					if (ok)
+					{
+						if (IS_ENABLED)
+						{
 							write(fd_ser, start_Header, sizeof (start_Header));
 							write(fd_ser, Send_Modem_Header, sizeof (Send_Modem_Header));
 						}
@@ -2299,7 +2439,7 @@ void CQnetDVRPTR::Run()
 				if (last_RF_time > 0)
 					time(&last_RF_time);
 
-				memcpy(Send_Network_Audio.title , "DSVT", 4);
+				memcpy(Send_Network_Audio.title, "DSVT", 4);
 				Send_Network_Audio.config = 0x20U;
 				memset(Send_Network_Audio.flaga, 0U, 3U);
 				Send_Network_Audio.id = 0x20U;
@@ -2308,9 +2448,10 @@ void CQnetDVRPTR::Run()
 				Send_Network_Audio.flagb[2] = SND_TERM_ID;
 				Send_Network_Audio.streamid = streamid_raw;
 				Send_Network_Audio.ctrl = seq_no;
-				memcpy(Send_Network_Audio.vasd.voice , puffer + 8, 12);
+				memcpy(Send_Network_Audio.vasd.voice, puffer + 8, 12);
 
-				if (IS_ENABLED) {
+				if (IS_ENABLED)
+				{
 					ToGate.Write(Send_Network_Audio.title, 27);
 					ber_errs = decode.Decode(Send_Network_Audio.vasd.voice, ber_data);
 					num_bit_errors += ber_errs;
@@ -2321,7 +2462,8 @@ void CQnetDVRPTR::Run()
 				if (seq_no == 21)
 					seq_no = 0;
 
-				if (DUPLEX && !busy20000) {
+				if (DUPLEX && !busy20000)
+				{
 					writevoice1[0] =0xD0;
 					writevoice1[1] =0x13;
 					writevoice1[2] =0x00;
@@ -2343,8 +2485,9 @@ void CQnetDVRPTR::Run()
 				}
 
 				if ((puffer[17] == 0x55) &&
-				        (puffer[18] == 0x55) &&
-				        (puffer[19] == 0x55)) {
+						(puffer[18] == 0x55) &&
+						(puffer[19] == 0x55))
+				{
 					ptt_off[4] = writevoice1[4];
 					write(fd_ser, ptt_off, 8);
 				}
@@ -2365,7 +2508,8 @@ void CQnetDVRPTR::Run()
 			}
 		}
 
-		if ((puffer[0] == 0xD0) && (puffer[1] == 0x17) && (puffer[2] == 0x00) && (puffer[3] == 0x91)) {
+		if ((puffer[0] == 0xD0) && (puffer[1] == 0x17) && (puffer[2] == 0x00) && (puffer[3] == 0x91))
+		{
 			rqst_count = RQST_COUNT;
 
 			printf("DVRPTR Hardware ver: %.20s\n",puffer+6 );
@@ -2385,7 +2529,8 @@ void CQnetDVRPTR::Run()
 			puffer[1] = 0x00;
 		}
 
-		if ((puffer[0] == 0xD0) && ((puffer[1] == 0x07) || (puffer[1] == 0x08)) && (puffer[2] == 0x00) && (puffer[3] == 0x90)) {
+		if ((puffer[0] == 0xD0) && ((puffer[1] == 0x07) || (puffer[1] == 0x08)) && (puffer[2] == 0x00) && (puffer[3] == 0x90))
+		{
 			rqst_count = RQST_COUNT;
 
 			printf("\n------- STATUS READ FROM MODEM ---------\n");
@@ -2401,7 +2546,8 @@ void CQnetDVRPTR::Run()
 		}
 
 		/* serial */
-		if ((puffer[0] == 0xD0) && (puffer[1] == 0x05) && (puffer[2] == 0x00) && (puffer[3] == 0x92)) {
+		if ((puffer[0] == 0xD0) && (puffer[1] == 0x05) && (puffer[2] == 0x00) && (puffer[3] == 0x92))
+		{
 			rqst_count = RQST_COUNT;
 			puffer[1] = 0x00;
 		}
@@ -2412,19 +2558,22 @@ void CQnetDVRPTR::Run()
 		time(&tNow);
 
 		/* If an RF user TXed and disappeared after that */
-		if ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) {
+		if ((last_RF_time > 0) && ((tNow - last_RF_time) > 1))
+		{
 			printf("End RF(Timeout), ber=%.02f\n",
-			        (num_dv_frames == 0) ? 0.0 : 100.0 * ((float)num_bit_errors / (float)(num_dv_frames * 24.0)) );
+				   (num_dv_frames == 0) ? 0.0 : 100.0 * ((float)num_bit_errors / (float)(num_dv_frames * 24.0)) );
 			ptt_off[4] = Send_Modem_Header[4];
 			write(fd_ser, ptt_off, 8);
 		}
 
-		if ( ((puffer[0] == 0xD0) && (puffer[1] == 0x03) && (puffer[2] == 0x00) && (puffer[3] == 0x1A)) || ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) ) {
+		if ( ((puffer[0] == 0xD0) && (puffer[1] == 0x03) && (puffer[2] == 0x00) && (puffer[3] == 0x1A)) || ((last_RF_time > 0) && ((tNow - last_RF_time) > 1)) )
+		{
 			puffer[0] = 0x00;
-			if (last_RF_time > 0) {
+			if (last_RF_time > 0)
+			{
 				const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 				const unsigned char silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
-				memcpy(Send_Network_Audio.title , "DSVT", 4);
+				memcpy(Send_Network_Audio.title, "DSVT", 4);
 				Send_Network_Audio.config =  0x20U;
 				memset(Send_Network_Audio.flaga, 0U, 3U);
 				Send_Network_Audio.id =  0x20U;
@@ -2434,8 +2583,10 @@ void CQnetDVRPTR::Run()
 				Send_Network_Audio.ctrl =  seq_no | 0x40U;
 				memcpy(Send_Network_Audio.vasd.voice, seq_no ? silsync : silence, 12U);
 
-				if (ok) {
-					if (IS_ENABLED) {
+				if (ok)
+				{
+					if (IS_ENABLED)
+					{
 						ToGate.Write(Send_Network_Audio.title, 27);
 					}
 				}

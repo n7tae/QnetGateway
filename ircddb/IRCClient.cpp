@@ -41,7 +41,7 @@ bool IRCClient::startWork()
 void IRCClient::stopWork()
 {
 	terminateThread = true;
-    client_thread.get();
+	client_thread.get();
 }
 
 #define MAXIPV4ADDR 10
@@ -53,113 +53,133 @@ void IRCClient::Entry()
 	int timer = 0;
 	socklen_t optlen;
 
-	while (true) {
+	while (true)
+	{
 
-		if (timer > 0) {
+		if (timer > 0)
+		{
 			timer--;
 		}
 
-		switch (state) {
-            case 0:
-                if (terminateThread) {
-                    printf("IRCClient::Entry: thread terminated at state=%d\n", state);
-                    return;
-                }
+		switch (state)
+		{
+		case 0:
+			if (terminateThread)
+			{
+				printf("IRCClient::Entry: thread terminated at state=%d\n", state);
+				return;
+			}
 
-                if (timer == 0) {
-                    timer = 30;
+			if (timer == 0)
+			{
+				timer = 30;
 
-					if (! ircSock.Open(host_name, AF_UNSPEC, std::to_string(port)))  {
-                        state = 4;
-                        timer = 0;
-                    }
-                }
-                break;
-
-
-            case 4:
-				optlen = sizeof(int);
-				getsockopt(ircSock.GetFD(), SOL_SOCKET, SO_DOMAIN, &family, &optlen);
-                recvQ = new IRCMessageQueue();
-                sendQ = new IRCMessageQueue();
-
-                receiver.Init(&ircSock, recvQ);
-                receiver.startWork();
-
-                proto.setNetworkReady(true);
-                state = 5;
-                timer = 0;
-	            break;
+				if (! ircSock.Open(host_name, AF_UNSPEC, std::to_string(port)))
+				{
+					state = 4;
+					timer = 0;
+				}
+			}
+			break;
 
 
-            case 5:
-                if (terminateThread) {
-                    state = 6;
-                } else {
+		case 4:
+			optlen = sizeof(int);
+			getsockopt(ircSock.GetFD(), SOL_SOCKET, SO_DOMAIN, &family, &optlen);
+			recvQ = new IRCMessageQueue();
+			sendQ = new IRCMessageQueue();
 
-                    if (recvQ->isEOF()) {
-                        timer = 0;
-                        state = 6;
-                    } else if (proto.processQueues(recvQ, sendQ) == false) {
-                        timer = 0;
-                        state = 6;
-                    }
+			receiver.Init(&ircSock, recvQ);
+			receiver.startWork();
 
-                    while ((state == 5) && sendQ->messageAvailable()) {
-                        IRCMessage * m = sendQ->getMessage();
+			proto.setNetworkReady(true);
+			state = 5;
+			timer = 0;
+			break;
 
-                        std::string out;
 
-                        m->composeMessage(out);
+		case 5:
+			if (terminateThread)
+			{
+				state = 6;
+			}
+			else
+			{
 
-                        char buf[200];
-                        safeStringCopy(buf, out.c_str(), sizeof buf);
-                        int len = strlen(buf);
+				if (recvQ->isEOF())
+				{
+					timer = 0;
+					state = 6;
+				}
+				else if (proto.processQueues(recvQ, sendQ) == false)
+				{
+					timer = 0;
+					state = 6;
+				}
 
-                        if (buf[len - 1] == 10) { // is there a NL char at the end?
-                            if (ircSock.Write((unsigned char *)buf, len)) {
-                                printf("IRCClient::Entry: short write\n");
+				while ((state == 5) && sendQ->messageAvailable())
+				{
+					IRCMessage * m = sendQ->getMessage();
 
-                                timer = 0;
-                                state = 6;
-                            }
-                        } else {
-                            printf("IRCClient::Entry: no NL at end, len=%d\n", len);
+					std::string out;
 
-                            timer = 0;
-                            state = 6;
-                        }
+					m->composeMessage(out);
 
-                        delete m;
-                    }
-                }
-                break;
+					char buf[200];
+					safeStringCopy(buf, out.c_str(), sizeof buf);
+					int len = strlen(buf);
 
-            case 6: {
-                if (app != NULL) {
-                    app->setSendQ(NULL);
-                    app->userListReset();
-                }
+					if (buf[len - 1] == 10)   // is there a NL char at the end?
+					{
+						if (ircSock.Write((unsigned char *)buf, len))
+						{
+							printf("IRCClient::Entry: short write\n");
 
-                proto.setNetworkReady(false);
-                receiver.stopWork();
+							timer = 0;
+							state = 6;
+						}
+					}
+					else
+					{
+						printf("IRCClient::Entry: no NL at end, len=%d\n", len);
 
-                sleep(2);
+						timer = 0;
+						state = 6;
+					}
 
-                delete recvQ;
-                delete sendQ;
+					delete m;
+				}
+			}
+			break;
 
-                ircSock.Close();
+		case 6:
+		{
+			if (app != NULL)
+			{
+				app->setSendQ(NULL);
+				app->userListReset();
+			}
 
-                if (terminateThread) { // request to end the thread
-                    printf("IRCClient::Entry: thread terminated at state=%d\n", state);
-                    return;
-                }
+			proto.setNetworkReady(false);
+			receiver.stopWork();
 
-                timer = 30;
-                state = 0;  // reconnect to IRC server
-            }
-            break;
+			sleep(2);
+
+			delete recvQ;
+			delete sendQ;
+
+			ircSock.Close();
+
+			if (terminateThread)   // request to end the thread
+			{
+				printf("IRCClient::Entry: thread terminated at state=%d\n", state);
+				return;
+			}
+
+			timer = 30;
+			state = 0;  // reconnect to IRC server
+		}
+		break;
 		}   // switch
 		usleep(500000);
 

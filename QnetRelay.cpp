@@ -39,9 +39,9 @@
 #define RELAY_VERSION "QnetRelay-526"
 
 CQnetRelay::CQnetRelay(int mod) :
-assigned_module(mod),
-seed(time(NULL)),
-COUNTER(0)
+	assigned_module(mod),
+	seed(time(NULL)),
+	COUNTER(0)
 {
 }
 
@@ -59,13 +59,15 @@ bool CQnetRelay::Initialize(const char *cfgfile)
 
 int CQnetRelay::OpenSocket(const std::string &address, unsigned short port)
 {
-	if (! port) {
+	if (! port)
+	{
 		printf("ERROR: OpenSocket: non-zero port must be specified.\n");
 		return -1;
 	}
 
 	int fd = ::socket(PF_INET, SOCK_DGRAM, 0);
-	if (fd < 0) {
+	if (fd < 0)
+	{
 		printf("Cannot create the UDP socket, err: %d, %s\n", errno, strerror(errno));
 		return -1;
 	}
@@ -76,9 +78,11 @@ int CQnetRelay::OpenSocket(const std::string &address, unsigned short port)
 	addr.sin_port        = htons(port);
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	if (! address.empty()) {
+	if (! address.empty())
+	{
 		addr.sin_addr.s_addr = ::inet_addr(address.c_str());
-		if (addr.sin_addr.s_addr == INADDR_NONE) {
+		if (addr.sin_addr.s_addr == INADDR_NONE)
+		{
 			printf("The local address is invalid - %s\n", address.c_str());
 			close(fd);
 			return -1;
@@ -86,13 +90,15 @@ int CQnetRelay::OpenSocket(const std::string &address, unsigned short port)
 	}
 
 	int reuse = 1;
-	if (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1) {
+	if (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) == -1)
+	{
 		printf("Cannot set the UDP socket %s:%u option, err: %d, %s\n", address.c_str(), port, errno, strerror(errno));
 		close(fd);
 		return -1;
 	}
 
-	if (::bind(fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == -1) {
+	if (::bind(fd, (sockaddr*)&addr, sizeof(sockaddr_in)) == -1)
+	{
 		printf("Cannot bind the UDP socket %s:%u address, err: %d, %s\n", address.c_str(), port, errno, strerror(errno));
 		close(fd);
 		return -1;
@@ -119,7 +125,8 @@ bool CQnetRelay::Run(const char *cfgfile)
 
 	keep_running = true;
 
-	while (keep_running) {
+	while (keep_running)
+	{
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(msock, &readfds);
@@ -129,7 +136,8 @@ bool CQnetRelay::Run(const char *cfgfile)
 		// don't care about writefds and exceptfds:
 		// and we'll wait as long as needed
 		int ret = ::select(maxfs+1, &readfds, NULL, NULL, NULL);
-		if (ret < 0) {
+		if (ret < 0)
+		{
 			printf("ERROR: Run: select returned err=%d, %s\n", errno, strerror(errno));
 			break;
 		}
@@ -143,10 +151,12 @@ bool CQnetRelay::Run(const char *cfgfile)
 		socklen_t size = sizeof(sockaddr);
 		ssize_t len;
 
-		if (FD_ISSET(msock, &readfds)) {
+		if (FD_ISSET(msock, &readfds))
+		{
 			len = ::recvfrom(msock, buf, 100, 0, (sockaddr *)&addr, &size);
 
-			if (len < 0) {
+			if (len < 0)
+			{
 				fprintf(stderr, "ERROR: Run: recvfrom(mmdvmhost) return error %d: %s\n", errno, strerror(errno));
 				break;
 			}
@@ -156,29 +166,37 @@ bool CQnetRelay::Run(const char *cfgfile)
 
 		}
 
-		if (FD_ISSET(fd, &readfds)) {
+		if (FD_ISSET(fd, &readfds))
+		{
 			len = ToGate.Read(buf, 100);
 
-			if (len < 0) {
+			if (len < 0)
+			{
 				fprintf(stderr, "ERROR: Run: ToGate.Read() returned error %d: %s\n", errno, strerror(errno));
 				break;
 			}
 		}
 
-		if (len == 0) {
+		if (len == 0)
+		{
 			fprintf(stderr, "DEBUG: Run: read zero bytes from %u\n", ntohs(addr.sin_port));
 			continue;
 		}
 
-		if (0 == memcmp(buf, "DSRP", 4)) {
+		if (0 == memcmp(buf, "DSRP", 4))
+		{
 			//printf("read %d bytes from MMDVMHost\n", (int)len);
 			if (ProcessMMDVM(len, buf))
 				break;
-		} else if (0 == ::memcmp(buf, "DSVT", 4)) {
+		}
+		else if (0 == ::memcmp(buf, "DSVT", 4))
+		{
 			//printf("read %d bytes from MMDVMHost\n", (int)len);
 			if (ProcessGateway(len, buf))
 				break;
-		} else {
+		}
+		else
+		{
 			char title[5];
 			for (int i=0; i<4; i++)
 				title[i] = (buf[i]>=0x20u && buf[i]<0x7fu) ? buf[i] : '.';
@@ -210,7 +228,8 @@ int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, c
 
 bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 {
-	if (27==len || 56==len) { //here is dstar data
+	if (27==len || 56==len)   //here is dstar data
+	{
 		SDSVT dsvt;
 		::memcpy(dsvt.title, raw, len);	// transfer raw data to SDSVT struct
 
@@ -219,7 +238,8 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 		::memcpy(dsrp.title, "DSRP", 4);
 		dsrp.voice.id = dsvt.streamid;	// voice or header is the same position
 		dsrp.voice.seq = dsvt.ctrl;	// ditto
-		if (27 == len) {	// write an AMBE packet
+		if (27 == len)  	// write an AMBE packet
+		{
 			dsrp.tag = 0x21U;
 			if (log_qso && (dsrp.voice.seq & 0x40))
 				printf("Sent DSRP end of streamid=%04x\n", ntohs(dsrp.voice.id));
@@ -228,13 +248,17 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 			dsrp.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
 			memcpy(dsrp.voice.ambe, dsvt.vasd.voice, 12);
 			int ret = SendTo(msock, dsrp.title, 21, MMDVM_IP, MMDVM_IN_PORT);
-			if (ret != 21) {
+			if (ret != 21)
+			{
 				printf("ERROR: ProcessGateway: Could not write AMBE mmdvmhost packet\n");
 				return true;
 			}
-		} else {			// write a Header packet
+		}
+		else  			// write a Header packet
+		{
 			dsrp.tag = 0x20U;
-			if (dsrp.header.seq) {
+			if (dsrp.header.seq)
+			{
 //				printf("DEBUG: ProcessGateway: unexpected pkt.header.seq %d, resetting to 0\n", pkt.header.seq);
 				dsrp.header.seq = 0;
 			}
@@ -247,7 +271,8 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(dsrp.header.nm,   dsvt.hdr.sfx,    4);
 			memcpy(dsrp.header.pfcs, dsvt.hdr.pfcs,   2);
 			int ret = SendTo(msock, dsrp.title, 49, MMDVM_IP, MMDVM_IN_PORT);
-			if (ret != 49) {
+			if (ret != 49)
+			{
 				printf("ERROR: ProcessGateway: Could not write Header mmdvmhost packet\n");
 				return true;
 			}
@@ -255,7 +280,8 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 				printf("Sent DSRP to %u, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MMDVM_IN_PORT, ntohs(dsrp.header.id), dsrp.header.ur, dsrp.header.r2, dsrp.header.r1, dsrp.header.my, dsrp.header.nm);
 		}
 
-	} else
+	}
+	else
 		printf("DEBUG: ProcessGateway: unusual packet size read len=%d\n", len);
 	return false;
 }
@@ -267,13 +293,17 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 	if (len < 65)
 		::memcpy(dsrp.title, raw, len);	// transfer raw data to SDSRP struct
 
-	if (49==len || 21==len) {
+	if (49==len || 21==len)
+	{
 		// grab the stream id if this is a header
-		if (49 == len) {
+		if (49 == len)
+		{
 			if (dsrp.header.id == id)
 				return false;
 			id = dsrp.header.id;
-		} else {
+		}
+		else
+		{
 			if (dsrp.voice.id != id)
 				return false;
 		}
@@ -289,7 +319,8 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 		dsvt.flagb[2] = ('B'==RPTR_MOD) ? 0x1U : (('C'==RPTR_MOD) ? 0x2U : 0x3U);
 		dsvt.streamid = id;
 
-		if (49 == len) {	// header
+		if (49 == len)  	// header
+		{
 			dsvt.ctrl = 0x80;
 			//memcpy(dsvt.hdr.flag, dsrp.header.flag, 41);
 			memcpy(dsvt.hdr.flag,   dsrp.header.flag, 3);
@@ -299,17 +330,21 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			memcpy(dsvt.hdr.mycall, dsrp.header.my,   8);
 			memcpy(dsvt.hdr.sfx,    dsrp.header.nm,   4);
 			memcpy(dsvt.hdr.pfcs,   dsrp.header.pfcs, 2);
-			if (ToGate.Write(dsvt.title, 56)) {
+			if (ToGate.Write(dsvt.title, 56))
+			{
 				printf("ERROR: ProcessMMDVM: Could not write gateway header packet\n");
 				return true;
 			}
 			if (log_qso)
 				printf("Sent DSVT streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
-		} else if (21 == len) {	// ambe
+		}
+		else if (21 == len)  	// ambe
+		{
 			dsvt.ctrl = dsrp.header.seq;
 			memcpy(dsvt.vasd.voice, dsrp.voice.ambe, 12);
 
-			if (ToGate.Write(dsvt.title, 27)) {
+			if (ToGate.Write(dsvt.title, 27))
+			{
 				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 				return true;
 			}
@@ -317,9 +352,12 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			if (log_qso && dsvt.ctrl&0x40)
 				printf("Sent DSVT end of streamid=%04x\n", ntohs(dsvt.streamid));
 		}
-	} else if (len < 65 && dsrp.tag == 0xAU) {
+	}
+	else if (len < 65 && dsrp.tag == 0xAU)
+	{
 //		printf("MMDVM Poll: '%s'\n", (char *)mpkt.poll_msg);
-	} else
+	}
+	else
 		printf("DEBUG: ProcessMMDVM: unusual packet len=%d\n", len);
 	return false;
 }
@@ -336,12 +374,15 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 
 	std::string mmdvm_path("module_");
 	std::string type;
-	if (0 > assigned_module) {
+	if (0 > assigned_module)
+	{
 		// we need to find the lone mmdvmhost module
-		for (int i=0; i<3; i++) {
+		for (int i=0; i<3; i++)
+		{
 			std::string test(mmdvm_path);
 			test.append(1, 'a'+i);
-			if (cfg.KeyExists(test)) {
+			if (cfg.KeyExists(test))
+			{
 				cfg.GetValue(test, estr, type, 1, 16);
 				if (type.compare("mmdvmhost"))
 					continue;	// this ain't it!
@@ -350,20 +391,27 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 				break;
 			}
 		}
-		if (0 > assigned_module) {
+		if (0 > assigned_module)
+		{
 			fprintf(stderr, "Error: no 'mmdvmhost' module found\n!");
 			return true;
 		}
-	} else {
+	}
+	else
+	{
 		// make sure mmdvmhost module is defined
 		mmdvm_path.append(1, 'a' + assigned_module);
-		if (cfg.KeyExists(mmdvm_path)) {
+		if (cfg.KeyExists(mmdvm_path))
+		{
 			cfg.GetValue(mmdvm_path, estr, type, 1, 16);
-			if (type.compare("mmdvmhost")) {
+			if (type.compare("mmdvmhost"))
+			{
 				fprintf(stderr, "%s = %s is not 'mmdvmhost' type!\n", mmdvm_path.c_str(), type.c_str());
 				return true;
 			}
-		} else {
+		}
+		else
+		{
 			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
 			return true;
 		}
@@ -386,12 +434,14 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 int main(int argc, const char **argv)
 {
 	setbuf(stdout, NULL);
-	if (2 != argc) {
+	if (2 != argc)
+	{
 		fprintf(stderr, "usage: %s path_to_config_file\n", argv[0]);
 		return 1;
 	}
 
-	if ('-' == argv[1][0]) {
+	if ('-' == argv[1][0])
+	{
 		printf("\nQnetRelay Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", RELAY_VERSION);
 		printf("QnetRelay comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
@@ -399,28 +449,30 @@ int main(int argc, const char **argv)
 	}
 
 	const char *qn = strstr(argv[0], "qnrelay");
-	if (NULL == qn) {
+	if (NULL == qn)
+	{
 		fprintf(stderr, "Error finding 'qnrelay' in %s!\n", argv[0]);
 		return 1;
 	}
 	qn += 7;
 	int module;
-	switch (*qn) {
-		case NULL:
-			module = -1;
-			break;
-		case 'a':
-			module = 0;
-			break;
-		case 'b':
-			module = 1;
-			break;
-		case 'c':
-			module = 2;
-			break;
-		default:
-			fprintf(stderr, "assigned module must be a, b or c\n");
-			return 1;
+	switch (*qn)
+	{
+	case NULL:
+		module = -1;
+		break;
+	case 'a':
+		module = 0;
+		break;
+	case 'b':
+		module = 1;
+		break;
+	case 'c':
+		module = 2;
+		break;
+	default:
+		fprintf(stderr, "assigned module must be a, b or c\n");
+		return 1;
 	}
 
 	CQnetRelay qnmmdvm(module);

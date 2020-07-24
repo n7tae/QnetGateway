@@ -32,8 +32,8 @@
 #include "Utilities.h"
 
 CDPlusAuthenticator::CDPlusAuthenticator(const std::string &loginCallsign, const std::string &address) :
-m_loginCallsign(loginCallsign),
-m_address(address)
+	m_loginCallsign(loginCallsign),
+	m_address(address)
 {
 	assert(loginCallsign.size());
 
@@ -48,7 +48,8 @@ int CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool 
 // return true if everything went okay
 {
 	int result = client.Open(m_address, AF_UNSPEC, "20001");
-	if (result) {
+	if (result)
+	{
 		fprintf(stderr, "DPlus Authorization failed: %s\n", gai_strerror(result));
 		return 0;
 	}
@@ -70,7 +71,8 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 	::memcpy(buffer+28, "W7IB2", 5);
 	::memcpy(buffer+40, "DHS0257", 7);
 
-	if (client.Write(buffer, 56U)) {
+	if (client.Write(buffer, 56U))
+	{
 		fprintf(stderr, "ERROR: could not write opening phrase\n");
 		client.Close();
 		return 0;
@@ -80,21 +82,25 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 	unsigned int rval = 0;
 	CHostQueue hqueue;
 
-	while (ret == 2) {
+	while (ret == 2)
+	{
 		unsigned int len = (buffer[1U] & 0x0FU) * 256U + buffer[0U];
 		// Ensure that we get exactly len - 2U bytes from the TCP stream
 		ret = client.ReadExact(buffer + 2U, len - 2U);
-		if (0 > ret) {
+		if (0 > ret)
+		{
 			fprintf(stderr, "Problem reading line, it returned %d\n", errno);
 			return rval;
 		}
 
-		if ((buffer[1U] & 0xC0U) != 0xC0U || buffer[2U] != 0x01U) {
+		if ((buffer[1U] & 0xC0U) != 0xC0U || buffer[2U] != 0x01U)
+		{
 			fprintf(stderr, "Invalid packet received from 20001\n");
 			return rval;
 		}
 
-		for (unsigned int i = 8U; (i + 25U) < len; i += 26U) {
+		for (unsigned int i = 8U; (i + 25U) < len; i += 26U)
+		{
 			std::string address((char *)(buffer + i));
 			std::string name((char *)(buffer + i + 16U));
 
@@ -106,11 +112,15 @@ int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const 
 			bool active = (buffer[i + 25U] & 0x80U) == 0x80U;
 
 			// An empty name or IP address or an inactive gateway/reflector is not added
-			if (address.size()>0U && name.size()>0U && active) {
-				if (reflectors && 0==name.compare(0, 3, "REF")) {
+			if (address.size()>0U && name.size()>0U && active)
+			{
+				if (reflectors && 0==name.compare(0, 3, "REF"))
+				{
 					rval++;
 					hqueue.Push(CHost(name.c_str(), address.c_str(), 20001));
-				} else if (repeaters && name.compare(0, 3, "REF")) {
+				}
+				else if (repeaters && name.compare(0, 3, "REF"))
+				{
 					rval++;
 					hqueue.Push(CHost(name.c_str(), address.c_str(), 20001));
 				}

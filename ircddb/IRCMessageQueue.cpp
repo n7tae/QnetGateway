@@ -31,7 +31,8 @@ IRCMessageQueue::IRCMessageQueue()
 IRCMessageQueue::~IRCMessageQueue()
 {
 	accessMutex.lock();
-	while (! m_queue.empty()) {
+	while (! m_queue.empty())
+	{
 		delete m_queue.front();
 		m_queue.pop();
 	}
@@ -50,10 +51,10 @@ void IRCMessageQueue::signalEOF()
 
 bool IRCMessageQueue::messageAvailable()
 {
-  accessMutex.lock();
-  bool retv = ! m_queue.empty();
-  accessMutex.unlock();
-  return retv;
+	accessMutex.lock();
+	bool retv = ! m_queue.empty();
+	accessMutex.unlock();
+	return retv;
 }
 
 IRCMessage *IRCMessageQueue::peekFirst()

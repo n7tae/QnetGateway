@@ -48,7 +48,7 @@
 #define ITAP_VERSION "QnetITAP-526"
 
 CQnetITAP::CQnetITAP(int mod)
-: assigned_module(mod)
+	: assigned_module(mod)
 {
 }
 
@@ -70,19 +70,22 @@ bool CQnetITAP::Initialize(const char *cfgfile)
 int CQnetITAP::OpenITAP()
 {
 	int fd = open(ITAP_DEVICE.c_str(), O_RDWR | O_NOCTTY | O_NDELAY, 0);
-	if (fd < 0) {
+	if (fd < 0)
+	{
 		printf("Failed to open device [%s], error=%d, message=%s\n", ITAP_DEVICE.c_str(), errno, strerror(errno));
 		return -1;
 	}
 
-	if (isatty(fd) == 0) {
+	if (isatty(fd) == 0)
+	{
 		printf("Device %s is not a tty device\n", ITAP_DEVICE.c_str());
 		close(fd);
 		return -1;
 	}
 
 	static termios t;
-	if (tcgetattr(fd, &t) < 0) {
+	if (tcgetattr(fd, &t) < 0)
+	{
 		printf("tcgetattr failed for %s, error=%d, message-%s\n", ITAP_DEVICE.c_str(), errno, strerror(errno));
 		close(fd);
 		return -1;
@@ -99,7 +102,8 @@ int CQnetITAP::OpenITAP()
 	cfsetospeed(&t, B38400);
 	cfsetispeed(&t, B38400);
 
-	if (tcsetattr(fd, TCSANOW, &t) < 0) {
+	if (tcsetattr(fd, TCSANOW, &t) < 0)
+	{
 		printf("tcsetattr failed for %s, error=%dm message=%s\n", ITAP_DEVICE.c_str(), errno, strerror(errno));
 		close(fd);
 		return -1;
@@ -111,35 +115,37 @@ int CQnetITAP::OpenITAP()
 void CQnetITAP::DumpSerialPacket(const char *title, const unsigned char *buf)
 {
 	printf("%s: ", title);
-	if (buf[0] > 41) {
+	if (buf[0] > 41)
+	{
 		printf("UNKNOWN: length=%u", (unsigned)buf[0]);
 		return;
 	}
 	SITAP itap;
 	memcpy(&itap, buf, buf[0]);
-	switch (itap.type) {
-		case 0x03U:	//pong
-			printf("Pong\n");
-			break;
-		case 0x10U: // header
-		case 0x20U:
-			printf("Header ur=%8.8s r1=%8.8s r2=%8.8s my=%8.8s/%4.4s", itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
-			break;
-		case 0x12U: // data
-		case 0x22U:
-			printf("Data count=%u  seq=%u f=%02u%02u%02u a=%02u%02u%02u%02u%02u%02u%02u%02u%02u t=%02u%02u%02u\n", itap.voice.counter, itap.voice.sequence, itap.header.flag[0], itap.header.flag[1], itap.header.flag[2], itap.voice.ambe[0], itap.voice.ambe[1], itap.voice.ambe[2], itap.voice.ambe[3], itap.voice.ambe[4], itap.voice.ambe[5], itap.voice.ambe[6], itap.voice.ambe[7], itap.voice.ambe[8], itap.voice.text[0], itap.voice.text[1], itap.voice.text[2]);
-			break;
-		case 0x11U: // header acknowledgement
-		case 0x21U:
-			printf("Header acknowledgement code=%02u", itap.header.flag[0]);
-			break;
-		case 0x13U: // data acknowledgment
-		case 0x23U:
-			printf("Data acknowledgement seq=%02u code=%02u", itap.header.flag[0], itap.header.flag[1]);
-			break;
-		default:
-			printf("UNKNOWN packet buf[0] = 0x%02u\n", buf[0]);
-			break;
+	switch (itap.type)
+	{
+	case 0x03U:	//pong
+		printf("Pong\n");
+		break;
+	case 0x10U: // header
+	case 0x20U:
+		printf("Header ur=%8.8s r1=%8.8s r2=%8.8s my=%8.8s/%4.4s", itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
+		break;
+	case 0x12U: // data
+	case 0x22U:
+		printf("Data count=%u  seq=%u f=%02u%02u%02u a=%02u%02u%02u%02u%02u%02u%02u%02u%02u t=%02u%02u%02u\n", itap.voice.counter, itap.voice.sequence, itap.header.flag[0], itap.header.flag[1], itap.header.flag[2], itap.voice.ambe[0], itap.voice.ambe[1], itap.voice.ambe[2], itap.voice.ambe[3], itap.voice.ambe[4], itap.voice.ambe[5], itap.voice.ambe[6], itap.voice.ambe[7], itap.voice.ambe[8], itap.voice.text[0], itap.voice.text[1], itap.voice.text[2]);
+		break;
+	case 0x11U: // header acknowledgement
+	case 0x21U:
+		printf("Header acknowledgement code=%02u", itap.header.flag[0]);
+		break;
+	case 0x13U: // data acknowledgment
+	case 0x23U:
+		printf("Data acknowledgement seq=%02u code=%02u", itap.header.flag[0], itap.header.flag[1]);
+		break;
+	default:
+		printf("UNKNOWN packet buf[0] = 0x%02u\n", buf[0]);
+		break;
 	}
 }
 
@@ -150,7 +156,8 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 
 	// Get the buffer size or nothing at all
 	int ret = read(serfd, buf, 1U);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		printf("Error when reading first byte from the Icom radio %d: %s", errno, strerror(errno));
 		return RT_ERROR;
 	}
@@ -163,17 +170,20 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 
 	unsigned int length = buf[0U];
 
-	if (length >= 100U) {
+	if (length >= 100U)
+	{
 		printf("Invalid data received from the Icom radio, length=%d\n", length);
 		return RT_ERROR;
 	}
 
 	unsigned int offset = 1U;
 
-	while (offset < length) {
+	while (offset < length)
+	{
 
 		ret = read(serfd, buf + offset, length - offset);
-		if (ret<0 && errno!=EAGAIN) {
+		if (ret<0 && errno!=EAGAIN)
+		{
 			printf("Error when reading buffer from the Icom radio %d: %s\n", errno, strerror(errno));
 			return RT_ERROR;
 		}
@@ -182,19 +192,20 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 			offset += ret;
 	}
 
-	switch (buf[1U]) {
-		case 0x03U:
-			return RT_PONG;
-		case 0x10U:
-			return RT_HEADER;
-		case 0x12U:
-			return RT_DATA;
-		case 0x21U:
-			return RT_HEADER_ACK;
-		case 0x23U:
-			return RT_DATA_ACK;
-		default:
-			return RT_UNKNOWN;
+	switch (buf[1U])
+	{
+	case 0x03U:
+		return RT_PONG;
+	case 0x10U:
+		return RT_HEADER;
+	case 0x12U:
+		return RT_DATA;
+	case 0x21U:
+		return RT_HEADER_ACK;
+	case 0x23U:
+		return RT_DATA_ACK;
+	default:
+		return RT_UNKNOWN;
 	}
 }
 
@@ -220,7 +231,8 @@ void CQnetITAP::Run(const char *cfgfile)
 	double pingtime = 0.001;
 	const double ackwait = AP_MODE ? 0.4 : 0.06;
 
-	while (keep_running) {
+	while (keep_running)
+	{
 
 		fd_set readfds;
 		FD_ZERO(&readfds);
@@ -235,24 +247,30 @@ void CQnetITAP::Run(const char *cfgfile)
 		// don't care about writefds and exceptfds:
 		// and we'll wait for 5 ms
 		int ret = select(maxfs+1, &readfds, NULL, NULL, &tv);
-		if (ret < 0) {
+		if (ret < 0)
+		{
 			printf("ERROR: Run: select returned err=%d, %s\n", errno, strerror(errno));
 			break;
 		}
 
 		// check for a dead or disconnected radio
-		if (10.0 < lastdataTimer.time()) {
+		if (10.0 < lastdataTimer.time())
+		{
 			printf("no activity from radio for 10 sec. Exiting...\n");
 			break;
 		}
 
-		if (pingTimer.time() >= pingtime) {
-			if (poll_counter < 18 ) {
+		if (pingTimer.time() >= pingtime)
+		{
+			if (poll_counter < 18 )
+			{
 				const unsigned char poll[2] = { 0xffu, 0xffu };
 				SendTo(poll);
 				if (poll_counter == 17)
 					pingtime = 1.0;
-			} else {
+			}
+			else
+			{
 				const unsigned char ping[2] = { 0x02u, 0x02u };
 				SendTo(ping);
 			}
@@ -262,79 +280,93 @@ void CQnetITAP::Run(const char *cfgfile)
 
 		unsigned char buf[100];
 
-		if (keep_running && FD_ISSET(serfd, &readfds)) {	// there is something to read!
-			switch (GetITAPData(buf)) {
-				case RT_ERROR:
-					keep_running = false;
-					break;
-				case RT_HEADER:
+		if (keep_running && FD_ISSET(serfd, &readfds))  	// there is something to read!
+		{
+			switch (GetITAPData(buf))
+			{
+			case RT_ERROR:
+				keep_running = false;
+				break;
+			case RT_HEADER:
+			{
+				unsigned char ack_header[3] = { 0x03U, 0x11U, 0x0U };
+				SendTo(ack_header);
+			}
+			if (ProcessITAP(buf))
+				keep_running = false;
+			lastdataTimer.start();
+			break;
+			case RT_DATA:
+			{
+				unsigned char ack_voice[4] = { 0x04U, 0x13U, 0x0U, 0x0U };
+				ack_voice[2] = buf[2];
+				SendTo(ack_voice);
+			}
+			if (ProcessITAP(buf))
+				keep_running = false;
+			lastdataTimer.start();
+			break;
+			case RT_PONG:
+				if (! is_alive)
+				{
+					if (LOG_DEBUG)
 					{
-						unsigned char ack_header[3] = { 0x03U, 0x11U, 0x0U };
-						SendTo(ack_header);
+						auto count = queue.size();
+						if (count)
+							printf("%u packets in queue. Icom radio is connected.", (unsigned int)count);
 					}
-					if (ProcessITAP(buf))
-						keep_running = false;
-					lastdataTimer.start();
-					break;
-				case RT_DATA:
-					{
-						unsigned char ack_voice[4] = { 0x04U, 0x13U, 0x0U, 0x0U };
-						ack_voice[2] = buf[2];
-						SendTo(ack_voice);
-					}
-					if (ProcessITAP(buf))
-						keep_running = false;
-					lastdataTimer.start();
-					break;
-				case RT_PONG:
-					if (! is_alive) {
-						if (LOG_DEBUG) {
-							auto count = queue.size();
-							if (count)
-								printf("%u packets in queue. Icom radio is connected.", (unsigned int)count);
-						} else
-							printf("Icom Radio is connected.\n");
-						is_alive = true;
-					}
-					lastdataTimer.start();
-					break;
-				case RT_HEADER_ACK:
-					if (acknowledged) {
-						fprintf(stderr, "ERROR: Header already acknowledged!\n");
-					} else {
-						if (0x0U == buf[2])
-							acknowledged = true;
-					}
-					lastdataTimer.start();
-					break;
-				case RT_DATA_ACK:
-					if (acknowledged) {
-						fprintf(stderr, "ERROR: voice frame %d already acknowledged!\n", (int)buf[2]);
-					} else {
-						if (0x0U == buf[3])
-							acknowledged = true;
-					}
-					lastdataTimer.start();
-					break;
-				case RT_TIMEOUT:	// nothing or 0xff
-					break;
-				default:
-					if (buf[0] != 255)
-						DumpSerialPacket("GetITAPData returned", buf);
-					break;
+					else
+						printf("Icom Radio is connected.\n");
+					is_alive = true;
+				}
+				lastdataTimer.start();
+				break;
+			case RT_HEADER_ACK:
+				if (acknowledged)
+				{
+					fprintf(stderr, "ERROR: Header already acknowledged!\n");
+				}
+				else
+				{
+					if (0x0U == buf[2])
+						acknowledged = true;
+				}
+				lastdataTimer.start();
+				break;
+			case RT_DATA_ACK:
+				if (acknowledged)
+				{
+					fprintf(stderr, "ERROR: voice frame %d already acknowledged!\n", (int)buf[2]);
+				}
+				else
+				{
+					if (0x0U == buf[3])
+						acknowledged = true;
+				}
+				lastdataTimer.start();
+				break;
+			case RT_TIMEOUT:	// nothing or 0xff
+				break;
+			default:
+				if (buf[0] != 255)
+					DumpSerialPacket("GetITAPData returned", buf);
+				break;
 			}
 			FD_CLR(serfd, &readfds);
 		}
 
-		if (keep_running && FD_ISSET(ug2m, &readfds)) {
+		if (keep_running && FD_ISSET(ug2m, &readfds))
+		{
 			ssize_t len = ToGate.Read(buf, 100);
 
-			if (len < 0) {
+			if (len < 0)
+			{
 				printf("ERROR: Run: recvfrom(gsock) returned error %d, %s\n", errno, strerror(errno));
 				break;
 			}
 
-			if (0 == memcmp(buf, "DSVT", 4)) {
+			if (0 == memcmp(buf, "DSVT", 4))
+			{
 				//printf("read %d bytes from QnetGateway\n", (int)len);
 				if (ProcessGateway(len, buf))
 					break;
@@ -343,10 +375,14 @@ void CQnetITAP::Run(const char *cfgfile)
 		}
 
 		// send queued frames
-		if (keep_running) {
-			if (acknowledged) {
-				if (is_alive) {
-					if (! queue.empty()) {
+		if (keep_running)
+		{
+			if (acknowledged)
+			{
+				if (is_alive)
+				{
+					if (! queue.empty())
+					{
 						CFrame frame = queue.front();
 						queue.pop();
 						SendTo(frame.data());
@@ -354,8 +390,11 @@ void CQnetITAP::Run(const char *cfgfile)
 						acknowledged = false;
 					}
 				}
-			} else {	// we are waiting on an acknowledgement
-				if (ackTimer.time() >= ackwait) {
+			}
+			else  	// we are waiting on an acknowledgement
+			{
+				if (ackTimer.time() >= ackwait)
+				{
 					fprintf(stderr, "Icom failure suspected, restarting...\n");
 					close(serfd);
 					poll_counter = 0;
@@ -365,9 +404,12 @@ void CQnetITAP::Run(const char *cfgfile)
 					lastdataTimer.start();
 					pingTimer.start();
 					serfd = OpenITAP();
-					if (serfd < 0) {
+					if (serfd < 0)
+					{
 						keep_running = false;
-					} else {
+					}
+					else
+					{
 						while (! queue.empty())
 							queue.pop();
 					}
@@ -386,10 +428,13 @@ int CQnetITAP::SendTo(const unsigned char *buf)
 	unsigned int ptr = 0;
 	unsigned int length = (0xffu == buf[0]) ? 2 : buf[0];
 
-	while (ptr < length) {
+	while (ptr < length)
+	{
 		n = write(serfd, buf + ptr, length - ptr);
-		if (n < 0) {
-			if (EAGAIN != errno) {
+		if (n < 0)
+		{
+			if (EAGAIN != errno)
+			{
 				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
 				return -1;
 			}
@@ -398,11 +443,14 @@ int CQnetITAP::SendTo(const unsigned char *buf)
 	}
 
 	n = 0;	// send an ending 0xffu
-	while (0 == n) {
+	while (0 == n)
+	{
 		const unsigned char push = 0xffu;
 		n = write(serfd, &push, 1);
-		if (n < 0) {
-			if (EAGAIN != errno) {
+		if (n < 0)
+		{
+			if (EAGAIN != errno)
+			{
 				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
 				return -1;
 			}
@@ -415,20 +463,25 @@ int CQnetITAP::SendTo(const unsigned char *buf)
 bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 {
 	static unsigned char counter = 0;
-	if (27==len || 56==len) { //here is dstar data
+	if (27==len || 56==len)   //here is dstar data
+	{
 		SDSVT dsvt;
 		memcpy(dsvt.title, raw, len);	// transfer raw data to SDSVT struct
 
 		SITAP itap;	// destination
-		if (56 == len) {			// write a Header packet
+		if (56 == len)  			// write a Header packet
+		{
 			counter = 0;
 			itap.length = 41U;
 			itap.type = 0x20;
 			memcpy(itap.header.flag, dsvt.hdr.flag, 3);
-			if (RPTR_MOD == dsvt.hdr.rpt2[7]) {
+			if (RPTR_MOD == dsvt.hdr.rpt2[7])
+			{
 				memcpy(itap.header.r1, dsvt.hdr.rpt2, 8);
 				memcpy(itap.header.r2, dsvt.hdr.rpt1, 8);
-			} else {
+			}
+			else
+			{
 				memcpy(itap.header.r1, dsvt.hdr.rpt1, 8);
 				memcpy(itap.header.r2, dsvt.hdr.rpt2, 8);
 			}
@@ -437,7 +490,9 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(itap.header.nm, dsvt.hdr.sfx,    4);
 			if (LOG_QSO)
 				printf("Queued ITAP to %s ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ITAP_DEVICE.c_str(), itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
-		} else {	// write an AMBE packet
+		}
+		else  	// write an AMBE packet
+		{
 			itap.length = 16U;
 			itap.type = 0x22U;
 			itap.voice.counter = counter++;
@@ -450,7 +505,8 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 		}
 		queue.push(CFrame(&itap.length));
 
-	} else
+	}
+	else
 		printf("DEBUG: ProcessGateway: unusual packet size read len=%d\n", len);
 	return false;
 }
@@ -477,19 +533,22 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 	dsvt.flagb[2] = ('B'==RPTR_MOD) ? 0x1 : (('C'==RPTR_MOD) ? 0x2 : 0x3);
 	dsvt.streamid = htons(stream_id);
 
-	if (41 == len) {	// header
+	if (41 == len)  	// header
+	{
 		dsvt.ctrl = 0x80;
 
 		memcpy(dsvt.hdr.flag, itap.header.flag, 3);
 
 		////////////////// Terminal or Access /////////////////////////
-		if (0 == memcmp(itap.header.r1, "DIRECT", 6)) {
+		if (0 == memcmp(itap.header.r1, "DIRECT", 6))
+		{
 			// Terminal Mode!
 			memcpy(dsvt.hdr.rpt1, RPTR.c_str(), 7);	// build r1
 			dsvt.hdr.rpt1[7] = RPTR_MOD;			// with module
 			memcpy(dsvt.hdr.rpt2, RPTR.c_str(), 7);	// build r2
 			dsvt.hdr.rpt2[7] = 'G';					// with gateway
-			if (' '==itap.header.ur[2] && ' '!=itap.header.ur[0]) {
+			if (' '==itap.header.ur[2] && ' '!=itap.header.ur[0])
+			{
 				// it's a command because it has as space in the 3rd position, we have to right-justify it!
 				// Terminal Mode left justifies short commands.
 				memset(dsvt.hdr.urcall, ' ', 8);	// first file ur with spaces
@@ -497,9 +556,12 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 					dsvt.hdr.urcall[7] = itap.header.ur[0];		// one char command, like "E" or "I"
 				else
 					memcpy(dsvt.hdr.urcall+6, itap.header.ur, 2);	// two char command, like "HX" or "S0"
-			} else
+			}
+			else
 				memcpy(dsvt.hdr.urcall, itap.header.ur, 8);	// ur is at least 3 chars
-		} else {
+		}
+		else
+		{
 			// Access Point Mode
 			memcpy(dsvt.hdr.rpt1,   itap.header.r1,   8);
 			memcpy(dsvt.hdr.rpt2,   itap.header.r2,   8);
@@ -510,16 +572,20 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 		memcpy(dsvt.hdr.mycall, itap.header.my,   8);
 		memcpy(dsvt.hdr.sfx,    itap.header.nm,   4);
 		calcPFCS(dsvt.hdr.flag, dsvt.hdr.pfcs);
-		if (ToGate.Write(dsvt.title, 56)) {
+		if (ToGate.Write(dsvt.title, 56))
+		{
 			printf("ERROR: ProcessITAP: Could not write gateway header packet\n");
 			return true;
 		}
 		if (LOG_QSO)
 			printf("Sent DSVT to gateway, streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
-	} else if (16 == len) {	// ambe
+	}
+	else if (16 == len)  	// ambe
+	{
 		dsvt.ctrl = itap.voice.sequence;
 		memcpy(dsvt.vasd.voice, itap.voice.ambe, 12);
-		if (ToGate.Write(dsvt.title, 27)) {
+		if (ToGate.Write(dsvt.title, 27))
+		{
 			printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 			return true;
 		}
@@ -542,12 +608,15 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	const std::string estr;	// an empty string
 	std::string type;
 	std::string itap_path("module_");
-	if (0 > assigned_module) {
+	if (0 > assigned_module)
+	{
 		// we need to find the lone itap module
-		for (int i=0; i<3; i++) {
+		for (int i=0; i<3; i++)
+		{
 			std::string test(itap_path);
 			test.append(1, 'a'+i);
-			if (cfg.KeyExists(test)) {
+			if (cfg.KeyExists(test))
+			{
 				cfg.GetValue(test, estr, type, 1, 16);
 				if (type.compare("itap"))
 					continue;	// this ain't it!
@@ -556,20 +625,27 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 				break;
 			}
 		}
-		if (0 > assigned_module) {
+		if (0 > assigned_module)
+		{
 			fprintf(stderr, "Error: no 'itap' module found\n!");
 			return true;
 		}
-	} else {
+	}
+	else
+	{
 		// make sure itap module is defined
 		itap_path.append(1, 'a' + assigned_module);
-		if (cfg.KeyExists(itap_path)) {
+		if (cfg.KeyExists(itap_path))
+		{
 			cfg.GetValue(itap_path, estr, type, 1, 16);
-			if (type.compare("itap")) {
+			if (type.compare("itap"))
+			{
 				fprintf(stderr, "%s = %s is not 'itap' type!\n", itap_path.c_str(), type.c_str());
 				return true;
 			}
-		} else {
+		}
+		else
+		{
 			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
 			return true;
 		}
@@ -580,22 +656,30 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	cfg.GetValue(itap_path+"_ap_mode", type, AP_MODE);
 
 	itap_path.append("_callsign");
-	if (cfg.KeyExists(itap_path)) {
+	if (cfg.KeyExists(itap_path))
+	{
 		if (cfg.GetValue(itap_path, type, RPTR, 3, 6))
 			return true;
-	} else {
+	}
+	else
+	{
 		itap_path.assign("ircddb_login");
-		if (cfg.KeyExists(itap_path)) {
+		if (cfg.KeyExists(itap_path))
+		{
 			if (cfg.GetValue(itap_path, estr, RPTR, 3, 6))
 				return true;
 		}
 	}
 	int l = RPTR.length();
-	if (l<3 || l>6) {
+	if (l<3 || l>6)
+	{
 		printf("Call '%s' is invalid length!\n", RPTR.c_str());
 		return true;
-	} else {
-		for (int i=0; i<l; i++) {
+	}
+	else
+	{
+		for (int i=0; i<l; i++)
+		{
 			if (islower(RPTR[i]))
 				RPTR[i] = toupper(RPTR[i]);
 		}
@@ -612,7 +696,8 @@ void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 {
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
-	unsigned short crc_tabccitt[256] = {
+	unsigned short crc_tabccitt[256] =
+	{
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
 		0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
@@ -631,7 +716,8 @@ void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 		0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 	};
 
-	for (int i = 0; i < 39 ; i++) {
+	for (int i = 0; i < 39 ; i++)
+	{
 		short_c = 0x00ff & (unsigned short)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
@@ -648,12 +734,14 @@ void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 int main(int argc, const char **argv)
 {
 	setbuf(stdout, NULL);
-	if (2 != argc) {
+	if (2 != argc)
+	{
 		fprintf(stderr, "usage: %s path_to_config_file\n", argv[0]);
 		return 1;
 	}
 
-	if ('-' == argv[1][0]) {
+	if ('-' == argv[1][0])
+	{
 		printf("\nQnetITAP Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", ITAP_VERSION);
 		printf("QnetITAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
@@ -661,29 +749,31 @@ int main(int argc, const char **argv)
 	}
 
 	const char *qn = strstr(argv[0], "qnitap");
-	if (NULL == qn) {
+	if (NULL == qn)
+	{
 		fprintf(stderr, "Error finding 'qnitap' in %s!\n", argv[0]);
 		return 1;
 	}
 	qn += 6;
 
 	int assigned_module;
-	switch (*qn) {
-		case NULL:
-			assigned_module = -1;
-			break;
-		case 'a':
-			assigned_module = 0;
-			break;
-		case 'b':
-			assigned_module = 1;
-			break;
-		case 'c':
-			assigned_module = 2;
-			break;
-		default:
-			fprintf(stderr, "assigned module must be a, b or c\n");
-			return 1;
+	switch (*qn)
+	{
+	case NULL:
+		assigned_module = -1;
+		break;
+	case 'a':
+		assigned_module = 0;
+		break;
+	case 'b':
+		assigned_module = 1;
+		break;
+	case 'c':
+		assigned_module = 2;
+		break;
+	default:
+		fprintf(stderr, "assigned module must be a, b or c\n");
+		return 1;
 	}
 
 	CQnetITAP qnitap(assigned_module);

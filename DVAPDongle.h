@@ -17,9 +17,10 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
- #include <stdint.h>
+#include <stdint.h>
 
-enum REPLY_TYPE {
+enum REPLY_TYPE
+{
 	RT_TIMEOUT,
 	RT_ERR,
 	RT_UNKNOWN,
@@ -44,13 +45,17 @@ enum REPLY_TYPE {
 };
 
 #pragma pack(push,1)
-using  SDVAP_REGISTER = struct dvp_register_tag {
+using  SDVAP_REGISTER = struct dvp_register_tag
+{
 	uint16_t header;
-	union {
+	union
+	{
 		uint8_t nul;
-		struct {
+		struct
+		{
 			uint16_t control;
-			union {
+			union
+			{
 				int8_t byte;
 				int16_t word;
 				int32_t dword;
@@ -59,12 +64,15 @@ using  SDVAP_REGISTER = struct dvp_register_tag {
 				uint8_t ustr[12];
 			};
 		} param;
-		struct {
+		struct
+		{
 			uint16_t streamid;
 			uint8_t framepos;
 			uint8_t seq;
-			union {
-				struct {
+			union
+			{
+				struct
+				{
 					unsigned char flag[3];
 					unsigned char rpt2[8];
 					unsigned char rpt1[8];
@@ -73,7 +81,8 @@ using  SDVAP_REGISTER = struct dvp_register_tag {
 					unsigned char sfx[4];
 					unsigned char pfcs[2];
 				} hdr;
-				struct {
+				struct
+				{
 					unsigned char voice;
 					unsigned char sdata;
 				} vad;
@@ -85,36 +94,36 @@ using  SDVAP_REGISTER = struct dvp_register_tag {
 
 class CDVAPDongle
 {
-	public:
-		CDVAPDongle();
-		~CDVAPDongle();
-		bool Initialize(const char *serialno, const int frequency, const int offset, const int power, const int squelch);
-		REPLY_TYPE GetReply(SDVAP_REGISTER &dr);
-		void Stop();
-		int KeepAlive();
-		void SendRegister(SDVAP_REGISTER &dr);
+public:
+	CDVAPDongle();
+	~CDVAPDongle();
+	bool Initialize(const char *serialno, const int frequency, const int offset, const int power, const int squelch);
+	REPLY_TYPE GetReply(SDVAP_REGISTER &dr);
+	void Stop();
+	int KeepAlive();
+	void SendRegister(SDVAP_REGISTER &dr);
 
-	private:
-		// data
-		int serfd;
-		const unsigned int MAX_REPL_CNT;
-		uint32_t frequency;
-		int32_t offset;
-		SDVAP_REGISTER dvapreg;
+private:
+	// data
+	int serfd;
+	const unsigned int MAX_REPL_CNT;
+	uint32_t frequency;
+	int32_t offset;
+	SDVAP_REGISTER dvapreg;
 
-		// functions
-		bool OpenSerial(char *device);
-		int read_from_dvp(void* buf, unsigned int len);
-		int write_to_dvp(const void* buf, const unsigned int len);
-		bool syncit();
-		bool get_ser(const char *dvp, const char *dvap_serial_number);
-		bool get_name();
-		bool get_fw();
-		bool set_modu();
-		bool set_mode();
-		bool set_sql(int squelch);
-		bool set_pwr(int power);
-		bool set_off(int offset);
-		bool set_freq(int frequency);
-		bool start_dvap();
+	// functions
+	bool OpenSerial(char *device);
+	int read_from_dvp(void* buf, unsigned int len);
+	int write_to_dvp(const void* buf, const unsigned int len);
+	bool syncit();
+	bool get_ser(const char *dvp, const char *dvap_serial_number);
+	bool get_name();
+	bool get_fw();
+	bool set_modu();
+	bool set_mode();
+	bool set_sql(int squelch);
+	bool set_pwr(int power);
+	bool set_off(int offset);
+	bool set_freq(int frequency);
+	bool start_dvap();
 };

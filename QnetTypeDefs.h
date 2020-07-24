@@ -19,25 +19,31 @@
 
 // for communicating with the g2 gateway on the internal port
 #pragma pack(push, 1)	// used internally by Icom stacks
-using SDSTR = struct dstr_tag {
+using SDSTR = struct dstr_tag
+{
 	unsigned char pkt_id[4];	//  0	"DSTR"
 	unsigned short counter;		//  4
 	unsigned char flag[3];		//  6	{ 0x73, 0x12, 0x00 }
 	unsigned char remaining;	//  9	the number of bytes left in the packet
-	union {
-		struct {
+	union
+	{
+		struct
+		{
 			unsigned char mycall[8];	// 10
 			unsigned char rpt[8];		// 18
 		} spkt;							// total 26
-		struct {
+		struct
+		{
 			unsigned char icm_id;		// 10
 			unsigned char dst_rptr_id;	// 11
 			unsigned char snd_rptr_id;	// 12
 			unsigned char snd_term_id;	// 13
 			unsigned short streamid;	// 14
 			unsigned char ctrl;			// 16	sequence number hdr=0, voice%21, end|=0x40
-			union {
-				struct {
+			union
+			{
+				struct
+				{
 					unsigned char flag[3];	// 17
 					unsigned char r2[8];	// 20
 					unsigned char r1[8];	// 28
@@ -46,12 +52,15 @@ using SDSTR = struct dstr_tag {
 					unsigned char nm[4];	// 52
 					unsigned char pfcs[2];	// 56
 				} hdr;						// total 58
-				union {
-					struct {
+				union
+				{
+					struct
+					{
 						unsigned char voice[9];	// 17
 						unsigned char text[3];	// 26
 					} vasd;						// total 29
-					struct {
+					struct
+					{
 						unsigned char UNKNOWN[3];	// 17 not sure what this is, but g2_ doesn't seem to need it
 						unsigned char voice[9];		// 20
 						unsigned char text[3];		// 29
@@ -65,7 +74,8 @@ using SDSTR = struct dstr_tag {
 
 // for the g2 external port and between QnetGateway programs
 #pragma pack(push, 1)
-using SDSVT = struct dsvt_tag {
+using SDSVT = struct dsvt_tag
+{
 	unsigned char title[4];	//  0   "DSVT"
 	unsigned char config;	//  4   0x10 is hdr 0x20 is vasd
 	unsigned char flaga[3];	//  5   zeros
@@ -73,8 +83,10 @@ using SDSVT = struct dsvt_tag {
 	unsigned char flagb[3];	//  9   0x0 0x1 (A:0x3 B:0x1 C:0x2)
 	unsigned short streamid;// 12
 	unsigned char ctrl;		// 14   hdr: 0x80 vsad: framecounter (mod 21)
-	union {
-		struct {                    // index
+	union
+	{
+		struct                      // index
+		{
 			unsigned char flag[3];  // 15
 			unsigned char rpt1[8];	// 18
 			unsigned char rpt2[8];  // 26
@@ -83,11 +95,13 @@ using SDSVT = struct dsvt_tag {
 			unsigned char sfx[4];   // 50
 			unsigned char pfcs[2];  // 54
 		} hdr;						// total 56
-		struct {
+		struct
+		{
 			unsigned char voice[9]; // 15
 			unsigned char text[3];  // 24
 		} vasd;	// voice and slow data total 27
-		struct {
+		struct
+		{
 			unsigned char voice[9];	// 15
 			unsigned char end[6];	// 24
 		} vend;	// voice and end seq total 32 (for DPlus)
@@ -97,19 +111,22 @@ using SDSVT = struct dsvt_tag {
 
 // for mmdvm
 #pragma pack(push, 1)
-using SDSRP = struct dsrp_tag {	//									offset	  size
+using SDSRP = struct dsrp_tag  	//									offset	  size
+{
 	unsigned char title[4];	// "DSRP"								 0
 	unsigned char tag;		// Poll   : 0xA							 4
-							// Header : busy ? 0x22 : 0x20
-							// Voice  : busy ? 0x23 : 0x21
-	union {
+	// Header : busy ? 0x22 : 0x20
+	// Voice  : busy ? 0x23 : 0x21
+	union
+	{
 		unsigned char poll_msg[59];	// space for text				 5		variable, max is 64, including trailing null
-		struct {
+		struct
+		{
 			unsigned short id;		// random id number				 5
 			unsigned char seq;		// 0x0							 7
 			unsigned char flag[3];	// 0x80 Dstar Data				 8
-									// 0x40 Dstar Repeater
-									// 0x01 Dstar Relay Unavailable
+			// 0x40 Dstar Repeater
+			// 0x01 Dstar Relay Unavailable
 			unsigned char r2[8];	// Repeater 2					11
 			unsigned char r1[8];	// Repeater 1					19
 			unsigned char ur[8];	// Your Call					27
@@ -117,10 +134,11 @@ using SDSRP = struct dsrp_tag {	//									offset	  size
 			unsigned char nm[4];	// Name							43
 			unsigned char pfcs[2];	// checksum						47		49
 		} header;
-		struct {
+		struct
+		{
 			unsigned short id;		// random id number				 5
 			unsigned char seq;		// sequence from 0 to 0x14		 7
-									// if end then sequence |= 0x40
+			// if end then sequence |= 0x40
 			unsigned char err;		// # of errors?					 8
 			unsigned char ambe[12];	// voice + slow data			 9		21
 		} voice;
@@ -129,8 +147,9 @@ using SDSRP = struct dsrp_tag {	//									offset	  size
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-using SLINKFAMILY = struct link_family_tag {
-    char title[4];
-    int family[3];
+using SLINKFAMILY = struct link_family_tag
+{
+	char title[4];
+	int family[3];
 };
 #pragma pack(pop)

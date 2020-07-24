@@ -22,5 +22,5 @@ private:
 	bool terminateThread;
 	int sock;
 	IRCMessageQueue *recvQ;
-    std::future<void> rec_thread;
+	std::future<void> rec_thread;
 };

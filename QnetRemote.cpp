@@ -54,7 +54,8 @@ static int PLAY_WAIT, PLAY_DELAY;
 static unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 
 
-static unsigned short crc_tabccitt[256] = {
+static unsigned short crc_tabccitt[256] =
+{
 	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 	0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
 	0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
@@ -82,15 +83,18 @@ static bool ReadCfgFile()
 	std::string path = "module_";
 	path.append(1, 'a'+module);
 
-	if (! cfg.KeyExists(path)) {
+	if (! cfg.KeyExists(path))
+	{
 		fprintf(stderr, "%s not defined!\n", path.c_str());
 		return true;
 	}
 	cfg.GetValue(path, estr, type, 1, 16);
 
 	cfg.GetValue(path+"_callsign", type, REPEATER, 0, 6);
-	if (REPEATER.length() < 4) {
-		if (cfg.GetValue("ircddb_login", estr, REPEATER, 3, 6)) {
+	if (REPEATER.length() < 4)
+	{
+		if (cfg.GetValue("ircddb_login", estr, REPEATER, 3, 6))
+		{
 			fprintf(stderr, "no Callsign for the repeater was found!\n");
 			return true;
 		}
@@ -108,7 +112,8 @@ static void calcPFCS(unsigned char rawbytes[56])
 	unsigned short tmp, short_c;
 	short int i;
 
-	for (i = 15; i < 54 ; i++) {
+	for (i = 15; i < 54 ; i++)
+	{
 		short_c = 0x00ff & (unsigned short)rawbytes[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
@@ -130,7 +135,8 @@ static void ToUpper(std::string &str)
 
 int main(int argc, char *argv[])
 {
-	if (argc != 4) {
+	if (argc != 4)
+	{
 		fprintf(stderr, "Usage: %s <module> <mycall> <yourcall>\n", argv[0]);
 		fprintf(stderr, "Example: %s c n7tae xrf757al\n", argv[0]);
 		fprintf(stderr, "Where...\n");
@@ -140,25 +146,26 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	switch (argv[1][0]) {
-		case '0':
-		case 'a':
-		case 'A':
-			module = 0;
-			break;
-		case '1':
-		case 'b':
-		case 'B':
-			module = 1;
-			break;
-		case '2':
-		case 'c':
-		case 'C':
-			module = 2;
-			break;
-		default:
-			fprintf(stderr, "module must be 0, a, A, 1, b, B, 2, c or C, not %s\n", argv[1]);
-			return 1;
+	switch (argv[1][0])
+	{
+	case '0':
+	case 'a':
+	case 'A':
+		module = 0;
+		break;
+	case '1':
+	case 'b':
+	case 'B':
+		module = 1;
+		break;
+	case '2':
+	case 'c':
+	case 'C':
+		module = 2;
+		break;
+	default:
+		fprintf(stderr, "module must be 0, a, A, 1, b, B, 2, c or C, not %s\n", argv[1]);
+		return 1;
 	}
 
 	std::string cfgfile(CFG_DIR);
@@ -169,13 +176,15 @@ int main(int argc, char *argv[])
 	if (ReadCfgFile())
 		return 1;
 
-	if (REPEATER.size() > 6) {
+	if (REPEATER.size() > 6)
+	{
 		printf("repeaterCallsign can not be more than 6 characters, %s is invalid\n", REPEATER.c_str());
 		return 1;
 	}
 	ToUpper(REPEATER);
 
-	if (strlen(argv[2]) > 8) {
+	if (strlen(argv[2]) > 8)
+	{
 		printf("MYCALL can not be more than 8 characters, %s is invalid\n", argv[2]);
 		return 1;
 	}
@@ -183,7 +192,8 @@ int main(int argc, char *argv[])
 	ToUpper(mycall);
 
 
-	if (strlen(argv[3]) > 8) {
+	if (strlen(argv[3]) > 8)
+	{
 		printf("YOURCALL can not be more than 8 characters, %s is invalid\n", argv[3]);
 		return 1;
 	}
@@ -191,7 +201,8 @@ int main(int argc, char *argv[])
 	ToUpper(yourcall);
 	// replace underscores with spaces
 	auto pos = yourcall.find_first_of('_');
-	while (yourcall.npos != pos) {
+	while (yourcall.npos != pos)
+	{
 		yourcall[pos] = ' ';
 		pos = yourcall.find_first_of('_');
 	}
@@ -244,7 +255,8 @@ int main(int argc, char *argv[])
 
 	calcPFCS(pkt.title);
 	// send the header
-	if (56 !=  ToGateway.Write(pkt.title, 56)) {
+	if (56 !=  ToGateway.Write(pkt.title, 56))
+	{
 		printf("%s: ERROR: Couldn't send header!\n", argv[0]);
 		return 1;
 	}
@@ -253,65 +265,68 @@ int main(int argc, char *argv[])
 	pkt.config = 0x20U;
 	memcpy(pkt.vasd.voice, silence, 9);
 
-	for (int i=0; i<10; i++) {
+	for (int i=0; i<10; i++)
+	{
 		/* start sending silence + text */
 		pkt.ctrl = i;
 
-		switch (i) {
-			case 0:	// sync voice frame
-				pkt.vasd.text[0] = 0x55;
-				pkt.vasd.text[1] = 0x2d;
-				pkt.vasd.text[2] = 0x16;
-				break;
-			case 1:
-				pkt.vasd.text[0] = '@' ^ 0x70;
-				pkt.vasd.text[1] = RADIO_ID[0] ^ 0x4f;
-				pkt.vasd.text[2] = RADIO_ID[1] ^ 0x93;
-				break;
-			case 2:
-				pkt.vasd.text[0] = RADIO_ID[2] ^ 0x70;
-				pkt.vasd.text[1] = RADIO_ID[3] ^ 0x4f;
-				pkt.vasd.text[2] = RADIO_ID[4] ^ 0x93;
-				break;
-			case 3:
-				pkt.vasd.text[0] = 'A' ^ 0x70;
-				pkt.vasd.text[1] = RADIO_ID[5] ^ 0x4f;
-				pkt.vasd.text[2] = RADIO_ID[6] ^ 0x93;
-				break;
-			case 4:
-				pkt.vasd.text[0] = RADIO_ID[7] ^ 0x70;
-				pkt.vasd.text[1] = RADIO_ID[8] ^ 0x4f;
-				pkt.vasd.text[2] = RADIO_ID[9] ^ 0x93;
-				break;
-			case 5:
-				pkt.vasd.text[0] = 'B' ^ 0x70;
-				pkt.vasd.text[1] = RADIO_ID[10] ^ 0x4f;
-				pkt.vasd.text[2] = RADIO_ID[11] ^ 0x93;
-				break;
-			case 6:
-				pkt.vasd.text[0] = RADIO_ID[12] ^ 0x70;
-				pkt.vasd.text[1] = RADIO_ID[13] ^ 0x4f;
-				pkt.vasd.text[2] = RADIO_ID[14] ^ 0x93;
-				break;
-			case 7:
-				pkt.vasd.text[0] = 'C' ^ 0x70;
-				pkt.vasd.text[1] = RADIO_ID[15] ^ 0x4f;
-				pkt.vasd.text[2] = RADIO_ID[16] ^ 0x93;
-				break;
-			case 8:
-				pkt.vasd.text[0] = RADIO_ID[17] ^ 0x70;
-				pkt.vasd.text[1] = RADIO_ID[18] ^ 0x4f;
-				pkt.vasd.text[2] = RADIO_ID[19] ^ 0x93;
-				break;
-			case 9:	// terminal voice packet
-				pkt.ctrl |= 0x40;
-				pkt.vasd.text[0] = 0x70;
-				pkt.vasd.text[1] = 0x4f;
-				pkt.vasd.text[2] = 0x93;
-				break;
+		switch (i)
+		{
+		case 0:	// sync voice frame
+			pkt.vasd.text[0] = 0x55;
+			pkt.vasd.text[1] = 0x2d;
+			pkt.vasd.text[2] = 0x16;
+			break;
+		case 1:
+			pkt.vasd.text[0] = '@' ^ 0x70;
+			pkt.vasd.text[1] = RADIO_ID[0] ^ 0x4f;
+			pkt.vasd.text[2] = RADIO_ID[1] ^ 0x93;
+			break;
+		case 2:
+			pkt.vasd.text[0] = RADIO_ID[2] ^ 0x70;
+			pkt.vasd.text[1] = RADIO_ID[3] ^ 0x4f;
+			pkt.vasd.text[2] = RADIO_ID[4] ^ 0x93;
+			break;
+		case 3:
+			pkt.vasd.text[0] = 'A' ^ 0x70;
+			pkt.vasd.text[1] = RADIO_ID[5] ^ 0x4f;
+			pkt.vasd.text[2] = RADIO_ID[6] ^ 0x93;
+			break;
+		case 4:
+			pkt.vasd.text[0] = RADIO_ID[7] ^ 0x70;
+			pkt.vasd.text[1] = RADIO_ID[8] ^ 0x4f;
+			pkt.vasd.text[2] = RADIO_ID[9] ^ 0x93;
+			break;
+		case 5:
+			pkt.vasd.text[0] = 'B' ^ 0x70;
+			pkt.vasd.text[1] = RADIO_ID[10] ^ 0x4f;
+			pkt.vasd.text[2] = RADIO_ID[11] ^ 0x93;
+			break;
+		case 6:
+			pkt.vasd.text[0] = RADIO_ID[12] ^ 0x70;
+			pkt.vasd.text[1] = RADIO_ID[13] ^ 0x4f;
+			pkt.vasd.text[2] = RADIO_ID[14] ^ 0x93;
+			break;
+		case 7:
+			pkt.vasd.text[0] = 'C' ^ 0x70;
+			pkt.vasd.text[1] = RADIO_ID[15] ^ 0x4f;
+			pkt.vasd.text[2] = RADIO_ID[16] ^ 0x93;
+			break;
+		case 8:
+			pkt.vasd.text[0] = RADIO_ID[17] ^ 0x70;
+			pkt.vasd.text[1] = RADIO_ID[18] ^ 0x4f;
+			pkt.vasd.text[2] = RADIO_ID[19] ^ 0x93;
+			break;
+		case 9:	// terminal voice packet
+			pkt.ctrl |= 0x40;
+			pkt.vasd.text[0] = 0x70;
+			pkt.vasd.text[1] = 0x4f;
+			pkt.vasd.text[2] = 0x93;
+			break;
 		}
 
-		if (27 != ToGateway.Write(pkt.title, 27)) {
+		if (27 != ToGateway.Write(pkt.title, 27))
+		{
 			printf("%s: ERROR: could not send voice packet %d\n", argv[0], i);
 			return 1;
 		}

@@ -28,18 +28,19 @@ time_t parseTime(const std::string str)
 
 std::vector<std::string> stringTokenizer(const std::string &s)
 {
-        std::stringstream ss(s);
-        std::istream_iterator<std::string> it(ss);
-        std::istream_iterator<std::string> end;
-        std::vector<std::string> result(it, end);
-        return result;
+	std::stringstream ss(s);
+	std::istream_iterator<std::string> it(ss);
+	std::istream_iterator<std::string> end;
+	std::vector<std::string> result(it, end);
+	return result;
 }
 
 void safeStringCopy (char *dest, const char *src, unsigned int buf_size)
 {
 	unsigned int i = 0;
 
-	while (i<(buf_size - 1)  &&  src[i] != 0) {
+	while (i<(buf_size - 1)  &&  src[i] != 0)
+	{
 		dest[i] = src[i];
 		i++;
 	}
@@ -64,7 +65,8 @@ char *getCurrentTime(void)
 
 void ToUpper(std::string &str)
 {
-	for (auto it=str.begin(); it!=str.end(); it++) {
+	for (auto it=str.begin(); it!=str.end(); it++)
+	{
 		if (islower(*it))
 			*it = toupper(*it);
 	}
@@ -72,7 +74,8 @@ void ToUpper(std::string &str)
 
 void ToLower(std::string &str)
 {
-	for (auto it=str.begin(); it!=str.end(); it++) {
+	for (auto it=str.begin(); it!=str.end(); it++)
+	{
 		if (isupper(*it))
 			*it = tolower(*it);
 	}
@@ -81,7 +84,8 @@ void ToLower(std::string &str)
 
 void ReplaceChar(std::string &str, char from, char to)
 {
-	for (auto it=str.begin(); it!=str.end(); it++) {
+	for (auto it=str.begin(); it!=str.end(); it++)
+	{
 		if (from == *it)
 			*it = to;
 	}

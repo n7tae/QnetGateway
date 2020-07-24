@@ -59,27 +59,32 @@ void CIRCDDB::kickWatchdog(const std::string &wdInfo)
 // Send heard data, a false return implies a network error
 bool CIRCDDB::sendHeard(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3)
 {
-	if (myCall.size() != 8) {
+	if (myCall.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:myCall: len != 8\n");
 		return false;
 	}
 
-	if (myCallExt.size() != 4) {
+	if (myCallExt.size() != 4)
+	{
 		printf("CIRCDDB::sendHeard:myCallExt: len != 4\n");
 		return false;
 	}
 
-	if (yourCall.size() != 8) {
+	if (yourCall.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:yourCall: len != 8\n");
 		return false;
 	}
 
-	if (rpt1.size() != 8) {
+	if (rpt1.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:rpt1: len != 8\n");
 		return false;
 	}
 
-	if (rpt2.size() != 8) {
+	if (rpt2.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:rpt2: len != 8\n");
 		return false;
 	}
@@ -90,27 +95,32 @@ bool CIRCDDB::sendHeard(const std::string &myCall, const std::string &myCallExt,
 // Send heard data, a false return implies a network error
 bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3, const std::string &network_destination, const std::string &tx_message)
 {
-	if (myCall.size() != 8) {
+	if (myCall.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:myCall: len != 8\n");
 		return false;
 	}
 
-	if (myCallExt.size() != 4) {
+	if (myCallExt.size() != 4)
+	{
 		printf("CIRCDDB::sendHeard:myCallExt: len != 4\n");
 		return false;
 	}
 
-	if (yourCall.size() != 8) {
+	if (yourCall.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:yourCall: len != 8\n");
 		return false;
 	}
 
-	if (rpt1.size() != 8) {
+	if (rpt1.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:rpt1: len != 8\n");
 		return false;
 	}
 
-	if (rpt2.size() != 8) {
+	if (rpt2.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:rpt2: len != 8\n");
 		return false;
 	}
@@ -120,20 +130,26 @@ bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &m
 	if (dest.size() == 0)
 		dest = "        ";
 
-	if (dest.size() != 8) {
+	if (dest.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:network_destination: len != 8\n");
 		return false;
 	}
 
 	std::string msg;
 
-	if (tx_message.length() == 20) {
-		for (unsigned int i=0; i < tx_message.size(); i++) {
+	if (tx_message.length() == 20)
+	{
+		for (unsigned int i=0; i < tx_message.size(); i++)
+		{
 			char ch = tx_message.at(i);
 
-			if (ch>32 && ch<127) {
+			if (ch>32 && ch<127)
+			{
 				msg.push_back(ch);
-			} else {
+			}
+			else
+			{
 				msg.push_back('_');
 			}
 		}
@@ -143,44 +159,52 @@ bool CIRCDDB::sendHeardWithTXMsg(const std::string &myCall, const std::string &m
 }
 
 bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1,
-                        unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors)
+								   unsigned char flag2, unsigned char flag3, int num_dv_frames, int num_dv_silent_frames, int num_bit_errors)
 {
-	if (num_dv_frames<= 0 || num_dv_frames>65535) {
+	if (num_dv_frames<= 0 || num_dv_frames>65535)
+	{
 		printf("CIRCDDB::sendHeard:num_dv_frames not in range 1-65535\n");
 		return false;
 	}
 
-	if (num_dv_silent_frames > num_dv_frames) {
+	if (num_dv_silent_frames > num_dv_frames)
+	{
 		printf("CIRCDDB::sendHeard:num_dv_silent_frames > num_dv_frames\n");
 		return false;
 	}
 
-	if (num_bit_errors > 4*num_dv_frames) { // max 4 bit errors per frame
+	if (num_bit_errors > 4*num_dv_frames)   // max 4 bit errors per frame
+	{
 		printf("CIRCDDB::sendHeard:num_bit_errors > (4*num_dv_frames)\n");
 		return false;
 	}
 
-	if (myCall.size() != 8) {
+	if (myCall.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:myCall: len != 8\n");
 		return false;
 	}
 
-	if (myCallExt.size() != 4) {
+	if (myCallExt.size() != 4)
+	{
 		printf("CIRCDDB::sendHeard:myCallExt: len != 4\n");
 		return false;
 	}
 
-	if (yourCall.size() != 8) {
+	if (yourCall.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:yourCall: len != 8\n");
 		return false;
 	}
 
-	if (rpt1.size() != 8) {
+	if (rpt1.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:rpt1: len != 8\n");
 		return false;
 	}
 
-	if (rpt2.size() != 8) {
+	if (rpt2.size() != 8)
+	{
 		printf("CIRCDDB::sendHeard:rpt2: len != 8\n");
 		return false;
 	}
@@ -189,17 +213,23 @@ bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string 
 	snprintf(buf, 16, "%04x", num_dv_frames);
 	std::string stats = buf;
 
-	if (num_dv_silent_frames >= 0) {
+	if (num_dv_silent_frames >= 0)
+	{
 		snprintf(buf, 16, "%02x", num_dv_silent_frames * 100 / num_dv_frames);
 		stats.append(buf);
 
-		if (num_bit_errors >= 0) {
+		if (num_bit_errors >= 0)
+		{
 			snprintf(buf,16, "%02x", num_bit_errors * 125 / (num_dv_frames * 3));
 			stats.append(buf);
-		} else {
+		}
+		else
+		{
 			stats.append("__");
 		}
-	} else {
+	}
+	else
+	{
 		stats.append("____");
 	}
 
@@ -211,7 +241,8 @@ bool CIRCDDB::sendHeardWithTXStats(const std::string &myCall, const std::string 
 // Send query for a user, a false return implies a network error
 bool CIRCDDB::findUser(const std::string &userCallsign)
 {
-	if (userCallsign.size() != 8) {
+	if (userCallsign.size() != 8)
+	{
 		printf("CIRCDDB::findUser: len != 8\n");
 		return false;
 	}
@@ -232,24 +263,28 @@ bool CIRCDDB::receivePing(std::string &repeaterCallsign)
 {
 	IRCDDB_RESPONSE_TYPE rt = app->getReplyMessageType();
 
-	if (rt != IDRT_PING) {
+	if (rt != IDRT_PING)
+	{
 		printf("CIRCDDB::receivePing: unexpected response type\n");
 		return false;
 	}
 
 	IRCMessage *m = app->getReplyMessage();
 
-	if (NULL == m) {
+	if (NULL == m)
+	{
 		printf("CIRCDDB::receivePing: no message\n");
 		return false;
 	}
 
-	if (m->getCommand().compare("IDRT_PING")) {
+	if (m->getCommand().compare("IDRT_PING"))
+	{
 		printf("CIRCDDB::receivePing: wrong messsage type\n");
 		return false;
 	}
 
-	if (1 != m->getParamCount()) {
+	if (1 != m->getParamCount())
+	{
 		printf("CIRCDDB::receivePing: unexpected number of message parameters\n");
 		return false;
 	}

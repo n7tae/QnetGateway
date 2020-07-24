@@ -35,20 +35,23 @@
 #define CALL_SIZE 8
 #define MAX_DTMF_BUF 32
 
-using STOREMOTEG2 = struct to_remote_g2_tag {
+using STOREMOTEG2 = struct to_remote_g2_tag
+{
 	unsigned short streamid;
 	CSockAddress toDstar;
 	time_t last_time;
 };
 
-using STOREPEATER = struct torepeater_tag {
+using STOREPEATER = struct torepeater_tag
+{
 	// help with header re-generation
 	SDSVT saved_hdr; // repeater format
 	time_t last_time;
 	unsigned char sequence;
 };
 
-using SBANDTXT = struct band_txt_tag {
+using SBANDTXT = struct band_txt_tag
+{
 	unsigned short streamID;
 	unsigned char flags[3];
 	std::string mycall, sfx, urcall, rpt1, rpt2, txt, dest_rptr;
@@ -76,7 +79,8 @@ using SBANDTXT = struct band_txt_tag {
 	}
 };
 
-using SSD = struct sd_tag {
+using SSD = struct sd_tag
+{
 	unsigned char header[41];
 	unsigned char message[21];
 	unsigned char gps[256];
@@ -96,12 +100,12 @@ public:
 	bool Init(char *cfgfile);
 
 private:
-    // link type
-    int link_family[3] = { AF_UNSPEC, AF_UNSPEC, AF_UNSPEC };
+	// link type
+	int link_family[3] = { AF_UNSPEC, AF_UNSPEC, AF_UNSPEC };
 	// network type
 	int af_family[2] = { AF_UNSPEC, AF_UNSPEC };
 
-    int Index[3] = { -1, -1, -1 };
+	int Index[3] = { -1, -1, -1 };
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
@@ -197,7 +201,7 @@ private:
 	bool Flag_is_ok(unsigned char flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
-    int FindIndex(const int i) const;
+	int FindIndex(const int i) const;
 
 	// read configuration file
 	bool ReadConfig(char *);

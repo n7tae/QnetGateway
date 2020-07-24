@@ -41,8 +41,10 @@ bool CDVAPDongle::Initialize(const char *serialno, const int frequency, const in
 	bool ok = false;
 	char device[128];
 
-	do {
-		for (int i = 0; i < 32; i++) {
+	do
+	{
+		for (int i = 0; i < 32; i++)
+		{
 			sprintf(device, "/dev/ttyUSB%d", i);
 
 			if (access(device, R_OK | W_OK) != 0)
@@ -52,7 +54,8 @@ bool CDVAPDongle::Initialize(const char *serialno, const int frequency, const in
 			if (!ok)
 				continue;
 
-			if (flock(serfd, LOCK_EX | LOCK_NB) != 0) {
+			if (flock(serfd, LOCK_EX | LOCK_NB) != 0)
+			{
 				close(serfd);
 				serfd = -1;
 				ok = false;
@@ -62,7 +65,8 @@ bool CDVAPDongle::Initialize(const char *serialno, const int frequency, const in
 			printf("Device %s now locked for exclusive use\n", device);
 
 			ok = get_ser(device, serialno);
-			if (!ok) {
+			if (!ok)
+			{
 				close(serfd);
 				serfd = -1;
 				continue;
@@ -109,10 +113,13 @@ bool CDVAPDongle::Initialize(const char *serialno, const int frequency, const in
 		if (!ok)
 			break;
 
-	} while (false);
+	}
+	while (false);
 
-	if (!ok) {
-		if (serfd != -1) {
+	if (!ok)
+	{
+		if (serfd != -1)
+		{
 			Stop();
 			close(serfd);
 			serfd = -1;
@@ -132,29 +139,31 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 	if (rc != 2)
 		return RT_ERR;
 
-	switch (dr.header) {
-		case 0x5u:
-		case 0x6u:
-		case 0x7u:
-		case 0x8u:
-		case 0xcu:
-		case 0xdu:
-		case 0x10u:
-		case 0x2005u:
-		case 0x2007u:
-		case 0x602fu:
-		case 0xa02fu:
-		case 0xc012u:
-			break;	// these are all expected headers
-		default:
-			printf("unknown header=0x%d\n", (unsigned)dr.header);
-			if (syncit())
-				return RT_ERR;
-			return RT_TIMEOUT;
+	switch (dr.header)
+	{
+	case 0x5u:
+	case 0x6u:
+	case 0x7u:
+	case 0x8u:
+	case 0xcu:
+	case 0xdu:
+	case 0x10u:
+	case 0x2005u:
+	case 0x2007u:
+	case 0x602fu:
+	case 0xa02fu:
+	case 0xc012u:
+		break;	// these are all expected headers
+	default:
+		printf("unknown header=0x%d\n", (unsigned)dr.header);
+		if (syncit())
+			return RT_ERR;
+		return RT_TIMEOUT;
 	}
 	// read the rest of the register
 	uint16_t len = dr.header & 0x1fff;
-	while (off < len) {
+	while (off < len)
+	{
 		uint8_t *ptr = (uint8_t *)&dr;
 		rc = read_from_dvp(ptr + off, len - off);
 		if (rc < 0)
@@ -163,68 +172,71 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 			off += rc;
 	}
 	// okay, now we'll parse the register and return its type
-	switch (dr.header) {
-		case 0x5u:
-			switch (dr.param.control) {
-				case 0x18u:
-					if (dr.param.byte)
-						return RT_START;
-					else
-						return RT_STOP;
-				case 0x28u:
-					if (0x1u==dr.param.ustr[0])
-						return RT_MODU;
-					break;
-				case 0x80u:
-					return RT_SQL;
-				case 0x2au:
-					if (0x0u==dr.param.ustr[0])
-						return RT_MODE;
-					break;
-			}
+	switch (dr.header)
+	{
+	case 0x5u:
+		switch (dr.param.control)
+		{
+		case 0x18u:
+			if (dr.param.byte)
+				return RT_START;
+			else
+				return RT_STOP;
+		case 0x28u:
+			if (0x1u==dr.param.ustr[0])
+				return RT_MODU;
 			break;
-		case 0x6u:
-			switch (dr.param.control) {
-				case 0x138u:
-					return RT_PWR;
-				case 0x400u:
-					return RT_OFF;
-			}
+		case 0x80u:
+			return RT_SQL;
+		case 0x2au:
+			if (0x0u==dr.param.ustr[0])
+				return RT_MODE;
 			break;
-		case 0x7u:
-			if (0x4u==dr.param.control && 0x1u==dr.param.ustr[0])
-				return RT_FW;
-			break;
-		case 0x8u:
-			if (0x220u==dr.param.control)
-				return RT_FREQ;
-			break;
-		case 0xcu:
-			if (0x230u==dr.param.control)
-				return RT_FREQ_LIMIT;
-			break;
-		case 0xdu:
-			if (0x2u==dr.param.control)
-				return RT_SER;
-			break;
-		case 0x10u:
-			if (0x1u==dr.param.control)
-				return RT_NAME;
-			break;
-		case 0x2005u:
-			if (0x118u==dr.param.control)
-				return RT_PTT;
-			break;
-		case 0x2007u:
-			if (0x90u==dr.param.control)
-				return RT_STS;
-			break;
-		case 0x602fu:
-			return RT_HDR_ACK;
-		case 0xa02fu:
-			return RT_HDR;
-		case 0xc012u:
-			return RT_DAT;
+		}
+		break;
+	case 0x6u:
+		switch (dr.param.control)
+		{
+		case 0x138u:
+			return RT_PWR;
+		case 0x400u:
+			return RT_OFF;
+		}
+		break;
+	case 0x7u:
+		if (0x4u==dr.param.control && 0x1u==dr.param.ustr[0])
+			return RT_FW;
+		break;
+	case 0x8u:
+		if (0x220u==dr.param.control)
+			return RT_FREQ;
+		break;
+	case 0xcu:
+		if (0x230u==dr.param.control)
+			return RT_FREQ_LIMIT;
+		break;
+	case 0xdu:
+		if (0x2u==dr.param.control)
+			return RT_SER;
+		break;
+	case 0x10u:
+		if (0x1u==dr.param.control)
+			return RT_NAME;
+		break;
+	case 0x2005u:
+		if (0x118u==dr.param.control)
+			return RT_PTT;
+		break;
+	case 0x2007u:
+		if (0x90u==dr.param.control)
+			return RT_STS;
+		break;
+	case 0x602fu:
+		return RT_HDR_ACK;
+	case 0xa02fu:
+		return RT_HDR;
+	case 0xc012u:
+		return RT_DAT;
 	}
 	printf("Unrecognized data from dvap: header=%#x control=%#x\n", (unsigned)dr.header, (unsigned)dr.param.control);
 	if (syncit())
@@ -244,22 +256,28 @@ bool CDVAPDongle::syncit()
 	dvapreg.header = 0x2007u;
 	dvapreg.param.control = 0x90u;
 
-	while (memcmp(data, &dvapreg, 4) != 0) {
+	while (memcmp(data, &dvapreg, 4) != 0)
+	{
 		FD_ZERO(&fds);
 		FD_SET(serfd, &fds);
 		tv.tv_sec  = 0;
 		tv.tv_usec = 1000;
 		int n = select(serfd + 1, &fds, NULL, NULL, &tv);
-		if (n <= 0) {
+		if (n <= 0)
+		{
 			cnt ++;
-			if (cnt > 100) {
+			if (cnt > 100)
+			{
 				printf("syncit() uncessful...stopping\n");
 				return true;
 			}
-		} else {
+		}
+		else
+		{
 			unsigned char c;
 			n = read_from_dvp(&c, 1);
-			if (n > 0) {
+			if (n > 0)
+			{
 				data[0] = data[1];
 				data[1] = data[2];
 				data[2] = data[3];
@@ -284,23 +302,28 @@ bool CDVAPDongle::get_ser(const char *dvp, const char *dvap_serial_number)
 	dvapreg.param.control = 0x2u;
 
 	int rc = write_to_dvp(&dvapreg, 4);
-	if (rc != 4) {
+	if (rc != 4)
+	{
 		printf("Failed to send request to get dvap serial#\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to receive dvap serial#\n");
 			return false;
 		}
-	} while (reply != RT_SER);
+	}
+	while (reply != RT_SER);
 
-	if (0 == strcmp(dvapreg.param.sstr, dvap_serial_number)) {
+	if (0 == strcmp(dvapreg.param.sstr, dvap_serial_number))
+	{
 		printf("Using %s:  %s, because serial number matches your configuration file\n", dvp, dvap_serial_number);
 		return true;
 	}
@@ -316,23 +339,28 @@ bool CDVAPDongle::get_name()
 	dvapreg.param.control = 0x1u;
 
 	int rc = write_to_dvp(&dvapreg, 4);
-	if (rc != 4) {
+	if (rc != 4)
+	{
 		printf("Failed to send request to get dvap name\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to receive dvap name\n");
 			return false;
 		}
-	} while (reply != RT_NAME);
+	}
+	while (reply != RT_NAME);
 
-	if (0x10u!=dvapreg.header || 0x1u!=dvapreg.param.control || strncmp(dvapreg.param.sstr, "DVAP Dongle", 11)) {
+	if (0x10u!=dvapreg.header || 0x1u!=dvapreg.param.control || strncmp(dvapreg.param.sstr, "DVAP Dongle", 11))
+	{
 		printf("Failed to receive dvap name, got %s\n", dvapreg.param.sstr);
 		return false;
 	}
@@ -350,21 +378,25 @@ bool CDVAPDongle::get_fw()
 	dvapreg.param.ustr[0] = 0x1u;
 
 	int rc = write_to_dvp(&dvapreg, 5);
-	if (rc != 5) {
+	if (rc != 5)
+	{
 		printf("Failed to send request to get dvap fw\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to receive dvap fw\n");
 			return false;
 		}
-	} while (reply != RT_FW);
+	}
+	while (reply != RT_FW);
 
 	unsigned int ver = dvapreg.param.ustr[1] + 256 * dvapreg.param.ustr[2];
 	printf("dvap fw ver: %u.%u\n", ver / 100, ver % 100);
@@ -381,22 +413,26 @@ bool CDVAPDongle::set_modu()
 	dvapreg.param.ustr[0] = 0x1u;
 
 	int rc = write_to_dvp(&dvapreg, 5);
-	if (rc != 5) {
+	if (rc != 5)
+	{
 		printf("Failed to send request to set dvap modulation\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to set dvap modulation\n");
 			return false;
 		}
-	} while (reply != RT_MODU);
+	}
+	while (reply != RT_MODU);
 
 	return true;
 }
@@ -410,22 +446,26 @@ bool CDVAPDongle::set_mode()
 	dvapreg.param.ustr[0] = 0x0u;
 
 	int rc = write_to_dvp(&dvapreg, 5);
-	if (rc != 5) {
+	if (rc != 5)
+	{
 		printf("Failed to send request to set dvap mode\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to set dvap mode\n");
 			return false;
 		}
-	} while (reply != RT_MODE);
+	}
+	while (reply != RT_MODE);
 
 	return true;
 }
@@ -437,32 +477,39 @@ bool CDVAPDongle::set_sql(int squelch)
 
 	dvapreg.header = 0x5u;
 	dvapreg.param.control = 0x80u;
-	if (squelch < -128) {
+	if (squelch < -128)
+	{
 		printf("Squelch setting of %d too small, resetting...\n", squelch);
 		squelch = -128;
-	} else if (squelch > -45) {
+	}
+	else if (squelch > -45)
+	{
 		printf("Squelch setting of %d too large, resetting...\n", squelch);
 		squelch = -45;
 	}
 	dvapreg.param.byte = (int8_t)squelch;
 
 	int rc = write_to_dvp(&dvapreg, 5);
-	if (rc != 5) {
+	if (rc != 5)
+	{
 		printf("Failed to send request to set dvap sql\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to set dvap sql\n");
 			return false;
 		}
-	} while (reply != RT_SQL);
+	}
+	while (reply != RT_SQL);
 	printf("DVAP squelch is %d dB\n", (int)dvapreg.param.byte);
 	return true;
 }
@@ -474,32 +521,39 @@ bool CDVAPDongle::set_pwr(int power)
 
 	dvapreg.header = 0x6u;
 	dvapreg.param.control = 0x138u;
-	if (power < -12) {
+	if (power < -12)
+	{
 		printf("Power setting of %d is too low, resetting...\n", power);
 		power = -12;
-	} else if (power > 10) {
+	}
+	else if (power > 10)
+	{
 		printf("Power setting of %d is too high, resetting...\n", power);
 		power = 10;
 	}
 	dvapreg.param.word = (int16_t)power;
 
 	int rc = write_to_dvp(&dvapreg, 6);
-	if (rc != 6) {
+	if (rc != 6)
+	{
 		printf("Failed to send request to set dvap pwr\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to set dvap pwr\n");
 			return false;
 		}
-	} while (reply != RT_PWR);
+	}
+	while (reply != RT_PWR);
 	printf("DVAP power is %d dB\n", (int)dvapreg.param.word);
 	return true;
 }
@@ -511,32 +565,39 @@ bool CDVAPDongle::set_off(int offset)
 
 	dvapreg.header = 0x6u;
 	dvapreg.param.control = 0x400u;
-	if (offset < -2000) {
+	if (offset < -2000)
+	{
 		printf("Offset of %d is too low, resetting...\n", offset);
 		offset = -2000;
-	} else if (offset > 2000) {
+	}
+	else if (offset > 2000)
+	{
 		printf("Offset of %d is too high, resetting...\n", offset);
 		offset = 2000;
 	}
 	dvapreg.param.word = (int16_t)offset;
 
 	int rc = write_to_dvp(&dvapreg, 6);
-	if (rc != 6) {
+	if (rc != 6)
+	{
 		printf("Failed to send request to set dvap offset\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to set dvap offset\n");
 			return false;
 		}
-	} while (reply != RT_OFF);
+	}
+	while (reply != RT_OFF);
 	printf("DVAP offset is %d Hz\n", (int)dvapreg.param.word);
 	return true;
 }
@@ -551,29 +612,36 @@ bool CDVAPDongle::set_freq(int frequency)
 	dvapreg.param.control = 0x230u;
 
 	int rc = write_to_dvp(&dvapreg, 4);
-	if (rc != 4) {
+	if (rc != 4)
+	{
 		printf("Failed to send request for frequency limits\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 
 		cnt++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests for dvap frequency limits\n");
 			return false;
 		}
-	} while (reply != RT_FREQ_LIMIT);
+	}
+	while (reply != RT_FREQ_LIMIT);
 	printf("DVAP Frequency limits are from %d to %d Hz\n", dvapreg.param.twod[0], dvapreg.param.twod[1]);
 
 	// okay, now we know the frequency limits, get on with the show...
-	if (frequency < dvapreg.param.twod[0]) {
+	if (frequency < dvapreg.param.twod[0])
+	{
 		printf("Frequency of %d is too small, resetting...\n", frequency);
 		frequency = dvapreg.param.twod[0];
-	} else if (frequency > dvapreg.param.twod[1]) {
+	}
+	else if (frequency > dvapreg.param.twod[1])
+	{
 		printf("Frequency of %d is too large, resetting...\n", frequency);
 		frequency = dvapreg.param.twod[1];
 	}
@@ -584,22 +652,26 @@ bool CDVAPDongle::set_freq(int frequency)
 	dvapreg.param.dword = frequency;
 
 	rc = write_to_dvp(&dvapreg, 8);
-	if (rc != 8) {
+	if (rc != 8)
+	{
 		printf("Failed to send request to set dvap frequency\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to set dvap frequency\n");
 			return false;
 		}
-	} while (reply != RT_FREQ);
+	}
+	while (reply != RT_FREQ);
 	printf("DVAP frequency is %d Hz\n", dvapreg.param.dword);
 	return true;
 }
@@ -614,22 +686,26 @@ bool CDVAPDongle::start_dvap()
 	dvapreg.param.byte = 0x1;
 
 	int rc = write_to_dvp(&dvapreg, 5);
-	if (rc != 5) {
+	if (rc != 5)
+	{
 		printf("Failed to send request to start the dvap dongle\n");
 		return false;
 	}
 
-	do {
+	do
+	{
 		usleep(5000);
 
 		reply = GetReply(dvapreg);
 
 		cnt ++;
-		if (cnt >= MAX_REPL_CNT) {
+		if (cnt >= MAX_REPL_CNT)
+		{
 			printf("Reached max number of requests to start the dvap dongle\n");
 			return false;
 		}
-	} while (reply != RT_START);
+	}
+	while (reply != RT_START);
 
 	return true;
 }
@@ -649,9 +725,11 @@ int CDVAPDongle::write_to_dvp(const void *buffer, const unsigned int len)
 		return 0;
 
 	uint8_t *buf = (uint8_t *)buffer;
-	while (ptr < len) {
+	while (ptr < len)
+	{
 		ssize_t n = write(serfd, buf + ptr, len - ptr);
-		if (n < 0) {
+		if (n < 0)
+		{
 			printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
 			return -1;
 		}
@@ -675,25 +753,30 @@ int CDVAPDongle::read_from_dvp(void *buffer, unsigned int len)
 	if (len == 0)
 		return 0;
 
-	while (off < len) {
+	while (off < len)
+	{
 		FD_ZERO(&fds);
 		FD_SET(serfd, &fds);
 
-		if (off == 0) {
+		if (off == 0)
+		{
 			tv.tv_sec  = 0;
 			tv.tv_usec = 0;
 			n = select(serfd + 1, &fds, NULL, NULL, &tv);
 			if (n == 0)
 				return 0; // nothing to read from the dvap
-		} else
+		}
+		else
 			n = select(serfd + 1, &fds, NULL, NULL, NULL);
 
-		if (n < 0) {
+		if (n < 0)
+		{
 			printf("select error=%d on dvap\n", errno);
 			return -1;
 		}
 
-		if (n > 0) {
+		if (n > 0)
+		{
 			temp_len = read(serfd, buf + off, len - off);
 			if (temp_len > 0)
 				off += temp_len;
@@ -708,19 +791,22 @@ bool CDVAPDongle::OpenSerial(char *device)
 	static termios t;
 
 	serfd = open(device, O_RDWR | O_NOCTTY | O_NDELAY, 0);
-	if (serfd < 0) {
+	if (serfd < 0)
+	{
 		printf("Failed to open device [%s], error=%d, message=%s\n", device, errno, strerror(errno));
 		return false;
 	}
 
-	if (isatty(serfd) == 0) {
+	if (isatty(serfd) == 0)
+	{
 		printf("Device %s is not a tty device\n", device);
 		close(serfd);
 		serfd = -1;
 		return false;
 	}
 
-	if (tcgetattr(serfd, &t) < 0) {
+	if (tcgetattr(serfd, &t) < 0)
+	{
 		printf("tcgetattr failed for %s, error=%d, message-%s\n", device, errno, strerror(errno));
 		close(serfd);
 		serfd = -1;
@@ -738,7 +824,8 @@ bool CDVAPDongle::OpenSerial(char *device)
 	cfsetospeed(&t, B230400);
 	cfsetispeed(&t, B230400);
 
-	if (tcsetattr(serfd, TCSANOW, &t) < 0) {
+	if (tcsetattr(serfd, TCSANOW, &t) < 0)
+	{
 		printf("tcsetattr failed for %s, error=%dm message=%s\n", device, errno, strerror(errno));
 		close(serfd);
 		serfd = -1;

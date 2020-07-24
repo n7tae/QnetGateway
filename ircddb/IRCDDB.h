@@ -4,12 +4,14 @@
 
 #include "../CacheManager.h"
 
-enum IRCDDB_RESPONSE_TYPE {
+enum IRCDDB_RESPONSE_TYPE
+{
 	IDRT_NONE,
 	IDRT_PING
 };
 
-enum DSTAR_PROTOCOL {
+enum DSTAR_PROTOCOL
+{
 	DP_UNKNOWN,
 	DP_DEXTRA,
 	DP_DPLUS

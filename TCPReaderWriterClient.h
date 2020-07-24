@@ -33,7 +33,8 @@
 #include <thread>
 #include <chrono>
 
-class CTCPReaderWriterClient {
+class CTCPReaderWriterClient
+{
 public:
 	CTCPReaderWriterClient(const std::string &address, int family, const std::string &port);
 	CTCPReaderWriterClient();

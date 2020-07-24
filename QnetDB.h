@@ -24,22 +24,23 @@
 
 #include "HostQueue.h"
 
-class CLink {
+class CLink
+{
 public:
-	CLink(const std::string &call, const unsigned char *addr, time_t ltime) : callsign(call) , address((const char *)addr) , linked_time(ltime) {}
+	CLink(const std::string &call, const unsigned char *addr, time_t ltime) : callsign(call), address((const char *)addr), linked_time(ltime) {}
 
 	CLink(const CLink &from)
 	{
 		callsign.assign(from.callsign);
 		address.assign(from.address),
-		linked_time=from.linked_time;
+					   linked_time=from.linked_time;
 	}
 
 	CLink &operator=(const CLink &from)
 	{
 		callsign.assign(from.callsign);
 		address.assign(from.address),
-		linked_time=from.linked_time;
+					   linked_time=from.linked_time;
 		return *this;
 	}
 
@@ -49,7 +50,8 @@ public:
 	time_t linked_time;
 };
 
-class CQnetDB {
+class CQnetDB
+{
 public:
 	CQnetDB() : db(NULL) {}
 	~CQnetDB() { if (db) sqlite3_close(db); }

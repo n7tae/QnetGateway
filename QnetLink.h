@@ -43,24 +43,27 @@
 #define TIMEOUT 50
 #define LH_MAX_SIZE 39
 
-using SREFDSVT = struct refdsvt_tag {
+using SREFDSVT = struct refdsvt_tag
+{
 	unsigned char head[2];
 	SDSVT dsvt;
 };
 
-using STOREMOTE = struct to_remote_g2_tag {
-    char cs[CALL_SIZE + 1];
-    CSockAddress addr;
-    char from_mod, to_mod;
-    short countdown;
+using STOREMOTE = struct to_remote_g2_tag
+{
+	char cs[CALL_SIZE + 1];
+	CSockAddress addr;
+	char from_mod, to_mod;
+	short countdown;
 	bool auto_link, is_connected;
-    unsigned short in_streamid;  // incoming from remote systems
-    unsigned short out_streamid; // outgoing to remote systems
+	unsigned short in_streamid;  // incoming from remote systems
+	unsigned short out_streamid; // outgoing to remote systems
 };
 
 // This is the data payload in the map: inbound_list
 // This is for inbound dongles
-using SINBOUND = struct inbound_tag {
+using SINBOUND = struct inbound_tag
+{
 	char call[CALL_SIZE + 1];	// the callsign of the remote
 	CSockAddress addr;			// IP and port of remote
 	short countdown;			// if countdown expires, the connection is terminated
@@ -68,13 +71,15 @@ using SINBOUND = struct inbound_tag {
 	char client;				// dvap, dvdongle
 };
 
-using STRACING = struct tracing_tag {
+using STRACING = struct tracing_tag
+{
 	unsigned short streamid;
 	time_t last_time;	// last time RF user talked
 };
 
 
-class CQnetLink : CKRBase {
+class CQnetLink : CKRBase
+{
 public:
 	// functions
 	CQnetLink();
@@ -111,7 +116,7 @@ private:
 	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
 	bool dplus_authorize, dplus_reflectors, dplus_repeaters, dplus_priority, uses_ipv6;
 	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
-    int delay_between, delay_before;
+	int delay_between, delay_before;
 	std::string link_at_startup[3];
 	unsigned int max_dongles, saved_max_dongles;
 	int rf_inactivity_timer[3];
@@ -129,7 +134,8 @@ private:
 	STOREMOTE to_remote_g2[3];
 
 	// broadcast for data arriving from xrf to local rptr
-	struct brd_from_xrf_tag {
+	struct brd_from_xrf_tag
+	{
 		unsigned short xrf_streamid;		// streamid from xrf
 		unsigned short rptr_streamid[2];	// generated streamid to rptr(s)
 	} brd_from_xrf;
@@ -137,7 +143,8 @@ private:
 	short brd_from_xrf_idx;
 
 	// broadcast for data arriving from local rptr to xrf
-	struct brd_from_rptr_tag {
+	struct brd_from_rptr_tag
+	{
 		unsigned short from_rptr_streamid;
 		unsigned short to_rptr_streamid[2];
 	} brd_from_rptr;
@@ -172,7 +179,8 @@ private:
 	// END:  TEXT crap
 
 	// this is used for the "dashboard and qso_details" to avoid processing multiple headers
-	struct old_sid_tag {
+	struct old_sid_tag
+	{
 		unsigned short sid;
 	} old_sid[3];
 
@@ -184,29 +192,35 @@ private:
 	const unsigned char endbytes[6] = { 0x55U, 0x55U, 0x55U, 0x55U, 0xC8U, 0x7AU };
 	time_t tnow;
 	unsigned char dcs_seq[3] = { 0x00, 0x00, 0x00 };
-	struct {
+	struct
+	{
 		char mycall[9];
 		char sfx[5];
 		unsigned int dcs_rptr_seq;
-	} rptr_2_dcs[3] = {
+	} rptr_2_dcs[3] =
+	{
 		{"        ", "    ", 0},
 		{"        ", "    ", 0},
 		{"        ", "    ", 0}
 	};
-	struct {
+	struct
+	{
 		char mycall[9];
 		char sfx[5];
 		unsigned int dcs_rptr_seq;
-	} ref_2_dcs[3] = {
+	} ref_2_dcs[3] =
+	{
 		{"        ", "    ", 0},
 		{"        ", "    ", 0},
 		{"        ", "    ", 0}
 	};
-	struct {
+	struct
+	{
 		char mycall[9];
 		char sfx[5];
 		unsigned int dcs_rptr_seq;
-	} xrf_2_dcs[3] = {
+	} xrf_2_dcs[3] =
+	{
 		{"        ", "    ", 0},
 		{"        ", "    ", 0},
 		{"        ", "    ", 0}

@@ -25,7 +25,8 @@
 #include "TCPReaderWriterClient.h"
 #include "QnetDB.h"
 
-class CDPlusAuthenticator {
+class CDPlusAuthenticator
+{
 public:
 	CDPlusAuthenticator(const std::string &loginCallsign, const std::string &address);
 	~CDPlusAuthenticator();

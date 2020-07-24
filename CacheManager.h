@@ -22,7 +22,8 @@
 #include <mutex>
 #include <unordered_map>
 
-class CCacheManager {
+class CCacheManager
+{
 public:
 	CCacheManager() {}
 	~CCacheManager() {}

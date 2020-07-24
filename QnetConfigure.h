@@ -21,13 +21,14 @@
 #include <string>
 #include <map>
 
-class CQnetConfigure {
+class CQnetConfigure
+{
 public:
 	CQnetConfigure();
 	virtual ~CQnetConfigure();
 	bool Initialize(const char *configfile);
-    bool GetValue(const std::string &path, const std::string &mod, bool        &value);
-    bool GetValue(const std::string &path, const std::string &mod, double      &value, const double min, const double max);
+	bool GetValue(const std::string &path, const std::string &mod, bool        &value);
+	bool GetValue(const std::string &path, const std::string &mod, double      &value, const double min, const double max);
 	bool GetValue(const std::string &path, const std::string &mod, int         &value, const int    min, const int    max);
 	bool GetValue(const std::string &path, const std::string &mod, std::string &value, const int    min, const int    max);
 	bool KeyExists(const std::string &key);
@@ -39,7 +40,7 @@ private:
 	char *Trim(char *s);
 	bool ReadConfigFile(const char *file, std::map<std::string, std::string> &amap);
 	bool GetDefaultBool  (const std::string &key, const std::string &mod, bool        &dval);
-    bool GetDefaultDouble(const std::string &key, const std::string &mod, double      &dval);
-    bool GetDefaultInt   (const std::string &key, const std::string &mod, int         &dval);
-    bool GetDefaultString(const std::string &key, const std::string &mod, std::string &dval);
+	bool GetDefaultDouble(const std::string &key, const std::string &mod, double      &dval);
+	bool GetDefaultInt   (const std::string &key, const std::string &mod, int         &dval);
+	bool GetDefaultString(const std::string &key, const std::string &mod, std::string &dval);
 };

@@ -30,12 +30,14 @@ enum aprs_level { al_none, al_$1, al_$2, al_c1, al_r1, al_c2, al_csum1, al_csum2
 
 enum slow_level { sl_first, sl_second };
 
-using SPORTIP = struct portip_tag {
+using SPORTIP = struct portip_tag
+{
 	std::string ip;
 	int port;
 };
 
-using SMOD = struct aprs_module {
+using SMOD = struct aprs_module
+{
 	std::string call;   /* KJ4NHF-B */
 	bool defined;
 	std::string band;  /* 23cm ... */
@@ -43,7 +45,8 @@ using SMOD = struct aprs_module {
 	std::string desc1, desc2, url, package_version;
 };
 
-using SRPTR = struct aprs_info {
+using SRPTR = struct aprs_info
+{
 	SPORTIP aprs;
 	std::string aprs_filter;
 	int aprs_hash;
@@ -53,7 +56,8 @@ using SRPTR = struct aprs_info {
 	SMOD mod[3];
 };
 
-class CAPRS {
+class CAPRS
+{
 public:
 	// functions
 	CAPRS(SRPTR *prptr);
@@ -68,7 +72,8 @@ public:
 
 private:
 	// data
-	struct {
+	struct
+	{
 		aprs_level al;
 		unsigned char data[300];
 		unsigned int len;
@@ -77,7 +82,8 @@ private:
 		bool is_sent;
 	} aprs_pack[3];
 	// lock down a stream per band
-	struct {
+	struct
+	{
 		unsigned short streamID;
 		time_t last_time;
 	} aprs_streamID[3];

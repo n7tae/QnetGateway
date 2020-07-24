@@ -22,7 +22,8 @@
 
 #include "KRBase.h"
 
-class CUnixPacket {
+class CUnixPacket
+{
 public:
 	CUnixPacket();
 	virtual bool Open(const char *name, CKRBase *host) = 0;
@@ -37,7 +38,8 @@ protected:
 	char m_name[108];
 };
 
-class CUnixPacketServer : public CUnixPacket {
+class CUnixPacketServer : public CUnixPacket
+{
 public:
 	CUnixPacketServer();
 	~CUnixPacketServer();
@@ -47,7 +49,8 @@ protected:
 	int m_server;
 };
 
-class CUnixPacketClient : public CUnixPacket {
+class CUnixPacketClient : public CUnixPacket
+{
 public:
 	~CUnixPacketClient();
 	bool Open(const char *name, CKRBase *host);

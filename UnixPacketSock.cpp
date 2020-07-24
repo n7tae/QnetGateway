@@ -33,10 +33,14 @@ ssize_t CUnixPacket::Read(void *buffer, const ssize_t size)
 	if (0 > m_fd)
 		return -1;
 	ssize_t len = read(m_fd, buffer, size);
-	if (len < 1) {
-		if (-1 == len) {
+	if (len < 1)
+	{
+		if (-1 == len)
+		{
 			std::cerr << "Read error on '" << m_name << "': " << strerror(errno) << std::endl;
-		} else if (0 == len) {
+		}
+		else if (0 == len)
+		{
 			std::cerr << "Read error on '" << m_name << "': EOF" << std::endl;
 		}
 		if (Restart())
@@ -52,10 +56,14 @@ bool CUnixPacket::Write(const void *buffer, const ssize_t size)
 	if (0 > m_fd)
 		return true;
 	ssize_t written = write(m_fd, buffer, size);
-	if (written != size) {
-		if (-1 == written) {
+	if (written != size)
+	{
+		if (-1 == written)
+		{
 			std::cerr << "Write error on '" << m_name << "': " << strerror(errno) << std::endl;
-		} else {
+		}
+		else
+		{
 			std::cout << "Write error on '" << m_name << "': Only wrote " << written << " of " << size << " bytes" << std::endl;
 		}
 		return Restart();
@@ -86,7 +94,8 @@ CUnixPacketServer::~CUnixPacketServer()
 bool CUnixPacketServer::Open(const char *name, CKRBase *host)
 {
 	m_server = socket(AF_UNIX, SOCK_SEQPACKET, 0);
-	if (m_server < 0) {
+	if (m_server < 0)
+	{
 		std::cerr << "Cannot open '" << name << "' socket: " << strerror(errno) << std::endl;
 		return true;
 	}
@@ -95,20 +104,23 @@ bool CUnixPacketServer::Open(const char *name, CKRBase *host)
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
 	memcpy(addr.sun_path+1, name, strlen(name));
-	if (-1 == bind(m_server, (struct sockaddr *)&addr, sizeof(addr))) {
+	if (-1 == bind(m_server, (struct sockaddr *)&addr, sizeof(addr)))
+	{
 		std::cerr << "Cannot bind '" << name << "' socket: " << strerror(errno) << std::endl;
 		Close();
 		return true;
 	}
 
-	if (-1 == listen(m_server, 1)) {
+	if (-1 == listen(m_server, 1))
+	{
 		std::cerr << "Cannot listen on '" << name << "' socket: " << strerror(errno) << std::endl;
 		Close();
 		return true;
 	}
 
 	m_fd = accept(m_server, nullptr, 0);
-	if (m_fd < 0) {
+	if (m_fd < 0)
+	{
 		std::cerr << "Cannot accept on '" << name << "' socket: " << strerror(errno) << std::endl;
 		Close();
 		return true;
@@ -121,11 +133,13 @@ bool CUnixPacketServer::Open(const char *name, CKRBase *host)
 
 void CUnixPacketServer::Close()
 {
-	if (m_server >= 0) {
+	if (m_server >= 0)
+	{
 		close(m_server);
 		m_server = -1;
 	}
-	if (m_fd >= 0) {
+	if (m_fd >= 0)
+	{
 		close(m_fd);
 		m_fd = -1;
 	}
@@ -139,7 +153,8 @@ CUnixPacketClient::~CUnixPacketClient()
 bool CUnixPacketClient::Open(const char *name, CKRBase *host)
 {
 	m_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
-	if (m_fd < 0) {
+	if (m_fd < 0)
+	{
 		std::cerr << "Cannot open unix client socket " << name << std::endl;
 		return true;
 	}
@@ -150,20 +165,26 @@ bool CUnixPacketClient::Open(const char *name, CKRBase *host)
 	memcpy(addr.sun_path+1, name, strlen(name));
 	int rval = -1;
 	int tries = 0;
-	while (rval < 0) {
+	while (rval < 0)
+	{
 		rval = connect(m_fd, (struct sockaddr *)&addr, sizeof(addr));
-		if (rval < 0) {
-			if (ECONNREFUSED == errno) {
+		if (rval < 0)
+		{
+			if (ECONNREFUSED == errno)
+			{
 				if (0 == tries++ % 20)
 					std::cout << "Waiting for " << name << " server to start..." << std::endl;
 				std::this_thread::sleep_for(std::chrono::milliseconds(250));
-			} else {
+			}
+			else
+			{
 				std::cerr << "Cannot connect '" << name << "' socket: " << strerror(errno) << std::endl;
 				Close();
 				return true;
 			}
 		}
-		if (! m_host->IsRunning()) {
+		if (! m_host->IsRunning())
+		{
 			Close();
 			return true;
 		}
@@ -176,7 +197,8 @@ bool CUnixPacketClient::Open(const char *name, CKRBase *host)
 
 void CUnixPacketClient::Close()
 {
-	if (m_fd >= 0) {
+	if (m_fd >= 0)
+	{
 		close(m_fd);
 		m_fd = -1;
 	}

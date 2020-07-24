@@ -66,8 +66,8 @@ const unsigned char TYPE_ACK     = 0x70U;
 const unsigned char TYPE_NACK    = 0x7FU;
 
 CQnetModem::CQnetModem(int mod)
-: assigned_module(mod)
-, dstarSpace(0U)
+	: assigned_module(mod)
+	, dstarSpace(0U)
 {
 }
 
@@ -84,7 +84,8 @@ bool CQnetModem::GetBufferSize()
 {
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 
-	for (int i=0; i<6; i++) {
+	for (int i=0; i<6; i++)
+	{
 		SMODEM frame;
 
 		frame.start = FRAME_START;
@@ -94,10 +95,12 @@ bool CQnetModem::GetBufferSize()
 		if (3 != SendToModem(&frame.start))
 			return true;
 
-		for (int count = 0; count < MAX_RESPONSES; count++) {
+		for (int count = 0; count < MAX_RESPONSES; count++)
+		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			EModemResponse resp = GetModemData(&frame.start, sizeof(SVERSION));
-			if (resp == EModemResponse::status) {
+			if (resp == EModemResponse::status)
+			{
 				dstarSpace = frame.status.dsrsize;
 				printf("D-Star buffer will hold %u voice frames\n", dstarSpace);
 				return false;
@@ -114,7 +117,8 @@ bool CQnetModem::GetVersion()
 {
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 
-	for (int i=0; i<6; i++) {
+	for (int i=0; i<6; i++)
+	{
 		SVERSION frame;
 
 		frame.start = FRAME_START;
@@ -124,10 +128,12 @@ bool CQnetModem::GetVersion()
 		if (3 != SendToModem(&frame.start))
 			return true;
 
-		for (int count = 0; count < MAX_RESPONSES; count++) {
+		for (int count = 0; count < MAX_RESPONSES; count++)
+		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			EModemResponse resp = GetModemData(&frame.start, sizeof(SVERSION));
-			if (resp == EModemResponse::version && frame.length > 14U) {
+			if (resp == EModemResponse::version && frame.length > 14U)
+			{
 				frame.version[frame.length-4U] = '\0';	// just to make sure!
 				if      (0 == memcmp(frame.version, "MMDVM ", 6U))
 					hardwareType = EHardwareType::mmdvm;
@@ -145,7 +151,8 @@ bool CQnetModem::GetVersion()
 					hardwareType = EHardwareType::nano_dv;
 				else if (0 == memcmp(frame.version, "MMDVM_HS-", 9U))
 					hardwareType = EHardwareType::mmdvm_hs;
-				else {
+				else
+				{
 					hardwareType = EHardwareType::unknown;
 				}
 
@@ -170,7 +177,8 @@ bool CQnetModem::SetFrequency()
 
 	if (hardwareType == EHardwareType::dvmega)
 		frame.length = 12U;
-	else {
+	else
+	{
 		frame.frequency.level = 255U;
 		frame.frequency.ps = __builtin_bswap32(htonl(pocsagFrequency));
 
@@ -188,22 +196,25 @@ bool CQnetModem::SetFrequency()
 
 	int count = 0;
 	bool got_ack = false;
-	while (! got_ack) {
+	while (! got_ack)
+	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-		switch (GetModemData(&frame.start, sizeof(SMODEM))) {
-			case EModemResponse::ack:
-				got_ack = true;
-				break;
-			case EModemResponse::nack:
-				fprintf(stderr, "SET_FREQ failed, returned NACK reason %u\n", frame.nack.reason);
+		switch (GetModemData(&frame.start, sizeof(SMODEM)))
+		{
+		case EModemResponse::ack:
+			got_ack = true;
+			break;
+		case EModemResponse::nack:
+			fprintf(stderr, "SET_FREQ failed, returned NACK reason %u\n", frame.nack.reason);
+			return true;
+		default:
+			if (++count >= MAX_RESPONSES)
+			{
+				fprintf(stderr, "The MMDVM is not responding to the SET_FREQ command!\n");
 				return true;
-			default:
-				if (++count >= MAX_RESPONSES) {
-					fprintf(stderr, "The MMDVM is not responding to the SET_FREQ command!\n");
-					return true;
-				}
-				break;
+			}
+			break;
 		}
 	}
 	printf("Modem frequencies set: rx=%u(%u) tx=%u(%u) Hz\n", (uint32_t)(1.0E6 * RX_FREQUENCY), rx_frequency, (uint32_t)(1.0E6 * TX_FREQUENCY), tx_frequency);
@@ -271,22 +282,25 @@ bool CQnetModem::SetConfiguration()
 
 	int count = 0;
 	bool got_ack = false;
-	while (! got_ack) {
+	while (! got_ack)
+	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-		switch (GetModemData(&frame.start, sizeof(SMODEM))) {
-			case EModemResponse::ack:
-				got_ack = true;
-				break;
-			case EModemResponse::nack:
-				fprintf(stderr, "SET_CONFIG failed, returned NACK reason %u\n", frame.nack.reason);
+		switch (GetModemData(&frame.start, sizeof(SMODEM)))
+		{
+		case EModemResponse::ack:
+			got_ack = true;
+			break;
+		case EModemResponse::nack:
+			fprintf(stderr, "SET_CONFIG failed, returned NACK reason %u\n", frame.nack.reason);
+			return true;
+		default:
+			if (++count >= MAX_RESPONSES)
+			{
+				fprintf(stderr, "The MMDVM is not responding to the SET_CONFIG command!\n");
 				return true;
-			default:
-				if (++count >= MAX_RESPONSES) {
-					fprintf(stderr, "The MMDVM is not responding to the SET_CONFIG command!\n");
-					return true;
-				}
-				break;
+			}
+			break;
 		}
 	}
 	printf("Modem configuration set for D-Star only\n");
@@ -296,19 +310,22 @@ bool CQnetModem::SetConfiguration()
 int CQnetModem::OpenModem()
 {
 	int fd = open(MODEM_DEVICE.c_str(), O_RDWR | O_NOCTTY | O_SYNC, 0);
-	if (fd < 0) {
+	if (fd < 0)
+	{
 		printf("Failed to open device [%s], error=%d, message=%s\n", MODEM_DEVICE.c_str(), errno, strerror(errno));
 		return -1;
 	}
 
-	if (isatty(fd) == 0) {
+	if (isatty(fd) == 0)
+	{
 		printf("Device %s is not a tty device\n", MODEM_DEVICE.c_str());
 		close(fd);
 		return -1;
 	}
 
 	static termios t;
-	if (tcgetattr(fd, &t) < 0) {
+	if (tcgetattr(fd, &t) < 0)
+	{
 		printf("tcgetattr failed for %s, error=%d, message-%s\n", MODEM_DEVICE.c_str(), errno, strerror(errno));
 		close(fd);
 		return -1;
@@ -325,7 +342,8 @@ int CQnetModem::OpenModem()
 	cfsetospeed(&t, B115200);
 	cfsetispeed(&t, B115200);
 
-	if (tcsetattr(fd, TCSANOW, &t) < 0) {
+	if (tcsetattr(fd, TCSANOW, &t) < 0)
+	{
 		printf("tcsetattr failed for %s, error=%dm message=%s\n", MODEM_DEVICE.c_str(), errno, strerror(errno));
 		close(fd);
 		return -1;
@@ -336,28 +354,36 @@ int CQnetModem::OpenModem()
 
 EModemResponse CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 {
-	if (size < 4U) {
+	if (size < 4U)
+	{
 		fprintf(stderr, "Buffer size, %u is too small\n", size);
 		return EModemResponse::error;
 	}
 
 	// Get the start byte
 	int ret = read(serfd, buf, 1U);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr, "Error when reading frame start byte: %s\n", strerror(errno));
 		return EModemResponse::error;
-	} else if (ret == 0) {
+	}
+	else if (ret == 0)
+	{
 		printf("READ START RETURNED A ZERO!\n");
 		return EModemResponse::timeout;
-	} else if (buf[0] != FRAME_START)
+	}
+	else if (buf[0] != FRAME_START)
 		return EModemResponse::timeout;
 
 	//get the length byte
 	ret = read(serfd, buf+1, 1U);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr, "Error when reading frame length: %s\n", strerror(errno));
 		return EModemResponse::error;
-	} else if (ret == 0) {
+	}
+	else if (ret == 0)
+	{
 		printf("READ LENGTH RETURNED A ZERO!\n");
 		return(EModemResponse::timeout);
 	}
@@ -366,62 +392,76 @@ EModemResponse CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 
 	// get the type byte
 	ret = read(serfd, buf+2, 1U);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr, "Error when reading frame type: %s\n", strerror(errno));
 		return EModemResponse::error;
-	} else if (ret == 0) {
+	}
+	else if (ret == 0)
+	{
 		printf("READ TYPE RETURNED A ZERO!\n");
 		return(EModemResponse::timeout);
 	}
 	// get the data
 	unsigned int length = buf[1];
 	unsigned int offset = 3;
-	while (offset < length) {
+	while (offset < length)
+	{
 		ret = read(serfd, buf + offset, length - offset);
-		if (ret < 0) {
+		if (ret < 0)
+		{
 			printf("Error when reading data: %s\n", strerror(errno));
 			return EModemResponse::error;
 		}
-		if (ret == 0) {
+		if (ret == 0)
+		{
 			printf("READ DATA RETURNED A ZERO!\n");
 			return(EModemResponse::timeout);
-		} else
+		}
+		else
 			offset += ret;
 	}
 
-	while (junk_count) {
+	while (junk_count)
+	{
 		unsigned char junk[8];
 		ret = read(serfd, junk, (junk_count > 8U) ? 8U : junk_count);
-		if (ret < 0) {
+		if (ret < 0)
+		{
 			printf("Error when reading junk: %s\n", strerror(errno));
 			return EModemResponse::error;
-		} else if (ret == 0) {
+		}
+		else if (ret == 0)
+		{
 			printf("READ junk RETURNED A ZERO!\n");
 			return(EModemResponse::timeout);
-		} else {
+		}
+		else
+		{
 			junk_count -= (unsigned int)ret;
 		}
 	}
 
-	switch (buf[2]) {
-		case TYPE_ACK:
-			return EModemResponse::ack;
-		case TYPE_NACK:
-			return EModemResponse::nack;
-		case TYPE_HEADER:
-			return EModemResponse::header;
-		case TYPE_DATA:
-			return EModemResponse::data;
-		case TYPE_LOST:
-			return EModemResponse::lost;
-		case TYPE_EOT:
-			return EModemResponse::eot;
-		case TYPE_VERSION:
-			return EModemResponse::version;
-		case TYPE_STATUS:
-			return EModemResponse::status;
-		default:
-			return EModemResponse::error;
+	switch (buf[2])
+	{
+	case TYPE_ACK:
+		return EModemResponse::ack;
+	case TYPE_NACK:
+		return EModemResponse::nack;
+	case TYPE_HEADER:
+		return EModemResponse::header;
+	case TYPE_DATA:
+		return EModemResponse::data;
+	case TYPE_LOST:
+		return EModemResponse::lost;
+	case TYPE_EOT:
+		return EModemResponse::eot;
+	case TYPE_VERSION:
+		return EModemResponse::version;
+	case TYPE_STATUS:
+		return EModemResponse::status;
+	default:
+		return EModemResponse::error;
 	};
 }
 
@@ -438,7 +478,8 @@ void CQnetModem::Run(const char *cfgfile)
 	CTimer statusTimer;
 	CTimer deadTimer;
 
-	while (keep_running) {
+	while (keep_running)
+	{
 
 		SMODEM frame;
 		frame.start = FRAME_START;
@@ -454,55 +495,64 @@ void CQnetModem::Run(const char *cfgfile)
 
 		// don't care about writefds and exceptfds:
 		int ret = select(maxfs+1, &readfds, NULL, NULL, &tv);
-		if (ret < 0) {
+		if (ret < 0)
+		{
 			printf("ERROR: Run: select returned err=%d, %s\n", errno, strerror(errno));
 			break;
 		}
 
 		// check for a dead or disconnected radio
-		if (10.0 < deadTimer.time()) {
+		if (10.0 < deadTimer.time())
+		{
 			printf("no activity from radio for 10 sec. Exiting...\n");
 			keep_running = false;
 		}
 
-		if (keep_running && FD_ISSET(serfd, &readfds)) {
+		if (keep_running && FD_ISSET(serfd, &readfds))
+		{
 			deadTimer.start();
-			switch (GetModemData(&frame.start, sizeof(SMODEM))) {
-				case EModemResponse::data:
-				case EModemResponse::header:
-				case EModemResponse::eot:
-				case EModemResponse::lost:
-					if (ProcessModem(frame))
-						keep_running = false;
-					break;
-				case EModemResponse::status:
-					if (frame.status.flags & 0x02U)
-						fprintf(stderr, "Modem ADC levels have overflowed\n");
-					if (frame.status.flags & 0x04U)
-						fprintf(stderr, "Modem RX buffer has overflowed\n");
-					if (frame.status.flags & 0x08U)
-						fprintf(stderr, "Modem TX buffer has overflowed\n");
-					if (frame.status.flags & 0x20U)
-						fprintf(stderr, "Modem DAC levels have overflowed\n");
-					dstarSpace = frame.status.dsrsize;
-					break;
-				default:
-					break;
+			switch (GetModemData(&frame.start, sizeof(SMODEM)))
+			{
+			case EModemResponse::data:
+			case EModemResponse::header:
+			case EModemResponse::eot:
+			case EModemResponse::lost:
+				if (ProcessModem(frame))
+					keep_running = false;
+				break;
+			case EModemResponse::status:
+				if (frame.status.flags & 0x02U)
+					fprintf(stderr, "Modem ADC levels have overflowed\n");
+				if (frame.status.flags & 0x04U)
+					fprintf(stderr, "Modem RX buffer has overflowed\n");
+				if (frame.status.flags & 0x08U)
+					fprintf(stderr, "Modem TX buffer has overflowed\n");
+				if (frame.status.flags & 0x20U)
+					fprintf(stderr, "Modem DAC levels have overflowed\n");
+				dstarSpace = frame.status.dsrsize;
+				break;
+			default:
+				break;
 			}
 			FD_CLR(serfd, &readfds);
 		}
 
-		if (keep_running && FD_ISSET(ug2m, &readfds)) {
+		if (keep_running && FD_ISSET(ug2m, &readfds))
+		{
 			SDSVT dsvt;
 			ssize_t len = ToGate.Read(dsvt.title, sizeof(SDSVT));
 
-			if (len <= 0) {
+			if (len <= 0)
+			{
 				break;
 			}
 
-			if (0 == memcmp(dsvt.title, "DSVT", 4) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U) && (len==56 || len==27)) {
+			if (0 == memcmp(dsvt.title, "DSVT", 4) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U) && (len==56 || len==27))
+			{
 				ProcessGateway(dsvt);
-			} else {
+			}
+			else
+			{
 				fprintf(stderr, "Unexpected data, returned %d bytes from the gateway: %02x", int(len), *dsvt.title);
 				for (ssize_t i=1; i<len; i++)
 					fprintf(stderr, " %02x", *(dsvt.title + int(i)));
@@ -512,7 +562,8 @@ void CQnetModem::Run(const char *cfgfile)
 			FD_CLR(ug2m, &readfds);
 		}
 
-		if (keep_running) {
+		if (keep_running)
+		{
 			//if (g2_is_active && PacketWait.time() > packet_wait) {
 			//	// g2 has timed out
 			//	frame.length = 3U;
@@ -520,17 +571,20 @@ void CQnetModem::Run(const char *cfgfile)
 			//	queue.push(CFrame(&frame.start));
 			//	g2_is_active = false;
 			//}
-			if (! queue.empty()) {
+			if (! queue.empty())
+			{
 				// send queued D-Star frames to modem
 				CFrame cframe = queue.front();
 				const unsigned char type = cframe.type();
-				if ((type==TYPE_HEADER && dstarSpace>3U) || ((type==TYPE_DATA || type==TYPE_EOT || type==TYPE_LOST) && dstarSpace>0U)) {
+				if ((type==TYPE_HEADER && dstarSpace>3U) || ((type==TYPE_DATA || type==TYPE_EOT || type==TYPE_LOST) && dstarSpace>0U))
+				{
 					SendToModem(cframe.data());
 					queue.pop();
 					dstarSpace -= (type==TYPE_HEADER) ? 4U : 1U;
 				}
 			}
-			if (statusTimer.time() > 0.25) {
+			if (statusTimer.time() > 0.25)
+			{
 				// request a status update every 250 milliseconds
 				frame.length = 3U;
 				frame.type = TYPE_STATUS;
@@ -550,10 +604,13 @@ int CQnetModem::SendToModem(const unsigned char *buf)
 	size_t sent = 0;
 	ssize_t length = buf[1];
 
-	while ((ssize_t)sent < length) {
+	while ((ssize_t)sent < length)
+	{
 		n = write(serfd, buf + sent, length - sent);
-		if (n < 0) {
-			if (EAGAIN != errno) {
+		if (n < 0)
+		{
+			if (EAGAIN != errno)
+			{
 				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
 				return -1;
 			}
@@ -569,7 +626,8 @@ void CQnetModem::ProcessGateway(const SDSVT &dsvt)
 	static std::string superframe;
 	SMODEM frame;	// destination
 	frame.start = FRAME_START;
-	if (0x10U == dsvt.config) {			// write a Header packet
+	if (0x10U == dsvt.config)  			// write a Header packet
+	{
 		superframe.clear();
 		frame.length = 44U;
 		frame.type = TYPE_HEADER;
@@ -584,29 +642,39 @@ void CQnetModem::ProcessGateway(const SDSVT &dsvt)
 		PacketWait.start();
 		if (LOG_QSO)
 			printf("Queued to %s flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", MODEM_DEVICE.c_str(), frame.header.flag[0], frame.header.flag[1], frame.header.flag[2], frame.header.ur, frame.header.r2, frame.header.r1, frame.header.my, frame.header.nm);
-	} else {	// write a voice data packet
+	}
+	else  	// write a voice data packet
+	{
 		//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
-		if (dsvt.ctrl & 0x40U) {
+		if (dsvt.ctrl & 0x40U)
+		{
 			if (LOG_DEBUG && superframe.size())
 				printf("Final order: %s\n", superframe.c_str());
 			frame.length = 3U;
 			frame.type = TYPE_EOT;
 			if (LOG_QSO)
 				printf("Queued modem end of transmission\n");
-		} else {
+		}
+		else
+		{
 			frame.length = 15U;
 			frame.type = TYPE_DATA;
 			memcpy(frame.voice.ambe, dsvt.vasd.voice, 12);
-			if (LOG_DEBUG) {
+			if (LOG_DEBUG)
+			{
 				const unsigned int ctrl = dsvt.ctrl & 0x3FU;
-				if (VoicePacketIsSync(dsvt.vasd.text)) {
-					if (superframe.size() > 65) {
+				if (VoicePacketIsSync(dsvt.vasd.text))
+				{
+					if (superframe.size() > 65)
+					{
 						printf("Frame order: %s\n", superframe.c_str());
 						superframe.clear();
 					}
 					const char *ch = "#abcdefghijklmnopqrstuvwxyz";
 					superframe.append(1, (ctrl<27U) ? ch[ctrl] : '%');
-				} else {
+				}
+				else
+				{
 					const char *ch = "!ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 					superframe.append(1, (ctrl<27U) ? ch[ctrl] : '*');
 				}
@@ -638,7 +706,8 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	dsvt.flagb[2] = ('B'==RPTR_MOD) ? 0x1U : (('C'==RPTR_MOD) ? 0x2U : 0x3U);
 	dsvt.streamid = htons(stream_id);
 
-	if (frame.type == TYPE_HEADER) {	// header
+	if (frame.type == TYPE_HEADER)  	// header
+	{
 		nextctrl = 21U;
 		in_stream = first_voice_packet = true;
 		dsvt.config = 0x10U;
@@ -653,20 +722,26 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 		memcpy(dsvt.hdr.mycall, frame.header.my,   8);
 		memcpy(dsvt.hdr.sfx,    frame.header.nm,   4);
 		memcpy(dsvt.hdr.pfcs,   frame.header.pfcs, 2);
-		if (ToGate.Write(dsvt.title, 56)) {
+		if (ToGate.Write(dsvt.title, 56))
+		{
 			printf("ERROR: ProcessModem: Could not write gateway header packet\n");
 			return true;
 		}
 		if (LOG_QSO)
 			printf("Sent DSVT to gateway, streamid=%04x flags=%02x:%02x:%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
-	} else if (in_stream && (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST)) {	// ambe
+	}
+	else if (in_stream && (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST))  	// ambe
+	{
 		const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
 		const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 		dsvt.config = 0x20U;
-		if (frame.type == TYPE_DATA) {
+		if (frame.type == TYPE_DATA)
+		{
 
-			if (first_voice_packet) {	// make sure the first voice packet is a sync frame
-				if (! VoicePacketIsSync(frame.voice.text)) { // create a quite sync voice packet
+			if (first_voice_packet)  	// make sure the first voice packet is a sync frame
+			{
+				if (! VoicePacketIsSync(frame.voice.text))   // create a quite sync voice packet
+				{
 					if (LOG_DEBUG)
 						printf("Warning: Inserting missing frame sync after header\n");
 					dsvt.ctrl = 0U;
@@ -677,18 +752,21 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 				first_voice_packet = false;
 			}
 
-			if (VoicePacketIsSync(frame.voice.text)) {
+			if (VoicePacketIsSync(frame.voice.text))
+			{
 				if (nextctrl < 21U)
 					fprintf(stderr, "Warning: The last superframe had %u frames, inserting missing frame(s)\n", nextctrl);
 				memcpy(dsvt.vasd.voice, silence, 12U);
-				while (nextctrl < 21U) {
+				while (nextctrl < 21U)
+				{
 					dsvt.ctrl = nextctrl++;
 					ToGate.Write(dsvt.title, 27);
 				}
 				nextctrl = 0x0U;
 			}
 
-			if (nextctrl > 20U) {
+			if (nextctrl > 20U)
+			{
 				fprintf(stderr, "Warning: nextctrl=%u, inserting missing sync frame\n", nextctrl);
 				dsvt.ctrl = 0U;
 				memcpy(dsvt.vasd.voice, sync, 12U);
@@ -697,16 +775,22 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			}
 
 			memcpy(dsvt.vasd.voice, frame.voice.ambe, 12);
-		} else {
+		}
+		else
+		{
 			if (frame.type == TYPE_LOST)
 				printf("Got a TYPE_LOST packet.\n");
-			if (0U == nextctrl) {
+			if (0U == nextctrl)
+			{
 				memcpy(dsvt.vasd.voice, sync, 12);
-			} else {
+			}
+			else
+			{
 				memcpy(dsvt.vasd.voice, silence, 12);
 			}
 			nextctrl |= 0x40U;
-			if (LOG_QSO) {
+			if (LOG_QSO)
+			{
 				if (frame.type == TYPE_EOT)
 					printf("Sent DSVT end of streamid=%04x\n", ntohs(dsvt.streamid));
 				else
@@ -715,13 +799,17 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 			in_stream = false;
 		}
 		dsvt.ctrl = nextctrl++;
-		if (ToGate.Write(dsvt.title, 27)) {
+		if (ToGate.Write(dsvt.title, 27))
+		{
 			printf("ERROR: ProcessModem: Could not write gateway voice packet\n");
 			return true;
 		}
 
-	} else {
-		if (in_stream) {
+	}
+	else
+	{
+		if (in_stream)
+		{
 			fprintf(stderr, "Warning! Unexpected frame: %02x", frame.start);
 			for (unsigned int i=1U; i<frame.length; i++)
 				fprintf(stderr, ":%02x", *(&frame.start + i));
@@ -743,12 +831,15 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	const std::string estr;	// an empty string
 	std::string type;
 	std::string modem_path("module_");
-	if (0 > assigned_module) {
+	if (0 > assigned_module)
+	{
 		// we need to find the lone mmdvmmodem module
-		for (int i=0; i<3; i++) {
+		for (int i=0; i<3; i++)
+		{
 			std::string test(modem_path);
 			test.append(1, 'a'+i);
-			if (cfg.KeyExists(test)) {
+			if (cfg.KeyExists(test))
+			{
 				cfg.GetValue(test, estr, type, 1, 16);
 				if (type.compare("mmdvmmodem"))
 					continue;	// this ain't it!
@@ -757,20 +848,27 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 				break;
 			}
 		}
-		if (0 > assigned_module) {
+		if (0 > assigned_module)
+		{
 			fprintf(stderr, "Error: no 'mmdvmmodem' module found\n!");
 			return true;
 		}
-	} else {
+	}
+	else
+	{
 		// make sure mmdvmmodem module is defined
 		modem_path.append(1, 'a' + assigned_module);
-		if (cfg.KeyExists(modem_path)) {
+		if (cfg.KeyExists(modem_path))
+		{
 			cfg.GetValue(modem_path, estr, type, 1, 16);
-			if (type.compare("mmdvmmodem")) {
+			if (type.compare("mmdvmmodem"))
+			{
 				fprintf(stderr, "%s = %s is not 'mmdvmmodem' type!\n", modem_path.c_str(), type.c_str());
 				return true;
 			}
-		} else {
+		}
+		else
+		{
 			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
 			return true;
 		}
@@ -798,22 +896,30 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	packet_wait = 1.0E-3 * double(PACKET_WAIT);
 
 	modem_path.append("_callsign");
-	if (cfg.KeyExists(modem_path)) {
+	if (cfg.KeyExists(modem_path))
+	{
 		if (cfg.GetValue(modem_path, type, RPTR, 3, 6))
 			return true;
-	} else {
+	}
+	else
+	{
 		modem_path.assign("ircddb_login");
-		if (cfg.KeyExists(modem_path)) {
+		if (cfg.KeyExists(modem_path))
+		{
 			if (cfg.GetValue(modem_path, estr, RPTR, 3, 6))
 				return true;
 		}
 	}
 	int l = RPTR.length();
-	if (l<3 || l>6) {
+	if (l<3 || l>6)
+	{
 		printf("Call '%s' is invalid length!\n", RPTR.c_str());
 		return true;
-	} else {
-		for (int i=0; i<l; i++) {
+	}
+	else
+	{
+		for (int i=0; i<l; i++)
+		{
 			if (islower(RPTR[i]))
 				RPTR[i] = toupper(RPTR[i]);
 		}
@@ -829,12 +935,14 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 int main(int argc, const char **argv)
 {
 	setbuf(stdout, NULL);
-	if (2 != argc) {
+	if (2 != argc)
+	{
 		fprintf(stderr, "usage: %s path_to_config_file\n", argv[0]);
 		return 1;
 	}
 
-	if ('-' == argv[1][0]) {
+	if ('-' == argv[1][0])
+	{
 		printf("\nQnetModem Version %s Copyright (C) 2019 by Thomas A. Early N7TAE\n", MODEM_VERSION);
 		printf("QnetModem comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\n");
@@ -843,29 +951,31 @@ int main(int argc, const char **argv)
 	}
 
 	const char *qn = strstr(argv[0], "qnmodem");
-	if (NULL == qn) {
+	if (NULL == qn)
+	{
 		fprintf(stderr, "Error finding 'qnmodem' in %s!\n", argv[0]);
 		return 1;
 	}
 	qn += 7;
 
 	int assigned_module;
-	switch (*qn) {
-		case NULL:
-			assigned_module = -1;
-			break;
-		case 'a':
-			assigned_module = 0;
-			break;
-		case 'b':
-			assigned_module = 1;
-			break;
-		case 'c':
-			assigned_module = 2;
-			break;
-		default:
-			fprintf(stderr, "assigned module must be a, b or c\n");
-			return 1;
+	switch (*qn)
+	{
+	case NULL:
+		assigned_module = -1;
+		break;
+	case 'a':
+		assigned_module = 0;
+		break;
+	case 'b':
+		assigned_module = 1;
+		break;
+	case 'c':
+		assigned_module = 2;
+		break;
+	default:
+		fprintf(stderr, "assigned module must be a, b or c\n");
+		return 1;
 	}
 
 	CQnetModem qnmodem(assigned_module);

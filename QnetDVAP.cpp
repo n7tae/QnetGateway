@@ -62,7 +62,8 @@ void CQnetDVAP::calcPFCS(unsigned char *packet, unsigned char *pfcs)
 {
 	unsigned short crc_dstar_ffff = 0xffff;
 	unsigned short tmp, short_c;
-	unsigned short crc_tabccitt[256] = {
+	unsigned short crc_tabccitt[256] =
+	{
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
 		0x2102,0x308b,0x0210,0x1399,0x6726,0x76af,0x4434,0x55bd,0xad4a,0xbcc3,0x8e58,0x9fd1,0xeb6e,0xfae7,0xc87c,0xd9f5,
@@ -81,7 +82,8 @@ void CQnetDVAP::calcPFCS(unsigned char *packet, unsigned char *pfcs)
 		0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 	};
 
-	for (int i = 0; i < 39 ; i++) {
+	for (int i = 0; i < 39 ; i++)
+	{
 		short_c = 0x00ff & (unsigned short)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
@@ -107,12 +109,15 @@ bool CQnetDVAP::ReadConfig(const char *cfgFile)
 	const std::string estr; // an empty string
 	std::string type;
 	std::string dvap_path("module_");
-	if (0 > assigned_module) {
+	if (0 > assigned_module)
+	{
 		// we need to find the lone dvap module
-		for (int i=0; i<3; i++) {
+		for (int i=0; i<3; i++)
+		{
 			std::string test(dvap_path);
 			test.append(1, 'a'+i);
-			if (cfg.KeyExists(test)) {
+			if (cfg.KeyExists(test))
+			{
 				cfg.GetValue(test, estr, type, 1, 16);
 				if (type.compare("dvap"))
 					continue;	// this ain't it!
@@ -121,27 +126,35 @@ bool CQnetDVAP::ReadConfig(const char *cfgFile)
 				break;
 			}
 		}
-		if (0 > assigned_module) {
+		if (0 > assigned_module)
+		{
 			fprintf(stderr, "Error: no 'dvap' module found\n!");
 			return true;
 		}
-	} else {
+	}
+	else
+	{
 		// make sure dvap module is defined
 		dvap_path.append(1, 'a' + assigned_module);
-		if (cfg.KeyExists(dvap_path)) {
+		if (cfg.KeyExists(dvap_path))
+		{
 			cfg.GetValue(dvap_path, estr, type, 1, 16);
-			if (type.compare("dvap")) {
+			if (type.compare("dvap"))
+			{
 				fprintf(stderr, "%s = %s is not 'dvap' type!\n", dvap_path.c_str(), type.c_str());
 				return true;
 			}
-		} else {
+		}
+		else
+		{
 			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
 			return true;
 		}
 	}
 	RPTR_MOD = 'A' + assigned_module;
 	cfg.GetValue("gateway_tomodem"+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
-	if (cfg.KeyExists(dvap_path+"_callsign")) {
+	if (cfg.KeyExists(dvap_path+"_callsign"))
+	{
 		if (cfg.GetValue(dvap_path+"_callsign", type, RPTR, 3, 6))
 			return true;
 	}
@@ -150,11 +163,13 @@ bool CQnetDVAP::ReadConfig(const char *cfgFile)
 	if (RPTR.empty())
 		RPTR.assign(OWNER);
 
-	for (unsigned long i=0; i<RPTR.length(); i++) {
+	for (unsigned long i=0; i<RPTR.length(); i++)
+	{
 		if (islower(RPTR.at(i)))
 			RPTR.at(i) = toupper(RPTR.at(i));
 	}
-	for (unsigned long i=0; i<OWNER.length(); i++) {
+	for (unsigned long i=0; i<OWNER.length(); i++)
+	{
 		if (islower(OWNER.at(i)))
 			OWNER.at(i) = toupper(OWNER.at(i));
 	}
@@ -209,7 +224,8 @@ void CQnetDVAP::ReadFromGateway()
 	bool written_to_q = false;
 	unsigned char ctrl_in = 0x80;
 
-	while (keep_running) {
+	while (keep_running)
+	{
 		written_to_q = false;
 		len = 0;
 		tv.tv_sec = 0;
@@ -219,15 +235,19 @@ void CQnetDVAP::ReadFromGateway()
 		FD_SET (fd, &readfd);
 		select(fd + 1, &readfd, NULL, NULL, &tv);
 
-		if (FD_ISSET(fd, &readfd)) {
+		if (FD_ISSET(fd, &readfd))
+		{
 			len = ToGate.Read(dsvt.title, 56);
-			if (len == 56) {
-				if (busy20000) {
+			if (len == 56)
+			{
+				if (busy20000)
+				{
 					FD_CLR (fd, &readfd);
 					continue;
 				}
 
-				if ('G' == dsvt.hdr.rpt1[7]) {
+				if ('G' == dsvt.hdr.rpt1[7])
+				{
 					unsigned char tmp[8];
 					memcpy(tmp, dsvt.hdr.rpt1, 8);
 					memcpy(dsvt.hdr.rpt1, dsvt.hdr.rpt2, 8);
@@ -235,35 +255,40 @@ void CQnetDVAP::ReadFromGateway()
 				}
 
 				/* check the module and gateway */
-				if (dsvt.hdr.rpt1[7] != RPTR_MOD) {
+				if (dsvt.hdr.rpt1[7] != RPTR_MOD)
+				{
 					FD_CLR(fd, &readfd);
 					break;
 				}
 				memcpy(dsvt.hdr.rpt2, OWNER.c_str(), 7);
 				dsvt.hdr.rpt2[7] = 'G';
 
-				if (RPTR.compare(OWNER)) {
+				if (RPTR.compare(OWNER))
+				{
 					// restriction mode
 					memcpy(dsvt.hdr.rpt1, RPTR.c_str(), 7);
 					memcpy(dsvt.hdr.rpt2, RPTR.c_str(), 7);
 
-					if (memcmp(dsvt.hdr.mycall, OWNER.c_str(), 7) == 0) {
+					if (memcmp(dsvt.hdr.mycall, OWNER.c_str(), 7) == 0)
+					{
 						/* this is an ACK back */
 						memcpy(dsvt.hdr.mycall, RPTR.c_str(), 7);
 					}
 				}
 
 				if ((dsvt.hdr.flag[0] != 0x00) &&
-				        (dsvt.hdr.flag[0] != 0x01) &&
-				        (dsvt.hdr.flag[0] != 0x08) &&
-				        (dsvt.hdr.flag[0] != 0x20) &&
-				        (dsvt.hdr.flag[0] != 0x28) &&
-				        (dsvt.hdr.flag[0] != 0x40)) {
+						(dsvt.hdr.flag[0] != 0x01) &&
+						(dsvt.hdr.flag[0] != 0x08) &&
+						(dsvt.hdr.flag[0] != 0x20) &&
+						(dsvt.hdr.flag[0] != 0x28) &&
+						(dsvt.hdr.flag[0] != 0x40))
+				{
 					FD_CLR(fd, &readfd);
 					break;
 				}
 
-				if (memcmp(dsvt.title, "DSVT", 4) || dsvt.id!=0x20 || dsvt.config!=0x10) {
+				if (memcmp(dsvt.title, "DSVT", 4) || dsvt.id!=0x20 || dsvt.config!=0x10)
+				{
 					FD_CLR(fd, &readfd);
 					break;
 				}
@@ -278,7 +303,8 @@ void CQnetDVAP::ReadFromGateway()
 				/* save the streamid that is winning */
 				streamid = dsvt.streamid;
 
-				if (dsvt.hdr.flag[0] != 0x01) {
+				if (dsvt.hdr.flag[0] != 0x01)
+				{
 
 					if (dsvt.hdr.flag[0] == 0x00)
 						dsvt.hdr.flag[0] = 0x40;
@@ -316,22 +342,33 @@ void CQnetDVAP::ReadFromGateway()
 
 				inactive = 0;
 				seq_no = 0;
-			} else if (len == 27) {
-				if (busy20000) {
-					if (dsvt.streamid == streamid) {
-						if (dsvt.ctrl == ctrl_in) {
+			}
+			else if (len == 27)
+			{
+				if (busy20000)
+				{
+					if (dsvt.streamid == streamid)
+					{
+						if (dsvt.ctrl == ctrl_in)
+						{
 							/* do not update written_to_q, ctrl_in */
 							; // printf("dup\n");
-						} else {
+						}
+						else
+						{
 							ctrl_in = dsvt.ctrl;
 							written_to_q = true;
 
-							if (seq_no == 0) {
+							if (seq_no == 0)
+							{
 								dsvt.vasd.text[0] = 0x55;
 								dsvt.vasd.text[1] = 0x2d;
 								dsvt.vasd.text[2] = 0x16;
-							} else {
-								if ((dsvt.vasd.text[0] == 0x55) && (dsvt.vasd.text[1] == 0x2d) && (dsvt.vasd.text[2] == 0x16)) {
+							}
+							else
+							{
+								if ((dsvt.vasd.text[0] == 0x55) && (dsvt.vasd.text[1] == 0x2d) && (dsvt.vasd.text[2] == 0x16))
+								{
 									dsvt.vasd.text[0] = 0x70;
 									dsvt.vasd.text[1] = 0x4f;
 									dsvt.vasd.text[2] = 0x93;
@@ -361,7 +398,8 @@ void CQnetDVAP::ReadFromGateway()
 							if (seq_no == 21)
 								seq_no = 0;
 
-							if ((dsvt.ctrl & 0x40) != 0) {
+							if ((dsvt.ctrl & 0x40) != 0)
+							{
 								if (LOG_QSO)
 									printf("End G2: streamid=%04x\n", ntohs(dsvt.streamid));
 
@@ -376,12 +414,17 @@ void CQnetDVAP::ReadFromGateway()
 							}
 						}
 					}
-				} else { // busy20000 is false
+				}
+				else     // busy20000 is false
+				{
 					FD_CLR (fd, &readfd);
 					break;
 				}
-			} else {	// len is not 56 or 27
-				if (!busy20000) {
+			}
+			else  	// len is not 56 or 27
+			{
+				if (!busy20000)
+				{
 					FD_CLR (fd, &readfd);
 					break;
 				}
@@ -391,9 +434,12 @@ void CQnetDVAP::ReadFromGateway()
 
 		// If we received a dup or select() timed out or streamids dont match,
 		// then written_to_q is false
-		if (!written_to_q) {	// we could also end up here if we are busy and we received a non-standard packet size
-			if (busy20000) {
-				if (++inactive >= inactiveMax) {
+		if (!written_to_q)  	// we could also end up here if we are busy and we received a non-standard packet size
+		{
+			if (busy20000)
+			{
+				if (++inactive >= inactiveMax)
+				{
 					if (LOG_QSO)
 						printf("G2 Timeout...\n");
 
@@ -404,15 +450,21 @@ void CQnetDVAP::ReadFromGateway()
 
 					busy20000 = false;
 					break;
-				} else {	// inactive too long
-					if (space == 127) {
+				}
+				else  	// inactive too long
+				{
+					if (space == 127)
+					{
 						if (LOG_DEBUG)
 							fprintf(stderr, "sending silent frame where: len=%d, inactive=%d\n", len, inactive);
-						if (seq_no == 0) {
+						if (seq_no == 0)
+						{
 							silence[9]  = 0x55;
 							silence[10] = 0x2d;
 							silence[11] = 0x16;
-						} else {
+						}
+						else
+						{
 							silence[9]  = 0x70;
 							silence[10] = 0x4f;
 							silence[11] = 0x93;
@@ -435,7 +487,8 @@ void CQnetDVAP::ReadFromGateway()
 							seq_no = 0;
 					}
 				}
-			} else	// busy20000 is false
+			}
+			else	// busy20000 is false
 				break;
 		}
 	}
@@ -481,65 +534,67 @@ void CQnetDVAP::RptrAckThread(SDVAP_ACK_ARG *parg)
 	// SYNC
 	dr.header = 0xc012u;
 	dr.frame.streamid = sid;
-	for (int i=0; i<10; i++) {
+	for (int i=0; i<10; i++)
+	{
 		while ((space < 1) && keep_running)
 			usleep(5);
 		dr.frame.framepos = dr.frame.seq = i;
-		switch (i) {
-			case 0:
-				silence[9] = 0x55;
-				silence[10] = 0x2d;
-				silence[11] = 0x16;
-				break;
-			case 1:
-				silence[9]  = '@' ^ 0x70;
-				silence[10] = RADIO_ID[0] ^ 0x4f;
-				silence[11] = RADIO_ID[1] ^ 0x93;
-				break;
-			case 2:
-				silence[9]  = RADIO_ID[2] ^ 0x70;
-				silence[10] = RADIO_ID[3] ^ 0x4f;
-				silence[11] = RADIO_ID[4] ^ 0x93;
-				break;
-			case 3:
-				silence[9]  = 'A' ^ 0x70;
-				silence[10] = RADIO_ID[5] ^ 0x4f;
-				silence[11] = RADIO_ID[6] ^ 0x93;
-				break;
-			case 4:
-				silence[9]  = RADIO_ID[7] ^ 0x70;
-				silence[10] = RADIO_ID[8] ^ 0x4f;
-				silence[11] = RADIO_ID[9] ^ 0x93;
-				break;
-			case 5:
-				silence[9]  = 'B' ^ 0x70;
-				silence[10] = RADIO_ID[10] ^ 0x4f;
-				silence[11] = RADIO_ID[11] ^ 0x93;
-				break;
-			case 6:
-				silence[9]  = RADIO_ID[12] ^ 0x70;
-				silence[10] = RADIO_ID[13] ^ 0x4f;
-				silence[11] = RADIO_ID[14] ^ 0x93;
-				break;
-			case 7:
-				silence[9]  = 'C' ^ 0x70;
-				silence[10] = RADIO_ID[15] ^ 0x4f;
-				silence[11] = RADIO_ID[16] ^ 0x93;
-				break;
-			case 8:
-				silence[9]  = RADIO_ID[17] ^ 0x70;
-				silence[10] = RADIO_ID[18] ^ 0x4f;
-				silence[11] = RADIO_ID[19] ^ 0x93;
-				break;
-			case 9:
-				silence[0] = 0x55;
-				silence[1] = 0xc8;
-				silence[2] = 0x7a;
-				silence[9] = 0x55;
-				silence[10] = 0x55;
-				silence[11] = 0x55;
-				dr.frame.framepos |= 0x40;
-				break;
+		switch (i)
+		{
+		case 0:
+			silence[9] = 0x55;
+			silence[10] = 0x2d;
+			silence[11] = 0x16;
+			break;
+		case 1:
+			silence[9]  = '@' ^ 0x70;
+			silence[10] = RADIO_ID[0] ^ 0x4f;
+			silence[11] = RADIO_ID[1] ^ 0x93;
+			break;
+		case 2:
+			silence[9]  = RADIO_ID[2] ^ 0x70;
+			silence[10] = RADIO_ID[3] ^ 0x4f;
+			silence[11] = RADIO_ID[4] ^ 0x93;
+			break;
+		case 3:
+			silence[9]  = 'A' ^ 0x70;
+			silence[10] = RADIO_ID[5] ^ 0x4f;
+			silence[11] = RADIO_ID[6] ^ 0x93;
+			break;
+		case 4:
+			silence[9]  = RADIO_ID[7] ^ 0x70;
+			silence[10] = RADIO_ID[8] ^ 0x4f;
+			silence[11] = RADIO_ID[9] ^ 0x93;
+			break;
+		case 5:
+			silence[9]  = 'B' ^ 0x70;
+			silence[10] = RADIO_ID[10] ^ 0x4f;
+			silence[11] = RADIO_ID[11] ^ 0x93;
+			break;
+		case 6:
+			silence[9]  = RADIO_ID[12] ^ 0x70;
+			silence[10] = RADIO_ID[13] ^ 0x4f;
+			silence[11] = RADIO_ID[14] ^ 0x93;
+			break;
+		case 7:
+			silence[9]  = 'C' ^ 0x70;
+			silence[10] = RADIO_ID[15] ^ 0x4f;
+			silence[11] = RADIO_ID[16] ^ 0x93;
+			break;
+		case 8:
+			silence[9]  = RADIO_ID[17] ^ 0x70;
+			silence[10] = RADIO_ID[18] ^ 0x4f;
+			silence[11] = RADIO_ID[19] ^ 0x93;
+			break;
+		case 9:
+			silence[0] = 0x55;
+			silence[1] = 0xc8;
+			silence[2] = 0x7a;
+			silence[9] = 0x55;
+			silence[10] = 0x55;
+			silence[11] = 0x55;
+			dr.frame.framepos |= 0x40;
+			break;
 		}
 		memcpy(&dr.frame.vad.voice, silence, 12);
 		dongle.SendRegister(dr);
@@ -568,32 +623,43 @@ void CQnetDVAP::ReadDVAPThread()
 	int num_dv_frames = 0;
 	int num_bit_errors = 0;
 
-	while (keep_running) {
+	while (keep_running)
+	{
 
 		// local RF user went away ?
-		if (dvap_busy) {
+		if (dvap_busy)
+		{
 			if (last_RF_time.time() > TIMING_TIMEOUT_LOCAL_RPTR)
 				dvap_busy = false;
 		}
 
 		// read from the dvap and process
 		reply = dongle.GetReply(dr);
-		if (reply == RT_ERR) {
+		if (reply == RT_ERR)
+		{
 			printf("Detected ERROR event from DVAP dongle, stopping...n");
 			break;
-		} else if (reply == RT_STOP) {
+		}
+		else if (reply == RT_STOP)
+		{
 			printf("Detected STOP event from DVAP dongle, stopping...\n");
 			break;
-		} else if (reply == RT_START) {
+		}
+		else if (reply == RT_START)
+		{
 			printf("Detected START event from DVAP dongle\n");
-		// else if (reply == RT_PTT) {
-		// 	ptt = (dvp_buf[4] == 0x01);
-		// 	printf("Detected PTT=%s\n", ptt?"on":"off");
-		} else if (reply == RT_STS) {
+			// else if (reply == RT_PTT) {
+			// 	ptt = (dvp_buf[4] == 0x01);
+			// 	printf("Detected PTT=%s\n", ptt?"on":"off");
+		}
+		else if (reply == RT_STS)
+		{
 			space = (unsigned int)dr.param.sstr[2];
 			if (status_cntr < 3000)
 				status_cntr += 20;
-		} else if (reply == RT_HDR) {
+		}
+		else if (reply == RT_HDR)
+		{
 			num_dv_frames = 0;
 			num_bit_errors = 0;
 
@@ -603,12 +669,13 @@ void CQnetDVAP::ReadDVAPThread()
 			ok = true;
 
 			/* Accept valid flags only */
-			if (ok) {
+			if (ok)
+			{
 				if ((dr.frame.hdr.flag[0] != 0x00) && (dr.frame.hdr.flag[0] != 0x08) &&	// net
-					(dr.frame.hdr.flag[0] != 0x20) && (dr.frame.hdr.flag[0] != 0x28) &&	// flags
+						(dr.frame.hdr.flag[0] != 0x20) && (dr.frame.hdr.flag[0] != 0x28) &&	// flags
 
-					(dr.frame.hdr.flag[0] != 0x40) && (dr.frame.hdr.flag[0] != 0x48) &&	// rptr
-					(dr.frame.hdr.flag[0] != 0x60) && (dr.frame.hdr.flag[0] != 0x68))	// flags
+						(dr.frame.hdr.flag[0] != 0x40) && (dr.frame.hdr.flag[0] != 0x48) &&	// rptr
+						(dr.frame.hdr.flag[0] != 0x60) && (dr.frame.hdr.flag[0] != 0x68))	// flags
 					ok = false;
 			}
 
@@ -621,9 +688,9 @@ void CQnetDVAP::ReadDVAPThread()
 
 			/* RPT2 must also be valid */
 			if ((dsvt.hdr.rpt2[7] == 'A') ||
-				(dsvt.hdr.rpt2[7] == 'B') ||
-				(dsvt.hdr.rpt2[7] == 'C') ||
-				(dsvt.hdr.rpt2[7] == 'G'))
+					(dsvt.hdr.rpt2[7] == 'B') ||
+					(dsvt.hdr.rpt2[7] == 'C') ||
+					(dsvt.hdr.rpt2[7] == 'G'))
 				memcpy(dsvt.hdr.rpt2, RPTR.c_str(), 7);
 			else
 				memset(dsvt.hdr.rpt2, ' ', 8);
@@ -642,21 +709,28 @@ void CQnetDVAP::ReadDVAPThread()
 			   that means that mycall, rpt1, rpt2 must be equal to RPTR
 			     otherwise we drop the rf data
 			*/
-			if (RPTR.compare(OWNER)) {
-				if (memcmp(dsvt.hdr.mycall, RPTR.c_str(), CALL_SIZE) != 0) {
+			if (RPTR.compare(OWNER))
+			{
+				if (memcmp(dsvt.hdr.mycall, RPTR.c_str(), CALL_SIZE) != 0)
+				{
 					printf("mycall=[%.8s], not equal to %s\n", dsvt.hdr.mycall, RPTR.c_str());
 					ok = false;
 				}
-			} else if (memcmp(dsvt.hdr.mycall, "        ", 8) == 0) {
+			}
+			else if (memcmp(dsvt.hdr.mycall, "        ", 8) == 0)
+			{
 				printf("Invalid value for mycall=[%.8s]\n", dsvt.hdr.mycall);
 				ok = false;
 			}
 
-			if (ok) {
-				for (i = 0; i < 8; i++) {
+			if (ok)
+			{
+				for (i = 0; i < 8; i++)
+				{
 					if (!isupper(dsvt.hdr.mycall[i]) &&
-					        !isdigit(dsvt.hdr.mycall[i]) &&
-					        (dsvt.hdr.mycall[i] != ' ')) {
+							!isdigit(dsvt.hdr.mycall[i]) &&
+							(dsvt.hdr.mycall[i] != ' '))
+					{
 						memset(dsvt.hdr.mycall, ' ', 8);
 						ok = false;
 						printf("Invalid value for MYCALL\n");
@@ -664,20 +738,24 @@ void CQnetDVAP::ReadDVAPThread()
 					}
 				}
 
-				for (i = 0; i < 4; i++) {
+				for (i = 0; i < 4; i++)
+				{
 					if (!isupper(dsvt.hdr.sfx[i]) &&
-					        !isdigit(dsvt.hdr.sfx[i]) &&
-					        (dsvt.hdr.sfx[i] != ' ')) {
+							!isdigit(dsvt.hdr.sfx[i]) &&
+							(dsvt.hdr.sfx[i] != ' '))
+					{
 						memset(dsvt.hdr.sfx, ' ', 4);
 						break;
 					}
 				}
 
-				for (i = 0; i < 8; i++) {
+				for (i = 0; i < 8; i++)
+				{
 					if (!isupper(dsvt.hdr.urcall[i]) &&
-					        !isdigit(dsvt.hdr.urcall[i]) &&
-					        (dsvt.hdr.urcall[i] != ' ') &&
-					        (dsvt.hdr.urcall[i] != '/')) {
+							!isdigit(dsvt.hdr.urcall[i]) &&
+							(dsvt.hdr.urcall[i] != ' ') &&
+							(dsvt.hdr.urcall[i] != '/'))
+					{
 						memcpy(dsvt.hdr.urcall, "CQCQCQ  ", 8);
 						break;
 					}
@@ -724,9 +802,12 @@ void CQnetDVAP::ReadDVAPThread()
 				memcpy(mycall, dr.frame.hdr.mycall, 8);
 
 			}
-		} else if (reply == RT_DAT) {
+		}
+		else if (reply == RT_DAT)
+		{
 			/* have we already received a header ? */
-			if (dvap_busy) {
+			if (dvap_busy)
+			{
 				the_end = ((dr.frame.framepos & 0x40) == 0x40);
 
 				dsvt.config = 0x20U;
@@ -738,7 +819,8 @@ void CQnetDVAP::ReadDVAPThread()
 
 				int ber_data[3];
 				int ber_errs = decode.Decode(dsvt.vasd.voice, ber_data);
-				if (ber_data[0] != 0xf85) {
+				if (ber_data[0] != 0xf85)
+				{
 					num_bit_errors += ber_errs;
 					num_dv_frames++;
 				}
@@ -748,7 +830,8 @@ void CQnetDVAP::ReadDVAPThread()
 
 				// local RF user still talking, update timer
 				last_RF_time.start();
-				if (the_end) {
+				if (the_end)
+				{
 					// local RF user stopped talking
 					dvap_busy = false;
 					SDVAP_ACK_ARG dvap_ack_arg;
@@ -756,11 +839,15 @@ void CQnetDVAP::ReadDVAPThread()
 					if (LOG_QSO)
 						printf("End of dvap audio,  ber=%.02f\n", dvap_ack_arg.ber);
 
-					if (MODULE_ACKNOWLEDGE && !busy20000) {
+					if (MODULE_ACKNOWLEDGE && !busy20000)
+					{
 						memcpy(dvap_ack_arg.mycall, mycall, 8);
-						try {
+						try
+						{
 							std::async(std::launch::async, &CQnetDVAP::RptrAckThread, this, &dvap_ack_arg);
-						} catch (const std::exception &e) {
+						}
+						catch (const std::exception &e)
+						{
 							printf("Failed to start RptrAckThread(). Exception: %s\n", e.what());
 						}
 					}
@@ -787,16 +874,19 @@ bool CQnetDVAP::Init(const char *file, const int amod)
 {
 	assigned_module = amod;
 
-	if (ReadConfig(file)) {
+	if (ReadConfig(file))
+	{
 		printf("Failed to process config file %s\n", file);
 		return true;
 	}
 
-	if (RPTR.length() != 8) {
+	if (RPTR.length() != 8)
+	{
 		printf("Bad RPTR value, length must be exactly 8 bytes\n");
 		return true;
 	}
-	if ((RPTR_MOD != 'A') && (RPTR_MOD != 'B') && (RPTR_MOD != 'C')) {
+	if ((RPTR_MOD != 'A') && (RPTR_MOD != 'B') && (RPTR_MOD != 'C'))
+	{
 		printf("Bad RPTR_MOD value, must be one of A or B or C\n");
 		return true;
 	}
@@ -818,7 +908,8 @@ bool CQnetDVAP::Init(const char *file, const int amod)
 	if (!dongle.Initialize(MODULE_SERIAL_NUMBER.c_str(), MODULE_FREQUENCY, MODULE_OFFSET, MODULE_POWER, MODULE_SQUELCH))
 		return true;
 
-	if (ToGate.Open(togate.c_str(), this)) {
+	if (ToGate.Open(togate.c_str(), this))
+	{
 		dongle.Stop();
 		close(serfd);
 		return true;
@@ -831,25 +922,33 @@ void CQnetDVAP::Run()
 {
 	CTimer ackpoint;
 	std::future<void> readthread;
-	try {
+	try
+	{
 		readthread = std::async(std::launch::async, &CQnetDVAP::ReadDVAPThread, this);
-	} catch (const std::exception &e) {
+	}
+	catch (const std::exception &e)
+	{
 		printf("Unable to start ReadDVAPThread(). Exception: %s\n", e.what());
 		keep_running = false;
 	}
 	printf("Started ReadDVAPThread()\n");
 
 	int cnt = 0;
-	while (keep_running) {
-		if (ackpoint.time() > 2.5) {
+	while (keep_running)
+	{
+		if (ackpoint.time() > 2.5)
+		{
 			int rc = dongle.KeepAlive();
-			if (rc < 0) {
+			if (rc < 0)
+			{
 				cnt ++;
-				if (cnt > 5) {
+				if (cnt > 5)
+				{
 					printf("Could not send KEEPALIVE signal to dvap 5 times...exiting\n");
 					keep_running = false;
 				}
-			} else
+			}
+			else
 				cnt = 0;
 			ackpoint.start();
 		}
@@ -867,12 +966,14 @@ int main(int argc, char *argv[])
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	printf("dvap_rptr VERSION %s\n", DVAP_VERSION);
 
-	if (argc != 2) {
+	if (argc != 2)
+	{
 		fprintf(stderr, "Usage: %s dvap_rptr.cfg\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 
-	if ('-' == argv[1][0]) {
+	if ('-' == argv[1][0])
+	{
 		printf("\nQnetDVAP Version #%s Copyright (C) 2018-2020 by Thomas A. Early N7TAE\n", DVAP_VERSION);
 		printf("QnetDVAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
@@ -880,29 +981,31 @@ int main(int argc, char *argv[])
 	}
 
 	const char *qn = strstr(argv[0], "qndvap");
-	if (NULL == qn) {
+	if (NULL == qn)
+	{
 		fprintf(stderr, "Error finding 'qndvap' in %s!\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 	qn += 6;
 
 	int mod;
-	switch (*qn) {
-		case NULL:
-			mod = -1;
-			break;
-		case 'a':
-			mod = 0;
-			break;
-		case 'b':
-			mod = 1;
-			break;
-		case 'c':
-			mod = 2;
-			break;
-		default:
-			fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
-			return 1;
+	switch (*qn)
+	{
+	case NULL:
+		mod = -1;
+		break;
+	case 'a':
+		mod = 0;
+		break;
+	case 'b':
+		mod = 1;
+		break;
+	case 'c':
+		mod = 2;
+		break;
+	default:
+		fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
+		return 1;
 	}
 
 	CQnetDVAP dvap;

@@ -49,12 +49,14 @@ bool CUDPSocket::Open(const CSockAddress &addr)
 {
 	// create socket
 	m_fd = socket(addr.GetFamily(), SOCK_DGRAM, 0);
-	if (0 > m_fd) {
+	if (0 > m_fd)
+	{
 		std::cerr << "Cannot create socket on " << addr << ", " << strerror(errno) << std::endl;
 		return true;
 	}
 
-	if (0 > fcntl(m_fd, F_SETFL, O_NONBLOCK)) {
+	if (0 > fcntl(m_fd, F_SETFL, O_NONBLOCK))
+	{
 		std::cerr << "cannot set socket " << addr << " to non-blocking: " << strerror(errno) << std::endl;
 		close(m_fd);
 		m_fd = -1;
@@ -62,7 +64,8 @@ bool CUDPSocket::Open(const CSockAddress &addr)
 	}
 
 	const int reuse = 1;
-	if (0 > setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int))) {
+	if (0 > setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)))
+	{
 		std::cerr << "Cannot set the UDP socket option on " << m_addr << ", err: " << strerror(errno) << std::endl;
 		close(m_fd);
 		m_fd = -1;
@@ -72,7 +75,8 @@ bool CUDPSocket::Open(const CSockAddress &addr)
 	// initialize sockaddr struct
 	m_addr = addr;
 
-	if (0 != bind(m_fd, m_addr.GetCPointer(), m_addr.GetSize())) {
+	if (0 != bind(m_fd, m_addr.GetCPointer(), m_addr.GetSize()))
+	{
 		std::cerr << "bind failed on " << m_addr << ", " << strerror(errno) << std::endl;
 		close(m_fd);
 		m_fd = -1;
@@ -84,7 +88,8 @@ bool CUDPSocket::Open(const CSockAddress &addr)
 
 void CUDPSocket::Close(void)
 {
-	if ( m_fd >= 0 ) {
+	if ( m_fd >= 0 )
+	{
 		close(m_fd);
 		m_fd = -1;
 	}

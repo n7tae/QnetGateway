@@ -42,15 +42,16 @@ void CKRBase::SetState(bool state)
 
 void CKRBase::SigHandler(int sig)
 {
-	switch (sig) {
-		case SIGINT:
-		case SIGHUP:
-		case SIGTERM:
-			keep_running = false;
-			break;
-		default:
-			std::cerr << "caught an unexpected signal=" << sig << std::endl;
-			break;
+	switch (sig)
+	{
+	case SIGINT:
+	case SIGHUP:
+	case SIGTERM:
+		keep_running = false;
+		break;
+	default:
+		std::cerr << "caught an unexpected signal=" << sig << std::endl;
+		break;
 	}
 }
 

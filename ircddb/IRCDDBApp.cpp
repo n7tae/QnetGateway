@@ -30,7 +30,8 @@ IRCDDBApp::IRCDDBApp(const std::string &u_chan, CCacheManager *cache) : numberOf
 
 IRCDDBApp::~IRCDDBApp()
 {
-	if (sendQ != NULL) {
+	if (sendQ != NULL)
+	{
 		delete sendQ;
 	}
 }
@@ -98,7 +99,8 @@ void IRCDDBApp::rptrQTH(const std::string &rptrcall, double latitude, double lon
 void IRCDDBApp::rptrQRG(const std::string &rptrcall, double txFrequency, double duplexShift, double range, double agl)
 {
 
-	if (std::regex_match(rptrcall, modulePattern)) {
+	if (std::regex_match(rptrcall, modulePattern))
+	{
 
 		std::string c = rptrcall;
 		ReplaceChar(c, ' ', '_');
@@ -119,7 +121,8 @@ void IRCDDBApp::rptrQRG(const std::string &rptrcall, double txFrequency, double 
 
 void IRCDDBApp::kickWatchdog(const std::string &s)
 {
-	if (s.length() > 0) {
+	if (s.length() > 0)
+	{
 
 		std::regex nonValid("[^[:graph:]]+");
 		std::smatch sm;
@@ -141,13 +144,15 @@ int IRCDDBApp::getConnectionState()
 IRCDDB_RESPONSE_TYPE IRCDDBApp::getReplyMessageType()
 {
 	IRCMessage * m = replyQ.peekFirst();
-	if (m == NULL) {
+	if (m == NULL)
+	{
 		return IDRT_NONE;
 	}
 
 	std::string msgType = m->getCommand();
 
-	if (msgType == std::string("IDRT_PING")) {
+	if (msgType == std::string("IDRT_PING"))
+	{
 		return IDRT_PING;
 	}
 
@@ -181,7 +186,8 @@ void IRCDDBApp::stopWork()
 
 void IRCDDBApp::userJoin(const std::string &nick, const std::string &name, const std::string &addr)
 {
-	if (0 == nick.compare(0, 2, "u-")) {
+	if (0 == nick.compare(0, 2, "u-"))
+	{
 		return;
 	}
 	std::string gate(name);
@@ -194,7 +200,8 @@ void IRCDDBApp::userJoin(const std::string &nick, const std::string &name, const
 
 void IRCDDBApp::userLeave(const std::string &nick)
 {
-	if (0 == nick.compare(0, 2, "s-")) {
+	if (0 == nick.compare(0, 2, "s-"))
+	{
 		currentServer.clear();
 		state = 2;
 		timer = 200;
@@ -203,7 +210,8 @@ void IRCDDBApp::userLeave(const std::string &nick)
 	}
 	std::string name(nick);
 	name.pop_back();
-	if ('-' == name.back()) {
+	if ('-' == name.back())
+	{
 		name.pop_back();
 		cache->eraseName(name);
 		ToUpper(name);
@@ -252,7 +260,8 @@ void IRCDDBApp::sendPing(const std::string &to, const std::string &from)
 
 	auto nick = cache->findNameNick(name);
 
-	if (! nick.empty()) {
+	if (! nick.empty())
+	{
 		std::string rptr(from);
 		ReplaceChar(rptr, ' ', '_');
 		IRCMessage *m = new IRCMessage(nick, "IDRT_PING");
@@ -292,7 +301,8 @@ bool IRCDDBApp::sendHeard(const std::string &myCall, const std::string &myCallEx
 	std::string srv = currentServer;
 	IRCMessageQueue *q = getSendQ();
 
-	if ((srv.length() > 0) && (state >= 6) && (q != NULL)) {
+	if ((srv.length() > 0) && (state >= 6) && (q != NULL))
+	{
 		std::string cmd("UPDATE ");
 
 		cmd.append(getCurrentTime());
@@ -303,7 +313,8 @@ bool IRCDDBApp::sendHeard(const std::string &myCall, const std::string &myCallEx
 		cmd.append(" ");
 		cmd.append(r1);
 		cmd.append(" ");
-		if (!statsMsg) {
+		if (!statsMsg)
+		{
 			cmd.append("0 ");
 		}
 		cmd.append(r2);
@@ -318,14 +329,18 @@ bool IRCDDBApp::sendHeard(const std::string &myCall, const std::string &myCallEx
 		cmd.append(" ");
 		cmd.append(myext);
 
-		if (statsMsg) {
+		if (statsMsg)
+		{
 			cmd.append(" # ");
 			cmd.append(tx_stats);
-		} else {
+		}
+		else
+		{
 			cmd.append(" 00 ");
 			cmd.append(dest);
 
-			if (tx_msg.length() == 20) {
+			if (tx_msg.length() == 20)
+			{
 				cmd.append(" ");
 				cmd.append(tx_msg);
 			}
@@ -336,7 +351,8 @@ bool IRCDDBApp::sendHeard(const std::string &myCall, const std::string &myCallEx
 
 		q->putMessage(m);
 		return true;
-	} else
+	}
+	else
 		return false;
 }
 
@@ -345,7 +361,8 @@ bool IRCDDBApp::findUser(const std::string &usrCall)
 	std::string srv = currentServer;
 	IRCMessageQueue *q = getSendQ();
 
-	if ((srv.length() > 0) && (state >= 6) && (q != NULL)) {
+	if ((srv.length() > 0) && (state >= 6) && (q != NULL))
+	{
 		std::string usr = usrCall;
 
 		ReplaceChar(usr, ' ', '_');
@@ -360,7 +377,8 @@ bool IRCDDBApp::findUser(const std::string &usrCall)
 
 void IRCDDBApp::msgChannel(IRCMessage *m)
 {
-	if (0==m->getPrefixNick().compare(0, 2, "s-") && (m->numParams >= 2)) { // server msg
+	if (0==m->getPrefixNick().compare(0, 2, "s-") && (m->numParams >= 2))   // server msg
+	{
 		doUpdate(m->params[1]);
 	}
 }
@@ -378,10 +396,12 @@ void IRCDDBApp::doNotFound(std::string &msg, std::string &retval)
 	tkz.erase(tkz.begin());
 
 
-	if (std::regex_match(tk, tablePattern)) {
+	if (std::regex_match(tk, tablePattern))
+	{
 		long tableID = std::stol(tk);
 
-		if ((tableID < 0) || (tableID >= numberOfTables)) {
+		if ((tableID < 0) || (tableID >= numberOfTables))
+		{
 			printf("invalid table ID %ld", tableID);
 			return;
 		}
@@ -393,7 +413,8 @@ void IRCDDBApp::doNotFound(std::string &msg, std::string &retval)
 		tk.erase(tk.begin());
 	}
 
-	if (tableID == 0) {
+	if (tableID == 0)
+	{
 		if (! std::regex_match(tk, dbPattern))
 			return; // no valid key
 
@@ -413,9 +434,11 @@ void IRCDDBApp::doUpdate(std::string &msg)
 	std::string tk = tkz.front();
 	tkz.erase(tkz.begin());
 
-	if (std::regex_match(tk, tablePattern)) {
+	if (std::regex_match(tk, tablePattern))
+	{
 		tableID = stol(tk);
-		if ((tableID < 0) || (tableID >= numberOfTables)) {
+		if ((tableID < 0) || (tableID >= numberOfTables))
+		{
 			printf("invalid table ID %d", tableID);
 			return;
 		}
@@ -427,7 +450,8 @@ void IRCDDBApp::doUpdate(std::string &msg)
 		tkz.erase(tkz.begin());
 	}
 
-	if (std::regex_match(tk, datePattern)) {
+	if (std::regex_match(tk, datePattern))
+	{
 		if (0 == tkz.size())
 			return;  // nothing after date string
 
@@ -440,7 +464,8 @@ void IRCDDBApp::doUpdate(std::string &msg)
 		std::string tstr(std::string(tk + " " + timeToken));	// used to update user time
 		auto rtime = parseTime(tstr);							// used to update maxTime for sendlist
 
-		if ((tableID == 0) || (tableID == 1)) {
+		if ((tableID == 0) || (tableID == 1))
+		{
 			if (0 == tkz.size())
 				return;  // nothing after time string
 
@@ -461,9 +486,11 @@ void IRCDDBApp::doUpdate(std::string &msg)
 
 			//printf("TABLE %d %s %s\n", tableID, key.c_str(), value.c_str());
 
-			if (tableID == 1) {
+			if (tableID == 1)
+			{
 
-				if (initReady && key.compare(0,6, value, 0, 6)) {
+				if (initReady && key.compare(0,6, value, 0, 6))
+				{
 					std::string rptr(key);
 					std::string gate(value);
 
@@ -474,7 +501,9 @@ void IRCDDBApp::doUpdate(std::string &msg)
 					if (rtime > maxTime)
 						maxTime = rtime;
 				}
-			} else if ((tableID == 0) && initReady) {
+			}
+			else if ((tableID == 0) && initReady)
+			{
 				std::string user(key);
 				std::string rptr(value);
 
@@ -490,15 +519,23 @@ void IRCDDBApp::doUpdate(std::string &msg)
 
 std::string IRCDDBApp::getTableIDString(int tableID, bool spaceBeforeNumber)
 {
-	if (tableID == 0) {
+	if (tableID == 0)
+	{
 		return std::string("");
-	} else if ((tableID > 0) && (tableID < numberOfTables)) {
-		if (spaceBeforeNumber) {
+	}
+	else if ((tableID > 0) && (tableID < numberOfTables))
+	{
+		if (spaceBeforeNumber)
+		{
 			return std::string(" ") + std::to_string(tableID);
-		} else {
+		}
+		else
+		{
 			return std::to_string(tableID) + std::string(" ");
 		}
-	} else {
+	}
+	else
+	{
 		return std::string(" TABLE_ID_OUT_OF_RANGE ");
 	}
 }
@@ -506,7 +543,8 @@ std::string IRCDDBApp::getTableIDString(int tableID, bool spaceBeforeNumber)
 void IRCDDBApp::msgQuery(IRCMessage *m)
 {
 
-	if (0 == strcmp(m->getPrefixNick().substr(0,2).c_str(), "s-") && (m->numParams >= 2)) { // server msg
+	if (0 == strcmp(m->getPrefixNick().substr(0,2).c_str(), "s-") && (m->numParams >= 2))   // server msg
+	{
 		std::string msg = m->params[1];
 		std::vector<std::string> tkz = stringTokenizer(msg);
 
@@ -516,27 +554,38 @@ void IRCDDBApp::msgQuery(IRCMessage *m)
 		std::string cmd = tkz.front();
 		tkz.erase(tkz.begin());
 
-		if (cmd == std::string("UPDATE")) {
+		if (cmd == std::string("UPDATE"))
+		{
 			std::string restOfLine;
-			while (tkz.size()) {
+			while (tkz.size())
+			{
 				restOfLine += tkz.front();
 				tkz.erase(tkz.begin());
 				if (tkz.size())
 					restOfLine += " ";
 			}
 			doUpdate(restOfLine);
-		} else if (cmd == std::string("LIST_END")) {
-			if (state == 5) { // if in sendlist processing state
+		}
+		else if (cmd == std::string("LIST_END"))
+		{
+			if (state == 5)   // if in sendlist processing state
+			{
 				state = 3;  // get next table
 			}
-		} else if (cmd == std::string("LIST_MORE")) {
-			if (state == 5) { // if in sendlist processing state
+		}
+		else if (cmd == std::string("LIST_MORE"))
+		{
+			if (state == 5)   // if in sendlist processing state
+			{
 				state = 4;  // send next SENDLIST
 			}
-		} else if (cmd == std::string("NOT_FOUND")) {
+		}
+		else if (cmd == std::string("NOT_FOUND"))
+		{
 			std::string callsign;
 			std::string restOfLine;
-			while (tkz.size()) {
+			while (tkz.size())
+			{
 				restOfLine += tkz.front();
 				tkz.erase(tkz.begin());
 				if (tkz.size())
@@ -544,7 +593,8 @@ void IRCDDBApp::msgQuery(IRCMessage *m)
 			}
 			doNotFound(restOfLine, callsign);
 
-			if (callsign.length() > 0) {
+			if (callsign.length() > 0)
+			{
 				ReplaceChar(callsign, '_', ' ');
 
 				IRCMessage *m2 = new IRCMessage("IDRT_USER");
@@ -571,7 +621,8 @@ IRCMessageQueue *IRCDDBApp::getSendQ()
 
 std::string IRCDDBApp::getLastEntryTime(int tableID)
 {
-	if (tableID == 1) {
+	if (tableID == 1)
+	{
 		struct tm *ptm = gmtime(&maxTime);
 		char tstr[80];
 		strftime(tstr, 80, "%Y-%m-%d %H:%M:%S", ptm);
@@ -586,16 +637,20 @@ void IRCDDBApp::Entry()
 {
 	int sendlistTableID = 0;
 
-	while (!terminateThread) {
+	while (!terminateThread)
+	{
 
-		if (timer > 0) {
+		if (timer > 0)
+		{
 			timer--;
 		}
 
-		switch(state) {
+		switch(state)
+		{
 		case 0:  // wait for network to start
 
-			if (getSendQ() != NULL) {
+			if (getSendQ() != NULL)
+			{
 				state = 1;
 			}
 			break;
@@ -608,21 +663,28 @@ void IRCDDBApp::Entry()
 
 		case 2:   // choose server
 			printf("IRCDDBApp: state=2 choose new 's-'-user\n");
-			if (getSendQ() == NULL) {
+			if (getSendQ() == NULL)
+			{
 				state = 10;
-			} else {
-				if (findServerUser()) {
+			}
+			else
+			{
+				if (findServerUser())
+				{
 					sendlistTableID = numberOfTables;
 
 					state = 3; // next: send "SENDLIST"
-				} else if (timer == 0) {
+				}
+				else if (timer == 0)
+				{
 					state = 10;
 					IRCMessage *m = new IRCMessage("QUIT");
 
 					m->addParam("no op user with 's-' found.");
 
 					IRCMessageQueue * q = getSendQ();
-					if (q != NULL) {
+					if (q != NULL)
+					{
 						q->putMessage(m);
 					}
 				}
@@ -630,13 +692,19 @@ void IRCDDBApp::Entry()
 			break;
 
 		case 3:
-			if (getSendQ() == NULL) {
+			if (getSendQ() == NULL)
+			{
 				state = 10; // disconnect DB
-			} else {
+			}
+			else
+			{
 				sendlistTableID --;
-				if (sendlistTableID < 0) {
+				if (sendlistTableID < 0)
+				{
 					state = 6; // end of sendlist
-				} else {
+				}
+				else
+				{
 					printf("IRCDDBApp: state=3 tableID=%d\n", sendlistTableID);
 					state = 4; // send "SENDLIST"
 					timer = 900; // 15 minutes max for update
@@ -645,34 +713,43 @@ void IRCDDBApp::Entry()
 			break;
 
 		case 4:
-			if (getSendQ() == NULL) {
+			if (getSendQ() == NULL)
+			{
 				state = 10; // disconnect DB
-			} else {
-				if (1 == sendlistTableID) {
+			}
+			else
+			{
+				if (1 == sendlistTableID)
+				{
 					IRCMessage *m = new IRCMessage(currentServer, std::string("SENDLIST") + getTableIDString(sendlistTableID, true)
-					                                + std::string(" ") + getLastEntryTime(sendlistTableID));
+												   + std::string(" ") + getLastEntryTime(sendlistTableID));
 
 					IRCMessageQueue *q = getSendQ();
 					if (q != NULL)
 						q->putMessage(m);
 
 					state = 5; // wait for answers
-				} else
+				}
+				else
 					state = 3; // don't send SENDLIST for this table (tableID 0), go to next table
 			}
 			break;
 
 		case 5: // sendlist processing
-			if (getSendQ() == NULL) {
+			if (getSendQ() == NULL)
+			{
 				state = 10; // disconnect DB
-			} else if (timer == 0) {
+			}
+			else if (timer == 0)
+			{
 				state = 10; // disconnect DB
 				IRCMessage *m = new IRCMessage("QUIT");
 
 				m->addParam("timeout SENDLIST");
 
 				IRCMessageQueue *q = getSendQ();
-				if (q != NULL) {
+				if (q != NULL)
+				{
 					q->putMessage(m);
 				}
 
@@ -680,9 +757,12 @@ void IRCDDBApp::Entry()
 			break;
 
 		case 6:
-			if (getSendQ() == NULL) {
+			if (getSendQ() == NULL)
+			{
 				state = 10; // disconnect DB
-			} else {
+			}
+			else
+			{
 				printf("IRCDDBApp: state=6 initialization completed\n");
 
 				infoTimer = 2;
@@ -697,48 +777,58 @@ void IRCDDBApp::Entry()
 			if (getSendQ() == NULL)
 				state = 10; // disconnect DB
 
-			if (infoTimer > 0) {
+			if (infoTimer > 0)
+			{
 				infoTimer--;
 
-				if (infoTimer == 0) {
+				if (infoTimer == 0)
+				{
 					moduleMapMutex.lock();
 
-					for (auto itl = locationMap.begin(); itl != locationMap.end(); itl++) {
+					for (auto itl = locationMap.begin(); itl != locationMap.end(); itl++)
+					{
 						std::string value = itl->second;
 						IRCMessage *m = new IRCMessage(currentServer, std::string("IRCDDB RPTRQTH: ") + value);
 
 						IRCMessageQueue * q = getSendQ();
-						if (q != NULL) {
+						if (q != NULL)
+						{
 							q->putMessage(m);
 						}
 					}
 
-					for (auto itu = urlMap.begin(); itu != urlMap.end(); itu++) {
+					for (auto itu = urlMap.begin(); itu != urlMap.end(); itu++)
+					{
 						std::string value = itu->second;
 						IRCMessage * m = new IRCMessage(currentServer, std::string("IRCDDB RPTRURL: ") + value);
 
 						IRCMessageQueue * q = getSendQ();
-						if (q != NULL) {
+						if (q != NULL)
+						{
 							q->putMessage(m);
 						}
 					}
 
-					for(auto itm = moduleMap.begin(); itm != moduleMap.end(); itm++) {
+					for(auto itm = moduleMap.begin(); itm != moduleMap.end(); itm++)
+					{
 						std::string value = itm->second;
 						IRCMessage * m = new IRCMessage(currentServer, std::string("IRCDDB RPTRQRG: ") + value);
 
 						IRCMessageQueue *q = getSendQ();
-						if (q != NULL) {
+						if (q != NULL)
+						{
 							q->putMessage(m);
 						}
 					}
 
-					for(auto its = swMap.begin(); its != swMap.end(); its++) {
+					for(auto its = swMap.begin(); its != swMap.end(); its++)
+					{
 						std::string value = its->second;
 						IRCMessage * m = new IRCMessage(currentServer, std::string("IRCDDB RPTRSW: ") + value);
 
 						IRCMessageQueue *q = getSendQ();
-						if (q != NULL) {
+						if (q != NULL)
+						{
 							q->putMessage(m);
 						}
 					}
@@ -747,13 +837,15 @@ void IRCDDBApp::Entry()
 				}
 			}
 
-			if (wdTimer > 0) {
+			if (wdTimer > 0)
+			{
 				wdTimer--;
-				if (wdTimer <= 0) {
+				if (wdTimer <= 0)
+				{
 					wdTimer = 900;  // 15 minutes
 
 					IRCMessage *m = new IRCMessage(currentServer, std::string("IRCDDB WATCHDOG: ") +
-							getCurrentTime() + std::string(" ") + wdInfo + std::string(" 1"));
+												   getCurrentTime() + std::string(" ") + wdInfo + std::string(" 1"));
 
 					IRCMessageQueue *q = getSendQ();
 					if (q != NULL)

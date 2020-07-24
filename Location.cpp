@@ -38,13 +38,15 @@ bool CLocation::Parse(const char *instr)
 	if (s.size() < 20)
 		return false;
 
-	if (! std::regex_search(s.c_str(), cm, gps, std::regex_constants::match_default)) {
+	if (! std::regex_search(s.c_str(), cm, gps, std::regex_constants::match_default))
+	{
 		//std::cerr << "Unsuccessful gps parse of '" << s << "'" << std::endl;
 		return false;
 	}
 
 	auto size = cm.size();
-	if (size != 7) {
+	if (size != 7)
+	{
 		std::cerr << "Bad CRC Match for " << s << ":";
 		for (unsigned i=0; i<size; i++)
 			std::cerr << " [" << cm[i] << "]";
@@ -53,13 +55,15 @@ bool CLocation::Parse(const char *instr)
 	}
 
 	double deg = stod(cm[1]);
-	if (90.0 < deg) {
+	if (90.0 < deg)
+	{
 		std::cout << "Latitude degree " << deg << " is out of range" << std::endl;
 		return false;
 	}
 
 	double min = stod(cm[2]);
-	if (60.0 < min) {
+	if (60.0 < min)
+	{
 		std::cout << "Latitude minutes " << min << " is out of range" << std::endl;
 		return false;
 	}
@@ -69,13 +73,15 @@ bool CLocation::Parse(const char *instr)
 		latitude = 0.0 - latitude;
 
 	deg = stod(cm[4]);
-	if (180.0 < deg) {
+	if (180.0 < deg)
+	{
 		std::cout << "Longitude degree " << deg << " is out of range" << std::endl;
 		return false;
 	}
 
 	min = stod(cm[5]);
-	if (60.0 < min) {
+	if (60.0 < min)
+	{
 		std::cout << "Longitude minutes " << min << " is out of range" << std::endl;
 		return false;
 	}
@@ -103,7 +109,8 @@ const char *CLocation::APRS(std::string &call, const char *station)
 	call.resize(8, ' ');
 	last = call.at(7);
 	auto pos = call.find(' ');
-	if (call.npos != pos) {
+	if (call.npos != pos)
+	{
 		call.resize(pos+1);
 	}
 	double latmin, lonmin;

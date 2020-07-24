@@ -21,7 +21,8 @@
 #include <queue>
 #include <string>
 
-class CHost {
+class CHost
+{
 public:
 	CHost() {}
 

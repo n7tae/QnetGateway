@@ -90,8 +90,10 @@ std::string CCacheManager::findServerUser()
 {
 	std::string suser;
 	mux.lock();
-	for (auto it=NameNick.begin(); it!=NameNick.end(); it++) {
-		if (0 == it->first.compare(0, 2, "s-")) {
+	for (auto it=NameNick.begin(); it!=NameNick.end(); it++)
+	{
+		if (0 == it->first.compare(0, 2, "s-"))
+		{
 			suser.assign(it->first);
 			break;
 		}
@@ -109,14 +111,16 @@ void CCacheManager::updateUser(const std::string &user, const std::string &rptr,
 	if (! time.empty())
 		UserTime[user] = time;
 
-	if (rptr.empty()) {
+	if (rptr.empty())
+	{
 		mux.unlock();
 		return;
 	}
 
 	UserRptr[user] = rptr;
 
-	if (gate.empty() || addr.empty()) {
+	if (gate.empty() || addr.empty())
+	{
 		mux.unlock();
 		return;
 	}
@@ -135,7 +139,8 @@ void CCacheManager::updateRptr(const std::string &rptr, const std::string &gate,
 
 	mux.lock();
 	RptrGate[rptr] = gate;
-	if (addr.empty()) {
+	if (addr.empty())
+	{
 		mux.unlock();
 		return;
 	}
@@ -149,7 +154,8 @@ void CCacheManager::updateGate(const std::string &G, const std::string &addr)
 		return;
 	std::string gate(G);
 	auto p = gate.find('_');
-	while (gate.npos != p) {
+	while (gate.npos != p)
+	{
 		gate[p] = ' ';
 		p = gate.find('_');
 	}
@@ -207,10 +213,12 @@ std::string CCacheManager::findRptrGate(const std::string &rptr)
 	if (rptr.empty())
 		return gate;
 	auto it = RptrGate.find(rptr);
-	if (it == RptrGate.end()) {
+	if (it == RptrGate.end())
+	{
 		gate.assign(rptr);
 		gate[7] = 'G';
-	} else
+	}
+	else
 		gate.assign(it->second);
 	return gate;
 }

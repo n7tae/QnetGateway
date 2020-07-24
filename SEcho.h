@@ -17,12 +17,13 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-using SECHO = struct echo_tag {
+using SECHO = struct echo_tag
+{
 	bool is_linked;
 	time_t last_time;
 	unsigned short streamid;
 	int fd;
 	char message[24];
-    SDSVT header;   // only used in qnlink (qngateway writes the header to the file)
+	SDSVT header;   // only used in qnlink (qngateway writes the header to the file)
 	char file[FILENAME_MAX + 1];
 };
