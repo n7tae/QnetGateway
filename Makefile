@@ -97,6 +97,7 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	/bin/cp -f qnremote qnvoice $(BINDIR)
 	/bin/ln -f -s $(shell pwd)/qn.cfg $(CFGDIR)
 	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
+	/bin/ln -f -s $(shell pwd)/dashboardV2 $(WWWDIR)
 	/bin/cp -f defaults $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
@@ -174,6 +175,7 @@ installdash : index.php
 	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
 	mkdir -p $(WWWDIR)
 	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
+	/bin/ln -f -s $(shell pwd)/dashboardV2 $(WWWDIR)
 	/bin/cp -f system/qndash.service $(SYSDIR)
 	systemctl enable qndash.service
 	systemctl daemon-reload
@@ -262,4 +264,5 @@ uninstalldash :
 	/bin/rm -f $(SYSDIR)/qndash.service
 	systemctl daemon-reload
 	/bin/rm -f $(WWWDIR)/index.php
+	/bin/rm -f $(WWWDIR)/dashboardV2
 	/bin/rm -f $(CFGDIR)/qn.db
