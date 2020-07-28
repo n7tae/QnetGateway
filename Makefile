@@ -174,6 +174,7 @@ installdash : index.php
 	/usr/bin/apt update
 	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
 	mkdir -p $(WWWDIR)
+	mkdir -p dashbaordV2/jsonData
 	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
 	/bin/ln -f -s $(shell pwd)/dashboardV2 $(WWWDIR)
 	/bin/cp -f system/qndash.service $(SYSDIR)
@@ -266,3 +267,4 @@ uninstalldash :
 	/bin/rm -f $(WWWDIR)/index.php
 	/bin/rm -f $(WWWDIR)/dashboardV2
 	/bin/rm -f $(CFGDIR)/qn.db
+	/bin/rm -rf dashboardV2/jsonData
