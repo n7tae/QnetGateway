@@ -1,23 +1,36 @@
 <!DOCTYPE html>
 <?php
+#    If visiting this page by /dashboardV2  (no / suffix) it causes issues referring to CSS / JS 
+#    So we check to see the URL and redirect to /dashboardV2/ if we need to
+     function endsWith($string, $test) {
+          $strlen = strlen($string);
+          $testlen = strlen($test);
+          if ($testlen > $strlen) return false;
+          return substr_compare($string, $test, $strlen - $testlen, $testlen) === 0;
+     }
+
+      if ( !( endsWith($_SERVER['REQUEST_URI'], "/index.php") || (endsWith($_SERVER['REQUEST_URI'], "/") ) ) )
+      {
+	header("Location: dashboardV2/");
+      }
+
      # Load functions and read config file
      include 'init.php';
 ?>
-
 <html lang="en">
 <head>
      <title>QnetGateway Dashboard V2</title>
      <meta name="viewport" content="width=device-width, initial-scale=1.0">
      <meta charset="utf-8">
      <!-- Bootstrap -->
-     <link href="dashboardV2/css/bootstrap.min.css" rel="stylesheet" media="screen">
-     <link href="dashboardV2/css/bootstrap-table.min.css" rel="stylesheet"> 
+     <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+     <link href="css/bootstrap-table.min.css" rel="stylesheet"> 
 </head>
 <body>
 
      <!-- Include jQuery and Bootstrap-->
-     <script src="dashboardV2/js/jquery.min.js"></script>
-     <script src="dashboardV2/js/bootstrap.min.js"></script>
+     <script src="js/jquery.min.js"></script>
+     <script src="js/bootstrap.min.js"></script>
 
      <!-- Header - maybe turn this into a Nav Bar in the future -->
      <nav class="navbar navbar-light bg-light">
@@ -43,9 +56,9 @@
                          <table class="table table-sm" 
                                 id="lhTable" 
                                 data-auto-refresh="true"
-                                data-auto-refresh-interval="10"
+                                data-auto-refresh-interval="<?php echo GetCFGValue('dash_refresh'); ?>"
                                 data-pagination="false"
-                                data-url="dashboardV2/jsonData/lastHeard.php"  
+                                data-url="bin/getJson.php?jsonFile=lastHeard"
                                 data-check-on-init="true">
                               <thead>
                               <tr class="d-flex">
@@ -128,10 +141,10 @@
                          <table class="table table-sm"
                                 id="modulesTable"
                                 data-auto-refresh="true"
-                                data-auto-refresh-interval="10"
+                                data-auto-refresh-interval="<?php echo GetCFGValue('dash_refresh'); ?>"
                                 data-pagination="false"
                                 data-card-view="true"
-                                data-url="dashboardV2/jsonData/modules.php">
+                                data-url="bin/getJson.php?jsonFile=modules">
                               <thead>
                               <tr class="d-flex">
                                    <th data-field="module" data-sortable="false">Module</th>
@@ -226,9 +239,9 @@
                          <table class="table table-sm"
                                 id="procTable"
                                 data-auto-refresh="true"
-                                data-auto-refresh-interval="15"
+                                data-auto-refresh-interval="<?php echo GetCFGValue('dash_refresh'); ?>"
                                 data-pagination="false"
-                                data-url="dashboardV2/jsonData/proc.php">
+                                data-url="bin/getJson.php?jsonFile=ps">
                               <thead>
                               <tr class="d-flex">
                                    <th scope="col" data-field="user" data-sortable="false" class="d-none d-sm-table-cell">User</th>
@@ -247,8 +260,8 @@
 </div> <!-- End of Container -->
 
 <!-- Bootstrap table Javascript -->
-<script src="dashboardV2/js/bootstrap-table.min.js"></script>
-<script src="dashboardV2/js/bootstrap-table-auto-refresh.min.js"></script> 
+<script src="js/bootstrap-table.min.js"></script>
+<script src="js/bootstrap-table-auto-refresh.min.js"></script> 
 
 <!-- Enable Bootstrap tables and jQuery AJAX for QnRemote Control -->
 <script>
@@ -263,7 +276,7 @@
                var dataString = 'mod='+ processMod + '&URCall=' + processURCall;
                $.ajax({
                     type: "POST",
-                    url: "dashboardV2/bin/qnRemoteCmd.php",
+                    url: "bin/qnRemoteCmd.php",
                     data: dataString,
                     success: function( returnData ) {
                          $('#last_cmd_sent').html("<div class=\"pb-2\" id=\"message\"></div>");
