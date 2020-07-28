@@ -27,3 +27,25 @@ will want to use a hardened server, like apache, and a different index.php file.
 
 Please note that if you are tryping in a URCALL when the webpage is refreshing,
 the entry field will loose focus and you'll have to try again.
+
+
+                    #### DASHBOARD V2 ####
+
+A new responsive dashboard built on the Bootstrap 4.5 framework has been
+added. If you have configured the dashboard with the commands above you can
+access the new dashboard by appending "/dashboardV2" to the URL.  For example
+http://<hostname>.local/dashboardV2 
+
+Notes:
+The responsive dashboard currently has the following features
+  * Page does not have to reload to refresh its data solving the URCall focus issue
+  * Dashboard refresh is suggested to be set at 10 seconds.   Any value less than 8 will
+      have no effect.
+  * Mobile design friendly. On smaller screens some columns in the tables will be
+      hidden, however, simply rotate your mobile device to landscape view and they
+      should appear
+  * QnRemote section (aka URCall section) has improved design for mobile device use
+
+Future improvements will be made to
+  * The layout to respect order of the dash_show_order configuration item
+  * Misc performance enhancements
