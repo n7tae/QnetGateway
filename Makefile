@@ -174,7 +174,7 @@ installdash : index.php
 	/usr/bin/apt update
 	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
 	mkdir -p $(WWWDIR)
-	mkdir -p dashbaordV2/jsonData
+	mkdir -p dashboardV2/jsonData
 	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
 	/bin/ln -f -s $(shell pwd)/dashboardV2 $(WWWDIR)
 	/bin/cp -f system/qndash.service $(SYSDIR)
