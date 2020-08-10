@@ -73,6 +73,8 @@ bool CUnixPacket::Write(const void *buffer, const ssize_t size)
 
 bool CUnixPacket::Restart()
 {
+	if (! m_host->IsRunning())
+		return true;
 	std::cout << "Restarting '" << m_name << "'... " << std::endl;
 	Close();
 	std::string name(m_name);
@@ -94,6 +96,7 @@ CUnixPacketServer::~CUnixPacketServer()
 bool CUnixPacketServer::Open(const char *name, CKRBase *host)
 {
 	m_server = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+	m_host = host;
 	if (m_server < 0)
 	{
 		std::cerr << "Cannot open '" << name << "' socket: " << strerror(errno) << std::endl;
@@ -126,7 +129,6 @@ bool CUnixPacketServer::Open(const char *name, CKRBase *host)
 		return true;
 	}
 
-	m_host = host;
 	strncpy(m_name, name, 108);
 	return false;
 }
