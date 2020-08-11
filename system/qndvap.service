@@ -1,6 +1,5 @@
 [Unit]
 Description=QnetDVAP
-After=systemd-user-session.service qngateway.service
 Before=systemd-user-session.service qngateway.service
 
 [Service]
