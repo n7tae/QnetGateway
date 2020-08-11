@@ -2,6 +2,7 @@
 Description=QnetLink
 Requires=network.target
 After=systemd-user-session.service network.target
+Before=systemd-user-session.service qngateway.service
 
 [Service]
 Type=simple

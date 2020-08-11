@@ -1,6 +1,6 @@
 [Unit]
 Description=QnetRelay
-After=systemd-user-session.service qngateway.service
+Before=systemd-user-session.service qngateway.service
 
 [Service]
 Type=simple
