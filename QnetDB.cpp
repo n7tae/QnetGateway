@@ -28,6 +28,11 @@ bool CQnetDB::Open(const char *name)
 		fprintf(stderr, "CQnetDB::Open: can't open %s\n", name);
 		return true;
 	}
+	auto rval = sqlite3_busy_timeout(db, 1000);
+	if (SQLITE_OK != rval)
+	{
+		fprintf(stderr, "sqlite3_busy_timeout returned %d\n", rval);
+	}
 
 	return Init();
 }
