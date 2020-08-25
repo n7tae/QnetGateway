@@ -90,7 +90,7 @@ bool CQnetDB::Init()
 	return false;
 }
 
-static int countcallback(void *count, int /*argc*/, char **argv, char **/*azColName*/)
+static int countcallback(void *count, int /*argc*/, char **argv, char ** /*azColName*/)
 {
 	auto c = (int *)count;
 	*c = atoi(argv[0]);
@@ -265,7 +265,7 @@ bool CQnetDB::UpdateGW(CHostQueue &hqueue)
 		return true;
 	}
 
-	while (! hqueue.Empty())
+	while (!hqueue.Empty())
 	{
 		auto h = hqueue.Pop();
 		UpdateGW(h.name.c_str(), h.addr.c_str(), h.port);

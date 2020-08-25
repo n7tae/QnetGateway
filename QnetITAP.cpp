@@ -45,7 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-526"
+#define ITAP_VERSION "QnetITAP-825"
 
 CQnetITAP::CQnetITAP(int mod)
 	: assigned_module(mod)
@@ -435,7 +435,7 @@ int CQnetITAP::SendTo(const unsigned char *buf)
 		{
 			if (EAGAIN != errno)
 			{
-				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
+				printf("Error %d writing to %s: %s\n", errno, ITAP_DEVICE.c_str(), strerror(errno));
 				return -1;
 			}
 		}
@@ -451,7 +451,7 @@ int CQnetITAP::SendTo(const unsigned char *buf)
 		{
 			if (EAGAIN != errno)
 			{
-				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
+				printf("Error %d writing to %s: %s\n", errno, ITAP_DEVICE.c_str(), strerror(errno));
 				return -1;
 			}
 		}
