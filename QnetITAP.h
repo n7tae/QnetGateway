@@ -122,7 +122,7 @@ private:
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessITAP(const unsigned char *raw);
 	int OpenITAP();
-	int SendTo(const unsigned char *buf);
+	void SendToIcom(const unsigned char *buf);
 	REPLY_TYPE GetITAPData(unsigned char *buf);
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
 	void DumpSerialPacket(const char *title, const unsigned char *);
