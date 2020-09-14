@@ -365,9 +365,8 @@ void CQnetITAP::Run(const char *cfgfile)
 				break;
 			}
 
-			if (alive && (0 == memcmp(buf, "DSVT", 4)))
-			{
-				//printf("read %d bytes from QnetGateway\n", (int)len);
+			if (initialized && alive && (0 == memcmp(buf, "DSVT", 4)))
+			{	// we won't process the incoming gateway packet if the system isn't initialized and alive
 				if (ProcessGateway(len, buf))
 					break;
 			}
@@ -385,9 +384,11 @@ void CQnetITAP::Run(const char *cfgfile)
 					{
 						CFrame frame = queue.front();
 						queue.pop();
-						SendToIcom(frame.data());
-						ackTimer.start();
-						acknowledged = false;
+						if (alive) {
+							SendToIcom(frame.data());
+							ackTimer.start();
+							acknowledged = false;
+						}
 					}
 				}
 			}
