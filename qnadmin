@@ -249,7 +249,7 @@ ModuleStatus () {
 			SubState=$( systemctl show -p SubState --value ${DMRProcess[$1]} )
 			if [[ "$LoadState" == "loaded" ]]; then
 				if [[ $SubState == "running" ]]; then
-					DRMState[$1]='running'
+					DMRState[$1]='running'
 				else
 					DMRState[$1]='stopped'
 				fi
