@@ -210,7 +210,7 @@ ModuleStatus () {
 			MMDVMProcess[$1]='mmdvm'
 			MMDVMState[$1]='not installed'
 			DMRProcess[$1]='dmrgateway'
-			DRMState[$1]='not installed'
+			DMRState[$1]='not installed'
 			YSFProcess[$1]='ysfgateway'
 			YSFState[$1]='not installed'
 		elif [[ "${ModuleProcess[$1]}" == 'qnmmdvmmodem' ]]; then
