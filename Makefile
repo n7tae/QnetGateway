@@ -150,9 +150,9 @@ installysf : $(YSFPATH)/YSFGateway $(YSFPATH)/YSFGateway$(MODULE).qn
 	/bin/ln -f -s $(shell pwd)/$(YSFPATH)/YSFGateway$(MODULE).qn $(CFGDIR)
 	sed -e "s/XXX/YSFGateway$(MODULE)/" -e "s/YYY/YSFGateway$(MODULE)/" system/mmdvm.service > $(SYSDIR)/ysfgateway$(MODULE).service
 	/bin/cp -f system/gateway.timer $(SYSDIR)/ysfgateway$(MODULE).timer
-	systemctl enable YSFGateway$(MODULE).timer
+	systemctl enable ysfgateway$(MODULE).timer
 	systemctl daemon-reload
-	systemctl start YSFGateway$(MODULE).service
+	systemctl start ysfgateway$(MODULE).service
 
 installitap : qnitap
 	######### QnetITAP #########
