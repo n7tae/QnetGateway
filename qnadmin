@@ -23,9 +23,14 @@ ControlC () {
 
 InstallMMDVMHosts () {
 	if [ $nmmdvm -gt 0 ]; then
+		local n
+		if [ -z ${1} ]; then
+			n=$( grep '^processor' /proc/cpuinfo | wc -l )
+			echo "Detected $n processors for make"
+		fi
 		for dir in ../MMDVMHost ../YSFClients ../DMRGateway; do
 			if [ -d $dir ]; then
-				pushd ../$dir
+				pushd $dir
 				make -j$n
 				popd
 			fi
@@ -204,10 +209,10 @@ ModuleStatus () {
 			ModuleProcess[$1]='qnrelay'
 			MMDVMProcess[$1]='mmdvm'
 			MMDVMState[$1]='not installed'
-			DMRProcess[$i]='dmrgateway'
-			DRMState[$i]='not installed'
-			YSFProcess[$i]='ysfgateway'
-			YSFState[$i]='not installed'
+			DMRProcess[$1]='dmrgateway'
+			DRMState[$1]='not installed'
+			YSFProcess[$1]='ysfgateway'
+			YSFState[$1]='not installed'
 		elif [[ "${ModuleProcess[$1]}" == 'qnmmdvmmodem' ]]; then
 			ModuleProcess[$1]='qnmodem'
 		fi
@@ -580,7 +585,6 @@ MaintenanceMenu () {
 				sudo systemctl start ${MMDVMProcess[2]}
 			fi
 			ModuleStatus 2 c $module_c
-		fi
 		elif [[ "$ans" == u* ]] && [ -n $module_a ]; then
 			if [[ "${DMRState[0]}" == 'running' ]]; then
 				sudo systemctl stop ${DMRProcess[0]}
@@ -602,7 +606,6 @@ MaintenanceMenu () {
 				sudo systemctl start ${DMRProcess[2]}
 			fi
 			ModuleStatus 2 c $module_c
-		fi
 		elif [[ "$ans" == x* ]] && [ -n $module_a ]; then
 			if [[ "${YSFState[0]}" == 'running' ]]; then
 				sudo systemctl stop ${YSFProcess[0]}

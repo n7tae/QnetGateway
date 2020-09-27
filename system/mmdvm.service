@@ -1,5 +1,5 @@
 [Unit]
-Description=MMDVMHost
+Description=XXX
 After=systemd-user-session.service qnrelay.service
 
 [Service]

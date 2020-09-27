@@ -137,8 +137,8 @@ installdmr : $(DMRPATH)/DMRGateway $(DMRPATH)/DMRGateway$(MODULE).qn
 	######### DMRGateway #########
 	/bin/ln -f $(DMRPATH)/DMRGateway $(BINDIR)/DMRGateway$(MODULE)
 	/bin/ln -f -s $(shell pwd)/$(DMRPATH)/DMRGateway$(MODULE).qn $(CFGDIR)
-	sed -e "s/XXX/DMRGateway$(MODULE)/" -e "s/YYY/DMRGateway$(MODULE)/" system/dmrgateway.service > $(SYSDIR)/dmrgateway$(MODULE).service
-	/bin/cp -f system/dmrgateway.timer $(SYSDIR)/dmrgateway$(MODULE).timer
+	sed -e "s/XXX/DMRGateway$(MODULE)/" -e "s/YYY/DMRGateway$(MODULE)/" system/mmdvm.service > $(SYSDIR)/dmrgateway$(MODULE).service
+	/bin/cp -f system/gateway.timer $(SYSDIR)/dmrgateway$(MODULE).timer
 	systemctl enable dmrgateway$(MODULE).timer
 	systemctl daemon-reload
 	systemctl start dmrgateway$(MODULE).service
@@ -148,8 +148,8 @@ installysf : $(YSFPATH)/YSFGateway $(YSFPATH)/YSFGateway$(MODULE).qn
 	######### YSFGateway #########
 	/bin/ln -f $(YSFPATH)/YSFGateway $(BINDIR)/YSFGateway$(MODULE)
 	/bin/ln -f -s $(shell pwd)/$(YSFPATH)/YSFGateway$(MODULE).qn $(CFGDIR)
-	sed -e "s/XXX/YSFGateway$(MODULE)/" -e "s/YYY/YSFGateway$(MODULE)/" system/mmdvm.service > $(SYSDIR)/YSFGateway$(MODULE).service
-	/bin/cp -f system/YSFGateway.timer $(SYSDIR)/YSFGateway$(MODULE).timer
+	sed -e "s/XXX/YSFGateway$(MODULE)/" -e "s/YYY/YSFGateway$(MODULE)/" system/mmdvm.service > $(SYSDIR)/ysfgateway$(MODULE).service
+	/bin/cp -f system/gateway.timer $(SYSDIR)/ysfgateway$(MODULE).timer
 	systemctl enable YSFGateway$(MODULE).timer
 	systemctl daemon-reload
 	systemctl start YSFGateway$(MODULE).service
