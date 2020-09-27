@@ -25,16 +25,16 @@ InstallMMDVMHosts () {
 	if [ $nmmdvm -gt 0 ]; then
 		local n
 		if [ -z ${1} ]; then
-			n=$( grep '^processor' /proc/cpuinfo | wc -l )
+			n=$(getconf _NPROCESSORS_ONLN)
 			echo "Detected $n processors for make"
+			for dir in ../MMDVMHost ../YSFClients ../DMRGateway; do
+				if [ -d $dir ]; then
+					pushd $dir
+					make -j$n
+					popd
+				fi
+			done
 		fi
-		for dir in ../MMDVMHost ../YSFClients ../DMRGateway; do
-			if [ -d $dir ]; then
-				pushd $dir
-				make -j$n
-				popd
-			fi
-		done
 		if [ -e ${MMPATH}/MMDVMHost ]; then
 			if [ $nmmdvm -eq 1 ]; then
 				sudo make ${1}installmmdvm
@@ -59,7 +59,7 @@ InstallMMDVMHosts () {
 		fi
 		if [ -e ${YSFPATH}/YSFGateway ]; then
 			if [ $nmmdvm -eq 1 ]; then
-				sudo make ${1}instalysf
+				sudo make ${1}installysf
 			else
 				sudo make MODULE=${ammdvm[0]} ${1}installysf
 				sudo make MODULE=${ammdvm[1]} ${1}installysf
