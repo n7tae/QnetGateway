@@ -22,14 +22,45 @@ ControlC () {
 }
 
 InstallMMDVMHosts () {
-	if [ $nmmdvm -gt 0 ] && [ -e ${MMPATH}/MMDVMHost ]; then
-		if [ $nmmdvm -eq 1 ]; then
-			sudo make ${1}installmmdvm
-		else
-			sudo make MODULE=${ammdvm[0]} ${1}installmmdvm
-			sudo make MODULE=${ammdvm[1]} ${1}installmmdvm
-			if [ $nmmdvm -eq 3 ]; then
-				sudo make MODULE=${advap[2]} ${1}installmmdvm
+	if [ $nmmdvm -gt 0 ]; then
+		for dir in ../MMDVMHost ../YSFClients ../DMRGateway; do
+			if [ -d $dir ]; then
+				pushd ../$dir
+				make -j$n
+				popd
+			fi
+		done
+		if [ -e ${MMPATH}/MMDVMHost ]; then
+			if [ $nmmdvm -eq 1 ]; then
+				sudo make ${1}installmmdvm
+			else
+				sudo make MODULE=${ammdvm[0]} ${1}installmmdvm
+				sudo make MODULE=${ammdvm[1]} ${1}installmmdvm
+				if [ $nmmdvm -eq 3 ]; then
+					sudo make MODULE=${advap[2]} ${1}installmmdvm
+				fi
+			fi
+		fi
+		if [ -e ${DMRPATH}/DMRGateway ]; then
+			if [ $nmmdvm -eq 1 ]; then
+				sudo make ${1}installdmr
+			else
+				sudo make MODULE=${ammdvm[0]} ${1}installdmr
+				sudo make MODULE=${ammdvm[1]} ${1}installdmr
+				if [ $nmmdvm -eq 3 ]; then
+					sudo make MODULE=${advap[2]} ${1}installdmr
+				fi
+			fi
+		fi
+		if [ -e ${YSFPATH}/YSFGateway ]; then
+			if [ $nmmdvm -eq 1 ]; then
+				sudo make ${1}instalysf
+			else
+				sudo make MODULE=${ammdvm[0]} ${1}installysf
+				sudo make MODULE=${ammdvm[1]} ${1}installysf
+				if [ $nmmdvm -eq 3 ]; then
+					sudo make MODULE=${advap[2]} ${1}installysf
+				fi
 			fi
 		fi
 	fi
@@ -163,17 +194,22 @@ ModuleStatus () {
 	else
 		mcvar="n${3}"
 		ModuleProcess[$1]="qn$3"
+		MMDVMProcess[$1]=''
+		MMDVMState[$1]='EMPTY'
+		DMRProcess[$1]=''
+		DMRState[$1]='EMPTY'
+		YSFProcess[i]=''
+		YSFState[$i]='EMPTY'
 		if [[ "${ModuleProcess[$1]}" == 'qnmmdvmhost' ]]; then
 			ModuleProcess[$1]='qnrelay'
 			MMDVMProcess[$1]='mmdvm'
 			MMDVMState[$1]='not installed'
+			DMRProcess[$i]='dmrgateway'
+			DRMState[$i]='not installed'
+			YSFProcess[$i]='ysfgateway'
+			YSFState[$i]='not installed'
 		elif [[ "${ModuleProcess[$1]}" == 'qnmmdvmmodem' ]]; then
 			ModuleProcess[$1]='qnmodem'
-			MMDVMProcess[$1]=''
-			MMDVMState[$1]='EMPTY'
-		else
-			MMDVMState[$1]='EMPTY'
-			MMDVMProcess[$1]=''
 		fi
 		if [[ ${!mcvar} > 1 ]]; then
 			ModuleProcess[$1]="${ModuleProcess[$1]}${2}"
@@ -204,9 +240,32 @@ ModuleStatus () {
 			else
 				MMDVMState[$1]='not installed'
 			fi
+			LoadState=$( systemctl show -p LoadState --value ${DMRProcess[$1]} )
+			SubState=$( systemctl show -p SubState --value ${DMRProcess[$1]} )
+			if [[ "$LoadState" == "loaded" ]]; then
+				if [[ $SubState == "running" ]]; then
+					DRMState[$1]='running'
+				else
+					DMRState[$1]='stopped'
+				fi
+			else
+				DMRState[$1]='not installed'
+			fi
+			LoadState=$( systemctl show -p LoadState --value ${YSFProcess[$1]} )
+			SubState=$( systemctl show -p SubState --value ${YSFProcess[$1]} )
+			if [[ "$LoadState" == "loaded" ]]; then
+				if [[ $SubState == "running" ]]; then
+					YSFState[$1]='running'
+				else
+					YSFState[$1]='stopped'
+				fi
+			else
+				YSFState[$1]='not installed'
+			fi
 		fi
 		if [[ "$3" == 'mmdvmhost' ]]; then
 			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]} - ${MMDVMProcess[$1]} is ${MMDVMState[$1]}"
+			echo "Module ${2^^} - ${DMRProcess[$1]} is ${DMRState[$1]} - ${YSFProcess[$1]} is ${YSFState[$1]}"
 		else
 			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]}"
 		fi
@@ -270,23 +329,65 @@ LogMenu () {
 		fi
 		if [[ ${MMDVMState[0]} != 'EMPTY' ]]; then
 			if [[ ${MMDVMState[0]} == 'running' ]]; then
-				echo " x  : ${MMDVMProcess[0]} Log"
+				echo " r  : ${MMDVMProcess[0]} Log"
 			else
 				echo "      ${MMDVMProcess[0]} is not running"
 			fi
 		fi
 		if [[ ${MMDVMState[1]} != 'EMPTY' ]]; then
 			if [[ ${MMDVMState[1]} == 'running' ]]; then
-				echo " y  : ${MMDVMProcess[1]} Log"
+				echo " s  : ${MMDVMProcess[1]} Log"
 			else
 				echo "      ${MMDVMProcess[1]} is not running"
 			fi
 		fi
 		if [[ ${MMDVMState[2]} != 'EMPTY' ]]; then
 			if [[ ${MMDVMState[2]} == 'running' ]]; then
-				echo " z  : ${MDVMProcess[2]} Log"
+				echo " t  : ${MDVMProcess[2]} Log"
 			else
 				echo "      ${MMDVMProcess[2]} is not running"
+			fi
+		fi
+		if [[ ${DMRState[0]} != 'EMPTY' ]]; then
+			if [[ ${DMRState[0]} == 'running' ]]; then
+				echo " u  : ${DMRProcess[0]} Log"
+			else
+				echo "      ${DMRProcess[0]} is not running"
+			fi
+		fi
+		if [[ ${DMRState[1]} != 'EMPTY' ]]; then
+			if [[ ${DMRState[1]} == 'running' ]]; then
+				echo " v  : ${DMRProcess[1]} Log"
+			else
+				echo "      ${DMRProcess[1]} is not running"
+			fi
+		fi
+		if [[ ${DMRState[2]} != 'EMPTY' ]]; then
+			if [[ ${DMRState[2]} == 'running' ]]; then
+				echo " w  : ${DMRProcess[2]} Log"
+			else
+				echo "      ${DMRProcess[2]} is not running"
+			fi
+		fi
+		if [[ ${YSFState[0]} != 'EMPTY' ]]; then
+			if [[ ${YSFState[0]} == 'running' ]]; then
+				echo " x  : ${YSFProcess[0]} Log"
+			else
+				echo "      ${YSFProcess[0]} is not running"
+			fi
+		fi
+		if [[ ${YSFState[1]} != 'EMPTY' ]]; then
+			if [[ ${YSFState[1]} == 'running' ]]; then
+				echo " y  : ${YSFProcess[1]} Log"
+			else
+				echo "      ${YSFProcess[1]} is not running"
+			fi
+		fi
+		if [[ ${YSFState[2]} != 'EMPTY' ]]; then
+			if [[ ${YSFState[2]} == 'running' ]]; then
+				echo " z  : ${YSFProcess[2]} Log"
+			else
+				echo "      ${Process[2]} is not running"
 			fi
 		fi
 		echo
@@ -306,12 +407,24 @@ LogMenu () {
 			sudo journalctl -u ${ModuleProcess[1]} -f
 		elif [[ "$ans" == c* ]] && [[ "${ModuleState[2]}" == 'running' ]]; then
 			sudo journalctl -u ${ModuleProcess[2]} -f
-		elif [[ "$ans" == x* ]] && [[ "${MMDVMState[0]}" == 'running' ]]; then
+		elif [[ "$ans" == r* ]] && [[ "${MMDVMState[0]}" == 'running' ]]; then
 			sudo journalctl -u ${MMDVMProcess[0]} -f
-		elif [[ "$ans" == y* ]] && [[ "${MMDVMState[1]}" == 'running' ]]; then
+		elif [[ "$ans" == s* ]] && [[ "${MMDVMState[1]}" == 'running' ]]; then
 			sudo journalctl -u ${MMDVMProcess[1]} -f
-		elif [[ "$ans" == z* ]] && [[ "${MMDVMState[2]}" == 'running' ]]; then
+		elif [[ "$ans" == t* ]] && [[ "${MMDVMState[2]}" == 'running' ]]; then
 			sudo journalctl -u ${MMDVMProcess[2]} -f
+		elif [[ "$ans" == u* ]] && [[ "${DMRState[0]}" == 'running' ]]; then
+			sudo journalctl -u ${DMRProcess[0]} -f
+		elif [[ "$ans" == v* ]] && [[ "${DMRState[1]}" == 'running' ]]; then
+			sudo journalctl -u ${DMRProcess[1]} -f
+		elif [[ "$ans" == w* ]] && [[ "${DMRState[2]}" == 'running' ]]; then
+			sudo journalctl -u ${DMRProcess[2]} -f
+		elif [[ "$ans" == x* ]] && [[ "${YSFState[0]}" == 'running' ]]; then
+			sudo journalctl -u ${YSFProcess[0]} -f
+		elif [[ "$ans" == y* ]] && [[ "${YSFState[1]}" == 'running' ]]; then
+			sudo journalctl -u ${YSFProcess[1]} -f
+		elif [[ "$ans" == z* ]] && [[ "${YSFState[2]}" == 'running' ]]; then
+			sudo journalctl -u ${YSFProcess[2]} -f
 		fi
 	done
 	ans=''
@@ -355,19 +468,49 @@ MaintenanceMenu () {
 			echo " c : Start Module C"
 		fi
 		if [[ "${MMDVMState[0]}" == 'running' ]]; then
-			echo " x : Stop  MMDVMHost A"
+			echo " r : Stop  MMDVMHost A"
 		elif [[ "${MMDVMState[0]}" == 'stopped' ]]; then
-			echo " x : Start MMDVMHost A"
+			echo " r : Start MMDVMHost A"
 		fi
 		if [[ "${MMDVMState[1]}" == 'running' ]]; then
-			echo " y : Stop  MMDVMHost B"
+			echo " s : Stop  MMDVMHost B"
 		elif [[ "${MMDVMState[1]}" == 'stopped' ]]; then
-			echo " y : Start MMDVMHost B"
+			echo " s : Start MMDVMHost B"
 		fi
 		if [[ "${MMDVMState[2]}" == 'running' ]]; then
-			echo " z : Stop  MMDVMHost C"
+			echo " t : Stop  MMDVMHost C"
 		elif [[ "${MMDVMState[2]}" == 'stopped' ]]; then
-			echo " z : Start MMDVMHost C"
+			echo " t : Start MMDVMHost C"
+		fi
+		if [[ "${DMRState[0]}" == 'running' ]]; then
+			echo " u : Stop  DMRGateway A"
+		elif [[ "${DMRState[0]}" == 'stopped' ]]; then
+			echo " u : Start DMRGateway A"
+		fi
+		if [[ "${DMRState[1]}" == 'running' ]]; then
+			echo " v : Stop  DMRGateway B"
+		elif [[ "${DMRState[1]}" == 'stopped' ]]; then
+			echo " v : Start DMRGateway B"
+		fi
+		if [[ "${DMRState[2]}" == 'running' ]]; then
+			echo " w : Stop  DMRGateway C"
+		elif [[ "${DMRState[2]}" == 'stopped' ]]; then
+			echo " w : Start DMRGateway C"
+		fi
+		if [[ "${YSFState[0]}" == 'running' ]]; then
+			echo " x : Stop  YSFGateway A"
+		elif [[ "${YSFState[0]}" == 'stopped' ]]; then
+			echo " x : Start YSFGateway A"
+		fi
+		if [[ "${YSFState[1]}" == 'running' ]]; then
+			echo " y : Stop  YSFGateway B"
+		elif [[ "${YSFState[1]}" == 'stopped' ]]; then
+			echo " y : Start YSFGateway B"
+		fi
+		if [[ "${YSFState[2]}" == 'running' ]]; then
+			echo " z : Stop  YSFGateway C"
+		elif [[ "${YSFState[2]}" == 'stopped' ]]; then
+			echo " z : Start YSFGateway C"
 		fi
 		echo
 		echo " q : Return to main Menu"
@@ -416,25 +559,69 @@ MaintenanceMenu () {
 				sudo systemctl start ${ModuleProcess[2]}
 			fi
 			ModuleStatus 2 c $module_c
-		elif [[ "$ans" == x* ]] && [ -n $module_a ]; then
+		elif [[ "$ans" == r* ]] && [ -n $module_a ]; then
 			if [[ "${MMDVMState[0]}" == 'running' ]]; then
 				sudo systemctl stop ${MMDVMProcess[0]}
 			elif [[ "${MMDVMState[0]}" == 'stopped' ]]; then
 				sudo systemctl start ${MMDVMProcess[0]}
 			fi
 			ModuleStatus 0 a $module_a
-		elif [[ "$ans" == y* ]] && [ -n $module_b ]; then
+		elif [[ "$ans" == s* ]] && [ -n $module_b ]; then
 			if [[ "${MMDVMState[1]}" == 'running' ]]; then
 				sudo systemctl stop ${MMDVMProcess[1]}
 			elif [[ "${MMDVMState[1]}" == 'stopped' ]]; then
 				sudo systemctl start ${MMDVMProcess[1]}
 			fi
 			ModuleStatus 1 b $module_b
-		elif [[ "$ans" == z* ]] && [ -n $module_c ]; then
+		elif [[ "$ans" == r* ]] && [ -n $module_c ]; then
 			if [[ "${MMDVMState[2]}" == 'running' ]]; then
 				sudo systemctl stop ${MMDVMProcess[2]}
 			elif [[ "${MMDVMState[2]}" == 'stopped' ]]; then
 				sudo systemctl start ${MMDVMProcess[2]}
+			fi
+			ModuleStatus 2 c $module_c
+		fi
+		elif [[ "$ans" == u* ]] && [ -n $module_a ]; then
+			if [[ "${DMRState[0]}" == 'running' ]]; then
+				sudo systemctl stop ${DMRProcess[0]}
+			elif [[ "${DMRState[0]}" == 'stopped' ]]; then
+				sudo systemctl start ${DMRrocess[0]}
+			fi
+			ModuleStatus 0 a $module_a
+		elif [[ "$ans" == v* ]] && [ -n $module_b ]; then
+			if [[ "${DMRState[1]}" == 'running' ]]; then
+				sudo systemctl stop ${DMRProcess[1]}
+			elif [[ "${DMRState[1]}" == 'stopped' ]]; then
+				sudo systemctl start ${DMRProcess[1]}
+			fi
+			ModuleStatus 1 b $module_b
+		elif [[ "$ans" == w* ]] && [ -n $module_c ]; then
+			if [[ "${DMRState[2]}" == 'running' ]]; then
+				sudo systemctl stop ${DMRProcess[2]}
+			elif [[ "${DMRState[2]}" == 'stopped' ]]; then
+				sudo systemctl start ${DMRProcess[2]}
+			fi
+			ModuleStatus 2 c $module_c
+		fi
+		elif [[ "$ans" == x* ]] && [ -n $module_a ]; then
+			if [[ "${YSFState[0]}" == 'running' ]]; then
+				sudo systemctl stop ${YSFProcess[0]}
+			elif [[ "${YSFState[0]}" == 'stopped' ]]; then
+				sudo systemctl start ${YSFProcess[0]}
+			fi
+			ModuleStatus 0 a $module_a
+		elif [[ "$ans" == y* ]] && [ -n $module_b ]; then
+			if [[ "${YSFState[1]}" == 'running' ]]; then
+				sudo systemctl stop ${YSFProcess[1]}
+			elif [[ "${YSFState[1]}" == 'stopped' ]]; then
+				sudo systemctl start ${YSFProcess[1]}
+			fi
+			ModuleStatus 1 b $module_b
+		elif [[ "$ans" == z* ]] && [ -n $module_c ]; then
+			if [[ "${YSFState[2]}" == 'running' ]]; then
+				sudo systemctl stop ${YSFProcess[2]}
+			elif [[ "${YSFState[2]}" == 'stopped' ]]; then
+				sudo systemctl start ${YSFProcess[2]}
 			fi
 			ModuleStatus 2 c $module_c
 		fi
@@ -549,7 +736,7 @@ else
 	echo "ERROR: There is no Makefile or makefile"
 	exit 1
 fi
-source <( grep -e '^BINDIR=' -e '^MMPATH=' $MAKEFILE )
+source <( grep -e '^BINDIR=' -e '^MMPATH=' -e '^DMRPATH=' -e '^YSFPATH=' $MAKEFILE )
 if [ -z $BINDIR ]; then
 	echo "ERROR: The BINDIR definition in $MAKEFILE is empty!"
 	exit 1
@@ -609,15 +796,6 @@ while [[ "$ans" != q* ]]; do
 	else
 		echo "us : Uninstall configured System"
 	fi
-	if [ -e "${MMPATH}/MMDVMHost" ] && [ $nmmdvm -gt 0 ]; then
-		if [[ "${MMDVMState[0]}" != 'EMPTY' ]] || [[ "${MMDVMState[1]}" != 'EMPTY' ]] || [[ "${MMDVMState[2]}" != 'EMPTY' ]]; then
-			if [[ "${MMDVMState[0]}" == 'not installed' ]] || [[ "${MMDVMState[1]}" == 'not installed' ]] || [[ "${MMDVMState[2]}" == 'not installed' ]]; then
-				echo "im : Install MMDVMHost(s)"
-			else
-				echo "um : Uninstall MMDVMHost(s)"
-			fi
-		fi
-	fi
 	echo "gw : Gateway File Menu"
 	echo
 	if [[ "$DTMFState" == 'not installed' ]]; then
@@ -643,16 +821,21 @@ while [[ "$ans" != q* ]]; do
 	# EXECUTE COMMANDS
 	if   [[ "$GateState" == 'not installed' ]] && [[ "$ans" == is* ]]; then
 		InstallSystem
+		InstallMMDVMHosts
 		echo 'Wait for a few seconds for everything to start...'
 		sleep 5
 	elif [[ "$GateState" != 'not installed' ]] && [[ "$ans" == us* ]]; then
 		InstallSystem un
-	elif { [[ "${MMDVMState[0]}" == 'not installed' ]] || [[ "${MMDVMState[1]}" == 'not installed' ]] || [[ "${MMDVMState[2]}" == 'not installed' ]]; } && [ -e ${MMPATH}/MMDVMHost ] && [[ "$ans" == im* ]]; then
-		InstallMMDVMHosts
-	elif { [[ "${MMDVMState[0]}" == 'stopped' ]] || [[ "${MMDVMState[0]}" == 'running' ]] || [[ "${MMDVMState[1]}" == 'stopped' ]] || [[ "${MMDVMState[1]}" == 'running' ]] || [[ "${MMDVMState[2]}" == 'stopped' ]] || [[ "${MMDVMState[2]}" == 'running' ]]; } && [ -e ${MMPATH}/MMDVMHost ] && [[ "$ans" == um* ]]; then
 		InstallMMDVMHosts un
 	elif [[ "$GateState" == 'not installed' ]] && [[ "$ans" == gp* ]]; then
 		git pull
+		for dir in ../MMDVMHost ../DMRGateway ../YSFClients; do
+			if [ -d $dir ]; then
+				pushd $dir
+				git pull
+				popd
+			fi
+		done
 		read -p 'Press <Enter> to continue: ' ans
 		ans=''
 	elif [[ "$ans" == gw* ]]; then
@@ -672,6 +855,13 @@ while [[ "$ans" != q* ]]; do
 		sudo make uninstalldtmf
 	elif [[ "$ans" == c* ]]; then
 		make clean
+		for dir in ../MMDVMHost ../DMRGateway ../YSFClients; do
+			if [ -d $dir ]; then
+				pushd $dir
+				make clean
+				popd
+			fi
+		done
 	elif [[ "$ans" == m* ]]; then
 		MaintenanceMenu
 	elif [[ "$ans" == l* ]]; then

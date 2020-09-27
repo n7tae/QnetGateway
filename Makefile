@@ -22,6 +22,8 @@ BINDIR=/usr/local/bin
 CFGDIR=/usr/local/etc
 WWWDIR=/usr/local/www
 MMPATH=../MMDVMHost
+DMRPATH=../DMRGateway
+YSFPATH=../YSFClients/YSFGateway
 SYSDIR=/lib/systemd/system
 IRC=ircddb
 
@@ -131,6 +133,27 @@ installmmdvm : $(MMPATH)/MMDVMHost $(MMPATH)/MMDVM$(MODULE).qn
 	systemctl daemon-reload
 	systemctl start mmdvm$(MODULE).service
 
+installdmr : $(DMRPATH)/DMRGateway $(DMRPATH)/DMRGateway$(MODULE).qn
+	######### DMRGateway #########
+	/bin/ln -f $(DMRPATH)/DMRGateway $(BINDIR)/DMRGateway$(MODULE)
+	/bin/ln -f -s $(shell pwd)/$(DMRPATH)/DMRGateway$(MODULE).qn $(CFGDIR)
+	sed -e "s/XXX/DMRGateway$(MODULE)/" -e "s/YYY/DMRGateway$(MODULE)/" system/dmrgateway.service > $(SYSDIR)/dmrgateway$(MODULE).service
+	/bin/cp -f system/dmrgateway.timer $(SYSDIR)/dmrgateway$(MODULE).timer
+	systemctl enable dmrgateway$(MODULE).timer
+	systemctl daemon-reload
+	systemctl start dmrgateway$(MODULE).service
+
+
+installysf : $(YSFPATH)/YSFGateway $(YSFPATH)/YSFGateway$(MODULE).qn
+	######### YSFGateway #########
+	/bin/ln -f $(YSFPATH)/YSFGateway $(BINDIR)/YSFGateway$(MODULE)
+	/bin/ln -f -s $(shell pwd)/$(YSFPATH)/YSFGateway$(MODULE).qn $(CFGDIR)
+	sed -e "s/XXX/YSFGateway$(MODULE)/" -e "s/YYY/YSFGateway$(MODULE)/" system/mmdvm.service > $(SYSDIR)/YSFGateway$(MODULE).service
+	/bin/cp -f system/YSFGateway.timer $(SYSDIR)/YSFGateway$(MODULE).timer
+	systemctl enable YSFGateway$(MODULE).timer
+	systemctl daemon-reload
+	systemctl start YSFGateway$(MODULE).service
+
 installitap : qnitap
 	######### QnetITAP #########
 	/bin/ln -f qnitap $(BINDIR)/qnitap$(MODULE)
@@ -218,6 +241,26 @@ uninstallmmdvm :
 	/bin/rm -f $(SYSDIR)/mmdvm$(MODULE).timer
 	/bin/rm -f $(BINDIR)/MMDVMHost$(MODULE)
 	/bin/rm -f $(CFGDIR)/MMDVM$(MODULE).qn
+	sudo systemctl daemon-reload
+
+uninstalldmr :
+	######### DMRGateway ##########
+	systemctl stop dmrgateway$(MODULE).service
+	systemctl disable dmrgateway$(MODULE).timer
+	/bin/rm -f $(SYSDIR)/dmrgateway$(MODULE).service
+	/bin/rm -f $(SYSDIR)/dmrgateway$(MODULE).timer
+	/bin/rm -f $(BINDIR)/DMRGateway$(MODULE)
+	/bin/rm -f $(CFGDIR)/DMRGateway$(MODULE).qn
+	sudo systemctl daemon-reload
+
+uninstallysf :
+	######### YSFGateway ##########
+	systemctl stop ysfgateway$(MODULE).service
+	systemctl disable ysfgateway$(MODULE).timer
+	/bin/rm -f $(SYSDIR)/ysfgateway$(MODULE).service
+	/bin/rm -f $(SYSDIR)/ysfgateway$(MODULE).timer
+	/bin/rm -f $(BINDIR)/YSFGateway$(MODULE)
+	/bin/rm -f $(CFGDIR)/YSFGateway$(MODULE).qn
 	sudo systemctl daemon-reload
 
 uninstallmodem :
