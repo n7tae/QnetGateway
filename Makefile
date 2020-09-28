@@ -24,6 +24,7 @@ WWWDIR=/usr/local/www
 MMPATH=../MMDVMHost
 DMRPATH=../DMRGateway
 YSFPATH=../YSFClients/YSFGateway
+APRSPATH=../APRSGateway
 SYSDIR=/lib/systemd/system
 IRC=ircddb
 
@@ -143,7 +144,6 @@ installdmr : $(DMRPATH)/DMRGateway $(DMRPATH)/DMRGateway$(MODULE).qn
 	systemctl daemon-reload
 	systemctl start dmrgateway$(MODULE).service
 
-
 installysf : $(YSFPATH)/YSFGateway $(YSFPATH)/YSFGateway$(MODULE).qn
 	######### YSFGateway #########
 	/bin/ln -f $(YSFPATH)/YSFGateway $(BINDIR)/YSFGateway$(MODULE)
@@ -153,6 +153,16 @@ installysf : $(YSFPATH)/YSFGateway $(YSFPATH)/YSFGateway$(MODULE).qn
 	systemctl enable ysfgateway$(MODULE).timer
 	systemctl daemon-reload
 	systemctl start ysfgateway$(MODULE).service
+
+installaprs : $(APRSPATH)/APRSGateway $(APRSPATH)/APRSGateway.qn
+	######### APRSGateway #########
+	/bin/cp -f $(APRSPATH)/APRSGateway $(BINDIR)
+	/bin/ln -f -s $(shell pwd)/$(APRSPATH)/APRSGateway.qn $(CFGDIR)
+	sed -e "s/XXX/APRSGateway/" -e "s/YYY/APRSGateway/" system/mmdvm.service > $(SYSDIR)/aprsgateway.service
+	/bin/cp -f system/gateway.timer $(SYSDIR)/aprsgateway.timer
+	systemctl enable aprsgateway.timer
+	systemctl daemon-reload
+	systemctl start aprsgateway.service
 
 installitap : qnitap
 	######### QnetITAP #########
@@ -261,6 +271,16 @@ uninstallysf :
 	/bin/rm -f $(SYSDIR)/ysfgateway$(MODULE).timer
 	/bin/rm -f $(BINDIR)/YSFGateway$(MODULE)
 	/bin/rm -f $(CFGDIR)/YSFGateway$(MODULE).qn
+	sudo systemctl daemon-reload
+
+uninstallaprs :
+	######### APRSGateway ##########
+	systemctl stop aprsgateway.service
+	systemctl disable aprsgateway.timer
+	/bin/rm -f $(SYSDIR)/aprsgateway.service
+	/bin/rm -f $(SYSDIR)/aprsgateway.timer
+	/bin/rm -f $(BINDIR)/APRSGateway
+	/bin/rm -f $(CFGDIR)/APRSGateway.qn
 	sudo systemctl daemon-reload
 
 uninstallmodem :

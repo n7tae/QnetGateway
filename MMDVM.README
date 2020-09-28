@@ -42,7 +42,24 @@ In your parent directory of your QnetGateway build...
 
 5)  If you are using the YSFGateway cd to that directory and copy the ini file:
 	cp YSFGateway.ini YSFGateway.qn
-	Edit this new YSFGateway.qn file for your system.
+	In the [General] section, set your callsign and suffix (either RPT or ND).
+    In the [Info] section, set your RX & TX frequencies, and any other details
+	as you like. In the [Log] section, set your log levels as your like, set a
+	/FULL/PATH/TO/LOGROOTFILE for the log, and define the FileRoot--or disable
+	logging by setting both DisplayLevel and FileLevel to '0'. in the [Network]
+    section, set a startup reflector (FCS, YSF or XLX), and set InactivityTimeout
+	(in minutes) as desired. If the reflector is changed, it will return to the
+	startup reflector after the inactivity timeout is reached if 'Revert' is set
+	to '1'. 'Options' allows you to monitor multiple DG-IDs if connected to a YCS
+	server such as QuadNet's FCS310. You set the TX DG-ID on your radio to which
+	ever DG-ID you wish to transmit into. This has its benfits and drawbacks.
+	The to TX DG-ID is a global setting on Yaesu radios, so you cannot save it in
+	a channel like a DMR talkgroup. You must change the DG-ID in the GM menu each
+	time. Basically, it is good for monitoring, a little cumbersome for talking.
+	For [YSFNetwork], set the /FULL/PATH/TO/YSFHosts.txt. And finally for
+	[FCSNetwork], set the /FULL/PATH/TO/FCSRooms.txt. __NEVER__ connect to a
+	transcoding reflector network such as QuadNet with more than one mode on the
+	same MMDVM hotspot/ node/ repeater.
 
 6)  Next, your ready to install your software. For that, first move back to the
     QnetGateway directory andstart the administration script: ./qnadmin
