@@ -8,7 +8,7 @@ system should work. It just needs a g++ compiler with version greater than 4.9.
 These instructions assume you have configured your system with the locale, keyboard
 and time zone. When choosing locale, always choose a "UTF-8" version of your
 locale. And make sure you do "sudo apt-get update && sudo apt-get upgrade" before
-your start. On a Raspberry Pi, you can do all of this with the configureation menu:
+your start. On a Raspberry Pi, you can do all of this with the configuration menu:
 "sudo raspi-config".
 
 If you are using a device that uses the GPIO header on the raspberry pi, you need to
@@ -16,52 +16,36 @@ disable the serial0 console in the /boot/cmdline.txt file: Remove the reference 
 "console=serial0,115200" in this file. You should also disable bluetooth by adding:
 "dtoverlay=pi3-disable-bt" (without the quotes) to the end of the /boot/config.txt.
 
-In your home directory...
+In your parent directory of your QnetGateway build...
 
-1)  Clone the MMDVMHost repository: git clone git://github.com/g4klx/MMDVMHost.git
+1)  Clone the QnetGateway repository: git clone git://github.com/n7tae/QnetGateway.git
+    Clone the MMDVMHost repository: git clone git://github.com/g4klx/MMDVMHost.git
+    Likewise if you want DMRGateway: git clone git://github.com/g4klx/DMRGateway.git
+	Likewise if you want YSFGateway: git clone git://github.com/g4klx/YSFClients.git
 
-2)  cd into the MMDVMHost directory and compile: make
-    If you're system has multiple processors, use: make -jx
-    where x is the number of processors on you system.
-    To tell how many processors you have: cat /proc/cpuinfo | grep processor | wc -l
+2)  cd to the QnetGateway directory and configure it: cd QnetGateway; ./qnconfig
+    Make sure you set your callsign in the irc menu and set an mmdvmhost modem
+	in module A, B or C. Write out the configuration file before you leave qnconfig.
 
-3)  Copy the ini file template: cp MMDVM.ini MMDVM.qn
-
-4)  Edit the MMDVM.qn file. Set your Callsign and Id. Turn off duplex. Enable an
+3)  cd into the MMDVMHost directory and copy the ini file template:
+    cp MMDVM.ini MMDVM.qn
+    Edit the MMDVM.qn file. Set your Callsign and Id. Turn off duplex. Enable an
     external display, if you have one. Set the Frequency(s). Set the Latitude and
     other location info if you want. Change the log levels. I use DisplayLevel=2
-    and FileLevel=0. Set the Port on your modem. Disable all services except for
-    D-Star (at least for now). Very important: Set the [D-Star] Module. For UHF
-    use B and for VHF use C.
+    and FileLevel=0. Set the Port on your modem. Disable all services you aren't
+	going to use. Very important: Set the [D-Star] Module. For UHF use B and for
+	VHF use C.
 
-5)  Let's test it! Start it: ./MMDVMHost MMDVM.qn
+4)  If you are using the DMRGateway cd to that directory and copy the ini file:
+	cp DMRGateway.ini DMRGateway.qn
+	Edit this new DMRGateway.qn file for your system.
 
-6)  Key your radio and see if the MMDVMHost responds with an acknowledgment. Then
-    you'll know that everything on the MMDVM side is fine.
+5)  If you are using the YSFGateway cd to that directory and copy the ini file:
+	cp YSFGateway.ini YSFGateway.qn
+	Edit this new YSFGateway.qn file for your system.
 
-7)  Stop the MMDVMHost with a Control-C and edit the MMDVM.qn file again. Change
-    the [D-Star] AckReply=0
-    You won't/don't want this reply from MMDVMhost. You want the acknowledgment
-    from QnetGateway, it's more informative.
-
-    We'll come back to MMDVMHost later, but for now let's work on the QnetGateway.
-
-8)  cd back to the home directory and clone the QnetGateway. Type:
-    git clone git://github.com/n7tae/QnetGateway.git
-
-9)  Get into the build directory. Type: cd QnetGateway
-
-10) You need a configuration file called qn.cfg for QnetGateway. Start the
-    configuration script: ./qnconfig
-    This script will allow you to change any configuration parameter from its
-    default value. At a minimum, you need to set your login callsign in the ircddb
-    section and define at least one module. If you want to use the legacy,
-    closed-source D-Plus reflectors and repeaters, be sure to enable it in the
-    D-Plus menu. Be sure to write out your configruation file after you have entered
-    all your changes, then you can exit the configuration script.
-
-11) Next, your ready to install your software. For that, start the administration
-    script. Type: ./qnadmin
+6)  Next, your ready to install your software. For that, first move back to the
+    QnetGateway directory andstart the administration script: ./qnadmin
     First you want to create you gwys.txt file. This file contains a list of
     reflectors and repeaters you might like to link. Got into the gwys.txt menu
     creation sub-menu with "gw" and select one of three different methods to
@@ -70,14 +54,8 @@ In your home directory...
     install your system. Install your configured system with "is". This will
     compile and install everything that you have configured.
 
-12) You also need to install your MMDVMHost with "im".
-
-    You should be up and running now! Congratulations! <Fireworks!>
-
-13) There are many additional things that can be done in the administration menu.
+7)  There are many additional things that can be done in the administration menu.
     Enter the log menu with "l" and from there you can view logs from each
     running process.
 
-14) DTMF is _not_ enabled by default if you want it, type "id" in the main menu.
-
-15) Build and start other MMDVMHost services...
+8)  DTMF is _not_ enabled by default if you want it, type "id" in the main menu.

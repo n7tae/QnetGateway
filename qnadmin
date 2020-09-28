@@ -25,6 +25,10 @@ InstallMMDVMHosts () {
 	if [ $nmmdvm -gt 0 ]; then
 		local n
 		if [ -z ${1} ]; then
+			if [ ! -d ../MMDVMHost ]; then
+				echo "This installation probabaly will not work because MMDVMHost can't be found!"
+				read -p "<Enter to continue"
+			fi
 			n=$(getconf _NPROCESSORS_ONLN)
 			echo "Detected $n processors for make"
 			for dir in ../MMDVMHost ../YSFClients ../DMRGateway; do
@@ -269,8 +273,7 @@ ModuleStatus () {
 			fi
 		fi
 		if [[ "$3" == 'mmdvmhost' ]]; then
-			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]} - ${MMDVMProcess[$1]} is ${MMDVMState[$1]}"
-			echo "Module ${2^^} - ${DMRProcess[$1]} is ${DMRState[$1]} - ${YSFProcess[$1]} is ${YSFState[$1]}"
+			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]} - ${MMDVMProcess[$1]} is ${MMDVMState[$1]} - ${DMRProcess[$1]} is ${DMRState[$1]} - ${YSFProcess[$1]} is ${YSFState[$1]}"
 		else
 			echo "Module ${2^^} - ${ModuleProcess[$1]} is ${ModuleState[$1]}"
 		fi
