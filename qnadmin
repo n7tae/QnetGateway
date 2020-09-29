@@ -825,7 +825,7 @@ while [[ "$ans" != q* ]]; do
 		InstallMMDVMHosts un
 	elif [[ "$GateState" == 'not installed' ]] && [[ "$ans" == gp* ]]; then
 		git pull
-		for dir in ../MMDVMHost ../DMRGateway ../YSFClients; do
+		for dir in $MMPATH $DMRPATH $YSFPATH $APRSPATH; do
 			if [ -d $dir ]; then
 				pushd $dir
 				git pull
@@ -851,7 +851,7 @@ while [[ "$ans" != q* ]]; do
 		sudo make uninstalldtmf
 	elif [[ "$ans" == c* ]]; then
 		make clean
-		for dir in ../MMDVMHost ../DMRGateway ../YSFClients; do
+		for dir in $MMPATH $DMRPATH $YSFPATH $APRSPATH; do
 			if [ -d $dir ]; then
 				pushd $dir
 				make clean
