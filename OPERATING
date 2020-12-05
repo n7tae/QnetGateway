@@ -78,7 +78,7 @@ YRCALL=XRFNNNML
 Where XRFNNN is a friendly reflector, M is the reflector's module and L is
 the LINK command.
 
-By default, if the target is unavailable or becomes unavialable, QnetLink
+By default, if the target is unavailable or becomes unavailable, QnetLink
 will attempt to re-link approximately every 50 seconds, at least until
 an unlinking command is sent. You will hear status of the connection attempt
 about every 50 seconds. If the target sends an unlink request, QnetLink will
