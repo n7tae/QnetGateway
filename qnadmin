@@ -167,6 +167,8 @@ ModuleStatus () {
 	if [ -z ${3} ]; then
 		ModuleState[$1]='EMPTY'
 		MMDVMState[$1]='EMPTY'
+		DMRState[$1]='EMPTY'
+		YSFState[$1]='EMPTY'
 	else
 		mcvar="n${3}"
 		ModuleProcess[$1]="qn$3"
@@ -364,7 +366,7 @@ LogMenu () {
 			if [[ ${YSFState[2]} == 'running' ]]; then
 				echo " yc : ${YSFProcess[2]} Log"
 			else
-				echo "      ${Process[2]} is not running"
+				echo "      ${YSFProcess[2]} is not running"
 			fi
 		fi
 		if [[ ${APRSState} != 'not installed' ]]; then
