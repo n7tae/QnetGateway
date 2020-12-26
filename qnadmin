@@ -147,8 +147,8 @@ BaseStatus () {
 	else
 		DTMFState='not installed'
 	fi
+	echo "DTMF is $DTMFState"
 	if [ -d $APRSPATH ]; then
-		echo "DTMF is $DTMFState"
 		if [[ $LoadAPRS == 'loaded' ]]; then
 			if [[ $SubAPRS == 'running' ]]; then
 				APRSState='running'
@@ -369,11 +369,13 @@ LogMenu () {
 				echo "      ${YSFProcess[2]} is not running"
 			fi
 		fi
-		if [[ ${APRSState} != 'not installed' ]]; then
-			if [[ ${APRSState} == 'running' ]]; then
-				echo " p  : APRSGateway Log"
-			else
-				echo "      APRSGateway is not running"
+		if [ -d $APRSPATH ]; then
+			if [[ ${APRSState} != 'not installed' ]]; then
+				if [[ ${APRSState} == 'running' ]]; then
+					echo " p  : APRSGateway Log"
+				else
+					echo "      APRSGateway is not running"
+				fi
 			fi
 		fi
 		echo
