@@ -548,10 +548,10 @@ WriteCFGFile () {
 	# ircddb_ section
 	echo "ircddb_login='$ircddb_login'"                                             >> $outFile
 	[ -z "${ircddb0_host+x}"     ] || echo "ircddb0_host='${ircddb0_host}'"         >> $outFile
-	[ -z "${ircddb0_port+x}"     ] || echo "ircddb0_host=${ircddb0_port}"           >> $outFile
+	[ -z "${ircddb0_port+x}"     ] || echo "ircddb0_port=${ircddb0_port}"           >> $outFile
 	[ -z "${ircddb0_password+x}" ] || echo "ircddb0_password='${ircddb0_password}'" >> $outFile
 	[ -z "${ircddb1_host+x}"     ] || echo "ircddb1_host='${ircddb1_host}'"         >> $outFile
-	[ -z "${ircddb1_port+x}"     ] || echo "ircddb1_host=${ircddb1_port}"           >> $outFile
+	[ -z "${ircddb1_port+x}"     ] || echo "ircddb1_port=${ircddb1_port}"           >> $outFile
 	[ -z "${ircddb1_password+x}" ] || echo "ircddb1_password='${ircddb1_password}'" >> $outFile
 
 	# module_?_ section
