@@ -702,7 +702,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#200603"
+	echo "           QnConfig Main Menu V#210201"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
