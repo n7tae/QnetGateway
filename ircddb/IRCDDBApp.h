@@ -12,7 +12,7 @@
 class IRCDDBApp
 {
 public:
-	IRCDDBApp(const std::string &update_channel, CCacheManager *cache);
+	IRCDDBApp(const std::string &update_channel, CCacheManager *cache, bool log_irc);
 	~IRCDDBApp();
 
 	void userJoin(const std::string &nick, const std::string &name, const std::string &host);
@@ -95,4 +95,5 @@ private:
 
 	bool initReady;
 	bool terminateThread;
+	bool logIRC;
 };

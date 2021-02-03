@@ -23,7 +23,7 @@ class IRCClient;
 class CIRCDDB
 {
 public:
-	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
+	CIRCDDB(const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, bool log_irc);
 	~CIRCDDB();
 
 	// returns the socket family type

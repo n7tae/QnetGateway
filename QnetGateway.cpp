@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010 by Scott Lawson KI4LKF
- *   Copyright (C) 2017-2020 by Thomas Early N7TAE
+ *   Copyright (C) 2017-2021 by Thomas Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-810");
+const std::string GW_VERSION("QnetGateway-10203");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -2672,7 +2672,7 @@ bool CQnetGateway::Init(char *cfgfile)
 	{
 		if (ircddb[j].ip.empty())
 			continue;
-		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str());
+		ii[j] = new CIRCDDB(ircddb[j].ip, ircddb[j].port, owner, IRCDDB_PASSWORD[j], GW_VERSION.c_str(), LOG_IRC);
 		bool ok = ii[j]->open();
 		if (!ok)
 		{

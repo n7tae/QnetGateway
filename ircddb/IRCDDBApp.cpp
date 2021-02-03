@@ -7,7 +7,7 @@
 #include "IRCDDBApp.h"
 #include "IRCutils.h"
 
-IRCDDBApp::IRCDDBApp(const std::string &u_chan, CCacheManager *cache) : numberOfTables(2)
+IRCDDBApp::IRCDDBApp(const std::string &u_chan, CCacheManager *cache, bool log_irc) : numberOfTables(2)
 {
 	updateChannel = u_chan;
 	this->cache = cache;
@@ -18,7 +18,7 @@ IRCDDBApp::IRCDDBApp(const std::string &u_chan, CCacheManager *cache) : numberOf
 	state = 0;
 	timer = 0;
 	myNick = "none";
-
+	logIRC = log_irc;
 
 	terminateThread = false;
 	tablePattern  = std::regex("^[0-9]$");
@@ -196,6 +196,8 @@ void IRCDDBApp::userJoin(const std::string &nick, const std::string &name, const
 	gate.push_back('G');
 	cache->updateName(name, nick);
 	cache->updateGate(gate, addr);
+	if (logIRC)
+		printf("Update GATE: %s --> %s\n", gate.c_str(), addr.c_str());
 }
 
 void IRCDDBApp::userLeave(const std::string &nick)
@@ -498,6 +500,8 @@ void IRCDDBApp::doUpdate(std::string &msg)
 					ReplaceChar(gate, '_', ' ');
 					gate[7] = 'G';
 					cache->updateRptr(rptr, gate, "");
+					if (logIRC)
+						printf("Update RPTR %s --> %s\n", rptr.c_str(), gate.c_str());
 					if (rtime > maxTime)
 						maxTime = rtime;
 				}
@@ -511,7 +515,8 @@ void IRCDDBApp::doUpdate(std::string &msg)
 				ReplaceChar(rptr, '_', ' ');
 
 				cache->updateUser(user, rptr, "", "", tstr);
-
+				if (logIRC)
+					printf("Update USER: %s --> %s at %s\n", user.c_str(), rptr.c_str(), tstr.c_str());
 			}
 		}
 	}
