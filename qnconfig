@@ -264,10 +264,24 @@ IrcddbMenu () {
 		EndMenu
 
 		if   [[ "$key" == l*  ]]; then ircddb_login="${value^^}"
-		elif [[ "$key" == ha* ]]; then ircddb0_host="$value"
+		elif [[ "$key" == ha* ]]; then
+			if [[ "$value" =~ ^[a-zA-Z0-9]+\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+$ ]]; then
+				ircddb0_host="$value"
+			else
+				clear
+				echo "$value is not a valid hostname"
+				read -p "<Enter> to continue: " garbage
+			fi
 		elif [[ "$key" == oa* ]]; then ircddb0_port="$value"
 		elif [[ "$key" == aa* ]]; then ircddb0_password="$value"
-		elif [[ "$key" == hb* ]]; then ircddb1_host="$value"
+		elif [[ "$key" == hb* ]]; then
+			if [[ "$value" =~ ^[a-zA-Z0-9]+\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+$ ]]; then
+				ircddb1_host="$value"
+			else
+				clear
+				echo "$value is not a valid hostname"
+				read -p "<Enter> to continue: " garbage
+			fi
 		elif [[ "$key" == ob* ]]; then ircddb1_port="$value"
 		elif [[ "$key" == ab* ]]; then ircddb1_password="$value"
 		elif [[ "$key" == u*  ]]; then
@@ -702,7 +716,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#210201"
+	echo "           QnConfig Main Menu V#210207"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
