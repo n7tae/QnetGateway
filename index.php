@@ -50,9 +50,9 @@ function GetIP(string $type)
 			if (strpos($ip, '.')) break;
 		}
 	} else if ('ipv6' == $type)
-		$ip = trim(`curl --silent -6 icanhazip.com`);
+		$ip = trim(`dig @resolver1.ipv6-sandbox.opendns.com AAAA myip.opendns.com +short -6`);
 	else if ('ipv4' == $type)
-		$ip = trim(`curl --silent -4 icanhazip.com`);
+		$ip = trim(`dig @resolver4.opendns.com myip.opendns.com +short -4`);
 	else
 		$ip = '';
 	return $ip;
@@ -186,11 +186,16 @@ foreach($showlist as $section) {
 			echo '</code><br>', "\n";
 			break;
 		case 'IP':
+			$hasv6 = str_contains(GetCFGValue('ircddb0_host'), 'v6');
+			if (! $hasv6) $hasv6 = str_contains(GetCFGValue('ircddb1_host'), 'v6');
 			echo 'IP Addresses:<br>', "\n";
 			echo '<table cellpadding="1" border="1" style="font-family: monospace">', "\n";
-			echo '<tr><td style="text-align:center">Internal</td><td style="text-align:center">IPV4</td><td style="text-align:center">IPV6</td></tr>', "\n";
-			echo '<tr><td>', GetIP('internal'), '</td><td>', GetIP('ipv4'), '</td><td>', GetIP('ipv6'), '</td></tr>', "\n";
-			echo '</table><br>', "\n";
+			echo '<tr><td style="text-align:center">Internal</td><td style="text-align:center">IPV4</td>';
+			if ($hasv6) echo '<td style="text-align:center">IPV6</td></tr>';
+			echo "\n";
+			echo '<tr><td>', GetIP('internal'), '</td><td>', GetIP('ipv4'), '</td>';
+			if ($hasv6) echo '<td>', GetIP('ipv6'), '</td></tr>';
+			echo "\n", '</table><br>', "\n";
 			break;
 		case 'MO':
 			echo 'Modules:<br>', "\n";
@@ -272,6 +277,6 @@ foreach($showlist as $section) {
 }
 ?>
 <br>
-<p align="right">QnetGateway Dashboard Version 613 Copyright &copy; by Thomas A. Early, N7TAE.</p>
+<p align="right">QnetGateway Dashboard Version 10208 Copyright &copy; by Thomas A. Early, N7TAE.</p>
 </body>
 </html>
