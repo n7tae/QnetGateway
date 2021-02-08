@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2020 by Thomas A. Early N7TAE
+# Copyright (c) 2018-2021 by Thomas A. Early N7TAE
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ MMPATH=../MMDVMHost
 DMRPATH=../DMRGateway
 YSFPATH=../YSFClients/YSFGateway
 APRSPATH=../APRSGateway
-SYSDIR=/lib/systemd/system
+SYSDIR=/etc/systemd/system
 IRC=ircddb
 
 # use this if you want debugging help in the case of a crash
@@ -205,7 +205,7 @@ installdtmf : qndtmf
 
 installdash : index.php
 	/usr/bin/apt update
-	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3
+	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3 dnsutils
 	mkdir -p $(WWWDIR)
 	mkdir -p dashboardV2/jsonData
 	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)

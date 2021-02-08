@@ -48,9 +48,9 @@ function GetIP(string $type)
                if (strpos($ip, '.')) break;
           }
      } else if ('ipv6' == $type)
-          $ip = trim(`curl --silent -6 icanhazip.com`);
+          $ip = trim(`dig @resolver1.ipv6-sandbox.opendns.com AAAA myip.opendns.com +short -6`);
      else if ('ipv4' == $type)
-          $ip = trim(`curl --silent -4 icanhazip.com`);
+          $ip = trim(`dig @resolver4.opendns.com myip.opendns.com +short -4`);
      else
           $ip = '';
      return $ip;

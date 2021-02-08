@@ -186,8 +186,8 @@ foreach($showlist as $section) {
 			echo '</code><br>', "\n";
 			break;
 		case 'IP':
-			$hasv6 = str_contains(GetCFGValue('ircddb0_host'), 'v6');
-			if (! $hasv6) $hasv6 = str_contains(GetCFGValue('ircddb1_host'), 'v6');
+			$hasv6 = stristr(GetCFGValue('ircddb0_host'), 'v6');
+			if (! $hasv6) $hasv6 = stristr(GetCFGValue('ircddb1_host'), 'v6');
 			echo 'IP Addresses:<br>', "\n";
 			echo '<table cellpadding="1" border="1" style="font-family: monospace">', "\n";
 			echo '<tr><td style="text-align:center">Internal</td><td style="text-align:center">IPV4</td>';
