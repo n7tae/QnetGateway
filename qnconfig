@@ -272,9 +272,7 @@ IrcddbMenu () {
 					echo "You cannot set an empty value for ha unless hb has its default value"
 					read -p "<Enter> to continue: " garbage
 				fi
-			elif [[ "$value" =~ ^[a-zA-Z0-9]+\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+$ ]]; then
-				ircddb0_host="$value"
-			elif [[ "$value" =~ ^[a-zA-Z0-9]+\.[a-zA-Z0-9]+$ ]]; then
+			elif [[ "$value" =~ ^([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+$ ]]; then
 				ircddb0_host="$value"
 			else
 				clear
@@ -284,9 +282,7 @@ IrcddbMenu () {
 		elif [[ "$key" == oa* ]]; then ircddb0_port="$value"
 		elif [[ "$key" == aa* ]]; then ircddb0_password="$value"
 		elif [[ "$key" == hb* ]]; then
-			if [[ "$value" =~ ^[a-zA-Z0-9]+\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+$ ]]; then
-				ircddb1_host="$value"
-			elif [[ "$value" =~ ^[a-zA-Z0-9]+\.[a-zA-Z0-9]+$ ]]; then
+			if [[ "$value" =~ ^([a-zA-Z0-9]+\.)+[a-zA-Z0-9]+$ ]]; then
 				ircddb1_host="$value"
 			else
 				clear
@@ -727,7 +723,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#210218"
+	echo "           QnConfig Main Menu V#210219"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi
