@@ -77,10 +77,10 @@ the general method is to type the key followed by the new value. If you want to 
 an overridden value, type a "u" followed by the key you want to unset. Boolean values
 (true or false) can be toggled by just entering the key.
 
-By default, QnetGateway will only connect to the IPv4 QuadNet server at rr.openquad.net.
+By default, QnetGateway will only connect to the IPv4 QuadNet server at ircv4.openquad.net.
 QnetGateway is capabile of dual-stack operation and can also connect to the IPv6 server
-at rrv6.openquad.net. If you want to operate in dual stack mode, enter the IRC sub-menu
-and set ha to "rrv6.openquad.net" and hb to "rr.openquad.net".
+at ircv6.openquad.net. If you want to operate in dual stack mode, enter the IRC sub-menu
+and set ha to "ircv6.openquad.net" and hb to "ircv4.openquad.net".
 
 Once your operating in dual-stack mode, any routing will prefer an IPv6 address, if
 available. It's that easy.

@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-10203");
+const std::string GW_VERSION("QnetGateway-10221");
 
 int CQnetGateway::FindIndex(const int i) const
 {

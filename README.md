@@ -4,11 +4,12 @@ QnetGateway
 The QnetGateway is an D-Star IRCDDB gateway application that supports MMDVMHost (and all of its supported repeater modems) as well as the DVAP Dongle, the DVRPTR_V1. It is *incredibly easy* to build and install the system.
 
 QnetGateway now includes a dashboard with a last heard section. The lastheard section uses SQLite3, a light-weight database, so you will need a package to compile the gateway:
-```
+
+```bahs
 sudo apt install libsqlite3-dev
 ```
 
-QnetGateway is dual-stack capable. This means it can simultaneously connect to rr.openquad.net, which is IPv4 based (using 32-bit internet addresses) and to rrv6.openquad.net which is IPv6 based (using 128-bit internet address). If your hot-spot/reapeater has IPv6 access you can enable dual-stack operation (it's IPv4-only by default) and then take advantage of direct world-routable address. The potential benefit of IPv6 to routing is significant.
+QnetGateway is dual-stack capable. This means it can simultaneously connect to ircv4.openquad.net, which is IPv4 based (using 32-bit internet addresses) and to ircv6.openquad.net which is IPv6 based (using 128-bit internet address). If your hot-spot/reapeater has IPv6 access you can enable dual-stack operation (it's IPv4-only by default) and then take advantage of direct world-routable address. The potential benefit of IPv6 to routing is significant.
 
 The QnetGateway program includes support for Icom's new Terminal Mode and Access Point mode. For more information, Terminal Mode turns off the RF portion of you radio and just uses the AMBE vocoder to convert between audio and AMBE data and then sends and receives that data through a USB serial cable. Access Point mode turns your Icom radio into a high power, simplex hot-spot.
 
@@ -18,7 +19,7 @@ For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To bui
 
 To get started with an MMDVM-modem, DVAP, DVRPTR or Icom Terminal and/or Access Point system, clone this software to your Linux device:
 
-```
+```bash
 git clone git://github.com/n7tae/QnetGateway.git
 ```
 
@@ -28,7 +29,7 @@ QnetGateway includes a "remote control" program, called `qnremote`. After you bu
 
 For other details of interesting things QnetGatway can do, see the OPERATING file. For example, with QnetGateway, you can execute up to 36 different Linux scripts from you radio. Two scripts are include:
 
-```
+```text
 YourCall = "      HX"   will halt your system.
 YourCall = "      RX"   will reboot your system.
 YourCall - "      GX"   will restart QnetGateway
