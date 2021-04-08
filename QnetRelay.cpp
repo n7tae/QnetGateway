@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2018,2020 by Thomas A. Early N7TAE
+ *   Copyright (C) 2018-2021 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "QnetRelay-526"
+#define RELAY_VERSION "210408"
 
 CQnetRelay::CQnetRelay(int mod) :
 	assigned_module(mod),
@@ -293,7 +293,7 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 	if (len < 65)
 		::memcpy(dsrp.title, raw, len);	// transfer raw data to SDSRP struct
 
-	if (49==len || 21==len)
+	if (49==len || 21==len || len==24)
 	{
 		// grab the stream id if this is a header
 		if (49 == len)
@@ -338,10 +338,10 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 			if (log_qso)
 				printf("Sent DSVT streamid=%04x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 		}
-		else if (21 == len)  	// ambe
+		else  	// ambe
 		{
 			dsvt.ctrl = dsrp.header.seq;
-			memcpy(dsvt.vasd.voice, dsrp.voice.ambe, 12);
+			memcpy(dsvt.vasd.voice, dsrp.voice.ambe, (21==len)?12:15);
 
 			if (ToGate.Write(dsvt.title, 27))
 			{
@@ -442,7 +442,7 @@ int main(int argc, const char **argv)
 
 	if ('-' == argv[1][0])
 	{
-		printf("\nQnetRelay Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", RELAY_VERSION);
+		printf("\nQnetRelay Version #%s Copyright (C) 2018-2021 by Thomas A. Early N7TAE\n", RELAY_VERSION);
 		printf("QnetRelay comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
 		return 0;

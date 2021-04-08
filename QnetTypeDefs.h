@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright 2017-2020 by Thomas Early, N7TAE
+ *   Copyright 2017-2021 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -102,8 +102,8 @@ using SDSVT = struct dsvt_tag
 		} vasd;	// voice and slow data total 27
 		struct
 		{
-			unsigned char voice[9];	// 15
-			unsigned char end[6];	// 24
+			unsigned char voice[9];	  // 15
+			unsigned char textend[6]; // 24
 		} vend;	// voice and end seq total 32 (for DPlus)
 	};
 };
@@ -142,6 +142,14 @@ using SDSRP = struct dsrp_tag  	//									offset	  size
 			unsigned char err;		// # of errors?					 8
 			unsigned char ambe[12];	// voice + slow data			 9		21
 		} voice;
+		struct
+		{
+			unsigned short id;		// random id number				 5
+			unsigned char seq;		// sequence from 0 to 0x14		 7
+			// if end then sequence |= 0x40
+			unsigned char err;		// # of errors?					 8
+			unsigned char ambe[15];	// voice + slow data			 9		24
+		} endvoice;
 	};
 };
 #pragma pack(pop)

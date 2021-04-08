@@ -1522,7 +1522,7 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 
 					memcpy(rdsvt.dsvt.title, dsvt.title, 27);
 					if (32U == rdsvt.head[0])
-						memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
+						memcpy(rdsvt.dsvt.vend.textend, endbytes, 6);
 
 					REFWrite(rdsvt.head, rdsvt.head[0], inbound->addr);
 				}
@@ -1571,7 +1571,7 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 
 						memcpy(rdsvt.dsvt.title, dsvt.title, 27);
 						if (32U == rdsvt.head[0])
-							memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
+							memcpy(rdsvt.dsvt.vend.textend, endbytes, 6);
 						REFWrite(rdsvt.head, rdsvt.head[0], to_remote_g2[i].addr);
 					}
 					else if (to_remote_g2[i].addr.GetPort() == rmt_dcs_port)
@@ -1749,7 +1749,7 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 					rdsvt.dsvt.ctrl = dcs_buf[45];
 					memcpy(rdsvt.dsvt.vasd.voice, dcs_buf+46, 12);
 					if (dcs_buf[45] & 0x40U)
-						memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
+						memcpy(rdsvt.dsvt.vend.textend, endbytes, 6);
 
 					/* send the data to the local gateway/repeater */
 					ToGate.Write(rdsvt.dsvt.title, 27);
@@ -3223,7 +3223,7 @@ void CQnetLink::Process()
 
 					memcpy(rdsvt.dsvt.title, dsvt.title, 27);
 					if (dsvt.ctrl & 0x40U)
-						memcpy(rdsvt.dsvt.vend.end, endbytes, 6);
+						memcpy(rdsvt.dsvt.vend.textend, endbytes, 6);
 					if (inbound_list.size() > 0)
 					{
 
