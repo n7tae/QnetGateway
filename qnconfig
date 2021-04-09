@@ -603,6 +603,7 @@ WriteCFGFile () {
 				q=${p}_power;         [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_squelch;       [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_serial_number; [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+				q=${p}_device;        [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
 			elif [[ "${!p}" == "dvrptr" ]]; then
 				q=${p}_tx_frequency;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_rx_frequency;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile

@@ -173,7 +173,7 @@ bool CQnetDVAP::ReadConfig(const char *cfgFile)
 	OWNER.resize(CALL_SIZE, ' ');
 
 	cfg.GetValue(dvap_path+"_serial_number", type, MODULE_SERIAL_NUMBER, 0, 10);
-	cfg.GetValue(dvap_path+"_device", type, MODULE_DEVICE, 0, 16);
+	cfg.GetValue(dvap_path+"_device", type, MODULE_DEVICE, 0, 32);
 	if (0==MODULE_DEVICE.size() && 0==MODULE_SERIAL_NUMBER.size())
 	{
 		fprintf(stderr, "Either a device path or a serial number must be specifed for a DVAP\n");
