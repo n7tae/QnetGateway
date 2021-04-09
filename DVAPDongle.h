@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   Copyright 2017,2020 by Thomas Early, N7TAE
+ *   Copyright 2017,2020,2021 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ class CDVAPDongle
 public:
 	CDVAPDongle();
 	~CDVAPDongle();
-	bool Initialize(const char *serialno, const int frequency, const int offset, const int power, const int squelch);
+	bool Initialize(const char *devpath, const char *serialno, const int frequency, const int offset, const int power, const int squelch);
 	REPLY_TYPE GetReply(SDVAP_REGISTER &dr);
 	void Stop();
 	int KeepAlive();
@@ -112,7 +112,8 @@ private:
 	SDVAP_REGISTER dvapreg;
 
 	// functions
-	bool OpenSerial(char *device);
+	bool open_serial(const char *device);
+	bool open_device(const char *device);
 	int read_from_dvp(void* buf, unsigned int len);
 	int write_to_dvp(const void* buf, const unsigned int len);
 	bool syncit();

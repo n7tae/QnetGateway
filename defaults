@@ -144,11 +144,12 @@ itap_ap_mode=false         # Set to true if you are operating in Access Point Mo
 #
 # DVAP - Special parameters when: module.x='dvap'
 #
-module_x_frequency=0          # in MHz, you must specify an operational frequency for the DVAP
-module_x_offset=0             # it's a frequency tweak, in Hz
-dvap_power=10                 # TX power level: -12 to 10, 10 is maximum power
-dvap_squelch=-100             # RX Squelch: -128 to -45, -100 to -80 usually works best
-dvap_serial_number='APXXXXXX' # The serial number of your DVAP is visible through the bottom of the case
+module_x_frequency=0  # in MHz, you must specify an operational frequency for the DVAP
+module_x_offset=0     # it's a frequency tweak, in Hz
+dvap_power=10         # TX power level: -12 to 10, 10 is maximum power
+dvap_squelch=-100     # RX Squelch: -128 to -45, -100 to -80 usually works best
+dvap_device=''        # Config by device or by serial number.
+dvap_serial_number='' # The serial number of your DVAP is visible through the bottom of the case
 
 ##########################################################################################################################
 #

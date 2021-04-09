@@ -433,6 +433,8 @@ ModuleMenu () {
 			echo -n "of : Offset in Hz                                 = "; EvaluateVar {${mod},dvap}_offset
 			echo -n "po : Power (in dBm from -12 to 10)                = "; EvaluateVar {${mod},dvap}_power
 			echo -n "sq : Squelch (in dBm from -128 to -45)            = "; EvaluateVar {${mod},dvap}_squelch
+			echo    "     You MUST specify either a serial number or a device path!"
+			echo -n "dv : Device path (/dev/ttyUSBx)                   = "; EvaluateVar {${mod},dvap}_device
 			echo -n "sn : Serial # (visible through the case)          = "; EvaluateVar {${mod},dvap}_serial_number
 		elif [[ "${!mod}" == 'dvrptr' ]]; then
 			echo -n "tx : Transmit frequency, in MHz                   = "; EvaluateVar {${mod},dvrptr}_tx_frequency
@@ -485,7 +487,9 @@ ModuleMenu () {
 		elif [[ "$key" == ar* ]]; then SetBooleanValue ${mod}_auto_link "$value"
 		elif [[ "$key" == cs* ]]; then eval ${mod}_callsign="${value^^}"
 		elif [[ "$key" == du* ]]; then SetBooleanValue ${mod}_duplex "$value"
-		elif [[ "$key" == dv* ]]; then eval ${mod}_device="$value"
+		elif [[ "$key" == dv* ]]; then
+			eval ${mod}_device="$value"
+			unset ${mod}_serial_number
 		elif [[ "$key" == fr* ]]; then eval ${mod}_frequency="$value"
 		elif [[ "$key" == gp* ]]; then eval ${mod}_gateway_port="$value"
 		elif [[ "$key" == hf* ]]; then SetBooleanValue ${mod}_is_hf "$value"
@@ -505,7 +509,9 @@ ModuleMenu () {
 		elif [[ "$key" == ro* ]]; then eval ${mod}_rx_offset="$value"
 		elif [[ "$key" == rq* ]]; then eval ${mod}_rqst_count="$value"
 		elif [[ "$key" == rx* ]]; then eval ${mod}_rx_frequency="$value"
-		elif [[ "$key" == sn* ]]; then eval ${mod}_serial_number="${value^^}"
+		elif [[ "$key" == sn* ]]; then
+			eval ${mod}_serial_number="${value^^}"
+			unset {$mod}_device
 		elif [[ "$key" == sq* ]]; then eval ${mod}_squelch="$value"
 		elif [[ "$key" == td* ]]; then eval ${mod}_tx_delay="$value"
 		elif [[ "$key" == tl* ]]; then eval ${mod}_tx_level="$value"
@@ -723,7 +729,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#210219"
+	echo "           QnConfig Main Menu V#210409"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi

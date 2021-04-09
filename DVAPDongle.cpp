@@ -1,5 +1,5 @@
 /*
- *   Copyright 2017-2018 by Thomas Early, N7TAE
+ *   Copyright 2017-2018,2021 by Thomas Early, N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -36,85 +36,83 @@ CDVAPDongle::~CDVAPDongle()
 {
 }
 
-bool CDVAPDongle::Initialize(const char *serialno, const int frequency, const int offset, int const power, const int squelch)
+bool CDVAPDongle::open_device(const char *device)
+{
+	if (0 == access(device, R_OK | W_OK))
+	{
+		if (open_serial(device))
+		{
+			if (0 == flock(serfd, LOCK_EX | LOCK_NB))
+			{
+				printf("Device %s is now locked for exclusive use\n", device);
+				return true;
+			}
+			else
+			{
+				close(serfd);
+				serfd = -1;
+				fprintf(stderr, "Device %s is alread locked/used\n", device);
+			}
+		}
+	}
+	return false;
+}
+
+bool CDVAPDongle::Initialize(const char *devpath, const char *serialno, const int frequency, const int offset, int const power, const int squelch)
 {
 	bool ok = false;
-	char device[128];
 
-	do
+	if (devpath)
 	{
+		// device path is specified in cfg file, try to open it
+		ok = open_device(devpath);
+		if (! ok)
+		{
+			fprintf(stderr, "Device %s could not be opened\n", devpath);
+		}
+	}
+	else
+	{
+		// serial number is specified in cfg file, try to find it and open it
+		char device[16];
 		for (int i = 0; i < 32; i++)
 		{
 			sprintf(device, "/dev/ttyUSB%d", i);
 
-			if (access(device, R_OK | W_OK) != 0)
-				continue;
-
-			ok = OpenSerial(device);
-			if (!ok)
-				continue;
-
-			if (flock(serfd, LOCK_EX | LOCK_NB) != 0)
+			if (open_device(device))
 			{
-				close(serfd);
-				serfd = -1;
-				ok = false;
-				printf("Device %s is already locked/used\n", device);
-				continue;
+				if (get_ser(device, serialno))
+				{
+					ok = true;
+				}
+				else
+				{
+					close(serfd);
+					serfd = -1;
+				}
 			}
-			printf("Device %s now locked for exclusive use\n", device);
-
-			ok = get_ser(device, serialno);
-			if (!ok)
-			{
-				close(serfd);
-				serfd = -1;
-				continue;
-			}
-			break;
+			if (ok)
+				break;
 		}
-		if (!ok)
-			break;
-
-		ok = get_name();
-		if (!ok)
-			break;
-
-		ok = get_fw();
-		if (!ok)
-			break;
-
-
-		ok = set_modu();
-		if (!ok)
-			break;
-
-		ok = set_mode();
-		if (!ok)
-			break;
-
-		ok = set_sql(squelch);
-		if (!ok)
-			break;
-
-		ok = set_pwr(power);
-		if (!ok)
-			break;
-
-		ok = set_off(offset);
-		if (!ok)
-			break;
-
-		ok = set_freq(frequency);
-		if (!ok)
-			break;
-
-		ok = start_dvap();
-		if (!ok)
-			break;
-
 	}
-	while (false);
+
+	ok = ok && get_name();
+
+	ok = ok && get_fw();
+
+	ok = ok && set_modu();
+
+	ok = ok && set_mode();
+
+	ok = ok && set_sql(squelch);
+
+	ok = ok && set_pwr(power);
+
+	ok = ok && set_off(offset);
+
+	ok = ok && set_freq(frequency);
+
+	ok = ok && start_dvap();
 
 	if (!ok)
 	{
@@ -124,9 +122,8 @@ bool CDVAPDongle::Initialize(const char *serialno, const int frequency, const in
 			close(serfd);
 			serfd = -1;
 		}
-		return false;
 	}
-	return true;
+	return ok;
 }
 
 REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
@@ -786,7 +783,7 @@ int CDVAPDongle::read_from_dvp(void *buffer, unsigned int len)
 	return len;
 }
 
-bool CDVAPDongle::OpenSerial(char *device)
+bool CDVAPDongle::open_serial(const char *device)
 {
 	static termios t;
 

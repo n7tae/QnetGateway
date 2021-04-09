@@ -1,7 +1,7 @@
 /*
  *   Copyright (C) 2010,2011 by Scott Lawson KI4LKF
  *
- *   Copyright (C) 2015,2020 by Thomas A. Early N7TAE
+ *   Copyright (C) 2015,2020,2021 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -17,10 +17,6 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-
-/***
-   KI4LKF, N7TAE
-***/
 
 #include <stdio.h>
 #include <ctype.h>
@@ -176,7 +172,13 @@ bool CQnetDVAP::ReadConfig(const char *cfgFile)
 	RPTR.resize(CALL_SIZE, ' ');
 	OWNER.resize(CALL_SIZE, ' ');
 
-	cfg.GetValue(dvap_path+"_serial_number", type, MODULE_SERIAL_NUMBER, 8, 10);
+	cfg.GetValue(dvap_path+"_serial_number", type, MODULE_SERIAL_NUMBER, 0, 10);
+	cfg.GetValue(dvap_path+"_device", type, MODULE_DEVICE, 0, 16);
+	if (0==MODULE_DEVICE.size() && 0==MODULE_SERIAL_NUMBER.size())
+	{
+		fprintf(stderr, "Either a device path or a serial number must be specifed for a DVAP\n");
+		return true;
+	}
 	double f;
 	cfg.GetValue(dvap_path+"_frequency", type, f, 100.0, 1400.0);
 	MODULE_FREQUENCY = (int)(1.0e6*f);
@@ -905,7 +907,7 @@ bool CQnetDVAP::Init(const char *file, const int amod)
 	RPTR_and_MOD[7] = RPTR_MOD;
 
 	/* open dvp */
-	if (!dongle.Initialize(MODULE_SERIAL_NUMBER.c_str(), MODULE_FREQUENCY, MODULE_OFFSET, MODULE_POWER, MODULE_SQUELCH))
+	if (!dongle.Initialize(MODULE_DEVICE.c_str(), MODULE_SERIAL_NUMBER.c_str(), MODULE_FREQUENCY, MODULE_OFFSET, MODULE_POWER, MODULE_SQUELCH))
 		return true;
 
 	if (ToGate.Open(togate.c_str(), this))

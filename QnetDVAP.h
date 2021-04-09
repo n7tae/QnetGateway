@@ -55,7 +55,8 @@ private:
 	std::string RPTR;
 	std::string OWNER;
 	char RPTR_MOD;
-	std::string MODULE_SERIAL_NUMBER;	/* APxxxxxx */
+	std::string MODULE_SERIAL_NUMBER;	/* AP123456 */
+	std::string MODULE_DEVICE;			/* /dev/ttyUSBx */
 	int MODULE_FREQUENCY;				/* between 144000000 and 148000000 */
 	int MODULE_POWER;					/* between  -12 and 10 */
 	int MODULE_SQUELCH; 				/* between  -128 and -45 */
