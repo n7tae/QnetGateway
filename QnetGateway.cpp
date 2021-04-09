@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-10221");
+const std::string GW_VERSION("QnetGateway-10409");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -492,7 +492,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 					if (addr.empty())
 						break;
 					CSockAddress to;
-					if (addr.npos == rptr.find(':'))
+					if (addr.npos == addr.find(':'))
 						to.Initialize(AF_INET, (unsigned short)g2_external.port, addr.c_str());
 					else
 						to.Initialize(AF_INET6, (unsigned short)g2_ipv6_external.port, addr.c_str());
