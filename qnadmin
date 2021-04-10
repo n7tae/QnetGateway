@@ -108,16 +108,21 @@ InstallSystem () {
 	fi
 }
 
+GetState() {
+	local state=$( systemctl show -p ${1}State $2 )
+	echo ${state#*=}
+}
+
 BaseStatus () {
 	local LoadGate SubGate LoadLink SubLink LoadDTMF SubDTMF LoadAPRS SubAPRS
-	LoadGate=$( systemctl show -p LoadState --value qngateway )
-	SubGate=$( systemctl show -p SubState --value qngateway )
-	LoadLink=$( systemctl show -p LoadState --value qnlink )
-	SubLink=$( systemctl show -p SubState --value qnlink )
-	LoadDTMF=$( systemctl show -p LoadState --value qndtmf )
-	SubDTMF=$( systemctl show -p SubState --value qndtmf )
-	LoadAPRS=$( systemctl show -p LoadState --value aprsgateway )
-	SubAPRS=$( systemctl show -p SubState --value aprsgateway )
+	LoadGate=$( GetState Load qngateway )
+	SubGate=$( GetState Sub qngateway )
+	LoadLink=$( GetState Load qnlink )
+	SubLink=$( GetState Sub qnlink )
+	LoadDTMF=$( GetState Load qndtmf )
+	SubDTMF=$( GetState Sub qndtmf )
+	LoadAPRS=$( GetState Load aprsgateway )
+	SubAPRS=$( GetState Sub aprsgateway )
 	if [[ $LoadGate == 'loaded' ]]; then
 		if [[ $SubGate == 'running' ]]; then
 			GateState='running'
@@ -197,8 +202,8 @@ ModuleStatus () {
 				YSFProcess[$1]="${YSFProcess[$1]}${2}"
 			fi
 		fi
-		LoadState=$( systemctl show -p LoadState --value ${ModuleProcess[$1]} )
-		SubState=$( systemctl show -p SubState --value ${ModuleProcess[$1]} )
+		LoadState=$( GetState Load ${ModuleProcess[$1]} )
+		SubState=$( GetState Sub ${ModuleProcess[$1]} )
 		if [[ "$LoadState" == "loaded" ]]; then
 			if [[ $SubState == "running" ]]; then
 				ModuleState[$1]='running'
@@ -209,8 +214,8 @@ ModuleStatus () {
 			ModuleState[$1]='not installed'
 		fi
 		if [[ "${MMDVMState[$1]}" != 'EMPTY' ]]; then
-			LoadState=$( systemctl show -p LoadState --value ${MMDVMProcess[$1]} )
-			SubState=$( systemctl show -p SubState --value ${MMDVMProcess[$1]} )
+			LoadState=$( GetState Load ${MMDVMProcess[$1]} )
+			SubState=$( GetState Sub ${MMDVMProcess[$1]} )
 			if [[ "$LoadState" == "loaded" ]]; then
 				if [[ $SubState == "running" ]]; then
 					MMDVMState[$1]='running'
@@ -220,8 +225,8 @@ ModuleStatus () {
 			else
 				MMDVMState[$1]='not installed'
 			fi
-			LoadState=$( systemctl show -p LoadState --value ${DMRProcess[$1]} )
-			SubState=$( systemctl show -p SubState --value ${DMRProcess[$1]} )
+			LoadState=$( GetState Load ${DMRProcess[$1]} )
+			SubState=$( GetState Sub ${DMRProcess[$1]} )
 			if [[ "$LoadState" == "loaded" ]]; then
 				if [[ $SubState == "running" ]]; then
 					DMRState[$1]='running'
@@ -231,8 +236,8 @@ ModuleStatus () {
 			else
 				DMRState[$1]='not installed'
 			fi
-			LoadState=$( systemctl show -p LoadState --value ${YSFProcess[$1]} )
-			SubState=$( systemctl show -p SubState --value ${YSFProcess[$1]} )
+			LoadState=$( GetState Load ${YSFProcess[$1]} )
+			SubState=$( GetState Sub ${YSFProcess[$1]} )
 			if [[ "$LoadState" == "loaded" ]]; then
 				if [[ $SubState == "running" ]]; then
 					YSFState[$1]='running'
