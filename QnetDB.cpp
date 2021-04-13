@@ -17,6 +17,7 @@
  */
 
 #include <string>
+#include <sstream>
 #include <thread>
 
 #include "QnetDB.h"
@@ -101,50 +102,13 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 {
 	if (NULL == db)
 		return false;
-	std::string sql("SELECT COUNT(*) FROM LHEARD WHERE callsign='");
-	sql.append(callsign);
-	sql.append("';");
-
-	int count = 0;
+	std::stringstream sql;
+	sql << "INSERT OR REPLACE INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('" << callsign << "','" << sfx << "','" << module << "','" << reflector << "',strftime('%s','now'));";
 
 	char *eMsg;
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), countcallback, &count, &eMsg))
+	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
 	{
-		fprintf(stderr, "CQnetDB::UpdateLH [%s] error: %s\n", sql.c_str(), eMsg);
-		sqlite3_free(eMsg);
-		return true;
-	}
-
-	if (count)
-	{
-		sql.assign("UPDATE LHEARD SET (sfx,module,reflector,lasttime) = ('");
-		sql.append(sfx);
-		sql.append("','");
-		sql.append(1, module);
-		sql.append("','");
-		sql.append(reflector);
-		sql.append("',");
-		sql.append("strftime('%s','now')) WHERE callsign='");
-		sql.append(callsign);
-		sql.append("';");
-	}
-	else
-	{
-		sql.assign("INSERT INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('");
-		sql.append(callsign);
-		sql.append("','");
-		sql.append(sfx);
-		sql.append("','");
-		sql.append(1, module);
-		sql.append("','");
-		sql.append(reflector);
-		sql.append("',");
-		sql.append("strftime('%s','now'));");
-	}
-
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg))
-	{
-		fprintf(stderr, "CQnetDB::UpdateLH [%s] error: %s\n", sql.c_str(), eMsg);
+		fprintf(stderr, "CQnetDB::UpdateLH [%s] error: %s\n", sql.str().c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -156,21 +120,13 @@ bool CQnetDB::UpdatePosition(const char *callsign, const char *maidenhead, doubl
 {
 	if (NULL == db)
 		return false;
-	std::string sql("UPDATE LHEARD SET (maidenhead,latitude,longitude,lasttime) = ('");
-	sql.append(maidenhead);
-	sql.append("',");
-	sql.append(std::to_string(latitude));
-	sql.append(",");
-	sql.append(std::to_string(longitude));
-	sql.append(",");
-	sql.append("strftime('%s','now')) WHERE callsign='");
-	sql.append(callsign);
-	sql.append("';");
+	std::stringstream sql;
+	sql << "UPDATE LHEARD SET (maidenhead,latitude,longitude,lasttime) = ('" << maidenhead << "'," << latitude << "," << longitude << ",strftime('%s','now')) WHERE callsign='" << callsign << "';";
 
 	char *eMsg;
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg))
+	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
 	{
-		fprintf(stderr, "CQnetDB::UpdatePosition [%s] error: %s\n", sql.c_str(), eMsg);
+		fprintf(stderr, "CQnetDB::UpdatePosition [%s] error: %s\n", sql.str().c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -182,17 +138,13 @@ bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
 {
 	if (NULL == db)
 		return false;
-	std::string sql("UPDATE LHEARD SET (message,lasttime) = ('");
-	sql.append(message);
-	sql.append("',");
-	sql.append("strftime('%s','now')) WHERE callsign='");
-	sql.append(callsign);
-	sql.append("';");
+	std::stringstream sql;
+	sql << "UPDATE LHEARD SET message = '" << message << "' lasttime = strftime('%s','now')) WHERE callsign='" << callsign << "';";
 
 	char *eMsg;
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg))
+	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
 	{
-		fprintf(stderr, "CQnetDB::UpdateMessage [%s] error: %s\n", sql.c_str(), eMsg);
+		fprintf(stderr, "CQnetDB::UpdateMessage [%s] error: %s\n", sql.str().c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -204,22 +156,13 @@ bool CQnetDB::UpdateLS(const char *address, const char from_mod, const char *to_
 {
 	if (NULL == db)
 		return false;
-	std::string sql = "INSERT OR REPLACE INTO LINKSTATUS (ip_address,from_mod,to_callsign,to_mod,linked_time) VALUES ('";
-	sql.append(address);
-	sql.append("','");
-	sql.append(1, from_mod);
-	sql.append("','");
-	sql.append(to_callsign);
-	sql.append("','");
-	sql.append(1, to_mod);
-	sql.append("',");
-	sql.append(std::to_string(linked_time).c_str());
-	sql.append(");");
+	std::stringstream sql;
+	sql << "INSERT OR REPLACE INTO LINKSTATUS (ip_address,from_mod,to_callsign,to_mod,linked_time) VALUES ('" << address << "','" << from_mod << "','" << to_callsign << "','" << to_mod << "'," << linked_time << ");";
 
 	char *eMsg;
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg))
+	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
 	{
-		fprintf(stderr, "CQnetDB::UpdateLS [%s] error: %s\n", sql.c_str(), eMsg);
+		fprintf(stderr, "CQnetDB::UpdateLS [%s] error: %s\n", sql.str().c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -233,18 +176,13 @@ bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short por
 		return true;
 	std::string n(name);
 	n.resize(6, ' ');
-	std::string sql = "INSERT OR REPLACE INTO GATEWAYS (name,address,port) VALUES ('";
-	sql.append(n);
-	sql.append("','");
-	sql.append(address);
-	sql.append("',");
-	sql.append(std::to_string(port));
-	sql.append(");");
+	std::stringstream sql;
+	sql << "INSERT OR REPLACE INTO GATEWAYS (name,address,port) VALUES ('" << n << "','" << address << "'," << port << ");";
 
 	char *eMsg;
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg))
+	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
 	{
-		fprintf(stderr, "CQnetDB::UpdateGW [%s] error: %s\n", sql.c_str(), eMsg);
+		fprintf(stderr, "CQnetDB::UpdateGW [%s] error: %s\n", sql.str().c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
