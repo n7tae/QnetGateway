@@ -139,7 +139,7 @@ bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
 	if (NULL == db)
 		return false;
 	std::stringstream sql;
-	sql << "UPDATE LHEARD SET message = '" << message << "' lasttime = strftime('%s','now')) WHERE callsign='" << callsign << "';";
+	sql << "UPDATE LHEARD SET message = '" << message << "',lasttime = strftime('%s','now')) WHERE callsign='" << callsign << "';";
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
