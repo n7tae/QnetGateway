@@ -103,9 +103,29 @@ bool CQnetDB::UpdateLH(const char *callsign, const char *sfx, const char module,
 	if (NULL == db)
 		return false;
 	std::stringstream sql;
-	sql << "INSERT OR REPLACE INTO LHEARD (callsign,sfx,module,reflector,lasttime) VALUES ('" << callsign << "','" << sfx << "','" << module << "','" << reflector << "',strftime('%s','now'));";
+	sql << "SELECT COUNT(*) FROM LHEARD WHERE callsign='" << callsign << "';";
+
+	int count = 0;
 
 	char *eMsg;
+	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), countcallback, &count, &eMsg))
+	{
+		fprintf(stderr, "CQnetDB::UpdateLH [%s] error: %s\n", sql.str().c_str(), eMsg);
+		sqlite3_free(eMsg);
+		return true;
+	}
+
+	sql.clear();
+
+	if (count)
+	{
+		sql << "UPDATE LHEARD SET sfx = '" << sfx << "', module = '" << module << "', reflector = '" << reflector << "', lasttime = strftime('%s','now') WHERE callsign = '" << callsign << "';";
+	}
+	else
+	{
+		sql << "INSERT INTO LHEARD (callsign, sfx, module, reflector, lasttime) VALUES ('" << callsign << "', '" << sfx << "', '" << module << "', '" << reflector << "', strftime('%s','now'));";
+	}
+
 	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
 	{
 		fprintf(stderr, "CQnetDB::UpdateLH [%s] error: %s\n", sql.str().c_str(), eMsg);
@@ -121,7 +141,7 @@ bool CQnetDB::UpdatePosition(const char *callsign, const char *maidenhead, doubl
 	if (NULL == db)
 		return false;
 	std::stringstream sql;
-	sql << "UPDATE LHEARD SET (maidenhead,latitude,longitude,lasttime) = ('" << maidenhead << "'," << latitude << "," << longitude << ",strftime('%s','now')) WHERE callsign='" << callsign << "';";
+	sql << "UPDATE LHEARD SET maidenhead = '" << maidenhead << "', latitude = " << latitude << ", longitude = " << longitude << ",lasttime = strftime('%s','now')) WHERE callsign='" << callsign << "';";
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
@@ -139,7 +159,7 @@ bool CQnetDB::UpdateMessage(const char *callsign, const char *message)
 	if (NULL == db)
 		return false;
 	std::stringstream sql;
-	sql << "UPDATE LHEARD SET message = '" << message << "',lasttime = strftime('%s','now') WHERE callsign='" << callsign << "';";
+	sql << "UPDATE LHEARD SET message = '" << message << "', lasttime = strftime('%s','now') WHERE callsign='" << callsign << "';";
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
@@ -157,7 +177,7 @@ bool CQnetDB::UpdateLS(const char *address, const char from_mod, const char *to_
 	if (NULL == db)
 		return false;
 	std::stringstream sql;
-	sql << "INSERT OR REPLACE INTO LINKSTATUS (ip_address,from_mod,to_callsign,to_mod,linked_time) VALUES ('" << address << "','" << from_mod << "','" << to_callsign << "','" << to_mod << "'," << linked_time << ");";
+	sql << "INSERT OR REPLACE INTO LINKSTATUS (ip_address, from_mod, to_callsign, to_mod, linked_time) VALUES ('" << address << "', '" << from_mod << "', '" << to_callsign << "', '" << to_mod << "', " << linked_time << ");";
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
@@ -177,7 +197,7 @@ bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short por
 	std::string n(name);
 	n.resize(6, ' ');
 	std::stringstream sql;
-	sql << "INSERT OR REPLACE INTO GATEWAYS (name,address,port) VALUES ('" << n << "','" << address << "'," << port << ");";
+	sql << "INSERT OR REPLACE INTO GATEWAYS (name, address, port) VALUES ('" << n << "', '" << address << "', " << port << ");";
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
@@ -222,14 +242,13 @@ bool CQnetDB::DeleteLS(const char *address)
 {
 	if (NULL == db)
 		return false;
-	std::string sql("DELETE FROM LINKSTATUS WHERE ip_address=='");
-	sql.append(address);
-	sql.append("';");
+	std::stringstream sql;
+	sql << "DELETE FROM LINKSTATUS WHERE ip_address=='" << address << "';";
 
 	char *eMsg;
-	if (SQLITE_OK != sqlite3_exec(db, sql.c_str(), NULL, 0, &eMsg))
+	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
 	{
-		fprintf(stderr, "CQnetDB::DeleteLS [%s] error: %s\n", sql.c_str(), eMsg);
+		fprintf(stderr, "CQnetDB::DeleteLS [%s] error: %s\n", sql.str().c_str(), eMsg);
 		sqlite3_free(eMsg);
 		return true;
 	}
@@ -241,15 +260,14 @@ bool CQnetDB::FindLS(const char mod, std::list<CLink> &linklist)
 {
 	if (NULL == db)
 		return false;
-	std::string sql("SELECT ip_address,to_callsign,to_mod,linked_time FROM LINKSTATUS WHERE from_mod=='");
-	sql.append(1, mod);
-	sql.append("';");
+	std::stringstream sql;
+	sql << "SELECT ip_address,to_callsign,to_mod,linked_time FROM LINKSTATUS WHERE from_mod=='" << mod << "';";
 
 	sqlite3_stmt *stmt;
-	int rval = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
+	int rval = sqlite3_prepare_v2(db, sql.str().c_str(), -1, &stmt, 0);
 	if (SQLITE_OK != rval)
 	{
-		fprintf(stderr, "CQnetDB::FindLS [%s] error\n", sql.c_str());
+		fprintf(stderr, "CQnetDB::FindLS [%s] error\n", sql.str().c_str());
 		return true;
 	}
 
@@ -276,12 +294,11 @@ bool CQnetDB::FindGW(const char *name, std::string &address, unsigned short &por
 		return false;
 	std::string n(name);
 	n.resize(6, ' ');
-	std::string sql("SELECT address,port FROM GATEWAYS WHERE name=='");
-	sql.append(n);
-	sql.append("';");
+	std::stringstream sql;
+	sql << "SELECT address, port FROM GATEWAYS WHERE name=='" << n << "';";
 
 	sqlite3_stmt *stmt;
-	int rval = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
+	int rval = sqlite3_prepare_v2(db, sql.str().c_str(), -1, &stmt, 0);
 	if (SQLITE_OK != rval)
 	{
 		fprintf(stderr, "CQnetDB::FindGW error: %d\n", rval);
@@ -309,12 +326,11 @@ bool CQnetDB::FindGW(const char *name)
 		return false;
 	std::string n(name);
 	n.resize(6, ' ');
-	std::string sql("SELECT address,port FROM GATEWAYS WHERE name=='");
-	sql.append(n);
-	sql.append("';");
+	std::stringstream sql;
+	sql << "SELECT address,port FROM GATEWAYS WHERE name=='" << n << "';";
 
 	sqlite3_stmt *stmt;
-	int rval = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0);
+	int rval = sqlite3_prepare_v2(db, sql.str().c_str(), -1, &stmt, 0);
 	if (SQLITE_OK != rval)
 	{
 		fprintf(stderr, "CQnetDB::FindGW error: %d\n", rval);
