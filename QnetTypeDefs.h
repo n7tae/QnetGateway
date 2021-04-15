@@ -115,8 +115,8 @@ using SDSRP = struct dsrp_tag  	//									offset	  size
 {
 	unsigned char title[4];	// "DSRP"								 0
 	unsigned char tag;		// Poll   : 0xA							 4
-	// Header : busy ? 0x22 : 0x20
-	// Voice  : busy ? 0x23 : 0x21
+							// Header : busy ? 0x22 : 0x20
+							// Voice  : busy ? 0x23 : 0x21
 	union
 	{
 		unsigned char poll_msg[59];	// space for text				 5		variable, max is 64, including trailing null
@@ -125,8 +125,8 @@ using SDSRP = struct dsrp_tag  	//									offset	  size
 			unsigned short id;		// random id number				 5
 			unsigned char seq;		// 0x0							 7
 			unsigned char flag[3];	// 0x80 Dstar Data				 8
-			// 0x40 Dstar Repeater
-			// 0x01 Dstar Relay Unavailable
+									// 0x40 Dstar Repeater
+									// 0x01 Dstar Relay Unavailable
 			unsigned char r2[8];	// Repeater 2					11
 			unsigned char r1[8];	// Repeater 1					19
 			unsigned char ur[8];	// Your Call					27

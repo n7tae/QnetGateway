@@ -2574,7 +2574,7 @@ bool CQnetGateway::Init(char *cfgfile)
 
 
 	/* Used to validate MYCALL input */
-	preg = std::regex("^(([1-9][A-Z])|([A-PR-Z][0-9])|([A-PR-Z][A-Z][0-9]))[0-9A-Z]*[A-Z]( [ A-Z0-9]*)?$", std::regex::extended);
+	preg = std::regex("^[A-PR-Z0-9]{1}[A-Z0-9]{0,1}[0-9]{1,2}[A-Z]{1,4} {0,4}[ A-Z]{1}$", std::regex::extended);
 
 	for (i=0; i<3; i++)
 	{
