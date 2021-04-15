@@ -141,7 +141,7 @@ bool CQnetDB::UpdatePosition(const char *callsign, const char *maidenhead, doubl
 	if (NULL == db)
 		return false;
 	std::stringstream sql;
-	sql << "UPDATE LHEARD SET maidenhead = '" << maidenhead << "', latitude = " << latitude << ", longitude = " << longitude << ",lasttime = strftime('%s','now') WHERE callsign='" << callsign << "';";
+	sql << "UPDATE LHEARD SET maidenhead = '" << maidenhead << "', latitude = " << latitude << ", longitude = " << longitude << ", lasttime = strftime('%s','now') WHERE callsign='" << callsign << "';";
 
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
