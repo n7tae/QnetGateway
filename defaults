@@ -109,11 +109,12 @@ module_x_is_hf=false       # set to true if this is an HF module
 #
 # MMDVMHost - Special parameters when: module_x='mmdvmhost'
 #
-mmdvmhost_tx_frequency=0        # in MHz, not required, set in MMDVM.qn in Hz
-mmdvmhost_rx_frequency=0        # in Mhz, not required, set in MMDVM.qn in Hz
-mmdvmhost_internal_ip='0.0.0.0' # where MMDVMHost will find the QnetRelay program
-mmdvmhost_gateway_port=20010    # which port will QnetRelay be sending on
-mmdvmhost_local_port=20011      # which port will MMDVMHost be sending on
+mmdvmhost_tx_frequency=0         # in MHz, not required, set in MMDVM.qn in Hz
+mmdvmhost_rx_frequency=0         # in Mhz, not required, set in MMDVM.qn in Hz
+mmdvmhost_internal_ip='0.0.0.0'  # where MMDVMHost will find the QnetRelay program
+mmdvmhost_gateway_port=20010     # which port will QnetRelay be sending on
+mmdvmhost_local_port=20011       # which port will MMDVMHost be sending on
+mmdvmhost_is_dstarrepeater=false # is this a dstarrepeater or MMDVMHost?
 
 ##########################################################################################################################
 #

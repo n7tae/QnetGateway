@@ -394,7 +394,7 @@ ModuleMenu () {
 		echo "2 : DVRPTR V1"
 		echo "3 : ICOM Terminal and Access Point Mode"
 		echo "4 : MMDVM Modem (like DVMega or ZUMspot) D-Star ONLY!"
-		echo "5 : MMDVMHost-based Sytem - Requires MMDVMHost"
+		echo "5 : MMDVMHost or DStarRepeater Sytem"
 		echo
 		echo "    Anything else will return without selecting"
 		echo
@@ -453,11 +453,12 @@ ModuleMenu () {
 			echo -n "dv : USB device path                              = "; EvaluateVar {${mod},itap}_device
 			echo -n "ap : Set to true if using Access Point Mode       = "; EvaluateVar {${mod},itap}_ap_mode
 		elif [[ "${!mod}" == 'mmdvmhost' ]]; then
-			echo -n "tx : Transmit frequency, in MHz                   = "; EvaluateVar {${mod},mmdvmhost}_tx_frequency
-			echo -n "rx : Receive  frequency, in MHz                   = "; EvaluateVar {${mod},mmdvmhost}_rx_frequency
+			echo -n "dr : System is DStarRepeater, and _NOT_ MMDVMHost = "; EvaluateVar {${mod},mmdvmhost}_is_dstarrepeater
 			echo -n "ip : Internal IP address                          = "; EvaluateVar {${mod},mmdvmhost}_internal_ip
 			echo -n "gp : Gateway port number                          = "; EvaluateVar {${mod},mmdvmhost}_gateway_port
 			echo -n "lp : Local port number                            = "; EvaluateVar {${mod},mmdvmhost}_local_port
+			echo -n "tx : Transmit frequency, in MHz                   = "; EvaluateVar {${mod},mmdvmhost}_tx_frequency
+			echo -n "rx : Receive  frequency, in MHz                   = "; EvaluateVar {${mod},mmdvmhost}_rx_frequency
 		elif [[ "${!mod}" == 'mmdvmmodem' ]]; then
 			echo -n "dv : Device path                                  = "; EvaluateVar {${mod},mmdvmmodem}_device
 			echo -n "tx : Transmit frequency, in MHz                   = "; EvaluateVar {${mod},mmdvmmodem}_tx_frequency
@@ -486,6 +487,7 @@ ModuleMenu () {
 		elif [[ "$key" == ag* ]]; then eval ${mod}_agl="$value"
 		elif [[ "$key" == ar* ]]; then SetBooleanValue ${mod}_auto_link "$value"
 		elif [[ "$key" == cs* ]]; then eval ${mod}_callsign="${value^^}"
+		elif [[ "$key" == dr* ]]; then SetBooleanValue ${mod}_is_dstarrepeater
 		elif [[ "$key" == du* ]]; then SetBooleanValue ${mod}_duplex "$value"
 		elif [[ "$key" == dv* ]]; then
 			eval ${mod}_device="$value"
@@ -531,6 +533,7 @@ ModuleMenu () {
 			elif [[ "$value" == ar* ]]; then unset ${mod}_auto_link
 			elif [[ "$value" == ag* ]]; then unset ${mod}_agl
 			elif [[ "$value" == cs* ]]; then unset ${mod}_callsign
+			elif [[ "$value" == dr* ]]; then unset ${mod}_is_dstarrepeater
 			elif [[ "$value" == du* ]]; then unset ${mod}_duplex
 			elif [[ "$value" == dv* ]]; then unset ${mod}_device
 			elif [[ "$value" == fr* ]]; then unset ${mod}_frequency
@@ -617,15 +620,16 @@ WriteCFGFile () {
 				q=${p}_tx_invert;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_rx_invert;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			elif [[ "${!p}" == "itap" ]]; then
-				q=${p}_frequency;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
-				q=${p}_device;        [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
-				q=${p}_ap_mode;       [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_frequency; [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_device;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_ap_mode;   [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			elif [[ "${!p}" == "mmdvmhost" ]]; then
-				q=${p}_tx_frequency;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
-				q=${p}_rx_frequency;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
-				q=${p}_internal_ip;   [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
-				q=${p}_gateway_port;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
-				q=${p}_local_port;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_is_dstarrepeater;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_tx_frequency;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_rx_frequency;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_internal_ip;       [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+				q=${p}_gateway_port;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_local_port;        [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			elif [[ "${!p}" == "mmdvmmodem" ]]; then
 				q=${p}_tx_frequency;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_rx_frequency;  [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile

@@ -264,8 +264,16 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 			}
 			//memcpy(dsrp.header.flag, dsvt.hdr.flag, 41);
 			memcpy(dsrp.header.flag, dsvt.hdr.flag,   3);
-			memcpy(dsrp.header.r1,   dsvt.hdr.rpt1,   8);
-			memcpy(dsrp.header.r2,   dsvt.hdr.rpt2,   8);
+			if (IS_DSTARREPEATER)
+			{
+				memcpy(dsrp.header.r1,   dsvt.hdr.rpt2,   8);
+				memcpy(dsrp.header.r2,   dsvt.hdr.rpt1,   8);
+			}
+			else
+			{
+				memcpy(dsrp.header.r1,   dsvt.hdr.rpt1,   8);
+				memcpy(dsrp.header.r2,   dsvt.hdr.rpt2,   8);
+			}
 			memcpy(dsrp.header.ur,   dsvt.hdr.urcall, 8);
 			memcpy(dsrp.header.my,   dsvt.hdr.mycall, 8);
 			memcpy(dsrp.header.nm,   dsvt.hdr.sfx,    4);
@@ -426,6 +434,7 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	cfg.GetValue(mmdvm_path+"_gateway_port", type, i, 10000, 65535);
 	MMDVM_OUT_PORT = (unsigned short)i;
 
+	cfg.GetValue(mmdvm_path+"_is_dstarrepeater", type, IS_DSTARREPEATER);
 	cfg.GetValue("log_qso", estr, log_qso);
 
 	return false;

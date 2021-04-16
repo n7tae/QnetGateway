@@ -56,7 +56,7 @@ private:
 	char RPTR_MOD;
 	std::string MMDVM_IP;
 	unsigned short MMDVM_IN_PORT, MMDVM_OUT_PORT;
-	bool log_qso;
+	bool log_qso, IS_DSTARREPEATER;
 
 	// parameters
 	int msock;
