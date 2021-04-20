@@ -428,7 +428,7 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 
 	cfg.GetValue("gateway_tomodem"+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 	cfg.GetValue(mmdvm_path+"_internal_ip", type, MMDVM_INTERNAL_IP, 7, IP_SIZE);
-	cfg.GetValue(mmdvm_path+"_target_ip", type, MMDVM_INTERNAL_IP, 7, IP_SIZE);
+	cfg.GetValue(mmdvm_path+"_target_ip", type, MMDVM_TARGET_IP, 7, IP_SIZE);
 
 	int i;
 	cfg.GetValue(mmdvm_path+"_local_port", type, i, 10000, 65535);
