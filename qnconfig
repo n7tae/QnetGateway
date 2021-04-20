@@ -454,7 +454,8 @@ ModuleMenu () {
 			echo -n "ap : Set to true if using Access Point Mode       = "; EvaluateVar {${mod},itap}_ap_mode
 		elif [[ "${!mod}" == 'mmdvmhost' ]]; then
 			echo -n "dr : System is DStarRepeater, and _NOT_ MMDVMHost = "; EvaluateVar {${mod},mmdvmhost}_is_dstarrepeater
-			echo -n "ip : Internal IP address                          = "; EvaluateVar {${mod},mmdvmhost}_internal_ip
+			echo -n "ip : bound IP address for communication to modem  = "; EvaluateVar {${mod},mmdvmhost}_internal_ip
+			echo -n "ti : IP of MMDVMHost or DStarRepeater             = "; EvaluateVar {${mod},mmdvmhost}_target_ip
 			echo -n "gp : Gateway port number                          = "; EvaluateVar {${mod},mmdvmhost}_gateway_port
 			echo -n "lp : Local port number                            = "; EvaluateVar {${mod},mmdvmhost}_local_port
 			echo -n "tx : Transmit frequency, in MHz                   = "; EvaluateVar {${mod},mmdvmhost}_tx_frequency
@@ -516,13 +517,14 @@ ModuleMenu () {
 			unset {$mod}_device
 		elif [[ "$key" == sq* ]]; then eval ${mod}_squelch="$value"
 		elif [[ "$key" == td* ]]; then eval ${mod}_tx_delay="$value"
+		elif [[ "$key" == ti* ]]; then eval ${mod}_target_ip="$value"
 		elif [[ "$key" == tl* ]]; then eval ${mod}_tx_level="$value"
 		elif [[ "$key" == to* ]]; then eval ${mod}_tx_offset="$value"
 		elif [[ "$key" == tx* ]]; then eval ${mod}_tx_frequency="$value"
 		elif [[ "$key" == xx* ]]; then
 			unset ${mod}_{link_at_start,callsign,{,rx_,tx_}frequency,offset,range,agl}
 			unset ${mod}_{inactivity,packet_wait,acknowledge,ack_delay,power,squelch,serial_number,rf_o{n,ff},{r,t}x_level}
-			unset ${mod}_{duplex,tx_delay,rqst_count,{tx,rx,ptt}_invert,device,internal_ip,{gateway,local}_port}
+			unset ${mod}_{duplex,tx_delay,rqst_count,{tx,rx,ptt}_invert,device,internal_ip,target_ip,{gateway,local}_port}
 			unset ${mod}_{tx_offset,rx_offset,auto_link,ap_mode}
 			unset ${mod}
 			return
@@ -558,6 +560,7 @@ ModuleMenu () {
 			elif [[ "$value" == sn* ]]; then unset ${mod}_serial_number
 			elif [[ "$value" == sq* ]]; then unset ${mod}_squelch
 			elif [[ "$value" == td* ]]; then unset ${mod}_tx_delay
+			elif [[ "$value" == ti* ]]; then unset ${mod}_target_ip
 			elif [[ "$value" == tl* ]]; then unset ${mod}_tx_level
 			elif [[ "$value" == to* ]]; then unset ${mod}_tx_offset
 			elif [[ "$value" == tx* ]]; then unset ${mod}_tx_frequency
@@ -628,6 +631,7 @@ WriteCFGFile () {
 				q=${p}_tx_frequency;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_rx_frequency;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_internal_ip;       [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
+				q=${p}_target_ip;         [ -z ${!q+x} ] || echo "${q}='${!q}'" >> $outFile
 				q=${p}_gateway_port;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_local_port;        [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 			elif [[ "${!p}" == "mmdvmmodem" ]]; then
@@ -734,7 +738,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#210409"
+	echo "           QnConfig Main Menu V#210420"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi

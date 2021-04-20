@@ -112,7 +112,7 @@ bool CQnetRelay::Run(const char *cfgfile)
 	if (Initialize(cfgfile))
 		return true;
 
-	msock = OpenSocket(MMDVM_IP, MMDVM_OUT_PORT);
+	msock = OpenSocket(MMDVM_INTERNAL_IP, MMDVM_OUT_PORT);
 	if (msock < 0)
 		return true;
 
@@ -247,7 +247,7 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", dsrp.voice.seq);
 			dsrp.voice.err = 0;	// NOT SURE WHERE TO GET THIS FROM THE INPUT buf
 			memcpy(dsrp.voice.ambe, dsvt.vasd.voice, 12);
-			int ret = SendTo(msock, dsrp.title, 21, MMDVM_IP, MMDVM_IN_PORT);
+			int ret = SendTo(msock, dsrp.title, 21, MMDVM_TARGET_IP, MMDVM_IN_PORT);
 			if (ret != 21)
 			{
 				printf("ERROR: ProcessGateway: Could not write AMBE mmdvmhost packet\n");
@@ -278,7 +278,7 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 			memcpy(dsrp.header.my,   dsvt.hdr.mycall, 8);
 			memcpy(dsrp.header.nm,   dsvt.hdr.sfx,    4);
 			memcpy(dsrp.header.pfcs, dsvt.hdr.pfcs,   2);
-			int ret = SendTo(msock, dsrp.title, 49, MMDVM_IP, MMDVM_IN_PORT);
+			int ret = SendTo(msock, dsrp.title, 49, MMDVM_TARGET_IP, MMDVM_IN_PORT);
 			if (ret != 49)
 			{
 				printf("ERROR: ProcessGateway: Could not write Header mmdvmhost packet\n");
@@ -427,7 +427,9 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	RPTR_MOD = 'A' + assigned_module;
 
 	cfg.GetValue("gateway_tomodem"+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
-	cfg.GetValue(mmdvm_path+"_internal_ip", type, MMDVM_IP, 7, IP_SIZE);
+	cfg.GetValue(mmdvm_path+"_internal_ip", type, MMDVM_INTERNAL_IP, 7, IP_SIZE);
+	cfg.GetValue(mmdvm_path+"_target_ip", type, MMDVM_INTERNAL_IP, 7, IP_SIZE);
+
 	int i;
 	cfg.GetValue(mmdvm_path+"_local_port", type, i, 10000, 65535);
 	MMDVM_IN_PORT = (unsigned short)i;

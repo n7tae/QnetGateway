@@ -54,7 +54,7 @@ private:
 
 	// config data
 	char RPTR_MOD;
-	std::string MMDVM_IP;
+	std::string MMDVM_INTERNAL_IP, MMDVM_TARGET_IP;
 	unsigned short MMDVM_IN_PORT, MMDVM_OUT_PORT;
 	bool log_qso, IS_DSTARREPEATER;
 
