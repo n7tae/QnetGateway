@@ -36,7 +36,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "210408"
+#define RELAY_VERSION "210420"
 
 CQnetRelay::CQnetRelay(int mod) :
 	assigned_module(mod),
