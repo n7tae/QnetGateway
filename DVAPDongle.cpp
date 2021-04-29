@@ -62,13 +62,13 @@ bool CDVAPDongle::Initialize(const char *devpath, const char *serialno, const in
 {
 	bool ok = false;
 
-	if (devpath)
+	if (strlen(devpath))
 	{
 		// device path is specified in cfg file, try to open it
 		ok = open_device(devpath);
 		if (! ok)
 		{
-			fprintf(stderr, "Device %s could not be opened\n", devpath);
+			fprintf(stderr, "Device '%s' could not be opened\n", devpath);
 		}
 	}
 	else
