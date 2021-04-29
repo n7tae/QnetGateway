@@ -611,7 +611,7 @@ int CQnetModem::SendToModem(const unsigned char *buf)
 		{
 			if (EAGAIN != errno)
 			{
-				printf("Error %d writing to dvap, message=%s\n", errno, strerror(errno));
+				printf("Error %d writing to modem, message=%s\n", errno, strerror(errno));
 				return -1;
 			}
 		}

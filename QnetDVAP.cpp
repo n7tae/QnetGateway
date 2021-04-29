@@ -49,7 +49,7 @@
 #include "DStarDecode.h"
 #include "QnetDVAP.h"
 
-#define DVAP_VERSION "QnetDVAP-526"
+#define DVAP_VERSION "QnetDVAP-220429"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15

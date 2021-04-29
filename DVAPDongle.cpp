@@ -78,7 +78,7 @@ bool CDVAPDongle::Initialize(const char *devpath, const char *serialno, const in
 		for (int i = 0; i < 32; i++)
 		{
 			sprintf(device, "/dev/ttyUSB%d", i);
-
+			printf("Trying device %s...\n", device);
 			if (open_device(device))
 			{
 				if (get_ser(device, serialno))
