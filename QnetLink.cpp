@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-606"
+#define LINK_VERSION "QnetLink-607"
 #ifndef BIN_DIR
 #define BIN_DIR "/usr/local/bin"
 #endif
@@ -665,14 +665,14 @@ bool CQnetLink::ReadConfig(const char *cfgFile)
 	owner.resize(CALL_SIZE, ' ');
 	std::string host;
 	cfg.GetValue("ircddb0_host", estr, host, 0, MAXHOSTNAMELEN);
-	if (0 == host.compare(0, 4, "rrv6"))
+	if (host.npos == host.find("v6."))
 	{
-		uses_ipv6 = true;
+		cfg.GetValue("ircddb1_host", estr, host, 0, MAXHOSTNAMELEN);
+		uses_ipv6 = (host.npos == host.find("v6.")) ? false : true;
 	}
 	else
 	{
-		cfg.GetValue("ircddb1_host", estr, host, 0, MAXHOSTNAMELEN);
-		uses_ipv6 = (0 == host.compare(0, 4, "rrv6")) ? true : false;
+		uses_ipv6 = true;
 	}
 	if (uses_ipv6)
 		printf("IPv6 linking is enabled\n");
