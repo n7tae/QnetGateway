@@ -32,7 +32,7 @@ already have all or most of these but it still doesn't hurt to be sure:
 
 sudo apt update
 sudo apt upgrade
-sudo apt install make g++ unzip git
+sudo apt install make g++ unzip git wget
 
 One package you probably don't have, but will need:
 sudo apt install libsqlite3-dev
