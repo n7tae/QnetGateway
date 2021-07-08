@@ -474,6 +474,7 @@ ModuleMenu () {
 				echo -n "td : Transmit delay (in msec) for tx/rx switch    = "; EvaluateVar {${mod},mmdvmmodem}_tx_delay
 				echo -n "tl : Transmit level (0-255)                       = "; EvaluateVar {${mod},mmdvmmodem}_tx_level
 				echo -n "rl : Receive  level (0-255)                       = "; EvaluateVar {${mod},mmdvmmodem}_rx_level
+				echo -n "lv : RF level (0-255)                             = "; EvaluateVar {${mod},mmdvmmodem}_rf_level
 			fi
 		fi
 		echo    "xx : Delete this module"
@@ -501,6 +502,7 @@ ModuleMenu () {
 		elif [[ "$key" == ip* ]]; then eval ${mod}_internal_ip="$value"
 		elif [[ "$key" == it* ]]; then SetBooleanValue ${mod}_tx_invert "$value"
 		elif [[ "$key" == lp* ]]; then eval ${mod}_local_port="$value"
+		elif [[ "$key" == lv* ]]; then eval ${mod}_rf_level="$value"
 		elif [[ "$key" == of* ]]; then eval ${mod}_offset="$value"
 		elif [[ "$key" == pi* ]]; then SetBooleanValue ${mod}_ptt_invert="$value"
 		elif [[ "$key" == po* ]]; then eval ${mod}_power="$value"
@@ -523,7 +525,7 @@ ModuleMenu () {
 		elif [[ "$key" == tx* ]]; then eval ${mod}_tx_frequency="$value"
 		elif [[ "$key" == xx* ]]; then
 			unset ${mod}_{link_at_start,callsign,{,rx_,tx_}frequency,offset,range,agl}
-			unset ${mod}_{inactivity,packet_wait,acknowledge,ack_delay,power,squelch,serial_number,rf_o{n,ff},{r,t}x_level}
+			unset ${mod}_{inactivity,packet_wait,acknowledge,ack_delay,power,squelch,serial_number,rf_o{n,ff},{rx,tx,rf}_level}
 			unset ${mod}_{duplex,tx_delay,rqst_count,{tx,rx,ptt}_invert,device,internal_ip,target_ip,{gateway,local}_port}
 			unset ${mod}_{tx_offset,rx_offset,auto_link,ap_mode}
 			unset ${mod}
@@ -546,6 +548,7 @@ ModuleMenu () {
 			elif [[ "$value" == it* ]]; then unset ${mod}_tx_invert
 			elif [[ "$value" == lp* ]]; then unset ${mod}_local_port
 			elif [[ "$value" == ls* ]]; then unset ${mod}_link_at_start
+			elif [[ "$value" == lv* ]]; then unset ${mod}_rf_level
 			elif [[ "$value" == of* ]]; then unset ${mod}_offset
 			elif [[ "$value" == pi* ]]; then unset ${mod}_ppt_invert
 			elif [[ "$value" == po* ]]; then unset ${mod}_power
@@ -642,6 +645,7 @@ WriteCFGFile () {
 				q=${p}_duplex;        [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_rx_level;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_tx_level;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
+				q=${p}_rf_level;      [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_tx_invert;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_rx_invert;     [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
 				q=${p}_ptt_invert;    [ -z ${!q+x} ] || echo "${q}=${!q}"   >> $outFile
@@ -738,7 +742,7 @@ while [[ "$ans" != q* ]]
 do
 	clear
 	echo
-	echo "           QnConfig Main Menu V#210420"
+	echo "           QnConfig Main Menu V#210708"
 	echo
 	echo -n "a : Module A                - "; if [ -z $module_a ]; then echo "<EMPTY>"; else echo "${module_a^^}"; fi
 	echo -n "b : Module B                - "; if [ -z $module_b ]; then echo "<EMPTY>"; else echo "${module_b^^}"; fi

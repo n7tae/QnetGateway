@@ -141,7 +141,7 @@ using SMODEM = struct mmodem_tag
 			unsigned char zero;	// should be zero;
 			uint32_t rx;	// receive frequency
 			uint32_t tx;	// transmitter frequency
-			unsigned char level;	// rf level for pocsag?
+			unsigned char level;	// rf level
 			uint32_t ps;	// pocsag frequency, default 433000000U
 		} frequency;
 		struct
@@ -225,7 +225,7 @@ private:
 	char RPTR_MOD;
 	std::string MODEM_DEVICE, RPTR;
 	double TX_FREQUENCY, RX_FREQUENCY, TX_OFFSET, RX_OFFSET, packet_wait;
-	int TX_DELAY, RX_LEVEL, TX_LEVEL, PACKET_WAIT;
+	int TX_DELAY, RX_LEVEL, TX_LEVEL, RF_LEVEL, PACKET_WAIT;
 	bool DUPLEX, RX_INVERT, TX_INVERT, PTT_INVERT, LOG_QSO, LOG_DEBUG;
 
 	// parameters

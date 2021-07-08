@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2019,2020 by Thomas A. Early N7TAE
+ *   Copyright (C) 2019-2021 by Thomas A. Early N7TAE
  *
  *   CQnetModem is inspired by {Modem,MMDVMHost}.cpp in
  *   Jonathan Naylor's brilliant MMDVMHost that is...
@@ -44,7 +44,7 @@
 #include "QnetModem.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-608"
+#define MODEM_VERSION "QnetModem-708"
 #define MAX_RESPONSES 30
 
 const unsigned char FRAME_START  = 0xE0U;
@@ -179,7 +179,7 @@ bool CQnetModem::SetFrequency()
 		frame.length = 12U;
 	else
 	{
-		frame.frequency.level = 255U;
+		frame.frequency.level = (unsigned char)RF_LEVEL;
 		frame.frequency.ps = __builtin_bswap32(htonl(pocsagFrequency));
 
 		frame.length = 17U;
@@ -892,6 +892,7 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	cfg.GetValue(modem_path+"_tx_delay", type, TX_DELAY, 0, 1000);
 	cfg.GetValue(modem_path+"_rx_level", type, RX_LEVEL, 0, 255);
 	cfg.GetValue(modem_path+"_tx_level", type, TX_LEVEL, 0, 255);
+	cfg.GetValue(modem_path+"_rf_level", type, RF_LEVEL, 0, 255);
 	cfg.GetValue(modem_path+"_packet_wait", type, PACKET_WAIT, 18, 30);
 	packet_wait = 1.0E-3 * double(PACKET_WAIT);
 
