@@ -635,6 +635,11 @@ MaintenanceMenu () {
 }
 
 GatewayMenu () {
+	which wget > /dev/null
+	if test $? -ne 0; then
+		echo 'wget not found, installing...'
+		sudo apt install wget
+	fi
 	ans=''
 	while [[ "$ans" != q* ]]; do
 		local refcount=$( grep -s "^REF" gwys.txt | wc -l )
@@ -784,7 +789,7 @@ MODULE_COUNT=$((ndvap + ndvrptr + nitap + nmmdvm + nmodem))
 while [[ "$ans" != q* ]]; do
 	clear
 	echo
-	echo "            Qnet Administration Menu"
+	echo "            Qnet Administration Menu V#211013"
 	Header
 	BaseStatus
 	ModuleStatus 0 a "$module_a"

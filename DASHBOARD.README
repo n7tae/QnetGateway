@@ -6,12 +6,18 @@ how many rows you want in the Last Heard section. You can configure these
 features with the ./qnconfig menu. Don't set the refresh time faster than about
 10 seconds. If you do, it will become difficult to use the Send URCall button.
 
+By default, the installed web server will use ip/port 0.0.0.0:80. If you want
+to use something else, copy qndash.service.80 to qndash.service and edit your
+new file *before* installing the dashboard.
+
 To install the dashboard system, run the following command:
 
 sudo make installdash
 
 Note that this will install a php web server and all necessary packages needed
-for the server. To uninstall, run the following:
+for the server.
+
+To uninstall, run the following:
 
 sudo make uninstalldash
 
@@ -27,7 +33,6 @@ will want to use a hardened server, like apache, and a different index.php file.
 
 Please note that if you are typing in a URCALL when the webpage is refreshing,
 the entry field will loose focus and you'll have to try again.
-
 
                     #### DASHBOARD V2 ####
 
