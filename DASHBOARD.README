@@ -7,8 +7,11 @@ features with the ./qnconfig menu. Don't set the refresh time faster than about
 10 seconds. If you do, it will become difficult to use the Send URCall button.
 
 By default, the installed web server will use ip/port 0.0.0.0:80. If you want
-to use something else, copy qndash.service.80 to qndash.service and edit your
-new file *before* installing the dashboard.
+to use something else, the copy the qndash service file:
+
+cp system/qndash.service.80 system/qndash.service
+
+and edit your new file *before* installing the dashboard.
 
 To install the dashboard system, run the following command:
 

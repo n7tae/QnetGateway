@@ -210,7 +210,7 @@ installdash : index.php
 	mkdir -p dashboardV2/jsonData
 	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
 	/bin/ln -f -s $(shell pwd)/dashboardV2 $(WWWDIR)
-	if [ ! -e qndash.service ]; then cp qndash.service.80 qndash.service; fi
+	if [ ! -e system/qndash.service ]; then cp system/qndash.service.80 system/qndash.service; fi
 	/bin/cp -f system/qndash.service $(SYSDIR)
 	systemctl enable qndash.service
 	systemctl daemon-reload

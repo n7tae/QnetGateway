@@ -16,5 +16,6 @@ qnremote
 qnvoice
 qnrelay
 qnmodem
+system/qndash.service
 My_Hosts.txt
 dashboardV2/jsonData/*.json
