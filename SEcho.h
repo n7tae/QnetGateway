@@ -17,6 +17,10 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <cstdio>
+#include <ctime>
+#include "QnetTypeDefs.h"
+
 using SECHO = struct echo_tag
 {
 	bool is_linked;
