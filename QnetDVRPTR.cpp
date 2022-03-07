@@ -40,7 +40,7 @@
 #include "DStarDecode.h"
 #include "QnetDVRPTR.h"
 
-#define DVRPTR_VERSION "QnetDVRPTR-526"
+#define DVRPTR_VERSION "QnetDVRPTR-20307"
 
 #define BAUD B115200
 #define IP_SIZE 15
@@ -1993,9 +1993,9 @@ int main(int argc, const char **argv)
 
 	if ('-' == argv[1][0])
 	{
-		printf("\nQnetDVRPTR Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVRPTR_VERSION);
+		printf("%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVRPTR_VERSION);
 		printf("QnetDVRPTR comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
-		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n");
 		return 0;
 	}
 
@@ -2010,7 +2010,7 @@ int main(int argc, const char **argv)
 	int mod;
 	switch (*qn)
 	{
-	case NULL:
+	case 0:
 		mod = -1;
 		break;
 	case 'a':

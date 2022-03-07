@@ -45,7 +45,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-825"
+#define ITAP_VERSION "QnetITAP-20307"
 
 CQnetITAP::CQnetITAP(int mod)
 	: assigned_module(mod)
@@ -744,9 +744,9 @@ int main(int argc, const char **argv)
 
 	if ('-' == argv[1][0])
 	{
-		printf("\nQnetITAP Version #%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", ITAP_VERSION);
+		printf("%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", ITAP_VERSION);
 		printf("QnetITAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
-		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n");
 		return 0;
 	}
 
@@ -761,7 +761,7 @@ int main(int argc, const char **argv)
 	int assigned_module;
 	switch (*qn)
 	{
-	case NULL:
+	case 0:
 		assigned_module = -1;
 		break;
 	case 'a':

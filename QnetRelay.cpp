@@ -36,7 +36,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "210420"
+#define RELAY_VERSION "QnetRelay-20307"
 
 CQnetRelay::CQnetRelay(int mod) :
 	assigned_module(mod),
@@ -453,9 +453,9 @@ int main(int argc, const char **argv)
 
 	if ('-' == argv[1][0])
 	{
-		printf("\nQnetRelay Version #%s Copyright (C) 2018-2021 by Thomas A. Early N7TAE\n", RELAY_VERSION);
+		printf("%s Copyright (C) 2018-2021 by Thomas A. Early N7TAE\n", RELAY_VERSION);
 		printf("QnetRelay comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
-		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n");
 		return 0;
 	}
 
@@ -469,7 +469,7 @@ int main(int argc, const char **argv)
 	int module;
 	switch (*qn)
 	{
-	case NULL:
+	case 0:
 		module = -1;
 		break;
 	case 'a':

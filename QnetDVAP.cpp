@@ -49,7 +49,7 @@
 #include "DStarDecode.h"
 #include "QnetDVAP.h"
 
-#define DVAP_VERSION "QnetDVAP-220429"
+#define DVAP_VERSION "QnetDVAP-20307"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -966,7 +966,7 @@ void CQnetDVAP::Run()
 int main(int argc, char *argv[])
 {
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("dvap_rptr VERSION %s\n", DVAP_VERSION);
+	printf("%s\n", DVAP_VERSION);
 
 	if (argc != 2)
 	{
@@ -976,9 +976,9 @@ int main(int argc, char *argv[])
 
 	if ('-' == argv[1][0])
 	{
-		printf("\nQnetDVAP Version #%s Copyright (C) 2018-2020 by Thomas A. Early N7TAE\n", DVAP_VERSION);
+		printf("%s Copyright (C) 2018-2020 by Thomas A. Early N7TAE\n", DVAP_VERSION);
 		printf("QnetDVAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
-		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\nS");
 		return EXIT_SUCCESS;
 	}
 
@@ -993,7 +993,7 @@ int main(int argc, char *argv[])
 	int mod;
 	switch (*qn)
 	{
-	case NULL:
+	case 0:
 		mod = -1;
 		break;
 	case 'a':

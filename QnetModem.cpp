@@ -44,7 +44,7 @@
 #include "QnetModem.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-708"
+#define MODEM_VERSION "QnetModem-20307"
 #define MAX_RESPONSES 30
 
 const unsigned char FRAME_START  = 0xE0U;
@@ -944,10 +944,10 @@ int main(int argc, const char **argv)
 
 	if ('-' == argv[1][0])
 	{
-		printf("\nQnetModem Version %s Copyright (C) 2019 by Thomas A. Early N7TAE\n", MODEM_VERSION);
+		printf("%s Copyright (C) 2019 by Thomas A. Early N7TAE\n", MODEM_VERSION);
 		printf("QnetModem comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\n");
-		printf("under certain conditions that are discussed in the LICENSE file.\n\n");
+		printf("under certain conditions that are discussed in the LICENSE file.\n");
 		return 0;
 	}
 
@@ -962,7 +962,7 @@ int main(int argc, const char **argv)
 	int assigned_module;
 	switch (*qn)
 	{
-	case NULL:
+	case 0:
 		assigned_module = -1;
 		break;
 	case 'a':
