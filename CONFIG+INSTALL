@@ -47,7 +47,7 @@ If you are building an MMDVM, DVAP, DVRPTR_V1, using an MMDVM modem but don't ne
 any mode besides D-Star or you are using an ICOM Access Point or Terminal Mode
 gateway, start by cloning this repository.
 
-git clone git://github.com/n7tae/QnetGateway.git
+git clone https://github.com/n7tae/QnetGateway.git
 
 This will create a QnetGateway directory with everything you need to build your
 Gateway system.
