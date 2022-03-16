@@ -20,7 +20,7 @@ For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To bui
 To get started with an MMDVM-modem, DVAP, DVRPTR or Icom Terminal and/or Access Point system, clone this software to your Linux device:
 
 ```bash
-git clone git://github.com/n7tae/QnetGateway.git
+git clone https://github.com/n7tae/QnetGateway.git
 ```
 
 Then look to the MMDVM.README or the CONFIG+INSTALL file for more information.
