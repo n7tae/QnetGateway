@@ -54,7 +54,7 @@
 #define CFG_DIR "/usr/local/etc"
 #endif
 
-const std::string GW_VERSION("QnetGateway-10414");
+const std::string GW_VERSION("QnetGateway-20320");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -1377,7 +1377,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 			if (recvlen == 56)
 			{
 				if (LOG_QSO)
-					printf("id=%04x start RPTR flag0=%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0],  dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
+					printf("id=%04x start RPTR flag=%02x%02x%02x ur=%.8s r1=%.8s r2=%.8s my=%.8s/%.4s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, dsvt.hdr.mycall, dsvt.hdr.sfx);
 				if (0==memcmp(dsvt.hdr.rpt1, "DIRECT  ", 8) && 0==memcmp(dsvt.hdr.rpt2, "DIRECT  ", 8))  	// DIRECT mode???
 				{
 					memcpy(dsvt.hdr.rpt1, OWNER.c_str(), 7);
