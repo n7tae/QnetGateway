@@ -1729,7 +1729,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 
 								calcPFCS(recbuf.title, 56);
 
-								write(vm[i].fd, recbuf.title, 56);
+								write(vm[i].fd, &recbuf, 56);
 							}
 						}
 					}
@@ -1769,7 +1769,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 
 								calcPFCS(recbuf.title, 56);
 
-								write (recd[i].fd, recbuf.title, 56);
+								write (recd[i].fd, &recbuf, 56);
 							}
 						}
 					}
