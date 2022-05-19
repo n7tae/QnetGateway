@@ -55,12 +55,6 @@
 #include "Utilities.h"
 
 #define LINK_VERSION "QnetLink-607"
-#ifndef BIN_DIR
-#define BIN_DIR "/usr/local/bin"
-#endif
-#ifndef CFG_DIR
-#define CFG_DIR "/usr/local/etc"
-#endif
 
 CQnetLink::CQnetLink()
 {

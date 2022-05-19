@@ -41,10 +41,6 @@
 
 #define VERSION "v523"
 
-#ifndef CFG_DIR
-#define CFG_DIR "/usr/local/etc"
-#endif
-
 static int module;
 static time_t tNow = 0;
 static short streamid_raw = 0;

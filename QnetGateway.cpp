@@ -50,10 +50,6 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-#ifndef CFG_DIR
-#define CFG_DIR "/usr/local/etc"
-#endif
-
 const std::string GW_VERSION("QnetGateway-20320");
 
 int CQnetGateway::FindIndex(const int i) const

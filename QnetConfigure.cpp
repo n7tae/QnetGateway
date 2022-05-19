@@ -73,10 +73,6 @@ bool CQnetConfigure::ReadConfigFile(const char *configfile, std::map<std::string
 	return true;
 }
 
-#ifndef CFG_DIR
-#define CFG_DIR "/usr/local/etc"
-#endif
-
 bool CQnetConfigure::Initialize(const char *file)
 {
 	std::string filename(CFG_DIR);
