@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-607"
+#define LINK_VERSION "QnetLink-20520"
 
 CQnetLink::CQnetLink()
 {
@@ -1308,7 +1308,7 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 					// delete the user if exists
 					for (auto dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++)
 					{
-						if (0 == strcmp((char *)dt_lh_pos->second.c_str(), tmp1))
+						if (0 == dt_lh_pos->second.compare(tmp1))
 						{
 							dt_lh_list.erase(dt_lh_pos);
 							break;
@@ -1651,7 +1651,7 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 					// delete the user if exists
 					for (auto dt_lh_pos=dt_lh_list.begin(); dt_lh_pos!=dt_lh_list.end();  dt_lh_pos++)
 					{
-						if (strcmp(dt_lh_pos->second.c_str(), tmp1) == 0)
+						if (dt_lh_pos->second.compare(tmp1) == 0)
 						{
 							dt_lh_list.erase(dt_lh_pos);
 							break;
@@ -2552,7 +2552,7 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 					// delete the user if exists
 					for (auto dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++)
 					{
-						if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0)
+						if (dt_lh_pos->second.compare(tmp1) == 0)
 						{
 							dt_lh_list.erase(dt_lh_pos);
 							break;
@@ -2893,7 +2893,7 @@ void CQnetLink::Process()
 						// delete the user if exists
 						for (auto dt_lh_pos=dt_lh_list.begin(); dt_lh_pos!=dt_lh_list.end();  dt_lh_pos++)
 						{
-							if (strcmp(dt_lh_pos->second.c_str(), tmp1) == 0)
+							if (dt_lh_pos->second.compare(tmp1) == 0)
 							{
 								dt_lh_list.erase(dt_lh_pos);
 								break;
@@ -3357,7 +3357,7 @@ void CQnetLink::Process()
 												char tmp2[36];
 												for (auto dt_lh_pos = dt_lh_list.begin(); dt_lh_pos != dt_lh_list.end();  dt_lh_pos++)
 												{
-													if (strcmp((char *)dt_lh_pos->second.c_str(), tmp1) == 0)
+													if (dt_lh_pos->second.compare(tmp1) == 0)
 													{
 														strcpy(tmp2, (char *)dt_lh_pos->first.c_str());
 														p_tmp2 = strstr(tmp2, "=l");

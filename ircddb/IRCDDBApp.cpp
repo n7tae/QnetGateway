@@ -547,8 +547,7 @@ std::string IRCDDBApp::getTableIDString(int tableID, bool spaceBeforeNumber)
 
 void IRCDDBApp::msgQuery(IRCMessage *m)
 {
-
-	if (0 == strcmp(m->getPrefixNick().substr(0,2).c_str(), "s-") && (m->numParams >= 2))   // server msg
+	if (0==m->getPrefixNick().compare(0, 2, "s-") && m->numParams>1)   // server msg
 	{
 		std::string msg = m->params[1];
 		std::vector<std::string> tkz = stringTokenizer(msg);

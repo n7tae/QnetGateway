@@ -40,7 +40,7 @@
 #include "DStarDecode.h"
 #include "QnetDVRPTR.h"
 
-#define DVRPTR_VERSION "QnetDVRPTR-20307"
+#define DVRPTR_VERSION "QnetDVRPTR-20520"
 
 #define BAUD B115200
 #define IP_SIZE 15
@@ -1949,7 +1949,7 @@ bool CQnetDVRPTR::check_serial()
 				char temp_dvrptr_serial[16];
 				sprintf(temp_dvrptr_serial, "%02X.%02X.%02X.%02X", puffer[4], puffer[5], puffer[6], puffer[7]);
 				printf("Device %s has serial=[%s]\n", dvrptr_device, temp_dvrptr_serial);
-				if (strcmp(temp_dvrptr_serial, DVRPTR_SERIAL.c_str()) == 0)
+				if (0 == DVRPTR_SERIAL.compare(temp_dvrptr_serial))
 				{
 					printf("Device %s serial number matches DVRPTR_SERIAL in dvrptr.cfg\n", dvrptr_device);
 					match = true;
