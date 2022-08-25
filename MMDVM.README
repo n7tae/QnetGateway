@@ -18,10 +18,10 @@ disable the serial0 console in the /boot/cmdline.txt file: Remove the reference 
 
 In your parent directory of your QnetGateway build...
 
-1)  Clone the QnetGateway repository: git clone git://github.com/n7tae/QnetGateway.git
-    Clone the MMDVMHost repository: git clone git://github.com/g4klx/MMDVMHost.git
-    Likewise if you want DMRGateway: git clone git://github.com/g4klx/DMRGateway.git
-	Likewise if you want YSFGateway: git clone git://github.com/g4klx/YSFClients.git
+1)  Clone the QnetGateway repository: git clone https://github.com/n7tae/QnetGateway.git
+    Clone the MMDVMHost repository: git clone https://github.com/g4klx/MMDVMHost.git
+    Likewise if you want DMRGateway: git clone https://github.com/g4klx/DMRGateway.git
+	Likewise if you want YSFGateway: git clone https://github.com/g4klx/YSFClients.git
 
 2)  cd to the QnetGateway directory and configure it: cd QnetGateway; ./qnconfig
     Make sure you set your callsign in the irc menu and set an mmdvmhost modem
