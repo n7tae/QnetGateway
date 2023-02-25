@@ -1271,6 +1271,10 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 							source_stn[7] = to_remote_g2[i].to_mod;
 							break;
 						}
+						else
+						{
+							printf("Don't know how to deal with r1=%.8s != %.8s\n", dsvt.hdr.rpt1, to_remote_g2[i].cs);
+						}
 				}
 			}
 
