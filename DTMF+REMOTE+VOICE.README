@@ -70,9 +70,9 @@ YourCall and key up and talk. You will be making a "voice mail" .dat file:
 /tmp/X_voicemail.dat2, where X is the module on which you are transmitting.
 Once you have created a voicemail file, you can move it out of the /tmp
 directory and rename it, but if you want to use it in a qnvoice command,
-you need to strip off the first 56 bytes. You can do this with the command:
+you need to strip off the first 57 bytes. You can do this with the command:
 
-tail -c +56 /tmp/X_voicemail.dat2 > mynewvoiceprompt.dat
+tail -c +57 /tmp/X_voicemail.dat2 > mynewvoiceprompt.dat
 
 Then you can use it in a qnvoice command. You can also replace all of the
 standard voice messages with your own. If you want to do this put your
