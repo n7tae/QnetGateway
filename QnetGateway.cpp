@@ -50,7 +50,7 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-const std::string GW_VERSION("QnetGateway-20520");
+const std::string GW_VERSION("QnetGateway-40302");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -531,7 +531,7 @@ int CQnetGateway::get_yrcall_rptr_from_cache(const int i, const std::string &cal
 	}
 	std::string temp;
 
-	if (rptr.at(7) == 'G')
+	if (rptr.at(7) == ' ')
 	{
 		fprintf(stderr, "ERROR: Invalid module %c\n", rptr.at(7));
 		return 2;
