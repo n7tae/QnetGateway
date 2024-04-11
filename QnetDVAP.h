@@ -18,6 +18,9 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <future>
+#include <queue>
+
 #include "KRBase.h"
 
 using SDVAP_ACK_ARG = struct davp_ack_arg_tag
@@ -46,6 +49,7 @@ private:
 	CRandom Random;
 
 	// data
+	std::queue<std::future<void>> m_fqueue;
 	int assigned_module;
 
 	// unix sockets

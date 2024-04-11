@@ -50,7 +50,7 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-const std::string GW_VERSION("QnetGateway-40302");
+const std::string GW_VERSION("QnetGateway-40411");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -614,7 +614,7 @@ void CQnetGateway::ProcessTimeouts()
 				/* START: echotest thread setup */
 				try
 				{
-					std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i]));
+					m_fqueue.emplace(std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i])));
 				}
 				catch (const std::exception &e)
 				{
@@ -723,7 +723,7 @@ bool CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod, std::s
 					if (smrtgrp.size() < 8)
 					{
 						// something bad happened
-						smrtgrp.empty();
+						smrtgrp.clear();
 						return false;
 					}
 					return true;
@@ -1680,7 +1680,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 							snprintf(vm[i].message, 21, "VOICEMAIL ON MOD %c  ", 'A'+i);
 							try
 							{
-								std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(vm[i]));
+								m_fqueue.emplace(std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(vm[i])));
 							}
 							catch (const std::exception &e)
 							{
@@ -1972,7 +1972,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 							/* we are in echotest mode, so play it back */
 							try
 							{
-								std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i]));
+								m_fqueue.emplace(std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i])));
 							}
 							catch (const std::exception &e)
 							{
@@ -2076,6 +2076,22 @@ void CQnetGateway::Process()
 
 	while (IsRunning())
 	{
+		if (! m_fqueue.empty())
+		{
+			if (m_fqueue.front().valid())
+			{
+				if (std::future_status::ready == m_fqueue.front().wait_for(std::chrono::seconds(0)))
+				{
+					m_fqueue.front().get();
+					m_fqueue.pop();
+				}
+			}
+			else
+			{
+				m_fqueue.pop();
+			}
+		}
+
 		ProcessTimeouts();
 
 		// wait 20 ms max

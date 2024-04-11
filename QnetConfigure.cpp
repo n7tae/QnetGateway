@@ -26,8 +26,8 @@ CQnetConfigure::CQnetConfigure()
 
 CQnetConfigure::~CQnetConfigure()
 {
-	defaults.empty();
-	cfg.empty();
+	defaults.clear();
+	cfg.clear();
 }
 
 char *CQnetConfigure::Trim(char *s)

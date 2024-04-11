@@ -49,7 +49,7 @@
 #include "DStarDecode.h"
 #include "QnetDVAP.h"
 
-#define DVAP_VERSION "QnetDVAP-20307"
+#define DVAP_VERSION "QnetDVAP-40411"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -846,7 +846,7 @@ void CQnetDVAP::ReadDVAPThread()
 						memcpy(dvap_ack_arg.mycall, mycall, 8);
 						try
 						{
-							std::async(std::launch::async, &CQnetDVAP::RptrAckThread, this, &dvap_ack_arg);
+							m_fqueue.emplace(std::async(std::launch::async, &CQnetDVAP::RptrAckThread, this, &dvap_ack_arg));
 						}
 						catch (const std::exception &e)
 						{
@@ -955,6 +955,22 @@ void CQnetDVAP::Run()
 			ackpoint.start();
 		}
 		ReadFromGateway();
+
+		if (! m_fqueue.empty())
+		{
+			if (m_fqueue.front().valid())
+			{
+				if (std::future_status::ready == m_fqueue.front().wait_for(std::chrono::seconds(0)))
+				{
+					m_fqueue.front().get();
+					m_fqueue.pop();
+				}
+			}
+			else
+			{
+				m_fqueue.pop();
+			}
+		}
 	}
 
 	readthread.get();

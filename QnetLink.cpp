@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-20520"
+#define LINK_VERSION "QnetLink-40411"
 
 CQnetLink::CQnetLink()
 {
@@ -350,7 +350,7 @@ void CQnetLink::rptr_ack(int i)
 	}
 	try
 	{
-		std::async(std::launch::async, &CQnetLink::RptrAckThread, this, mod_and_RADIO_ID[i]);
+		m_fqueue.emplace(std::async(std::launch::async, &CQnetLink::RptrAckThread, this, mod_and_RADIO_ID[i]));
 	}
 	catch (const std::exception &e)
 	{
@@ -2744,6 +2744,23 @@ void CQnetLink::Process()
 
 	while (keep_running)
 	{
+		if (! m_fqueue.empty())
+		{
+			auto &fut = m_fqueue.front();
+			if (fut.valid())
+			{
+				if (std::future_status::ready == fut.wait_for(std::chrono::seconds(0)))
+				{
+					fut.get();
+					m_fqueue.pop();
+				}
+			}
+			else
+			{
+				m_fqueue.pop();
+			}
+		}
+
 		static bool loadG[3] = { false, false, false };
 		time(&tnow);
 		if (keep_running && (tnow - heartbeat) > 0)
@@ -3471,7 +3488,7 @@ void CQnetLink::PlayAudioNotifyThread(char *msg)
 
 	try
 	{
-		std::async(std::launch::async, &CQnetLink::AudioNotifyThread, this, std::ref(edata));
+		m_fqueue.emplace(std::async(std::launch::async, &CQnetLink::AudioNotifyThread, this, std::ref(edata)));
 	}
 	catch (const std::exception &e)
 	{

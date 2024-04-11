@@ -23,6 +23,8 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <queue>
+#include <future>
 #include <netinet/in.h>
 
 #include "QnetTypeDefs.h"
@@ -121,6 +123,8 @@ private:
 	unsigned int max_dongles, saved_max_dongles;
 	int rf_inactivity_timer[3];
 	const unsigned char REF_ACK[3] = { 3, 96, 0 };
+
+	std::queue<std::future<void>> m_fqueue;
 
 	// the Key in this inbound_list map is the unique IP address of the remote
 	std::map<std::string, SINBOUND *> inbound_list;
