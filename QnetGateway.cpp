@@ -312,13 +312,16 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 			cfg.GetValue(path+"url", estr, Rptr.mod[m].url, 0, 80);
 		}
 	}
-	path.append("find_route");
-	if (cfg.KeyExists(path))
+	if (ircddb[0].ip.size() + ircddb[1].ip.size() > 0)	// there has to be an irc server
 	{
-		std::string csv;
-		cfg.GetValue(path, estr, csv, 0, 10240);
-		UnpackCallsigns(csv, findRoute);
-		PrintCallsigns(path, findRoute);
+		path.append("find_route");
+		if (cfg.KeyExists(path))
+		{
+			std::string csv;
+			cfg.GetValue(path, estr, csv, 0, 10240);
+			UnpackCallsigns(csv, findRoute);
+			PrintCallsigns(path, findRoute);
+		}
 	}
 
 	// APRS
