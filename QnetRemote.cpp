@@ -95,7 +95,7 @@ static bool ReadCfgFile()
 			return true;
 		}
 	}
-	cfg.GetValue("gateway_fromremote", estr, togateway, 1, FILENAME_MAX);
+	togateway.assign("Remote2Gate");
 
 	cfg.GetValue("timing_play_wait", estr, PLAY_WAIT, 1, 10);
 	cfg.GetValue("timing_play_delay", estr, PLAY_DELAY, 15, 25);
