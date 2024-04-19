@@ -24,10 +24,10 @@
 
 #include <netinet/in.h>
 #include "Random.h"	// for streamid generation
-#include "UnixPacketSock.h"
+#include "UnixDgramSocket.h"
 #include "QnetTypeDefs.h"
 #include "Timer.h"
-#include "KRBase.h"
+#include "Base.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -193,21 +193,21 @@ private:
 	SMODEM frame;
 };
 
-class CQnetModem : CKRBase
+class CQnetModem : public CModem
 {
 public:
 	// functions
-	CQnetModem(int mod);
-	~CQnetModem();
-	void Run(const char *cfgfile);
+	CQnetModem(int mod) : CModem(mod), dstarSpace(0) {}
+	~CQnetModem() {}
+	bool Initialize(const std::string &cfgfile);
+	void Run();
+	void Close();
 
 private:
-	int assigned_module;
 	unsigned int dstarSpace;
 
 	// functions
 	bool VoicePacketIsSync(const unsigned char *);
-	bool Initialize(const char *cfgfile);
 	void ProcessGateway(const SDSVT &dsvt);
 	bool ProcessModem(const SMODEM &frame);
 	int OpenModem();
@@ -219,7 +219,7 @@ private:
 	bool SetConfiguration();
 
 	// read configuration file
-	bool ReadConfig(const char *);
+	bool ReadConfig(const std::string &path);
 
 	// config data
 	char RPTR_MOD;
@@ -238,8 +238,8 @@ private:
 	CTimer PacketWait;
 
 	// unix sockets
-	std::string togate;
-	CUnixPacketClient ToGate;
+	CUnixDgramWriter ToGate;
+	CUnixDgramReader FromGate;
 
 	// Queue
 	std::queue<CFrame> queue;

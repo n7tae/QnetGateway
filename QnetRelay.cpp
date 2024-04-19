@@ -22,6 +22,7 @@
 #include <cstring>
 #include <csignal>
 #include <ctime>
+#include <memory>
 #include <cstdlib>
 #include <netdb.h>
 #include <sys/time.h>
@@ -38,21 +39,24 @@
 
 #define RELAY_VERSION "QnetRelay-20307"
 
-CQnetRelay::CQnetRelay(int mod) :
-	assigned_module(mod),
-	seed(time(NULL)),
-	COUNTER(0)
-{
-}
-
-CQnetRelay::~CQnetRelay()
-{
-}
-
-bool CQnetRelay::Initialize(const char *cfgfile)
+bool CQnetRelay::Initialize(const std::string &cfgfile)
 {
 	if (ReadConfig(cfgfile))
 		return true;
+
+	msock = OpenSocket(MMDVM_INTERNAL_IP, MMDVM_OUT_PORT);
+	if (msock < 0)
+		return true;
+
+	std::string name("Gate2Modem");
+	name.append(1, RPTR_MOD);
+	printf("Opening %s\n", name.c_str());
+	if (FromGate.Open(name.c_str()))
+		return true;
+	name.assign("Modem");
+	name.append(1, RPTR_MOD);
+	name.append("2Gate");
+	ToGate.SetUp(name.c_str());
 
 	return false;
 }
@@ -107,19 +111,9 @@ int CQnetRelay::OpenSocket(const std::string &address, unsigned short port)
 	return fd;
 }
 
-bool CQnetRelay::Run(const char *cfgfile)
+void CQnetRelay::Run()
 {
-	if (Initialize(cfgfile))
-		return true;
-
-	msock = OpenSocket(MMDVM_INTERNAL_IP, MMDVM_OUT_PORT);
-	if (msock < 0)
-		return true;
-
-	if (ToGate.Open(togate.c_str(), this))
-		return true;
-
-	int fd = ToGate.GetFD();
+	int fd = FromGate.GetFD();
 
 	printf("msock=%d, gateway=%d\n", msock, fd);
 
@@ -168,7 +162,7 @@ bool CQnetRelay::Run(const char *cfgfile)
 
 		if (FD_ISSET(fd, &readfds))
 		{
-			len = ToGate.Read(buf, 100);
+			len = FromGate.Read(buf, 100);
 
 			if (len < 0)
 			{
@@ -204,10 +198,12 @@ bool CQnetRelay::Run(const char *cfgfile)
 			fprintf(stderr, "DEBUG: Run: received unknow packet '%s' len=%d\n", title, (int)len);
 		}
 	}
+}
 
+void CQnetRelay::Close()
+{
 	::close(msock);
-	ToGate.Close();
-	return false;
+	FromGate.Close();
 }
 
 int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
@@ -371,10 +367,10 @@ bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
 }
 
 // process configuration file and return true if there was a problem
-bool CQnetRelay::ReadConfig(const char *cfgFile)
+bool CQnetRelay::ReadConfig(const std::string &cfgFile)
 {
 	CQnetConfigure cfg;
-	printf("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile.c_str());
 	if (cfg.Initialize(cfgFile))
 		return true;
 
@@ -382,7 +378,7 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 
 	std::string mmdvm_path("module_");
 	std::string type;
-	if (0 > assigned_module)
+	if (0 > m_index)
 	{
 		// we need to find the lone mmdvmhost module
 		for (int i=0; i<3; i++)
@@ -395,11 +391,11 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 				if (type.compare("mmdvmhost"))
 					continue;	// this ain't it!
 				mmdvm_path.assign(test);
-				assigned_module = i;
+				m_index = i;
 				break;
 			}
 		}
-		if (0 > assigned_module)
+		if (0 > m_index)
 		{
 			fprintf(stderr, "Error: no 'mmdvmhost' module found\n!");
 			return true;
@@ -408,7 +404,7 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	else
 	{
 		// make sure mmdvmhost module is defined
-		mmdvm_path.append(1, 'a' + assigned_module);
+		mmdvm_path.append(1, 'a' + m_index);
 		if (cfg.KeyExists(mmdvm_path))
 		{
 			cfg.GetValue(mmdvm_path, estr, type, 1, 16);
@@ -420,13 +416,12 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 		}
 		else
 		{
-			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
+			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+m_index);
 			return true;
 		}
 	}
-	RPTR_MOD = 'A' + assigned_module;
+	RPTR_MOD = 'A' + m_index;
 
-	cfg.GetValue("gateway_tomodem"+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 	cfg.GetValue(mmdvm_path+"_internal_ip", type, MMDVM_INTERNAL_IP, 7, IP_SIZE);
 	cfg.GetValue(mmdvm_path+"_target_ip", type, MMDVM_TARGET_IP, 7, IP_SIZE);
 
@@ -442,6 +437,25 @@ bool CQnetRelay::ReadConfig(const char *cfgFile)
 	return false;
 }
 
+std::unique_ptr<CQnetRelay> prelay;
+
+static void SignalHandler(int sig)
+{
+	switch (sig)
+	{
+	case SIGINT:
+	case SIGHUP:
+	case SIGTERM:
+		if (prelay)
+			prelay->Stop();
+		break;
+
+	default:
+		fprintf(stderr, "Caught an unexpected signal: %d\n", sig);
+		break;
+	}
+}
+
 int main(int argc, const char **argv)
 {
 	setbuf(stdout, NULL);
@@ -453,7 +467,7 @@ int main(int argc, const char **argv)
 
 	if ('-' == argv[1][0])
 	{
-		printf("%s Copyright (C) 2018-2021 by Thomas A. Early N7TAE\n", RELAY_VERSION);
+		printf("%s Copyright (C) 2018-2024 by Thomas A. Early N7TAE\n", RELAY_VERSION);
 		printf("QnetRelay comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n");
 		return 0;
@@ -486,11 +500,25 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
-	CQnetRelay qnmmdvm(module);
+	prelay = std::unique_ptr<CQnetRelay>(new CQnetRelay(module));
 
-	bool trouble = qnmmdvm.Run(argv[1]);
+	if (!prelay)
+	{
+		fprintf(stderr, "Could not make a CQnetRelay!\n");
+		return EXIT_FAILURE;
+	}
+
+	if (prelay->Initialize(argv[1]))
+	{
+		prelay.reset();
+		return EXIT_FAILURE;
+	}
+
+	prelay->Run();
+
+	prelay->Close();
 
 	printf("%s is closing.\n", argv[0]);
 
-	return trouble ? 1 : 0;
+	return EXIT_SUCCESS;
 }

@@ -20,10 +20,10 @@
 #include <cstdint>
 #include <string>
 
-#include "UnixPacketSock.h"
+#include "UnixDgramSocket.h"
 #include "DStarDecode.h"
 #include "QnetTypeDefs.h"
-#include "KRBase.h"
+#include "Base.h"
 
 using tambevoicefec = unsigned char[9];
 using tambevoice = unsigned char[6];
@@ -35,15 +35,18 @@ using tambevoice = unsigned char[6];
 #define GORLAY_MASK12	0xfffff800	// auxiliary vector for testing
 #define GORLAY_GENPOL	0x00000c75	// generator polinomial, g(x)
 
-class CQnetDVRPTR : public CKRBase
+class CQnetDVRPTR : public CModem
 {
 public:
-	bool Init(const char *file, int assigned_module);
+	CQnetDVRPTR(int index) : CModem(index) {}
+	~CQnetDVRPTR() {}
+	bool Initialize(const std::string &file);
 	void Run();
+	void Close();
 
 private:
 	CDStarDecode decode;
-	bool ReadConfig(const char *cfgFile);
+	bool ReadConfig(const std::string &cfgFile);
 	void readFrom20000();
 	bool check_serial();
 	void CleanCall(std::string &callsign);
@@ -97,9 +100,8 @@ private:
 	unsigned char Modem_STATUS[6]= {0xD0,0x01,0x00,0x10,0x00,0x00}; // Status Abfragr
 	unsigned char Modem_SERIAL[6]= {0xD0,0x01,0x00,0x12,0x00,0x00};
 
-	int assigned_module;
-	std::string togate;
-	CUnixPacketClient ToGate;
+	CUnixDgramWriter ToGate;
+	CUnixDgramReader FromGate;
 
 	std::string DVRPTR_SERIAL;
 	char DVCALL[CALL_SIZE + 1];

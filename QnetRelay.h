@@ -22,35 +22,35 @@
 #include <string>
 #include <netinet/in.h>
 
-#include "UnixPacketSock.h"
-#include "KRBase.h"
+#include "UnixDgramSocket.h"
+#include "Base.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
 
-class CQnetRelay : CKRBase
+class CQnetRelay : public CModem
 {
 public:
 	// functions
-	CQnetRelay(int mod);
-	~CQnetRelay();
-	bool Run(const char *cfgfile);
+	CQnetRelay(int mod) : CModem(mod), seed(time(NULL)), COUNTER(0) {}
+	~CQnetRelay() {}
+	bool Initialize(const std::string &cfgfile);
+	void Run();
+	void Close();
 
 private:
 	// functions
-	bool Initialize(const char *cfgfile);
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessMMDVM(const int len, const unsigned char *raw);
 	int OpenSocket(const std::string &address, unsigned short port);
 	int SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port);
 
 	// read configuration file
-	bool ReadConfig(const char *);
+	bool ReadConfig(const std::string &);
 
 	// Unix sockets
-	int assigned_module;
-	std::string togate;
-	CUnixPacketClient ToGate;
+	CUnixDgramWriter ToGate;
+	CUnixDgramReader FromGate;
 
 	// config data
 	char RPTR_MOD;

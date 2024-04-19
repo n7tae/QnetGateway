@@ -30,12 +30,12 @@
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "Random.h"
-#include "UnixPacketSock.h"
+#include "UnixDgramSocket.h"
 #include "UDPSocket.h"
 #include "UDPSocket.h"
 #include "Timer.h"
 #include "QnetDB.h"
-#include "KRBase.h"
+#include "Base.h"
 
 /*** version number must be x.xx ***/
 #define CALL_SIZE 8
@@ -80,15 +80,15 @@ using STRACING = struct tracing_tag
 };
 
 
-class CQnetLink : CKRBase
+class CQnetLink : public CBase
 {
 public:
 	// functions
 	CQnetLink();
 	~CQnetLink();
-	bool Init(const char *cfgfile);
-	void Process();
-	void Shutdown();
+	bool Initialize(const std::string &path);
+	void Run();
+	void Close();
 private:
 	// functions
 	void ToUpper(std::string &s);
@@ -96,7 +96,7 @@ private:
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
 	void LoadGateways(const std::string &filename);
 	void calcPFCS(unsigned char *packet, int len);
-	bool ReadConfig(const char *);
+	bool ReadConfig(const std::string &path);
 	bool srv_open();
 	void srv_close();
 	void g2link(const char from_mod, const char *call, const char to_mod);
@@ -163,8 +163,8 @@ private:
 	CSockAddress fromDst4;
 
 	// unix sockets to gateway
-	std::string togate;
-	CUnixPacketClient ToGate;
+	CUnixDgramWriter ToGate;
+	CUnixDgramReader FromGate;
 
 	struct timeval tv;
 

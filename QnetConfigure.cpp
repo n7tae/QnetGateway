@@ -40,9 +40,9 @@ char *CQnetConfigure::Trim(char *s)
 	return s;
 }
 
-bool CQnetConfigure::ReadConfigFile(const char *configfile, std::map<std::string, std::string> &amap)
+bool CQnetConfigure::ReadConfigFile(const std::string &configfile, std::map<std::string, std::string> &amap)
 {
-	FILE *fp = fopen(configfile, "r");
+	FILE *fp = fopen(configfile.c_str(), "r");
 	if (fp)
 	{
 		char line[2048];
@@ -69,11 +69,11 @@ bool CQnetConfigure::ReadConfigFile(const char *configfile, std::map<std::string
 		fclose(fp);
 		return false;
 	}
-	fprintf(stderr, "could not open file %s\n", configfile);
+	fprintf(stderr, "could not open file %s\n", configfile.c_str());
 	return true;
 }
 
-bool CQnetConfigure::Initialize(const char *file)
+bool CQnetConfigure::Initialize(const std::string &file)
 {
 	std::string filename(CFG_DIR);
 	filename.append("/defaults");

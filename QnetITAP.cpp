@@ -39,29 +39,32 @@
 #include <errno.h>
 #include <thread>
 #include <chrono>
+#include <memory>
 
 #include "QnetITAP.h"
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-20307"
+#define ITAP_VERSION "QnetITAP-40419"
 
-CQnetITAP::CQnetITAP(int mod)
-	: assigned_module(mod)
-{
-}
-
-CQnetITAP::~CQnetITAP()
-{
-}
-
-bool CQnetITAP::Initialize(const char *cfgfile)
+bool CQnetITAP::Initialize(const std::string &cfgfile)
 {
 	if (ReadConfig(cfgfile))
 		return true;
 
-	if (ToGate.Open(togate.c_str(), this))
+	std::string name("Gate2Modem");
+	std::string(1, RPTR_MOD);
+	printf("Opening %s\n", name.c_str());
+	if (FromGate.Open(name.c_str()))
+		return true;
+	name.assign("Modem");
+	name.append(1, RPTR_MOD);
+	name.append("2Gate");
+	ToGate.SetUp(name.c_str());
+
+	serfd = OpenITAP();
+	if (serfd < 0)
 		return true;
 
 	return false;
@@ -209,19 +212,8 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 	}
 }
 
-void CQnetITAP::Run(const char *cfgfile)
+void CQnetITAP::Run()
 {
-	if (Initialize(cfgfile))
-		return;
-
-	serfd = OpenITAP();
-	if (serfd < 0)
-		return;
-
-	int ug2m = ToGate.GetFD();
-	printf("gate2modem=%d, serial=%d\n", ug2m, serfd);
-
-	keep_running = true;
 	unsigned int poll_counter = 0;
 	bool initialized = false;
 	bool alive = true;
@@ -231,10 +223,11 @@ void CQnetITAP::Run(const char *cfgfile)
 	CTimer pingTimer;
 	double pingtime = 0.001;
 	const double ackwait = AP_MODE ? 0.4 : 0.06;
+	int ug2m = FromGate.GetFD();
+	printf("gate2modem=%d, serial=%d\n", ug2m, serfd);
 
 	while (keep_running)
 	{
-
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(serfd, &readfds);
@@ -357,7 +350,7 @@ void CQnetITAP::Run(const char *cfgfile)
 
 		if (keep_running && FD_ISSET(ug2m, &readfds))
 		{
-			ssize_t len = ToGate.Read(buf, 100);
+			ssize_t len = FromGate.Read(buf, 100);
 
 			if (len < 0)
 			{
@@ -422,9 +415,12 @@ void CQnetITAP::Run(const char *cfgfile)
 			}
 		}
 	}
+}
 
+void CQnetITAP::Close()
+{
 	close(serfd);
-	ToGate.Close();
+	FromGate.Close();
 }
 
 void CQnetITAP::SendToIcom(const unsigned char *buf)
@@ -600,17 +596,17 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 }
 
 // process configuration file and return true if there was a problem
-bool CQnetITAP::ReadConfig(const char *cfgFile)
+bool CQnetITAP::ReadConfig(const std::string &cfgFile)
 {
 	CQnetConfigure cfg;
-	printf("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile.c_str());
 	if (cfg.Initialize(cfgFile))
 		return true;
 
 	const std::string estr;	// an empty string
 	std::string type;
 	std::string itap_path("module_");
-	if (0 > assigned_module)
+	if (0 > m_index)
 	{
 		// we need to find the lone itap module
 		for (int i=0; i<3; i++)
@@ -623,11 +619,11 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 				if (type.compare("itap"))
 					continue;	// this ain't it!
 				itap_path.assign(test);
-				assigned_module = i;
+				m_index = i;
 				break;
 			}
 		}
-		if (0 > assigned_module)
+		if (0 > m_index)
 		{
 			fprintf(stderr, "Error: no 'itap' module found\n!");
 			return true;
@@ -636,7 +632,7 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 	else
 	{
 		// make sure itap module is defined
-		itap_path.append(1, 'a' + assigned_module);
+		itap_path.append(1, 'a' + m_index);
 		if (cfg.KeyExists(itap_path))
 		{
 			cfg.GetValue(itap_path, estr, type, 1, 16);
@@ -648,11 +644,11 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 		}
 		else
 		{
-			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
+			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+m_index);
 			return true;
 		}
 	}
-	RPTR_MOD = 'A' + assigned_module;
+	RPTR_MOD = 'A' + m_index;
 
 	cfg.GetValue(itap_path+"_device", type, ITAP_DEVICE, 7, FILENAME_MAX);
 	cfg.GetValue(itap_path+"_ap_mode", type, AP_MODE);
@@ -688,7 +684,6 @@ bool CQnetITAP::ReadConfig(const char *cfgFile)
 		RPTR.resize(CALL_SIZE, ' ');
 	}
 
-	cfg.GetValue(std::string("gateway_tomodem")+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 	cfg.GetValue("log_qso", estr, LOG_QSO);
 	cfg.GetValue("log_debug", estr, LOG_DEBUG);
 	return false;
@@ -733,8 +728,31 @@ void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 	return;
 }
 
+std::unique_ptr<CQnetITAP> pitap;
+
+static void SignalHandler(int sig)
+{
+	switch (sig)
+	{
+	case SIGINT:
+	case SIGHUP:
+	case SIGTERM:
+		if (pitap)
+			pitap->Stop();
+		break;
+
+	default:
+		fprintf(stderr, "Caught an unknown signal: %d\n", sig);
+		break;
+	}
+}
+
 int main(int argc, const char **argv)
 {
+	std::signal(SIGINT,  SignalHandler);
+	std::signal(SIGHUP,  SignalHandler);
+	std::signal(SIGTERM, SignalHandler);
+
 	setbuf(stdout, NULL);
 	if (2 != argc)
 	{
@@ -744,7 +762,7 @@ int main(int argc, const char **argv)
 
 	if ('-' == argv[1][0])
 	{
-		printf("%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", ITAP_VERSION);
+		printf("%s Copyright (C) 2018-2024 by Thomas A. Early N7TAE\n", ITAP_VERSION);
 		printf("QnetITAP comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n");
 		return 0;
@@ -778,11 +796,27 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
-	CQnetITAP qnitap(assigned_module);
+	pitap = std::unique_ptr<CQnetITAP>(new CQnetITAP(assigned_module));
 
-	qnitap.Run(argv[1]);
+	if (!pitap)
+	{
+		fprintf(stderr, "Could not make a CQnetITAP\n");
+		return EXIT_FAILURE;
+	}
+
+	if (pitap->Initialize(argv[1]))
+	{
+		pitap.reset();
+		return EXIT_FAILURE;
+	}
+
+	pitap->Run();
+
+	pitap->Close();
 
 	printf("%s is closing.\n", argv[0]);
+
+	pitap.reset();
 
 	return 0;
 }

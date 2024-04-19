@@ -26,7 +26,7 @@ class CQnetConfigure
 public:
 	CQnetConfigure();
 	virtual ~CQnetConfigure();
-	bool Initialize(const char *configfile);
+	bool Initialize(const std::string &path);
 	bool GetValue(const std::string &path, const std::string &mod, bool        &value);
 	bool GetValue(const std::string &path, const std::string &mod, double      &value, const double min, const double max);
 	bool GetValue(const std::string &path, const std::string &mod, int         &value, const int    min, const int    max);
@@ -38,7 +38,7 @@ private:
 	std::map<std::string, std::string> cfg;
 
 	char *Trim(char *s);
-	bool ReadConfigFile(const char *file, std::map<std::string, std::string> &amap);
+	bool ReadConfigFile(const std::string &file, std::map<std::string, std::string> &amap);
 	bool GetDefaultBool  (const std::string &key, const std::string &mod, bool        &dval);
 	bool GetDefaultDouble(const std::string &key, const std::string &mod, double      &dval);
 	bool GetDefaultInt   (const std::string &key, const std::string &mod, int         &dval);

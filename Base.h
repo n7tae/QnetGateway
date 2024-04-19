@@ -20,17 +20,34 @@
 
 // base class for all modems
 
-#include <sys/select.h>
+#include <string>
 #include <atomic>
 
-class CKRBase
+class CBase
 {
 public:
-	CKRBase();
-	bool IsRunning();
-	void SetState(bool state);
+	CBase() { keep_running = true; }
+	virtual ~CBase() {}
+	virtual bool Initialize(const std::string &path) = 0;
+	virtual void Run() = 0;
+	virtual void Close() = 0;
+	void Stop() { keep_running = false; }
 protected:
-	static std::atomic<bool> keep_running;
-	static void SigHandler(int sig);
-	void AddFDSet(int &max, int newfd, fd_set *set);
+	std::atomic<bool> keep_running;
+	void AddFDSet(int &max, int newfd, fd_set *set)
+	{
+		if (newfd > max)
+			max = newfd;
+		FD_SET(newfd, set);
+	}
+};
+
+class CModem : public CBase
+{
+public:
+	CModem(int index = -1) : CBase(), m_index(index) {}
+	virtual ~CModem() {}
+
+protected:
+	int m_index;
 };

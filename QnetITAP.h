@@ -25,8 +25,8 @@
 
 #include <netinet/in.h>
 #include "Random.h"	// for streamid generation
-#include "UnixPacketSock.h"
-#include "KRBase.h"
+#include "UnixDgramSocket.h"
+#include "Base.h"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -105,20 +105,20 @@ private:
 	SITAP frame;
 };
 
-class CQnetITAP : CKRBase
+class CQnetITAP : public CModem
 {
 public:
 	// functions
-	CQnetITAP(int mod);
-	~CQnetITAP();
-	void Run(const char *cfgfile);
+	CQnetITAP(int mod) : CModem(mod) {}
+	~CQnetITAP() {}
+	bool Initialize(const std::string &cfgfile);
+	void Run();
+	void Close();
 
 	// data
 
 private:
-	int assigned_module;
 	// functions
-	bool Initialize(const char *cfgfile);
 	bool ProcessGateway(const int len, const unsigned char *raw);
 	bool ProcessITAP(const unsigned char *raw);
 	int OpenITAP();
@@ -128,7 +128,7 @@ private:
 	void DumpSerialPacket(const char *title, const unsigned char *);
 
 	// read configuration file
-	bool ReadConfig(const char *);
+	bool ReadConfig(const std::string &path);
 
 	// config data
 	char RPTR_MOD;
@@ -143,8 +143,8 @@ private:
 	CRandom random;
 
 	// unix sockets
-	std::string togate;
-	CUnixPacketClient ToGate;
+	CUnixDgramWriter ToGate;
+	CUnixDgramReader FromGate;
 
 	// Queue
 	std::queue<CFrame> queue;

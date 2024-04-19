@@ -21,7 +21,8 @@
 #include <future>
 #include <queue>
 
-#include "KRBase.h"
+#include "UnixDgramSocket.h"
+#include "Base.h"
 
 using SDVAP_ACK_ARG = struct davp_ack_arg_tag
 {
@@ -29,14 +30,17 @@ using SDVAP_ACK_ARG = struct davp_ack_arg_tag
 	float ber;
 };
 
-class CQnetDVAP : public CKRBase
+class CQnetDVAP : public CModem
 {
 public:
-	bool Init(const char *file, const int amod);
+	CQnetDVAP(int index) : CModem(index) {}
+	~CQnetDVAP() {}
+	bool Initialize(const std::string &path);
 	void Run();
+	void Close();
 
 private:
-	bool ReadConfig(const char *file);
+	bool ReadConfig(const std::string &path);
 	void ReadFromGateway();
 	void calcPFCS(unsigned char *packet, unsigned char *pfcs);
 	void ReadDVAPThread();
@@ -50,11 +54,11 @@ private:
 
 	// data
 	std::queue<std::future<void>> m_fqueue;
-	int assigned_module;
+	std::future<void> m_readThread;
 
 	// unix sockets
-	std::string togate;
-	CUnixPacketClient ToGate;
+	CUnixDgramWriter ToGate;
+	CUnixDgramReader FromGate;
 	/* Default configuration data */
 	std::string RPTR;
 	std::string OWNER;

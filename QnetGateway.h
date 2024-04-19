@@ -25,12 +25,11 @@
 #include "QnetTypeDefs.h"
 #include "SEcho.h"
 #include "UnixDgramSocket.h"
-#include "UnixPacketSock.h"
 #include "aprs.h"
 #include "SockAddress.h"
 #include "QnetDB.h"
 #include "DStarDecode.h"
-#include "KRBase.h"
+#include "Base.h"
 #include "Location.h"
 
 #define MAXHOSTNAMELEN 64
@@ -93,13 +92,13 @@ using SSD = struct sd_tag
 	void Init() { ih = im = ig = 0; first = true; }
 };
 
-class CQnetGateway : public CKRBase
+class CQnetGateway : public CBase
 {
 public:
 	CQnetGateway();
-	~CQnetGateway();
-	void Process();
-	bool Init(char *cfgfile);
+	bool Initialize(const std::string &path);
+	void Run();
+	void Close();
 
 private:
 	std::queue<std::future<void>> m_fqueue;
@@ -112,10 +111,8 @@ private:
 
 	SPORTIP g2_external, g2_ipv6_external, ircddb[2];
 
-	CUnixDgramReader FromRemote;
-	CUnixPacketServer ToLink, ToModem[3];
-
-	std::string tolink, fromremote, tomodem[3];
+	CUnixDgramReader FromRemote, FromLink, FromModem[3];
+	CUnixDgramWriter ToLink, ToModem[3];
 
 	std::string OWNER, owner, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE, DASH_SHOW_ORDER;
 
@@ -194,7 +191,6 @@ private:
 	void APRSBeaconThread();
 	bool Printable(unsigned char *string);
 	void ProcessTimeouts();
-	void ProcessSlowData(unsigned char *data, const unsigned short sid);
 	void ProcessIncomingSD(const SDSVT &dsvt, const int source_sock);
 	void ProcessOutGoingSD(const SDSVT &dsvt, const int mod);
 	bool ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp);
@@ -207,7 +203,7 @@ private:
 	int FindIndex(const int i) const;
 
 	// read configuration file
-	bool ReadConfig(char *);
+	bool ReadConfig(const std::string &path);
 
 	void qrgs_and_maps();
 

@@ -203,7 +203,7 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 }
 
 /* process configuration file */
-bool CQnetGateway::ReadConfig(char *cfgFile)
+bool CQnetGateway::ReadConfig(const std::string &cfgFile)
 {
 	const std::string estr;	// an empty string
 	CQnetConfigure cfg;
@@ -298,13 +298,10 @@ bool CQnetGateway::ReadConfig(char *cfgFile)
 	cfg.GetValue(path+"ipv6_port", estr, g2_ipv6_external.port, 1024, 65535);
 	cfg.GetValue(path+"header_regen", estr, GATEWAY_HEADER_REGEN);
 	cfg.GetValue(path+"send_qrgs_maps", estr, GATEWAY_SEND_QRGS_MAP);
-	cfg.GetValue(path+"tolink", estr, tolink, 1, FILENAME_MAX);
-	cfg.GetValue(path+"fromremote", estr, fromremote, 1, FILENAME_MAX);
 	for (int m=0; m<3; m++)
 	{
 		if (Rptr.mod[m].defined)
 		{
-			cfg.GetValue(path+"tomodem"+std::string(1, 'a'+m), estr, tomodem[m], 1, FILENAME_MAX);
 			cfg.GetValue(path+"latitude", estr, Rptr.mod[m].latitude, -90.0, 90.0);
 			cfg.GetValue(path+"longitude", estr, Rptr.mod[m].longitude, -180.0, 180.0);
 			cfg.GetValue(path+"desc1", estr, Rptr.mod[m].desc1, 0, 20);
@@ -404,7 +401,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 		not_announced[i] = Rptr.mod[i].defined;	// announce to all modules that are defined!
 	bool is_quadnet = (std::string::npos != ircddb[i].ip.find(".openquad.net"));
 	bool doFind = true;
-	while (IsRunning())
+	while (keep_running)
 	{
 		int rc = ii[i]->getConnectionState();
 		if (rc > 5 && rc < 8 && is_quadnet)
@@ -476,7 +473,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 			threshold = 0;
 		}
 
-		while (((type = ii[i]->getMessageType()) != IDRT_NONE) && IsRunning())
+		while (((type = ii[i]->getMessageType()) != IDRT_NONE) && keep_running)
 		{
 			switch (type)
 			{
@@ -504,7 +501,7 @@ void CQnetGateway::GetIRCDataThread(const int i)
 			default:
 				break;
 			}	// switch (type)
-		}	// while (IsRunning())
+		}	// while (keep_running)
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 	printf("GetIRCDataThread[%i] exiting...\n", i);
@@ -1148,7 +1145,7 @@ void CQnetGateway::ProcessG2Header(const SDSVT &g2buf, const int source_sock)
 				if (source_sock >= 0)
 					printf("IP=[%s]:%u\n", fromDstar.GetAddress(), fromDstar.GetPort());
 				else
-					printf("UnixSock=%s\n", tolink.c_str());
+					printf("UnixSock=Link2Gate\n");
 			}
 			lhcallsign[i].assign((const char *)g2buf.hdr.mycall, 8);
 			if (showLastHeard && memcmp(g2buf.hdr.sfx, "RPTR", 4) && std::regex_match(lhcallsign[i].c_str(), preg))
@@ -2031,7 +2028,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 }
 
 /* run the main loop for QnetGateway */
-void CQnetGateway::Process()
+void CQnetGateway::Run()
 {
 	// dtmf stuff initialize
 	for (int i=0; i<3; i++)
@@ -2068,16 +2065,16 @@ void CQnetGateway::Process()
 			catch (const std::exception &e)
 			{
 				printf("Failed to start GetIRCDataThread[%d]. Exception: %s\n", i, e.what());
-				SetState(false);
+				keep_running = false;
 			}
-			if (IsRunning())
+			if (keep_running)
 				printf("get_irc_data thread[%d] started\n", i);
 
 			ii[i]->kickWatchdog(GW_VERSION);
 		}
 	}
 
-	while (IsRunning())
+	while (keep_running)
 	{
 		if (! m_fqueue.empty())
 		{
@@ -2105,11 +2102,11 @@ void CQnetGateway::Process()
 			AddFDSet(max_nfds, g2_sock[0], &fdset);
 		if (g2_sock[1] >= 0)
 			AddFDSet(max_nfds, g2_sock[1], &fdset);
-		AddFDSet(max_nfds, ToLink.GetFD(), &fdset);
+		AddFDSet(max_nfds, FromLink.GetFD(), &fdset);
 		for (int i=0; i<3; i++)
 		{
 			if (Rptr.mod[i].defined)
-				AddFDSet(max_nfds, ToModem[i].GetFD(), &fdset);
+				AddFDSet(max_nfds, FromModem[i].GetFD(), &fdset);
 		}
 		AddFDSet(max_nfds, FromRemote.GetFD(), &fdset);
 		struct timeval tv;
@@ -2122,7 +2119,7 @@ void CQnetGateway::Process()
 		{
 			if (g2_sock[i] < 0)
 				continue;
-			if (IsRunning() && FD_ISSET(g2_sock[i], &fdset))
+			if (keep_running && FD_ISSET(g2_sock[i], &fdset))
 			{
 				SDSVT dsvt;
 				socklen_t fromlen = sizeof(struct sockaddr_storage);
@@ -2136,7 +2133,7 @@ void CQnetGateway::Process()
 		}
 
 		// process packets from qnremote
-		if (IsRunning() && FD_ISSET(FromRemote.GetFD(), &fdset))
+		if (keep_running && FD_ISSET(FromRemote.GetFD(), &fdset))
 		{
 			SDSVT dsvt;
 			const ssize_t len = FromRemote.Read(dsvt.title, 56);
@@ -2145,10 +2142,10 @@ void CQnetGateway::Process()
 		}
 
 		// process packets from qnlink
-		if (IsRunning() && FD_ISSET(ToLink.GetFD(), &fdset))
+		if (keep_running && FD_ISSET(FromLink.GetFD(), &fdset))
 		{
 			SDSVT dsvt;
-			ssize_t g2buflen = ToLink.Read(dsvt.title, 56);
+			ssize_t g2buflen = FromLink.Read(dsvt.title, 56);
 			if (16==g2buflen && 0==memcmp(dsvt.title, "LINK", 4))
 			{
 				SLINKFAMILY fam;
@@ -2167,19 +2164,19 @@ void CQnetGateway::Process()
 			{
 				ProcessG2(g2buflen, dsvt, -1);
 			}
-			FD_CLR(ToLink.GetFD(), &fdset);
+			FD_CLR(FromLink.GetFD(), &fdset);
 		}
 
 		// process packets coming from local repeater module(s)
 		for (int i=0; i<3; i++)
 		{
-			if (IsRunning() && FD_ISSET(ToModem[i].GetFD(), &fdset))
+			if (keep_running && FD_ISSET(FromModem[i].GetFD(), &fdset))
 			{
 				SDSVT dsvt;
-				const ssize_t len = ToModem[i].Read(dsvt.title, 56);
+				const ssize_t len = FromModem[i].Read(dsvt.title, 56);
 				if (Rptr.mod[i].defined)
 					ProcessModem(len, dsvt);
-				FD_CLR(ToModem[i].GetFD(), &fdset);
+				FD_CLR(FromModem[i].GetFD(), &fdset);
 			}
 		}
 	}
@@ -2246,7 +2243,7 @@ void CQnetGateway::APRSBeaconThread()
 
 	time_t last_beacon_time = 0;
 	/* This thread is also saying to the APRS_HOST that we are ALIVE */
-	while (IsRunning())
+	while (keep_running)
 	{
 		if (aprs->aprs_sock.GetFD() == -1)
 		{
@@ -2302,7 +2299,7 @@ void CQnetGateway::APRSBeaconThread()
 						printf("APRS Beacon =[%s]\n", snd_buf);
 					strcat(snd_buf, "\r\n");
 
-					while (IsRunning())
+					while (keep_running)
 					{
 						if (aprs->aprs_sock.GetFD() == -1)
 						{
@@ -2581,7 +2578,7 @@ void CQnetGateway::qrgs_and_maps()
 	return;
 }
 
-bool CQnetGateway::Init(char *cfgfile)
+bool CQnetGateway::Initialize(const std::string &path)
 {
 	short int i;
 
@@ -2597,9 +2594,9 @@ bool CQnetGateway::Init(char *cfgfile)
 	}
 
 	/* process configuration file */
-	if ( ReadConfig(cfgfile) )
+	if ( ReadConfig(path) )
 	{
-		printf("Failed to process config file %s\n", cfgfile);
+		printf("Failed to process config file %s\n", path.c_str());
 		return true;
 	}
 
@@ -2611,20 +2608,28 @@ bool CQnetGateway::Init(char *cfgfile)
 	qnDB.ClearLH();
 
 	// Open unix sockets between qngateway and qnremote
-	printf("Connecting to qnlink at %s\n", tolink.c_str());
-	if (ToLink.Open(tolink.c_str(), this))
+	printf("Opening Link2Gate\n");
+	if (FromLink.Open("Link2Gate"))
 		return true;
-	printf("Opening remote port at %s\n", fromremote.c_str());
-	if (FromRemote.Open(fromremote.c_str()))
+	ToLink.SetUp("Gate2Link");
+	printf("Opening Remote2Gate\n");
+	if (FromRemote.Open("Remote2Gate"))
 		return true;
 
 	for (i=0; i<3; i++)
 	{
 		if (Rptr.mod[i].defined)  	// open unix sockets between qngateway and each defined modem
 		{
-			printf("Connecting to modem at %s\n", tomodem[i].c_str());
-			if (ToModem[i].Open(tomodem[i].c_str(), this))
+			const char mod = 'A'+i;
+			std::string name("Modem");
+			name.append(1, mod);
+			name.append("2Gate");
+			printf("Opening %s\n", name.c_str());
+			if (FromModem[i].Open(name.c_str()))
 				return true;
+			name.assign("Gate2Modem");
+			name.append(1, mod);
+			ToModem[i].SetUp(name.c_str());
 		}
 		// recording for echotest on local repeater modules
 		recd[i].last_time = 0;
@@ -2714,7 +2719,7 @@ bool CQnetGateway::Init(char *cfgfile)
 			else
 				break;
 
-			if (!IsRunning())
+			if (!keep_running)
 				break;
 
 			if (i > 5)
@@ -2811,19 +2816,19 @@ bool CQnetGateway::Init(char *cfgfile)
 	return false;
 }
 
-CQnetGateway::CQnetGateway()
+CQnetGateway::CQnetGateway() : CBase()
 {
 	ii[0] = ii[1] = NULL;
 }
 
-CQnetGateway::~CQnetGateway()
+void CQnetGateway::Close()
 {
-	ToLink.Close();
+	FromLink.Close();
 	FromRemote.Close();
 	for (int i=0; i<3; i++)
 	{
 		if (Rptr.mod[i].defined)
-			ToModem[i].Close();
+			FromModem[i].Close();
 	}
 
 	if (APRS_ENABLE)
@@ -2864,19 +2869,43 @@ CQnetGateway::~CQnetGateway()
 	printf("QnetGateway exiting\n");
 }
 
+CQnetGateway QnetGateway;
+
+static void HandleSignal(int sig)
+{
+	switch (sig)
+	{
+		case SIGINT:
+		case SIGHUP:
+		case SIGTERM:
+			QnetGateway.Stop();
+			break;
+		default:
+			fprintf(stderr, "Caught an unknown signal: %d\n", sig);
+			break;
+	}
+}
+
 int main(int argc, char **argv)
 {
+	std::signal(SIGINT,  HandleSignal);
+	std::signal(SIGHUP,  HandleSignal);
+	std::signal(SIGTERM, HandleSignal);
 	printf("VERSION %s\n", GW_VERSION.c_str());
 	if (argc != 2)
 	{
 		printf("usage: %s qn.cfg\n", argv[0]);
-		return 1;
+		return EXIT_FAILURE;
 	}
-	CQnetGateway QnetGateway;
-	if (QnetGateway.Init(argv[1]))
+	if (QnetGateway.Initialize(argv[1]))
 	{
-		return 1;
+		return EXIT_FAILURE;
 	}
-	QnetGateway.Process();
+
+	QnetGateway.Run();
+
+	QnetGateway.Close();
+
 	printf("Leaving processing loop...\n");
+	return EXIT_SUCCESS;
 }

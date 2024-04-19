@@ -40,6 +40,7 @@
 #include <errno.h>
 #include <thread>
 #include <chrono>
+#include <memory>
 
 #include "QnetModem.h"
 #include "QnetConfigure.h"
@@ -64,16 +65,6 @@ const unsigned char TYPE_EOT     = 0x13U;
 
 const unsigned char TYPE_ACK     = 0x70U;
 const unsigned char TYPE_NACK    = 0x7FU;
-
-CQnetModem::CQnetModem(int mod)
-	: assigned_module(mod)
-	, dstarSpace(0U)
-{
-}
-
-CQnetModem::~CQnetModem()
-{
-}
 
 bool CQnetModem::VoicePacketIsSync(const unsigned char *text)
 {
@@ -221,14 +212,20 @@ bool CQnetModem::SetFrequency()
 	return false;
 }
 
-bool CQnetModem::Initialize(const char *cfgfile)
+bool CQnetModem::Initialize(const std::string &cfgfile)
 {
 	if (ReadConfig(cfgfile))
 		return true;
 
-	printf("Connecting to qngateway at %s\n", togate.c_str());
-	if (ToGate.Open(togate.c_str(), this))
+	std::string name("Gate2Modem");
+	name.append(1, RPTR_MOD);
+	printf("Opening %s\n", name.c_str());
+	if (FromGate.Open(name.c_str()))
 		return true;
+	name.assign("Modem");
+	name.append(1, RPTR_MOD);
+	name.append("2Gate");
+	ToGate.SetUp(name.c_str());
 
 	serfd = OpenModem();
 	if (serfd < 0)
@@ -465,12 +462,9 @@ EModemResponse CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 	};
 }
 
-void CQnetModem::Run(const char *cfgfile)
+void CQnetModem::Run()
 {
-	if (Initialize(cfgfile))
-		return;
-
-	int ug2m = ToGate.GetFD();
+	int ug2m = FromGate.GetFD();
 	printf("gate2modem=%d, serial=%d\n", ug2m, serfd);
 
 	keep_running = true;
@@ -540,7 +534,7 @@ void CQnetModem::Run(const char *cfgfile)
 		if (keep_running && FD_ISSET(ug2m, &readfds))
 		{
 			SDSVT dsvt;
-			ssize_t len = ToGate.Read(dsvt.title, sizeof(SDSVT));
+			ssize_t len = FromGate.Read(dsvt.title, sizeof(SDSVT));
 
 			if (len <= 0)
 			{
@@ -594,8 +588,12 @@ void CQnetModem::Run(const char *cfgfile)
 			}
 		}
 	}
+}
+
+void CQnetModem::Close()
+{
 	close(serfd);
-	ToGate.Close();
+	FromGate.Close();
 }
 
 int CQnetModem::SendToModem(const unsigned char *buf)
@@ -821,17 +819,17 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 }
 
 // process configuration file and return true if there was a problem
-bool CQnetModem::ReadConfig(const char *cfgFile)
+bool CQnetModem::ReadConfig(const std::string &cfgFile)
 {
 	CQnetConfigure cfg;
-	printf("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile.c_str());
 	if (cfg.Initialize(cfgFile))
 		return true;
 
 	const std::string estr;	// an empty string
 	std::string type;
 	std::string modem_path("module_");
-	if (0 > assigned_module)
+	if (0 > m_index)
 	{
 		// we need to find the lone mmdvmmodem module
 		for (int i=0; i<3; i++)
@@ -844,11 +842,11 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 				if (type.compare("mmdvmmodem"))
 					continue;	// this ain't it!
 				modem_path.assign(test);
-				assigned_module = i;
+				m_index = i;
 				break;
 			}
 		}
-		if (0 > assigned_module)
+		if (0 > m_index)
 		{
 			fprintf(stderr, "Error: no 'mmdvmmodem' module found\n!");
 			return true;
@@ -857,7 +855,7 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	else
 	{
 		// make sure mmdvmmodem module is defined
-		modem_path.append(1, 'a' + assigned_module);
+		modem_path.append(1, 'a' + m_index);
 		if (cfg.KeyExists(modem_path))
 		{
 			cfg.GetValue(modem_path, estr, type, 1, 16);
@@ -869,14 +867,13 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 		}
 		else
 		{
-			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
+			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+m_index);
 			return true;
 		}
 	}
-	RPTR_MOD = 'A' + assigned_module;
+	RPTR_MOD = 'A' + m_index;
 
 	cfg.GetValue(modem_path+"_device", type, MODEM_DEVICE, 7, FILENAME_MAX);
-	cfg.GetValue(std::string("gateway_tomodem")+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
 
 	if (cfg.GetValue(modem_path+"_tx_frequency", type, TX_FREQUENCY, 1.0, 6000.0))
 		return true;	// we have to have a valid frequency
@@ -933,6 +930,25 @@ bool CQnetModem::ReadConfig(const char *cfgFile)
 	return false;
 }
 
+std::unique_ptr<CQnetModem> pmodem;
+
+static void SignalHandler(int sig)
+{
+	switch (sig)
+	{
+	case SIGINT:
+	case SIGHUP:
+	case SIGTERM:
+		if (pmodem)
+			pmodem->Stop();
+		break;
+
+	default:
+		fprintf(stderr, "Caught an unexpected signal: %d\n", sig);
+		break;
+	}
+}
+
 int main(int argc, const char **argv)
 {
 	setbuf(stdout, NULL);
@@ -944,7 +960,7 @@ int main(int argc, const char **argv)
 
 	if ('-' == argv[1][0])
 	{
-		printf("%s Copyright (C) 2019 by Thomas A. Early N7TAE\n", MODEM_VERSION);
+		printf("%s Copyright (C) 2019,2024 by Thomas A. Early N7TAE\n", MODEM_VERSION);
 		printf("QnetModem comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
 		printf("This is free software, and you are welcome to distribute it\n");
 		printf("under certain conditions that are discussed in the LICENSE file.\n");
@@ -959,31 +975,47 @@ int main(int argc, const char **argv)
 	}
 	qn += 7;
 
-	int assigned_module;
+	int mod;
 	switch (*qn)
 	{
 	case 0:
-		assigned_module = -1;
+		mod = -1;
 		break;
 	case 'a':
-		assigned_module = 0;
+		mod = 0;
 		break;
 	case 'b':
-		assigned_module = 1;
+		mod = 1;
 		break;
 	case 'c':
-		assigned_module = 2;
+		mod = 2;
 		break;
 	default:
 		fprintf(stderr, "assigned module must be a, b or c\n");
 		return 1;
 	}
 
-	CQnetModem qnmodem(assigned_module);
+	pmodem = std::unique_ptr<CQnetModem>(new CQnetModem(mod));
 
-	qnmodem.Run(argv[1]);
+	if (!pmodem)
+	{
+		fprintf(stderr, "Could not make a CQnetModem!\n");
+		return EXIT_FAILURE;
+	}
+
+	if (pmodem->Initialize(argv[1]))
+	{
+		pmodem.reset();
+		return EXIT_FAILURE;
+	}
+
+	pmodem->Run();
+
+	pmodem->Close();
+
+	pmodem.reset();
 
 	printf("%s is closing.\n", argv[0]);
 
-	return 0;
+	return EXIT_SUCCESS;
 }

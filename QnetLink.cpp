@@ -56,7 +56,7 @@
 
 #define LINK_VERSION "QnetLink-40411"
 
-CQnetLink::CQnetLink()
+CQnetLink::CQnetLink() : CBase()
 {
 }
 
@@ -643,12 +643,12 @@ void CQnetLink::PrintCallsigns(const std::string &key, const std::set<std::strin
 }
 
 /* process configuration file */
-bool CQnetLink::ReadConfig(const char *cfgFile)
+bool CQnetLink::ReadConfig(const std::string &cfgFile)
 {
 	CQnetConfigure cfg;
 	const std::string estr;	// an empty string
 
-	printf("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile.c_str());
 	if (cfg.Initialize(cfgFile))
 		return true;
 
@@ -737,8 +737,6 @@ bool CQnetLink::ReadConfig(const char *cfgFile)
 	saved_max_dongles = max_dongles = (unsigned int)maxdongle;
 
 	key.assign("gateway_");
-	cfg.GetValue(key+"tolink", estr, togate, 1, FILENAME_MAX);
-
 	cfg.GetValue("log_qso", estr, qso_details);
 	cfg.GetValue("log_debug", estr, log_debug);
 
@@ -788,12 +786,13 @@ bool CQnetLink::srv_open()
 	}
 
 	/* create our gateway unix sockets */
-	printf("Connecting to qngateway at %s\n", togate.c_str());
-	if (ToGate.Open(togate.c_str(), this))
+	printf("Opening Gate2Link\n");
+	if (FromGate.Open("Gate2Link"))
 	{
 		srv_close();
 		return true;
 	}
+	ToGate.SetUp("Link2Gate");
 
 	/* initialize all remote links */
 	for (int i = 0; i < 3; i++)
@@ -819,7 +818,7 @@ void CQnetLink::srv_close()
 	XRFSock4.Close();
 	DCSSock4.Close();
 	REFSock4.Close();
-	ToGate.Close();
+	FromGate.Close();
 }
 
 /* find the repeater IP by callsign and link to it */
@@ -2715,14 +2714,14 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 	}
 }
 
-void CQnetLink::Process()
+void CQnetLink::Run()
 {
 	tnow = 0;
 	auto heartbeat = time(NULL);
 
 	if (uses_ipv6)
 		printf("xrf6=%d, dcs6=%d, ref6=%d ", XRFSock6.GetSocket(), DCSSock6.GetSocket(), REFSock6.GetSocket());
-	printf("xrf4=%d, dcs4=%d, ref4=%d, gateway=%d\n", XRFSock4.GetSocket(), DCSSock4.GetSocket(), REFSock4.GetSocket(), ToGate.GetFD());
+	printf("xrf4=%d, dcs4=%d, ref4=%d, gateway=%d\n", XRFSock4.GetSocket(), DCSSock4.GetSocket(), REFSock4.GetSocket(), FromGate.GetFD());
 
 	// initialize all request links
 	bool first = true;
@@ -2806,7 +2805,7 @@ void CQnetLink::Process()
 			AddFDSet(max_nfds, DCSSock6.GetSocket(), &fdset);
 			AddFDSet(max_nfds, REFSock6.GetSocket(), &fdset);
 		}
-		AddFDSet(max_nfds, ToGate.GetFD(), &fdset);
+		AddFDSet(max_nfds, FromGate.GetFD(), &fdset);
 		tv.tv_sec = 0;
 		tv.tv_usec = 20000;
 		auto sval = select(max_nfds + 1, &fdset, 0, 0, &tv);
@@ -2868,11 +2867,11 @@ void CQnetLink::Process()
 			}
 		}
 
-		if (keep_running && FD_ISSET(ToGate.GetFD(), &fdset))
+		if (keep_running && FD_ISSET(FromGate.GetFD(), &fdset))
 		{
 			unsigned char your[3] = { 'C', 'C', 'C' };
 			SDSVT dsvt;
-			int length = ToGate.Read(dsvt.title, 56);
+			int length = FromGate.Read(dsvt.title, 56);
 
 			if ((length==56 || length==27) && 0==memcmp(dsvt.title,"DSVT", 4U) && dsvt.id==0x20U && (dsvt.config==0x10U || dsvt.config==0x20U))
 			{
@@ -2880,7 +2879,7 @@ void CQnetLink::Process()
 				if (length == 56)
 				{
 					if (qso_details)
-						printf("START from local g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s/%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes on %s\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length, togate.c_str());
+						printf("START from local g2: streamID=%04x, flags=%02x:%02x:%02x, my=%.8s/%.4s, ur=%.8s, rpt1=%.8s, rpt2=%.8s, %d bytes on Gate2Link\n", ntohs(dsvt.streamid), dsvt.hdr.flag[0], dsvt.hdr.flag[1], dsvt.hdr.flag[2], dsvt.hdr.mycall, dsvt.hdr.sfx, dsvt.hdr.urcall, dsvt.hdr.rpt1, dsvt.hdr.rpt2, length);
 
 					// save mycall
 					char call[CALL_SIZE + 1];
@@ -3412,7 +3411,7 @@ void CQnetLink::Process()
 					}
 				}
 			}
-			FD_CLR (ToGate.GetFD(), &fdset);
+			FD_CLR (FromGate.GetFD(), &fdset);
 		}
 		for (int i=0; i<3 && keep_running; i++)
 		{
@@ -3666,7 +3665,7 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 	return;
 }
 
-bool CQnetLink::Init(const char *cfgfile)
+bool CQnetLink::Initialize(const std::string &cfgfile)
 {
 	tzset();
 	setvbuf(stdout, (char *)NULL, _IOLBF, 0);
@@ -3701,7 +3700,7 @@ bool CQnetLink::Init(const char *cfgfile)
 	/* process configuration file */
 	if (ReadConfig(cfgfile))
 	{
-		printf("Failed to process config file %s\n", cfgfile);
+		printf("Failed to process config file %s\n", cfgfile.c_str());
 		return true;
 	}
 	// open sqlite
@@ -3750,7 +3749,7 @@ bool CQnetLink::Init(const char *cfgfile)
 	return false;
 }
 
-void CQnetLink::Shutdown()
+void CQnetLink::Close()
 {
 	char unlink_request[CALL_SIZE + 3];
 	char cmd_2_dcs[19];
@@ -3810,18 +3809,44 @@ void CQnetLink::Shutdown()
 	return;
 }
 
+CQnetLink qnlink;
+
+static void SignalHandler(int sig)
+{
+	switch (sig)
+	{
+		case SIGINT:
+		case SIGHUP:
+		case SIGTERM:
+			qnlink.Stop();
+			break;
+		default:
+			fprintf(stderr, "Caught an unknown signal: %d\n", sig);
+			break;
+	}
+}
+
 int main(int argc, char **argv)
 {
+	std::signal(SIGINT,  SignalHandler);
+	std::signal(SIGHUP,  SignalHandler);
+	std::signal(SIGTERM, SignalHandler);
+
 	if (argc != 2)
 	{
 		printf("Usage: %s configuration_file\n", argv[0]);
-		return 1;
+		return EXIT_FAILURE;
 	}
-	CQnetLink qnlink;
-	if (qnlink.Init(argv[1]))
-		return 1;
+
+	if (qnlink.Initialize(argv[1]))
+		return EXIT_FAILURE;
 	printf("QnetLink %s initialized...entering processing loop\n", LINK_VERSION);
-	qnlink.Process();
+
+	qnlink.Run();
+
 	printf("QnetLink exiting\n");
-	qnlink.Shutdown();
+
+	qnlink.Close();
+
+	return EXIT_SUCCESS;
 }

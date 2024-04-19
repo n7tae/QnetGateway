@@ -34,6 +34,8 @@
 #include <termios.h>
 #include <wchar.h>
 #include <sys/file.h>
+#include <csignal>
+#include <memory>
 
 #include "Random.h"
 #include "QnetConfigure.h"
@@ -1248,18 +1250,18 @@ void CQnetDVRPTR::calcPFCS(unsigned char *packet)	//Netzwerk CRC
 }
 
 /* process configuration file */
-bool CQnetDVRPTR::ReadConfig(const char *cfgFile)
+bool CQnetDVRPTR::ReadConfig(const std::string &cfgFile)
 {
 	CQnetConfigure cfg;
 
-	printf("Reading file %s\n", cfgFile);
+	printf("Reading file %s\n", cfgFile.c_str());
 	if (cfg.Initialize(cfgFile))
 		return true;
 
 	const std::string estr;	// an empty string
 	std::string type;
 	std::string path("module_");
-	if (0 > assigned_module)
+	if (0 > m_index)
 	{
 		// we need to find the lone dvrptr module
 		for (int i=0; i<3; i++)
@@ -1272,11 +1274,11 @@ bool CQnetDVRPTR::ReadConfig(const char *cfgFile)
 				if (type.compare("dvrptr"))
 					continue;	// this ain't it!
 				path.assign(test);
-				assigned_module = i;
+				m_index = i;
 				break;
 			}
 		}
-		if (0 > assigned_module)
+		if (0 > m_index)
 		{
 			fprintf(stderr, "Error: no 'dvrptr' module found\n!");
 			return true;
@@ -1285,7 +1287,7 @@ bool CQnetDVRPTR::ReadConfig(const char *cfgFile)
 	else
 	{
 		// make sure dvrptr module is defined
-		path.append(1, 'a' + assigned_module);
+		path.append(1, 'a' + m_index);
 		if (cfg.KeyExists(path))
 		{
 			cfg.GetValue(path, estr, type, 1, 16);
@@ -1297,12 +1299,11 @@ bool CQnetDVRPTR::ReadConfig(const char *cfgFile)
 		}
 		else
 		{
-			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+assigned_module);
+			fprintf(stderr, "Module '%c' is not defined.\n", 'a'+m_index);
 			return true;
 		}
 	}
-	DVRPTR_MOD = 'A' + assigned_module;
-	cfg.GetValue(std::string("gateway_tomodem")+std::string(1, 'a'+assigned_module), estr, togate, 1, FILENAME_MAX);
+	DVRPTR_MOD = 'A' + m_index;
 
 	std::string call;
 	if (cfg.GetValue("ircddb_login", type, call, 3, 6))
@@ -1636,7 +1637,7 @@ void CQnetDVRPTR::readFrom20000()
 	unsigned char ctrl_in = 0x80;
 	bool written_to_q = false;
 
-	int fd = ToGate.GetFD();
+	int fd = FromGate.GetFD();
 	while (keep_running)
 	{
 		written_to_q = false;
@@ -1648,7 +1649,7 @@ void CQnetDVRPTR::readFrom20000()
 		select(fd + 1, &readfd, NULL, NULL, &tv);
 		if (FD_ISSET(fd, &readfd))
 		{
-			len = ToGate.Read(recv_buf.title, 56);
+			len = FromGate.Read(recv_buf.title, 56);
 			if (len == 56)
 			{
 				if (busy20000)
@@ -1980,67 +1981,11 @@ bool CQnetDVRPTR::check_serial()
 	return match;
 }
 
-int main(int argc, const char **argv)
+bool CQnetDVRPTR::Initialize(const std::string &file)
 {
-	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("dvrptr VERSION %s\n", DVRPTR_VERSION);
-
-	if (argc != 2)
-	{
-		fprintf(stderr, "Usage: %s <config_file>\n", argv[0]);
-		return 1;
-	}
-
-	if ('-' == argv[1][0])
-	{
-		printf("%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVRPTR_VERSION);
-		printf("QnetDVRPTR comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
-		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n");
-		return 0;
-	}
-
-	const char *qn = strstr(argv[0], "qndvrptr");
-	if (NULL == qn)
-	{
-		fprintf(stderr, "Error finding 'qndvrptr' in %s!\n", argv[0]);
-		return 1;
-	}
-	qn += 8;
-
-	int mod;
-	switch (*qn)
-	{
-	case 0:
-		mod = -1;
-		break;
-	case 'a':
-		mod = 0;
-		break;
-	case 'b':
-		mod = 1;
-		break;
-	case 'c':
-		mod = 2;
-		break;
-	default:
-		fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
-		return 1;
-	}
-
-	CQnetDVRPTR dvrptr;
-	if (dvrptr.Init(argv[1], mod))
-		return EXIT_FAILURE;
-	dvrptr.Run();
-
-	return EXIT_SUCCESS;
-}
-
-bool CQnetDVRPTR::Init(const char *file, int mod)
-{
-	assigned_module = mod;
 	if (ReadConfig(file))
 	{
-		fprintf(stderr, "Failed to process config file %s\n", file);
+		fprintf(stderr, "Failed to process config file %s\n", file.c_str());
 		return true;
 	}
 
@@ -2074,8 +2019,15 @@ bool CQnetDVRPTR::Init(const char *file, int mod)
 	strcpy(DVCALL_and_MOD, DVCALL);
 	DVCALL_and_MOD[7] = DVRPTR_MOD;
 
-	if (ToGate.Open(togate.c_str(), this))
+	std::string name("Gate2Modem");
+	name.append(1, DVRPTR_MOD);
+	printf("Opening %s\n", name.c_str());
+	if (FromGate.Open(name.c_str()))
 		return true;
+	name.assign("Modem");
+	name.append(1, DVRPTR_MOD);
+	name.append("2Gate");
+	ToGate.SetUp(name.c_str());
 
 	if  (RX_Inverse == true)
 	{
@@ -2603,9 +2555,95 @@ void CQnetDVRPTR::Run()
 			}
 		}
 	}
+}
 
-	ToGate.Close();
+void CQnetDVRPTR::Close()
+{
+	FromGate.Close();
 	printf("dvrptr exiting...\n");
+}
 
-	return;
+std::unique_ptr<CQnetDVRPTR> pdvrptr;
+
+void SignalHandler(int sig)
+{
+	switch (sig)
+	{
+		case SIGINT:
+		case SIGHUP:
+		case SIGTERM:
+			if (pdvrptr)
+				pdvrptr->Stop();
+			break;
+		default:
+			fprintf(stderr, "Caught an unexpected signal: %d\n", sig);
+	}
+}
+
+int main(int argc, const char **argv)
+{
+	std::signal(SIGINT,  SignalHandler);
+	std::signal(SIGHUP,  SignalHandler);
+	std::signal(SIGTERM, SignalHandler);
+	printf("dvrptr VERSION %s\n", DVRPTR_VERSION);
+
+	if (argc != 2)
+	{
+		fprintf(stderr, "Usage: %s <config_file>\n", argv[0]);
+		return 1;
+	}
+
+	if ('-' == argv[1][0])
+	{
+		printf("%s Copyright (C) 2018-2019 by Thomas A. Early N7TAE\n", DVRPTR_VERSION);
+		printf("QnetDVRPTR comes with ABSOLUTELY NO WARRANTY; see the LICENSE for details.\n");
+		printf("This is free software, and you are welcome to distribute it\nunder certain conditions that are discussed in the LICENSE file.\n");
+		return 0;
+	}
+
+	const char *qn = strstr(argv[0], "qndvrptr");
+	if (NULL == qn)
+	{
+		fprintf(stderr, "Error finding 'qndvrptr' in %s!\n", argv[0]);
+		return 1;
+	}
+	qn += 8;
+
+	int mod;
+	switch (*qn)
+	{
+	case 0:
+		mod = -1;
+		break;
+	case 'a':
+		mod = 0;
+		break;
+	case 'b':
+		mod = 1;
+		break;
+	case 'c':
+		mod = 2;
+		break;
+	default:
+		fprintf(stderr, "ERROR: '%s' is not a valid module\nassigned module must be a, b or c\n", argv[1]);
+		return 1;
+	}
+
+	pdvrptr = std::unique_ptr<CQnetDVRPTR>(new CQnetDVRPTR(mod));
+	if (!pdvrptr)
+	{
+		fprintf(stderr, "Could not make a DVRPTR at %d\n", mod);
+		return EXIT_FAILURE;
+	}
+
+	if (pdvrptr->Initialize(argv[1]))
+		return EXIT_FAILURE;
+
+	pdvrptr->Run();
+
+	pdvrptr->Close();
+
+	pdvrptr.reset();
+
+	return EXIT_SUCCESS;
 }
