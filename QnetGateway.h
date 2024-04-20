@@ -19,7 +19,6 @@
 #include <set>
 #include <regex>
 #include <future>
-#include <queue>
 
 #include "IRCDDB.h"
 #include "QnetTypeDefs.h"
@@ -101,7 +100,6 @@ public:
 	void Close();
 
 private:
-	std::queue<std::future<void>> m_fqueue;
 	// link type
 	int link_family[3] = { AF_UNSPEC, AF_UNSPEC, AF_UNSPEC };
 	// network type

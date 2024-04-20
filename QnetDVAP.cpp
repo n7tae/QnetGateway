@@ -841,14 +841,7 @@ void CQnetDVAP::ReadDVAPThread()
 					if (MODULE_ACKNOWLEDGE && !busy20000)
 					{
 						memcpy(dvap_ack_arg.mycall, mycall, 8);
-						try
-						{
-							m_fqueue.emplace(std::async(std::launch::async, &CQnetDVAP::RptrAckThread, this, &dvap_ack_arg));
-						}
-						catch (const std::exception &e)
-						{
-							printf("Failed to start RptrAckThread(). Exception: %s\n", e.what());
-						}
+						RptrAckThread(&dvap_ack_arg);
 					}
 				}
 			}
@@ -957,22 +950,6 @@ void CQnetDVAP::Run()
 			ackpoint.start();
 		}
 		ReadFromGateway();
-
-		if (! m_fqueue.empty())
-		{
-			if (m_fqueue.front().valid())
-			{
-				if (std::future_status::ready == m_fqueue.front().wait_for(std::chrono::seconds(0)))
-				{
-					m_fqueue.front().get();
-					m_fqueue.pop();
-				}
-			}
-			else
-			{
-				m_fqueue.pop();
-			}
-		}
 	}
 }
 

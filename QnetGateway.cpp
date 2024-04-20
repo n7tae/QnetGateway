@@ -612,17 +612,7 @@ void CQnetGateway::ProcessTimeouts()
 				// printf("Closed echotest audio file:[%s]\n", recd[i].file);
 
 				/* START: echotest thread setup */
-				try
-				{
-					m_fqueue.emplace(std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i])));
-				}
-				catch (const std::exception &e)
-				{
-					printf("Failed to start echotest thread. Exception: %s\n", e.what());
-					// when the echotest thread runs, it deletes the file,
-					// Because the echotest thread did NOT start, we delete the file here
-					unlink(recd[i].file);
-				}
+				PlayFileThread(recd[i]);
 				/* END: echotest thread setup */
 			}
 		}
@@ -1678,14 +1668,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 							band_txt[i].last_time = 0;
 							band_txt[i].streamID = 0U;  // prevent vm timeout
 							snprintf(vm[i].message, 21, "VOICEMAIL ON MOD %c  ", 'A'+i);
-							try
-							{
-								m_fqueue.emplace(std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(vm[i])));
-							}
-							catch (const std::exception &e)
-							{
-								printf("Failed to start voicemail playback. Exception: %s\n", e.what());
-							}
+							PlayFileThread(vm[i]);
 						}
 						else
 							printf("No voicemail to recall or still recording\n");
@@ -1970,17 +1953,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 							// printf("Closed echotest audio file:[%s]\n", recd[i].file);
 
 							/* we are in echotest mode, so play it back */
-							try
-							{
-								m_fqueue.emplace(std::async(std::launch::async, &CQnetGateway::PlayFileThread, this, std::ref(recd[i])));
-							}
-							catch (const std::exception &e)
-							{
-								printf("failed to start PlayFileThread. Exception: %s\n", e.what());
-								//   When the echotest thread runs, it deletes the file,
-								//   Because the echotest thread did NOT start, we delete the file here
-								unlink(recd[i].file);
-							}
+							PlayFileThread(recd[i]);
 						}
 						break;
 					}
@@ -2076,22 +2049,6 @@ void CQnetGateway::Run()
 
 	while (keep_running)
 	{
-		if (! m_fqueue.empty())
-		{
-			if (m_fqueue.front().valid())
-			{
-				if (std::future_status::ready == m_fqueue.front().wait_for(std::chrono::seconds(0)))
-				{
-					m_fqueue.front().get();
-					m_fqueue.pop();
-				}
-			}
-			else
-			{
-				m_fqueue.pop();
-			}
-		}
-
 		ProcessTimeouts();
 
 		// wait 20 ms max

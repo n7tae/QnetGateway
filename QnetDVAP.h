@@ -19,7 +19,6 @@
  */
 
 #include <future>
-#include <queue>
 
 #include "UnixDgramSocket.h"
 #include "Base.h"
@@ -53,7 +52,6 @@ private:
 	CRandom Random;
 
 	// data
-	std::queue<std::future<void>> m_fqueue;
 	std::future<void> m_readThread;
 
 	// unix sockets

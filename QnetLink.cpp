@@ -348,14 +348,7 @@ void CQnetLink::rptr_ack(int i)
 	{
 		memcpy(mod_and_RADIO_ID[i] + 1, "NOT LINKED", 10);
 	}
-	try
-	{
-		m_fqueue.emplace(std::async(std::launch::async, &CQnetLink::RptrAckThread, this, mod_and_RADIO_ID[i]));
-	}
-	catch (const std::exception &e)
-	{
-		printf("Failed to start RptrAckThread(). Exception: %s\n", e.what());
-	}
+	RptrAckThread(mod_and_RADIO_ID[i]);
 	return;
 }
 
@@ -2743,23 +2736,6 @@ void CQnetLink::Run()
 
 	while (keep_running)
 	{
-		if (! m_fqueue.empty())
-		{
-			auto &fut = m_fqueue.front();
-			if (fut.valid())
-			{
-				if (std::future_status::ready == fut.wait_for(std::chrono::seconds(0)))
-				{
-					fut.get();
-					m_fqueue.pop();
-				}
-			}
-			else
-			{
-				m_fqueue.pop();
-			}
-		}
-
 		static bool loadG[3] = { false, false, false };
 		time(&tnow);
 		if (keep_running && (tnow - heartbeat) > 0)
@@ -3485,14 +3461,7 @@ void CQnetLink::PlayAudioNotifyThread(char *msg)
 	memcpy(edata.header.hdr.sfx, "RPTR", 4);
 	calcPFCS(edata.header.title, 56);
 
-	try
-	{
-		m_fqueue.emplace(std::async(std::launch::async, &CQnetLink::AudioNotifyThread, this, std::ref(edata)));
-	}
-	catch (const std::exception &e)
-	{
-		printf ("Failed to start AudioNotifyThread(). Exception: %s\n", e.what());
-	}
+	AudioNotifyThread(edata);
 	return;
 }
 
