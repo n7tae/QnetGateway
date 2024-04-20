@@ -114,16 +114,19 @@ bool CUnixDgramWriter::Write(const void *buf, size_t size)
 		return true;
 	}
 
+	bool retval = false;
 	auto written = write(fd, buf, size);
-	if (written == (ssize_t)size)
-		return false;
-	else if (written < 0)
-		fprintf(stderr, "ERROR: faied to write to %s : %s\n", addr.sun_path+1, strerror(errno));
-	else if (written == 0)
-		fprintf(stderr, "ERROR: zero bytes written to %s\n", addr.sun_path+1);
-	else
-		fprintf(stderr, "ERROR: only %d of %d bytes written to %s\n", (int)written, (int)size, addr.sun_path+1);
+	if (written != (ssize_t)size)
+	{
+		if (written < 0)
+			fprintf(stderr, "ERROR: faied to write to %s : %s\n", addr.sun_path+1, strerror(errno));
+		else if (written == 0)
+			fprintf(stderr, "ERROR: zero bytes written to %s\n", addr.sun_path+1);
+		else
+			fprintf(stderr, "ERROR: only %d of %d bytes written to %s\n", (int)written, (int)size, addr.sun_path+1);
+		retval = true;
+	}
 
 	close(fd);
-	return true;
+	return retval;
 }
