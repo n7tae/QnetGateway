@@ -96,14 +96,14 @@ void CUnixDgramWriter::SetUp(const char *path)	// returns true on failure
 	strncpy(addr.sun_path+1, path, sizeof(addr.sun_path)-2);
 }
 
-ssize_t CUnixDgramWriter::Write(const void *buf, size_t size)
+bool CUnixDgramWriter::Write(const void *buf, size_t size)
 {
 	// open the socket
 	int fd = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (fd < 0)
 	{
 		fprintf(stderr, "Failed to open socket %s : %s\n", addr.sun_path+1, strerror(errno));
-		return -1;
+		return true;
 	}
 	// connect to the receiver
 	int rval = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
@@ -111,33 +111,19 @@ ssize_t CUnixDgramWriter::Write(const void *buf, size_t size)
 	{
 		fprintf(stderr, "Failed to connect to socket %s : %s\n", addr.sun_path+1, strerror(errno));
 		close(fd);
-		return -1;
+		return true;
 	}
 
-	ssize_t written = 0;
-	int count = 0;
-	while (written <= 0)
-	{
-		written = write(fd, buf, size);
-		if (written == (ssize_t)size)
-			break;
-		else if (written < 0)
-			fprintf(stderr, "ERROR: faied to write to %s : %s\n", addr.sun_path+1, strerror(errno));
-		else if (written == 0)
-			fprintf(stderr, "Warning: zero bytes written to %s\n", addr.sun_path+1);
-		else if (written != (ssize_t)size)
-		{
-			fprintf(stderr, "ERROR: only %d of %d bytes written to %s\n", (int)written, (int)size, addr.sun_path+1);
-			break;
-		}
-		if (++count >= 100)
-		{
-			fprintf(stderr, "ERROR: Write failed after %d attempts\n", count-1);
-			break;
-		}
-		std::this_thread::sleep_for(std::chrono::microseconds(5));
-	}
+	auto written = write(fd, buf, size);
+	if (written == (ssize_t)size)
+		return false;
+	else if (written < 0)
+		fprintf(stderr, "ERROR: faied to write to %s : %s\n", addr.sun_path+1, strerror(errno));
+	else if (written == 0)
+		fprintf(stderr, "ERROR: zero bytes written to %s\n", addr.sun_path+1);
+	else
+		fprintf(stderr, "ERROR: only %d of %d bytes written to %s\n", (int)written, (int)size, addr.sun_path+1);
 
 	close(fd);
-	return written;
+	return true;
 }
