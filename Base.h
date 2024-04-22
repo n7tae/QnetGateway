@@ -18,8 +18,6 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-// base class for all modems
-
 #include <string>
 #include <atomic>
 
