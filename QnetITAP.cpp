@@ -46,7 +46,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-40419"
+#define ITAP_VERSION "QnetITAP-40527"
 
 bool CQnetITAP::Initialize(const std::string &cfgfile)
 {
@@ -54,7 +54,7 @@ bool CQnetITAP::Initialize(const std::string &cfgfile)
 		return true;
 
 	std::string name("Gate2Modem");
-	std::string(1, RPTR_MOD);
+	name.append(1, RPTR_MOD);
 	printf("Opening %s\n", name.c_str());
 	if (FromGate.Open(name.c_str()))
 		return true;
