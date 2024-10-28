@@ -73,8 +73,13 @@ void IRCClient::Entry()
 			if (timer == 0)
 			{
 				timer = 30;
+				int fam = AF_UNSPEC;
+				if (0 == strcmp(host_name, "ircv4.openquad.net"))
+					fam = AF_INET;
+				else if (0 == strcmp(host_name, "ircv6.openquad.net"))
+					fam = AF_INET6;
 
-				if (! ircSock.Open(host_name, AF_UNSPEC, std::to_string(port)))
+				if (! ircSock.Open(host_name, fam, std::to_string(port)))
 				{
 					state = 4;
 					timer = 0;
