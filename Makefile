@@ -202,7 +202,6 @@ installdtmf : qndtmf
 	systemctl start qndtmf.service
 
 installdash : index.php
-	/usr/bin/apt update
 	mkdir -p $(WWWDIR)
 	/bin/rm -f $(WWWDIR)/*
 	/bin/ln -f -s $(shell pwd)/index.php $(shell pwd)/dashboardV2 $(WWWDIR)

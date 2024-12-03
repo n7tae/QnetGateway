@@ -1831,7 +1831,7 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 
 						to_remote_g2[i].is_connected = true;
 						printf("Connected from: %.*s\n", 8, to_remote_g2[i].cs);
-						qnDB.UpdateLS(to_remote_g2[i].addr.GetAddress(), to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].from_mod, tracing[i].last_time);
+						qnDB.UpdateLS(to_remote_g2[i].addr.GetAddress(), to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, tracing[i].last_time);
 
 						char linked_remote_system[CALL_SIZE + 1];
 						strcpy(linked_remote_system, to_remote_g2[i].cs);
