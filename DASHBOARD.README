@@ -1,5 +1,15 @@
                     ##### DASHBOARD.README #####
 
+--------------------------------------------------------------------------
+							IMPORTANT!
+This document describes how to install a dashboard server based on a php
+mini-server and should not be used to publish a QnetGateway dashboard on
+the world-wide-web. This mini-server for operating behind a firewall on
+a local network. If you need your QnetGateway dashboard on the WWW, install
+a real web server, like apache2. The mini-server described here is not
+suitable for the WWW!
+--------------------------------------------------------------------------
+
 A web-based dashboard can be enabled. The dashboard has several sections
 that you can display in any order. You can also control the refresh rate and
 how many rows you want in the Last Heard section. You can configure these
@@ -12,6 +22,10 @@ to use something else, the copy the qndash service file:
 cp system/qndash.service.80 system/qndash.service
 
 and edit your new file *before* installing the dashboard.
+
+You also need several php libraries:
+
+sudo apt install -y php-common php-fpm sqlite3 php-sqlite3 dnsutils
 
 To install the dashboard system, run the following command:
 
@@ -53,7 +67,3 @@ The responsive dashboard currently has the following features
       hidden, however, simply rotate your mobile device to landscape view and they
       should appear
   * QnRemote section (aka URCall section) has improved design for mobile device use
-
-Future improvements will be made to
-  * The layout to respect order of the dash_show_order configuration item
-  * Misc performance enhancements

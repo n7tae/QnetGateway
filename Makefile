@@ -99,8 +99,6 @@ installbase : $(BASE_PROGRAMS) gwys.txt qn.cfg
 	/bin/cp -f qngateway $(BINDIR)
 	/bin/cp -f qnremote qnvoice $(BINDIR)
 	/bin/ln -f -s $(shell pwd)/qn.cfg $(CFGDIR)
-	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
-	/bin/ln -f -s $(shell pwd)/dashboardV2 $(WWWDIR)
 	/bin/cp -f defaults $(CFGDIR)
 	/bin/cp -f system/qngateway.service $(SYSDIR)
 	systemctl enable qngateway.service
@@ -205,11 +203,9 @@ installdtmf : qndtmf
 
 installdash : index.php
 	/usr/bin/apt update
-	/usr/bin/apt install -y php-common php-fpm sqlite3 php-sqlite3 dnsutils
 	mkdir -p $(WWWDIR)
-	mkdir -p dashboardV2/jsonData
-	/bin/ln -f -s $(shell pwd)/index.php $(WWWDIR)
-	/bin/ln -f -s $(shell pwd)/dashboardV2 $(WWWDIR)
+	/bin/rm -f $(WWWDIR)/*
+	/bin/ln -f -s $(shell pwd)/index.php $(shell pwd)/dashboardV2 $(WWWDIR)
 	if [ ! -e system/qndash.service ]; then cp system/qndash.service.80 system/qndash.service; fi
 	/bin/cp -f system/qndash.service $(SYSDIR)
 	systemctl enable qndash.service
@@ -328,7 +324,5 @@ uninstalldash :
 	systemctl disable qndash.service
 	/bin/rm -f $(SYSDIR)/qndash.service
 	systemctl daemon-reload
-	/bin/rm -f $(WWWDIR)/index.php
-	/bin/rm -f $(WWWDIR)/dashboardV2
-	/bin/rm -f $(CFGDIR)/qn.db
-	/bin/rm -rf dashboardV2/jsonData
+	/bin/rm -f $(WWWDIR)/*
+	/bin/rm -f dashboardV2/jsonData/*.json
