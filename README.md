@@ -5,14 +5,15 @@ The QnetGateway is an D-Star IRCDDB gateway application that supports MMDVMHost 
 
 QnetGateway includes a dashboard with a last heard section. The lastheard section uses SQLite3, a light-weight database, so you will need a package to compile the gateway:
 
-```bash
+```
 sudo apt install libsqlite3-dev
 ```
 
 If you are going to install the dashboard, you need several libraries for php:
 
-```bash
+```
 sudo apt install -y php-common php-fpm sqlite3 php-sqlite3 dnsutils
+```
 
 Be sure to read the DASHBOARD.README for more information.
 
@@ -26,7 +27,7 @@ For building a QnetGateway + MMDVMHost system, see the MMDVM.README file. To bui
 
 To get started with an MMDVM-modem, DVAP, DVRPTR or Icom Terminal and/or Access Point system, clone this software to your Linux device:
 
-```bash
+```
 git clone https://github.com/n7tae/QnetGateway.git
 ```
 
@@ -36,10 +37,10 @@ QnetGateway includes a "remote control" program, called `qnremote`. After you bu
 
 For other details of interesting things QnetGatway can do, see the OPERATING file. For example, with QnetGateway, you can execute up to 36 different Linux scripts from you radio. Two scripts are include:
 
-```text
+```
 YourCall = "      HX"   will halt your system.
 YourCall = "      RX"   will reboot your system.
-YourCall - "      GX"   will restart QnetGateway
+YourCall = "      GX"   will restart QnetGateway.
 ```
 
 QnetGateway is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation. QnetGateway is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the LICENSE file for more details.
