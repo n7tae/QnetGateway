@@ -2411,7 +2411,7 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 							printf("new CALL=%s, DONGLE-p, ip=%s, users=%d\n", inbound->call, ip.c_str(), (int)inbound_list.size());
 
 						buf[0] = 8;
-						memcpy(buf+4, "OKAY", 4);
+						memcpy(buf+4, "OKRW", 4);
 
 						REFWrite(buf, 8, fromDst4);
 						qnDB.UpdateLS(ip.c_str(), 'p', inbound->call, 'p', time(NULL));
