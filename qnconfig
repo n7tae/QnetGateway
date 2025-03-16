@@ -251,6 +251,9 @@ IrcddbMenu () {
 		echo "Routes to other clients using IRC Server A will be searched first"
 		echo
 		echo    "l  : Login - must be a legal callsign = '${ircddb_login}'"
+		echo
+		echo    "d  : Setup dual-stack (IPv4 & IPv6) QuadNet irc servers for me!"
+		echo
 		echo -n "ha : Hostname for IRC Server A        = "; EvaluateVar ircddb0_host{,_d}
 		if [ -n "$em" ]; then
 			echo -n "oa : IRC TCP port A                  = "; EvaluateVar ircddb0_port{,_d}
@@ -264,6 +267,10 @@ IrcddbMenu () {
 		EndMenu
 
 		if   [[ "$key" == l*  ]]; then ircddb_login="${value^^}"
+		elif [[ "$key" == d*  ]]; then
+			ircddb0_host='ircv6.openquad.net'
+			ircddb1_host='ircv4.openquad.net'
+			unset ircddb{0,1}_port ircddb{0,1}_password
 		elif [[ "$key" == ha* ]]; then
 			if [ -z "$value"]; then
 				if [ -z "${ircddb1_host+x}" ]; then
