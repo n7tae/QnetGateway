@@ -3176,8 +3176,8 @@ void CQnetLink::Run()
 									memcpy(rdsvt.dsvt.hdr.rpt1, to_remote_g2[i].cs, strlen(to_remote_g2[i].cs));
 									rdsvt.dsvt.hdr.rpt1[7] = to_remote_g2[i].to_mod;
 									memset(rdsvt.dsvt.hdr.rpt2, ' ', CALL_SIZE);
-									memcpy(rdsvt.dsvt.hdr.rpt2, to_remote_g2[i].cs, strlen(to_remote_g2[i].cs));
-									rdsvt.dsvt.hdr.rpt2[7] = 'G';
+                                                                        memcpy(rdsvt.dsvt.hdr.rpt2, owner.c_str(), 7);
+                                                                        rdsvt.dsvt.hdr.rpt2[7] = dsvt.hdr.rpt1[7];
 									memcpy(rdsvt.dsvt.hdr.urcall, "CQCQCQ  ", CALL_SIZE);
 									calcPFCS(rdsvt.dsvt.title, 56);
 
