@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-41203"
+#define LINK_VERSION "QnetLink-50330"
 
 CQnetLink::CQnetLink() : CBase()
 {
