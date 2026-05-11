@@ -30,8 +30,8 @@ public:
 private:
 	// functions
 	long get_syndrome(long pattern);
-	long arr2int(int a[], int r);
-	void nextcomb(int n, int r, int a[]);
+	long arr2int(int *a, int r);
+	void nextcomb(int n, int r, int *a);
 	int golay2412(int data, int *decoded);
 
 	// data

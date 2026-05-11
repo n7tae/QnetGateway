@@ -2187,10 +2187,10 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 		{
 			if (fromDst4==to_remote_g2[i].addr && to_remote_g2[i].addr.GetPort()==rmt_ref_port)
 			{
-                                if (log_debug)
-                                        printf("Got a disconnect request!!\n");
-                                /* reply with the same DISCONNECT */
-                                REFWrite(buf, 5, fromDst4);
+				if (log_debug)
+					printf("Got a disconnect request!!\n");
+				/* reply with the same DISCONNECT */
+				REFWrite(buf, 5, fromDst4);
 
 				printf("Call %s disconnected\n", to_remote_g2[i].cs);
 
