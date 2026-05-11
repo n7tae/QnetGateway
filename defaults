@@ -28,7 +28,7 @@
 #     This file should not contain any tab characters. Use spaces instead.
 #
 # if a definition is commented out, it means that key has no default value. And it is
-# include here just as a reference. The 'ircddb_login' value is requred for every
+# include here just as a reference. The 'ircddb_login' value is required for every
 # configure file
 
 ##########################################################################################################################
@@ -52,7 +52,7 @@ gateway_send_qrgs_maps_d=true        # send frequency, offset, coordinates and u
 gateway_ip_d='ANY_PORT'              # the g2 port
 gateway_port_d=40000                 # don't change
 gateway_ipv6_ip_d='ANY_PORT'
-gateway_ipv6_port_d=9011             # IANA-approved DStar rouing port
+gateway_ipv6_port_d=9011             # IANA-approved DStar routing port
 gateway_latitude_d=0                 # you can leave this unspecified for a mobile rig
 gateway_longitude_d=0                # like the latitude
 gateway_desc1_d=''                   # maximum of 20 characters, most special symbols are not allowed
@@ -93,7 +93,7 @@ module_x_link_at_start=''  # For example, set to 'REF001 C' to link module to 1-
 module_x_auto_link=true    # attempt to automatically re-link if the link should time out.
 module_x_inactivity=0      # if no activity for this many minutes unlink reflector. Zero means no timer.
 module_x_callsign=''       # if you operate in a 'restriction mode', use your personal callsign. Usually leave this empty.
-module_x_packet_wait=25    # how many milliseconds to wait on packets in a voicestream
+module_x_packet_wait=25    # how many milliseconds to wait on packets in a voice-stream
 module_x_acknowledge=false # Do you want an ACK back?
 module_x_ack_delay=250     # millisecond delay before acknowledgment
 module_x_range=0           # the range of this repeater, in meters 1609.344 meters is 1.0 miles

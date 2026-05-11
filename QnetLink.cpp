@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-40411"
+#define LINK_VERSION "QnetLink-50330"
 
 CQnetLink::CQnetLink() : CBase()
 {
@@ -1831,7 +1831,7 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 
 						to_remote_g2[i].is_connected = true;
 						printf("Connected from: %.*s\n", 8, to_remote_g2[i].cs);
-						qnDB.UpdateLS(to_remote_g2[i].addr.GetAddress(), to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].from_mod, tracing[i].last_time);
+						qnDB.UpdateLS(to_remote_g2[i].addr.GetAddress(), to_remote_g2[i].from_mod, to_remote_g2[i].cs, to_remote_g2[i].to_mod, tracing[i].last_time);
 
 						char linked_remote_system[CALL_SIZE + 1];
 						strcpy(linked_remote_system, to_remote_g2[i].cs);
@@ -2183,15 +2183,15 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 	}
 	else if (length==5 && buf[0]==5 && buf[1]==0 && buf[2]==24 && buf[3]==0 && buf[4]==0)
 	{
-		if (log_debug)
-			printf("Got a disconnect request!!\n");
-		/* reply with the same DISCONNECT */
-		REFWrite(buf, 5, fromDst4);
-
 		for (int i=0; i<3; i++)
 		{
 			if (fromDst4==to_remote_g2[i].addr && to_remote_g2[i].addr.GetPort()==rmt_ref_port)
 			{
+				if (log_debug)
+					printf("Got a disconnect request!!\n");
+				/* reply with the same DISCONNECT */
+				REFWrite(buf, 5, fromDst4);
+
 				printf("Call %s disconnected\n", to_remote_g2[i].cs);
 
 				to_remote_g2[i].cs[0] = '\0';
@@ -2411,7 +2411,7 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 							printf("new CALL=%s, DONGLE-p, ip=%s, users=%d\n", inbound->call, ip.c_str(), (int)inbound_list.size());
 
 						buf[0] = 8;
-						memcpy(buf+4, "OKAY", 4);
+						memcpy(buf+4, "OKRW", 4);
 
 						REFWrite(buf, 8, fromDst4);
 						qnDB.UpdateLS(ip.c_str(), 'p', inbound->call, 'p', time(NULL));
@@ -3176,8 +3176,8 @@ void CQnetLink::Run()
 									memcpy(rdsvt.dsvt.hdr.rpt1, to_remote_g2[i].cs, strlen(to_remote_g2[i].cs));
 									rdsvt.dsvt.hdr.rpt1[7] = to_remote_g2[i].to_mod;
 									memset(rdsvt.dsvt.hdr.rpt2, ' ', CALL_SIZE);
-									memcpy(rdsvt.dsvt.hdr.rpt2, to_remote_g2[i].cs, strlen(to_remote_g2[i].cs));
-									rdsvt.dsvt.hdr.rpt2[7] = 'G';
+                                                                        memcpy(rdsvt.dsvt.hdr.rpt2, owner.c_str(), 7);
+                                                                        rdsvt.dsvt.hdr.rpt2[7] = dsvt.hdr.rpt1[7];
 									memcpy(rdsvt.dsvt.hdr.urcall, "CQCQCQ  ", CALL_SIZE);
 									calcPFCS(rdsvt.dsvt.title, 56);
 

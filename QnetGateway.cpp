@@ -2127,7 +2127,7 @@ void CQnetGateway::Run()
 		// process packets coming from local repeater module(s)
 		for (int i=0; i<3; i++)
 		{
-			if (keep_running && FD_ISSET(FromModem[i].GetFD(), &fdset))
+			if (keep_running && Rptr.mod[i].defined && FD_ISSET(FromModem[i].GetFD(), &fdset))
 			{
 				SDSVT dsvt;
 				const ssize_t len = FromModem[i].Read(dsvt.title, 56);

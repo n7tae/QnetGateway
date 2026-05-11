@@ -178,7 +178,7 @@ bool CQnetDB::UpdateLS(const char *address, const char from_mod, const char *to_
 		return false;
 	std::stringstream sql;
 	sql << "INSERT OR REPLACE INTO LINKSTATUS (ip_address, from_mod, to_callsign, to_mod, linked_time) VALUES ('" << address << "', '" << from_mod << "', '" << to_callsign << "', '" << to_mod << "', " << linked_time << ");";
-
+	printf("%s\n", sql.str().c_str()); // log these updates
 	char *eMsg;
 	if (SQLITE_OK != sqlite3_exec(db, sql.str().c_str(), NULL, 0, &eMsg))
 	{
