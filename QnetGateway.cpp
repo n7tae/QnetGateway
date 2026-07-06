@@ -2561,7 +2561,12 @@ bool CQnetGateway::Initialize(const std::string &path)
 	std::string fname(CFG_DIR);
 	fname.append("/qn.db");
 	if (qnDB.Open(fname.c_str()))
-		return true;
+	{
+		if (qnDB.Open("./qn.db"))
+			return true;
+		else
+			printf("was able to open ./qn.db");
+	}
 	qnDB.ClearLH();
 
 	// Open unix sockets between qngateway and qnremote
