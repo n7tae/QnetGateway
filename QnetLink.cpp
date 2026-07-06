@@ -54,7 +54,7 @@
 #include "QnetLink.h"
 #include "Utilities.h"
 
-#define LINK_VERSION "QnetLink-50330"
+#define LINK_VERSION "QnetLink-60706"
 
 CQnetLink::CQnetLink() : CBase()
 {
@@ -3637,7 +3637,6 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 bool CQnetLink::Initialize(const std::string &cfgfile)
 {
 	tzset();
-	setvbuf(stdout, (char *)NULL, _IOLBF, 0);
 	memset(tracing, 0, 3 * sizeof(struct tracing_tag));
 	memset(dtmf_mycall, 0, 3 * (CALL_SIZE+1));
 	memset(old_sid, 0, 6);
@@ -3797,6 +3796,7 @@ static void SignalHandler(int sig)
 
 int main(int argc, char **argv)
 {
+	setlinebuf(stdout);
 	std::signal(SIGINT,  SignalHandler);
 	std::signal(SIGHUP,  SignalHandler);
 	std::signal(SIGTERM, SignalHandler);

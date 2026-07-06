@@ -45,7 +45,7 @@
 #include "QnetModem.h"
 #include "QnetConfigure.h"
 
-#define MODEM_VERSION "QnetModem-20307"
+#define MODEM_VERSION "QnetModem-60706"
 #define MAX_RESPONSES 30
 
 const unsigned char FRAME_START  = 0xE0U;
@@ -951,7 +951,7 @@ static void SignalHandler(int sig)
 
 int main(int argc, const char **argv)
 {
-	setbuf(stdout, NULL);
+	setlinebuf(stdout);
 	if (2 != argc)
 	{
 		fprintf(stderr, "usage: %s path_to_config_file\n", argv[0]);

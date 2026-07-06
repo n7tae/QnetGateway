@@ -46,7 +46,7 @@
 #include "QnetConfigure.h"
 #include "Timer.h"
 
-#define ITAP_VERSION "QnetITAP-40527"
+#define ITAP_VERSION "QnetITAP-60706"
 
 bool CQnetITAP::Initialize(const std::string &cfgfile)
 {
@@ -749,11 +749,12 @@ static void SignalHandler(int sig)
 
 int main(int argc, const char **argv)
 {
+	setlinebuf(stdout);
+
 	std::signal(SIGINT,  SignalHandler);
 	std::signal(SIGHUP,  SignalHandler);
 	std::signal(SIGTERM, SignalHandler);
 
-	setbuf(stdout, NULL);
 	if (2 != argc)
 	{
 		fprintf(stderr, "usage: %s path_to_config_file\n", argv[0]);

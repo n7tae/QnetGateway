@@ -50,7 +50,7 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-const std::string GW_VERSION("QnetGateway-40411");
+const std::string GW_VERSION("QnetGateway-60706");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -2539,9 +2539,6 @@ bool CQnetGateway::Initialize(const std::string &path)
 {
 	short int i;
 
-	setvbuf(stdout, (char *)NULL, _IOLBF, 0);
-
-
 	/* Used to validate MYCALL input */
 	preg = std::regex("^[A-PR-Z0-9]{1}[A-Z0-9]{0,1}[0-9]{1,2}[A-Z]{1,4} {0,4}[ A-Z]{1}$", std::regex::extended);
 
@@ -2845,6 +2842,7 @@ static void HandleSignal(int sig)
 
 int main(int argc, char **argv)
 {
+	setlinebuf(stdout);
 	std::signal(SIGINT,  HandleSignal);
 	std::signal(SIGHUP,  HandleSignal);
 	std::signal(SIGTERM, HandleSignal);

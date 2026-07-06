@@ -42,7 +42,7 @@
 #include "DStarDecode.h"
 #include "QnetDVRPTR.h"
 
-#define DVRPTR_VERSION "QnetDVRPTR-20520"
+#define DVRPTR_VERSION "QnetDVRPTR-60706"
 
 #define BAUD B115200
 #define IP_SIZE 15
@@ -2582,6 +2582,7 @@ void SignalHandler(int sig)
 
 int main(int argc, const char **argv)
 {
+	setlinebuf(stdout);
 	std::signal(SIGINT,  SignalHandler);
 	std::signal(SIGHUP,  SignalHandler);
 	std::signal(SIGTERM, SignalHandler);

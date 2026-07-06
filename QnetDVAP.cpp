@@ -48,7 +48,7 @@
 #include "DStarDecode.h"
 #include "QnetDVAP.h"
 
-#define DVAP_VERSION "QnetDVAP-40417"
+#define DVAP_VERSION "QnetDVAP-60706"
 
 #define CALL_SIZE 8
 #define IP_SIZE 15
@@ -980,6 +980,7 @@ static void HandleSignal(int sig)
 
 int main(int argc, char **argv)
 {
+	setlinebuf(stdout);
 	printf("%s\n", DVAP_VERSION);
 
 	if (argc != 2)

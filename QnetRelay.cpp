@@ -37,7 +37,7 @@
 #include "QnetTypeDefs.h"
 #include "QnetConfigure.h"
 
-#define RELAY_VERSION "QnetRelay-20307"
+#define RELAY_VERSION "QnetRelay-60706"
 
 bool CQnetRelay::Initialize(const std::string &cfgfile)
 {
@@ -458,7 +458,7 @@ static void SignalHandler(int sig)
 
 int main(int argc, const char **argv)
 {
-	setbuf(stdout, NULL);
+	setlinebuf(stdout);
 	if (2 != argc)
 	{
 		fprintf(stderr, "usage: %s path_to_config_file\n", argv[0]);
