@@ -50,7 +50,7 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-const std::string GW_VERSION("QnetGateway-60706");
+const std::string GW_VERSION("QnetGateway-40411");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -2561,12 +2561,7 @@ bool CQnetGateway::Initialize(const std::string &path)
 	std::string fname(CFG_DIR);
 	fname.append("/qn.db");
 	if (qnDB.Open(fname.c_str()))
-	{
-		if (qnDB.Open("./qn.db"))
-			return true;
-		else
-			printf("was able to open ./qn.db");
-	}
+		return true;
 	qnDB.ClearLH();
 
 	// Open unix sockets between qngateway and qnremote

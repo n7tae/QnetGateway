@@ -78,12 +78,7 @@ bool CQnetConfigure::Initialize(const std::string &file)
 	std::string filename(CFG_DIR);
 	filename.append("/defaults");
 	if (ReadConfigFile(filename.c_str(), defaults))
-	{
-		if (ReadConfigFile("./defaults", defaults))
-			return true;
-		else
-			printf("Successfully read ./defaults!]n");
-	}
+		return true;
 	return ReadConfigFile(file, cfg);
 }
 
