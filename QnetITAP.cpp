@@ -19,6 +19,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <algorithm>
 #include <exception>
 #include <cstdio>
 #include <cctype>
@@ -52,6 +53,8 @@ bool CQnetITAP::Initialize(const std::string &cfgfile)
 {
 	if (ReadConfig(cfgfile))
 		return true;
+
+	serialLog.open("serial.log", std::ios::out | std::ios::trunc | std::ios::binary);
 
 	std::string name("Gate2Modem");
 	name.append(1, RPTR_MOD);
@@ -115,41 +118,44 @@ int CQnetITAP::OpenITAP()
 	return fd;
 }
 
-void CQnetITAP::DumpSerialPacket(const char *title, const unsigned char *buf)
+void CQnetITAP::DumpSerialPacket(const char *title, const unsigned char *buf, const char dir)
 {
+	serialLog.write(&dir, 1);
+	serialLog.write((char*)buf, buf[0]); 
 	printf("%s: ", title);
-	if (buf[0] > 41)
-	{
-		printf("UNKNOWN: length=%u", (unsigned)buf[0]);
-		return;
-	}
+	//if (buf[0] > 41)
+	//{
+	//	printf("UNKNOWN: length=%u\n", (unsigned)buf[0]);
+	//	return;
+	//}
 	SITAP itap;
-	memcpy(&itap, buf, buf[0]);
+	memcpy(&itap, buf, std::min((size_t)buf[0], sizeof(SITAP)));
 	switch (itap.type)
 	{
 		case 0x03U:	//pong
-			printf("Pong\n");
+			printf("Pong");
 			break;
 		case 0x10U: // header
 		case 0x20U:
 			printf("Header ur=%8.8s r1=%8.8s r2=%8.8s my=%8.8s/%4.4s", itap.header.ur, itap.header.r1, itap.header.r2, itap.header.my, itap.header.nm);
 			break;
+		case 0x13U: // bt data??
 		case 0x12U: // data
 		case 0x22U:
-			printf("Data count=%u  seq=%u f=%02u%02u%02u a=%02u%02u%02u%02u%02u%02u%02u%02u%02u t=%02u%02u%02u\n", itap.voice.counter, itap.voice.sequence, itap.header.flag[0], itap.header.flag[1], itap.header.flag[2], itap.voice.ambe[0], itap.voice.ambe[1], itap.voice.ambe[2], itap.voice.ambe[3], itap.voice.ambe[4], itap.voice.ambe[5], itap.voice.ambe[6], itap.voice.ambe[7], itap.voice.ambe[8], itap.voice.text[0], itap.voice.text[1], itap.voice.text[2]);
+			printf("Data count=%u  seq=%u f=%02u%02u%02u a=%02u%02u%02u%02u%02u%02u%02u%02u%02u t=%02u%02u%02u", itap.voice.counter, itap.voice.frame.sequence, itap.header.flag[0], itap.header.flag[1], itap.header.flag[2], itap.voice.frame.ambe[0], itap.voice.frame.ambe[1], itap.voice.frame.ambe[2], itap.voice.frame.ambe[3], itap.voice.frame.ambe[4], itap.voice.frame.ambe[5], itap.voice.frame.ambe[6], itap.voice.frame.ambe[7], itap.voice.frame.ambe[8], itap.voice.frame.text[0], itap.voice.frame.text[1], itap.voice.frame.text[2]);
 			break;
 		case 0x11U: // header acknowledgement
 		case 0x21U:
 			printf("Header acknowledgement code=%02u", itap.header.flag[0]);
 			break;
-		case 0x13U: // data acknowledgment
 		case 0x23U:
 			printf("Data acknowledgement seq=%02u code=%02u", itap.header.flag[0], itap.header.flag[1]);
 			break;
 		default:
-			printf("UNKNOWN packet buf[0] = 0x%02u\n", buf[0]);
+			printf("UNKNOWN packet buf[0] = 0x%02u", buf[0]);
 			break;
 	}
+	printf("\n");
 }
 
 REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
@@ -203,6 +209,8 @@ REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
 			return RT_HEADER;
 		case 0x12U:
 			return RT_DATA;
+		case 0x13U:
+			return RT_DATA_BT;
 		case 0x21U:
 			return RT_HEADER_ACK;
 		case 0x23U:
@@ -275,7 +283,10 @@ void CQnetITAP::Run()
 
 		if (keep_running && FD_ISSET(serfd, &readfds))  	// there is something to read from the Icom!
 		{
-			switch (GetITAPData(buf))
+			auto res = GetITAPData(buf);
+			if (res != RT_TIMEOUT)
+				DumpSerialPacket("I", buf, 'I');
+			switch (res)
 			{
 				case RT_ERROR:
 					alive = false;
@@ -295,6 +306,13 @@ void CQnetITAP::Run()
 						ack_voice[2] = buf[2];
 						SendToIcom(ack_voice);
 					}
+					if (ProcessITAP(buf))
+						keep_running = false;
+					lastdataTimer.start();
+					break;
+				case RT_DATA_BT:
+					// TODO: how to ACK bluetooth packet? is it even
+					// needed/desired?
 					if (ProcessITAP(buf))
 						keep_running = false;
 					lastdataTimer.start();
@@ -341,8 +359,6 @@ void CQnetITAP::Run()
 				case RT_TIMEOUT:	// nothing or 0xff
 					break;
 				default:
-					if (buf[0] != 255)
-						DumpSerialPacket("GetITAPData returned", buf);
 					break;
 			}
 			FD_CLR(serfd, &readfds);
@@ -380,7 +396,10 @@ void CQnetITAP::Run()
 						if (alive) {
 							SendToIcom(frame.data());
 							ackTimer.start();
-							acknowledged = false;
+							// TODO: radio does not ACK over BT, perhaps
+							// because we are sending one-by-one instead
+							// of by-fours.
+							acknowledged = true; // = false;
 						}
 					}
 				}
@@ -397,6 +416,7 @@ void CQnetITAP::Run()
 		if (! alive)
 		{
 			close(serfd);
+			serialLog.close();
 			poll_counter = 0;
 			pingtime = 0.001;
 			initialized = false;
@@ -425,9 +445,12 @@ void CQnetITAP::Close()
 
 void CQnetITAP::SendToIcom(const unsigned char *buf)
 {
+	serialLog << 'O';
 	ssize_t n;
 	unsigned int ptr = 0;
 	unsigned int length = (0xffu == buf[0]) ? 2 : buf[0];
+
+	serialLog.write((char*)buf, length);
 
 	while (ptr < length)
 	{
@@ -492,14 +515,15 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 		else  	// write an AMBE packet
 		{
 			itap.length = 16U;
-			itap.type = 0x22U;
+			itap.type = 0x22U; // TODO: what is used to write BT groups
+			// of 4?
 			itap.voice.counter = counter++;
-			itap.voice.sequence = dsvt.ctrl;
+			itap.voice.frame.sequence = dsvt.ctrl;
 			if (LOG_QSO && (dsvt.ctrl & 0x40))
 				printf("Queued ITAP end of stream\n");
 			if ((dsvt.ctrl & ~0x40U) > 20)
-				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.sequence);
-			memcpy(itap.voice.ambe, dsvt.vasd.voice, 12);
+				printf("DEBUG: ProcessGateway: unexpected voice sequence number %d\n", itap.voice.frame.sequence);
+			memcpy(itap.voice.frame.ambe, dsvt.vasd.voice, 12);
 		}
 		queue.push(CFrame(&itap.length));
 
@@ -514,6 +538,8 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 	static short stream_id = 0U;
 	SITAP itap;
 	unsigned int len = (0x10U == buf[1]) ? 41 : 16;
+	if (buf[1] == 0x13U) len = 56;
+
 	memcpy(&itap.length, buf, len);	// transfer raw data to SITAP struct
 
 	// create a stream id if this is a header
@@ -580,16 +606,35 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 	}
 	else if (16 == len)  	// ambe
 	{
-		dsvt.ctrl = itap.voice.sequence;
-		memcpy(dsvt.vasd.voice, itap.voice.ambe, 12);
+		dsvt.ctrl = itap.voice.frame.sequence;
+		memcpy(dsvt.vasd.voice, itap.voice.frame.ambe, 12);
+
 		if (ToGate.Write(dsvt.title, 27))
 		{
 			printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
 			return true;
 		}
 
-		if (LOG_QSO && (dsvt.ctrl & 0x40))
+		if (LOG_QSO && (dsvt.ctrl & 0x40)) {
 			printf("Sent dsvt end of streamid=%04x\n", ntohs(dsvt.streamid));
+		}
+	}
+	else if (56 == len) // ambe-BT
+	{
+		for (int i = 0; i < itap.voice_bt.count; i++) {
+			dsvt.ctrl = itap.voice_bt.frame[i].sequence;
+			memcpy(dsvt.vasd.voice, itap.voice_bt.frame[i].ambe, 12);
+
+			if (ToGate.Write(dsvt.title, 27))
+			{
+				printf("ERROR: ProcessMMDVM: Could not write gateway voice packet\n");
+				return true;
+			}
+	
+			if (LOG_QSO && ((dsvt.ctrl & 0x40))) {
+				printf("Sent dsvt end of streamid=%04x\n", ntohs(dsvt.streamid));
+			}
+		}
 	}
 
 	return false;

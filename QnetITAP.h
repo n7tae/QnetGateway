@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <cstring>
+#include <fstream>
 #include <string>
 #include <queue>
 
@@ -40,9 +41,14 @@ enum REPLY_TYPE
 	RT_DATA,
 	RT_HEADER_ACK,
 	RT_DATA_ACK,
-	RT_PONG
+	RT_PONG,
+	RT_DATA_BT
 };
-
+struct ambe_frame {
+	unsigned char sequence;
+	unsigned char ambe[9];
+	unsigned char text[3];
+};
 // Icom Terminal and Access Point Mode data structure
 #pragma pack(push, 1)
 using SITAP = struct itap_tag
@@ -74,10 +80,14 @@ using SITAP = struct itap_tag
 		struct
 		{
 			unsigned char counter;	// ordinal counter is reset with each header
-			unsigned char sequence;	// is modulo 21
-			unsigned char ambe[9];
-			unsigned char text[3];
+			ambe_frame frame;
 		} voice;
+		struct
+		{
+			unsigned char counter;
+			unsigned char count;
+			ambe_frame frame[4];
+		} voice_bt;
 	};
 };
 #pragma pack(pop)
@@ -125,7 +135,7 @@ private:
 	void SendToIcom(const unsigned char *buf);
 	REPLY_TYPE GetITAPData(unsigned char *buf);
 	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
-	void DumpSerialPacket(const char *title, const unsigned char *);
+	void DumpSerialPacket(const char *title, const unsigned char *, const char dir);
 
 	// read configuration file
 	bool ReadConfig(const std::string &path);
@@ -149,4 +159,6 @@ private:
 	// Queue
 	std::queue<CFrame> queue;
 	bool acknowledged;
+
+	std::ofstream serialLog;
 };
