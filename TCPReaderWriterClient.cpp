@@ -23,34 +23,14 @@
 #include <cassert>
 #include <cstring>
 
-
-CTCPReaderWriterClient::CTCPReaderWriterClient(const std::string &address, int family, const std::string &port) :
-	m_address(address),
-	m_family(family),
-	m_port(port),
-	m_fd(-1)
-{
-}
-
 CTCPReaderWriterClient::CTCPReaderWriterClient() : m_fd(-1)
-{
-}
-
-CTCPReaderWriterClient::~CTCPReaderWriterClient()
 {
 }
 
 bool CTCPReaderWriterClient::Open(const std::string &address, int family, const std::string &port)
 {
 	m_address	= address;
-	m_family	= family;
 	m_port		= port;
-
-	return Open();
-}
-
-bool CTCPReaderWriterClient::Open()
-{
 	if (m_fd != -1)
 	{
 		fprintf(stderr, "ERROR: port for '%s' is already open!\n", m_address.c_str());
@@ -63,7 +43,7 @@ bool CTCPReaderWriterClient::Open()
 		return true;
 	}
 
-	if (AF_INET!=m_family && AF_INET6!=m_family && AF_UNSPEC!=m_family)
+	if (AF_INET!=family && AF_INET6!=family && AF_UNSPEC!=family)
 	{
 		fprintf(stderr, "ERROR: family must be AF_INET, AF_INET6 or AF_UNSPEC\n");
 		return true;
@@ -71,7 +51,7 @@ bool CTCPReaderWriterClient::Open()
 
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_family = m_family;
+	hints.ai_family = family;
 	hints.ai_socktype = SOCK_STREAM;
 	//hints.ai_flags = AI_PASSIVE;
 	hints.ai_protocol = IPPROTO_TCP;
@@ -195,7 +175,7 @@ int CTCPReaderWriterClient::ReadLine(std::string& line)
 	return resultCode <= 0 ? resultCode : len;
 }
 
-bool CTCPReaderWriterClient::Write(const unsigned char *buffer, const unsigned int length)
+int CTCPReaderWriterClient::Write(const unsigned char *buffer, const unsigned int length)
 {
 	assert(buffer != NULL);
 	assert(length > 0U);
@@ -208,10 +188,10 @@ bool CTCPReaderWriterClient::Write(const unsigned char *buffer, const unsigned i
 			fprintf(stderr, "Error returned from send, err=%s\n", strerror(errno));
 		else
 			fprintf(stderr, "Error only wrote %d of %d bytes\n", int(ret), int(length));
-		return true;
+		return -1;
 	}
 
-	return false;
+	return ret;
 }
 
 bool CTCPReaderWriterClient::WriteLine(const std::string& line)

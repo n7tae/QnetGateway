@@ -36,17 +36,13 @@
 class CTCPReaderWriterClient
 {
 public:
-	CTCPReaderWriterClient(const std::string &address, int family, const std::string &port);
 	CTCPReaderWriterClient();
-	~CTCPReaderWriterClient();
 
 	bool Open(const std::string &address, int family, const std::string &port);
-	bool Open();
-
 	int ReadExact(unsigned char *buffer, const unsigned int length);
 	int Read(unsigned char *buffer, const unsigned int length);
 	int ReadLine(std::string &line);
-	bool Write(const unsigned char* buffer, const unsigned int length);
+	int Write(const unsigned char* buffer, const unsigned int length);
 	bool WriteLine(const std::string &line);
 	int GetFD() { return m_fd; }
 
@@ -54,7 +50,6 @@ public:
 
 private:
 	std::string m_address;
-	int m_family;
 	std::string m_port;
 	int m_fd;
 };
