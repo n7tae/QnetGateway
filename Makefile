@@ -29,10 +29,10 @@ SYSDIR=/etc/systemd/system
 IRC=ircddb
 
 # use this if you want debugging help in the case of a crash
-#CPPFLAGS=-ggdb -W -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
+#CPPFLAGS=-ggdb -W -std=c++17 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
 
 # or, you can choose this for a much smaller executable without debugging help
-CPPFLAGS=-W -std=c++11 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
+CPPFLAGS=-W -std=c++17 -Iircddb -DCFG_DIR=\"$(CFGDIR)\" -DBIN_DIR=\"$(BINDIR)\"
 
 LDFLAGS=-L/usr/lib -lrt
 
