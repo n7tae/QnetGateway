@@ -37,7 +37,7 @@
 
 using STOREMOTEG2 = struct to_remote_g2_tag
 {
-	unsigned short streamid;
+	uint16_t streamid;
 	CSockAddress toDstar;
 	time_t last_time;
 };
@@ -47,13 +47,13 @@ using STOREPEATER = struct torepeater_tag
 	// help with header re-generation
 	SDSVT saved_hdr; // repeater format
 	time_t last_time;
-	unsigned char sequence;
+	uint8_t sequence;
 };
 
 using SBANDTXT = struct band_txt_tag
 {
-	unsigned short streamID;
-	unsigned char flags[3];
+	uint16_t streamID;
+	uint8_t flags[3];
 	std::string mycall, sfx, urcall, rpt1, rpt2, txt, dest_rptr;
 	time_t last_time, gps_last_time;
 	bool sent_key_on_msg, is_gps_sent;
@@ -81,11 +81,11 @@ using SBANDTXT = struct band_txt_tag
 
 using SSD = struct sd_tag
 {
-	unsigned char header[41];
-	unsigned char message[21];
-	unsigned char gps[256];
+	uint8_t header[41];
+	uint8_t message[21];
+	uint8_t gps[256];
 	unsigned int ih, im, ig;
-	unsigned char type;
+	uint8_t type;
 	bool first;
 	unsigned int size;
 	void Init() { ih = im = ig = 0; first = true; }
@@ -169,7 +169,7 @@ private:
 
 	// g2 data
 	std::string lhcallsign[3], lhsfx[3];
-	unsigned char nextctrl[3] = { 0U, 0U, 0U };
+	uint8_t nextctrl[3] = { 0U, 0U, 0U };
 	std::string superframe[3];
 
 	// dtmf stuff
@@ -178,24 +178,24 @@ private:
 	int dtmf_last_frame[3];
 	unsigned int dtmf_counter[3];
 
-	bool VoicePacketIsSync(const unsigned char *text) const;
+	bool VoicePacketIsSync(const uint8_t *text) const;
 	int open_port(const SPORTIP *pip, int family);
-	void calcPFCS(unsigned char *packet, int len);
+	void calcPFCS(uint8_t *packet, int len);
 	void GetIRCDataThread(const int i);
 	int get_yrcall_rptr_from_cache(const int i, const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
 	int get_yrcall_rptr(const std::string &call, std::string &rptr, std::string &gate, std::string &addr, char RoU);
 	void PlayFileThread(SECHO &edata);
 	void compute_aprs_hash();
 	void APRSBeaconThread();
-	bool Printable(unsigned char *string);
+	bool Printable(uint8_t *string);
 	void ProcessTimeouts();
 	void ProcessIncomingSD(const SDSVT &dsvt, const int source_sock);
 	void ProcessOutGoingSD(const SDSVT &dsvt, const int mod);
-	bool ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp);
+	bool ProcessG2Msg(const uint8_t *data, const int mod, std::string &smrtgrp);
 	void ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sock_source);
 	void ProcessG2Header(const SDSVT &g2buf, const int source_sock);
 	void ProcessModem(const ssize_t len, SDSVT &dsvt);
-	bool Flag_is_ok(unsigned char flag);
+	bool Flag_is_ok(uint8_t flag);
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
 	int FindIndex(const int i) const;

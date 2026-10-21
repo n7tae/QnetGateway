@@ -115,7 +115,7 @@ int CQnetITAP::OpenITAP()
 	return fd;
 }
 
-void CQnetITAP::DumpSerialPacket(const char *title, const unsigned char *buf)
+void CQnetITAP::DumpSerialPacket(const char *title, const uint8_t *buf)
 {
 	printf("%s: ", title);
 	if (buf[0] > 41)
@@ -152,7 +152,7 @@ void CQnetITAP::DumpSerialPacket(const char *title, const unsigned char *buf)
 	}
 }
 
-REPLY_TYPE CQnetITAP::GetITAPData(unsigned char *buf)
+REPLY_TYPE CQnetITAP::GetITAPData(uint8_t *buf)
 {
 	// Some methods adapted from Jonathan G4KLX's CIcomController::GetResponse()
 	// and CSerialController::read()
@@ -258,20 +258,20 @@ void CQnetITAP::Run()
 		{
 			if (poll_counter < 18 )
 			{
-				const unsigned char poll[2] = { 0xffu, 0xffu };
+				const uint8_t poll[2] = { 0xffu, 0xffu };
 				SendToIcom(poll);
 				if (poll_counter++ == 17)
 					pingtime = 1.0;
 			}
 			else
 			{
-				const unsigned char ping[2] = { 0x02u, 0x02u };
+				const uint8_t ping[2] = { 0x02u, 0x02u };
 				SendToIcom(ping);
 			}
 			pingTimer.start();
 		}
 
-		unsigned char buf[100];
+		uint8_t buf[100];
 
 		if (keep_running && FD_ISSET(serfd, &readfds))  	// there is something to read from the Icom!
 		{
@@ -282,7 +282,7 @@ void CQnetITAP::Run()
 					break;
 				case RT_HEADER:
 					{
-						unsigned char ack_header[3] = { 0x03U, 0x11U, 0x0U };
+						uint8_t ack_header[3] = { 0x03U, 0x11U, 0x0U };
 						SendToIcom(ack_header);
 					}
 					if (ProcessITAP(buf))
@@ -291,7 +291,7 @@ void CQnetITAP::Run()
 					break;
 				case RT_DATA:
 					{
-						unsigned char ack_voice[4] = { 0x04U, 0x13U, 0x0U, 0x0U };
+						uint8_t ack_voice[4] = { 0x04U, 0x13U, 0x0U, 0x0U };
 						ack_voice[2] = buf[2];
 						SendToIcom(ack_voice);
 					}
@@ -423,7 +423,7 @@ void CQnetITAP::Close()
 	FromGate.Close();
 }
 
-void CQnetITAP::SendToIcom(const unsigned char *buf)
+void CQnetITAP::SendToIcom(const uint8_t *buf)
 {
 	ssize_t n;
 	unsigned int ptr = 0;
@@ -446,7 +446,7 @@ void CQnetITAP::SendToIcom(const unsigned char *buf)
 	n = 0;	// send an ending 0xffu
 	while (0 == n)
 	{
-		const unsigned char push = 0xffu;
+		const uint8_t push = 0xffu;
 		n = write(serfd, &push, 1);
 		if (n < 0)
 		{
@@ -458,9 +458,9 @@ void CQnetITAP::SendToIcom(const unsigned char *buf)
 	}
 }
 
-bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
+bool CQnetITAP::ProcessGateway(const int len, const uint8_t *raw)
 {
-	static unsigned char counter = 0;
+	static uint8_t counter = 0;
 	if (27==len || 56==len)   //here is dstar data
 	{
 		SDSVT dsvt;
@@ -509,9 +509,9 @@ bool CQnetITAP::ProcessGateway(const int len, const unsigned char *raw)
 	return false;
 }
 
-bool CQnetITAP::ProcessITAP(const unsigned char *buf)
+bool CQnetITAP::ProcessITAP(const uint8_t *buf)
 {
-	static short stream_id = 0U;
+	static int16_t stream_id = 0U;
 	SITAP itap;
 	unsigned int len = (0x10U == buf[1]) ? 41 : 16;
 	memcpy(&itap.length, buf, len);	// transfer raw data to SITAP struct
@@ -548,7 +548,7 @@ bool CQnetITAP::ProcessITAP(const unsigned char *buf)
 			if (' '==itap.header.ur[2] && ' '!=itap.header.ur[0])
 			{
 				// it's a command because it has as space in the 3rd position, we have to right-justify it!
-				// Terminal Mode left justifies short commands.
+				// Terminal Mode left justifies int16_t commands.
 				memset(dsvt.hdr.urcall, ' ', 8);	// first file ur with spaces
 				if (' ' == itap.header.ur[1])
 					dsvt.hdr.urcall[7] = itap.header.ur[0];		// one char command, like "E" or "I"
@@ -689,11 +689,11 @@ bool CQnetITAP::ReadConfig(const std::string &cfgFile)
 	return false;
 }
 
-void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
+void CQnetITAP::calcPFCS(const uint8_t *packet, uint8_t *pfcs)
 {
-	unsigned short crc_dstar_ffff = 0xffff;
-	unsigned short tmp, short_c;
-	unsigned short crc_tabccitt[256] =
+	uint16_t crc_dstar_ffff = 0xffff;
+	uint16_t tmp, short_c;
+	uint16_t crc_tabccitt[256] =
 	{
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
@@ -715,15 +715,15 @@ void CQnetITAP::calcPFCS(const unsigned char *packet, unsigned char *pfcs)
 
 	for (int i = 0; i < 39 ; i++)
 	{
-		short_c = 0x00ff & (unsigned short)packet[i];
+		short_c = 0x00ff & (uint16_t)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
 	crc_dstar_ffff =  ~crc_dstar_ffff;
 	tmp = crc_dstar_ffff;
 
-	pfcs[0] = (unsigned char)(crc_dstar_ffff & 0xff);
-	pfcs[1] = (unsigned char)((tmp >> 8) & 0xff);
+	pfcs[0] = (uint8_t)(crc_dstar_ffff & 0xff);
+	pfcs[1] = (uint8_t)((tmp >> 8) & 0xff);
 
 	return;
 }

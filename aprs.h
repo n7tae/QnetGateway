@@ -63,8 +63,8 @@ public:
 	CAPRS(SRPTR *prptr);
 	~CAPRS();
 	SRPTR *m_rptr;
-	void SelectBand(short int rptr_idx, unsigned short streamID);
-	void ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf);
+	void SelectBand(int16_t rptr_idx, uint16_t streamID);
+	void ProcessText(uint16_t streamID, uint8_t seq, uint8_t *buf);
 	void Open(const std::string OWNER);
 	void Init();
 	void CloseSock();
@@ -75,25 +75,25 @@ private:
 	struct
 	{
 		aprs_level al;
-		unsigned char data[300];
+		uint8_t data[300];
 		unsigned int len;
-		unsigned char buf[6];
+		uint8_t buf[6];
 		slow_level sl;
 		bool is_sent;
 	} aprs_pack[3];
 	// lock down a stream per band
 	struct
 	{
-		unsigned short streamID;
+		uint16_t streamID;
 		time_t last_time;
 	} aprs_streamID[3];
 
 	// functions
-	bool WriteData(short int rptr_idx, unsigned char *data);
-	void SyncIt(short int rptr_idx);
-	void Reset(short int rptr_idx);
-	unsigned int GetData(short int rptr_idx, unsigned char *data, unsigned int len);
-	bool AddData(short int rptr_idx, unsigned char *data);
-	bool CheckData(short int rptr_idx);
-	unsigned int CalcCRC(unsigned char* buf, unsigned int len);
+	bool WriteData(int16_t rptr_idx, uint8_t *data);
+	void SyncIt(int16_t rptr_idx);
+	void Reset(int16_t rptr_idx);
+	unsigned int GetData(int16_t rptr_idx, uint8_t *data, unsigned int len);
+	bool AddData(int16_t rptr_idx, uint8_t *data);
+	bool CheckData(int16_t rptr_idx);
+	unsigned int CalcCRC(uint8_t* buf, unsigned int len);
 };

@@ -30,7 +30,7 @@
 #include "aprs.h"
 
 // This is called when header comes in from repeater
-void CAPRS::SelectBand(short int rptr_idx, unsigned short streamID)
+void CAPRS::SelectBand(int16_t rptr_idx, uint16_t streamID)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2))
 	{
@@ -51,15 +51,15 @@ void CAPRS::SelectBand(short int rptr_idx, unsigned short streamID)
 //              12 bytes(packet from repeater was 29 bytes) or
 //              15 bytes(packet from repeater was 32 bytes)
 // Paramter seq is the byte at pos# 16(counting from zero) in the repeater data
-void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned char *buf)
+void CAPRS::ProcessText(uint16_t streamID, uint8_t seq, uint8_t *buf)
 {
-	unsigned char aprs_data[200];
+	uint8_t aprs_data[200];
 	char aprs_buf[1024];
 	time_t tnow = 0;
 
-	short int rptr_idx = -1;
+	int16_t rptr_idx = -1;
 
-	for (short int i = 0; i < 3; i++)
+	for (int16_t i = 0; i < 3; i++)
 	{
 		if (streamID == aprs_streamID[i].streamID)
 		{
@@ -116,7 +116,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 
 	sprintf(aprs_buf, "%s,qAR,%s:%s\r\n", hdr, m_rptr->mod[rptr_idx].call.c_str(), aud);
 	// printf("GPS-A=%s", aprs_buf);
-	int rc = aprs_sock.Write((unsigned char *)aprs_buf, strlen(aprs_buf));
+	int rc = aprs_sock.Write((uint8_t *)aprs_buf, strlen(aprs_buf));
 	if (rc == -1)
 	{
 		if ((errno == EPIPE) ||
@@ -146,7 +146,7 @@ void CAPRS::ProcessText(unsigned short streamID, unsigned char seq, unsigned cha
 void CAPRS::Init()
 {
 	/* Initialize the statistics on the APRS packets */
-	for (short int rptr_idx = 0; rptr_idx < 3; rptr_idx++)
+	for (int16_t rptr_idx = 0; rptr_idx < 3; rptr_idx++)
 	{
 		aprs_pack[rptr_idx].al = al_none;
 		aprs_pack[rptr_idx].data[0] = '\0';
@@ -156,7 +156,7 @@ void CAPRS::Init()
 		aprs_pack[rptr_idx].is_sent = false;
 	}
 
-	for (short int i = 0; i < 3; i++)
+	for (int16_t i = 0; i < 3; i++)
 	{
 		aprs_streamID[i].streamID = 0;
 		aprs_streamID[i].last_time = 0;
@@ -165,7 +165,7 @@ void CAPRS::Init()
 	return;
 }
 
-bool CAPRS::WriteData(short int rptr_idx, unsigned char *data)
+bool CAPRS::WriteData(int16_t rptr_idx, uint8_t *data)
 {
 
 	if ((rptr_idx < 0) || (rptr_idx > 2))
@@ -201,7 +201,7 @@ bool CAPRS::WriteData(short int rptr_idx, unsigned char *data)
 
 }
 
-void CAPRS::SyncIt(short int rptr_idx)
+void CAPRS::SyncIt(int16_t rptr_idx)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2))
 	{
@@ -213,7 +213,7 @@ void CAPRS::SyncIt(short int rptr_idx)
 	return;
 }
 
-void CAPRS::Reset(short int rptr_idx)
+void CAPRS::Reset(int16_t rptr_idx)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2))
 	{
@@ -229,7 +229,7 @@ void CAPRS::Reset(short int rptr_idx)
 	return;
 }
 
-unsigned int CAPRS::GetData(short int rptr_idx, unsigned char *data, unsigned int len)
+unsigned int CAPRS::GetData(int16_t rptr_idx, uint8_t *data, unsigned int len)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2))
 	{
@@ -276,12 +276,12 @@ void CAPRS::Open(const std::string OWNER)
 
 	while (true)
 	{
-		int rc = aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
+		int rc = aprs_sock.Write((uint8_t *)snd_buf, strlen(snd_buf));
 		if (rc < 0)
 		{
 			if (errno == EWOULDBLOCK)
 			{
-				aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+				aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			}
 			else
@@ -296,12 +296,12 @@ void CAPRS::Open(const std::string OWNER)
 			break;
 		}
 	}
-	aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+	aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
 	//printf("APRS Login returned: %s", rcv_buf);
 	return;
 }
 
-bool CAPRS::AddData(short int rptr_idx, unsigned char *data)
+bool CAPRS::AddData(int16_t rptr_idx, uint8_t *data)
 {
 	if ((rptr_idx < 0) || (rptr_idx > 2))
 	{
@@ -311,7 +311,7 @@ bool CAPRS::AddData(short int rptr_idx, unsigned char *data)
 
 	for (unsigned int i = 0; i < 5; i++)
 	{
-		unsigned char c = data[i];
+		uint8_t c = data[i];
 
 		if ((aprs_pack[rptr_idx].al == al_none) && (c == '$'))
 		{
@@ -413,7 +413,7 @@ bool CAPRS::AddData(short int rptr_idx, unsigned char *data)
 	return false;
 }
 
-bool CAPRS::CheckData(short int rptr_idx)
+bool CAPRS::CheckData(int16_t rptr_idx)
 {
 	unsigned int my_sum;
 	char buf[5];
@@ -430,7 +430,7 @@ bool CAPRS::CheckData(short int rptr_idx)
 	return (0 == memcmp(buf, aprs_pack[rptr_idx].data + 5, 4));
 }
 
-unsigned int CAPRS::CalcCRC(unsigned char* buf, unsigned int len)
+unsigned int CAPRS::CalcCRC(uint8_t* buf, unsigned int len)
 {
 	unsigned int my_crc = 0xffff;
 

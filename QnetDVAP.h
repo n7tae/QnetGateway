@@ -41,7 +41,7 @@ public:
 private:
 	bool ReadConfig(const std::string &path);
 	void ReadFromGateway();
-	void calcPFCS(unsigned char *packet, unsigned char *pfcs);
+	void calcPFCS(uint8_t *packet, uint8_t *pfcs);
 	void ReadDVAPThread();
 	void RptrAckThread(SDVAP_ACK_ARG *parg);
 
@@ -78,7 +78,7 @@ private:
 	int inactiveMax = 25;
 
 	/* helper data */
-	unsigned char SND_TERM_ID;
+	uint8_t SND_TERM_ID;
 	char RPTR_and_G[9];
 	char RPTR_and_MOD[9];
 	int serfd = -1;

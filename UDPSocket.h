@@ -33,9 +33,9 @@ public:
 	void Close(void);
 
 	int GetSocket(void) const { return m_fd; }
-	unsigned short GetPort() const { return m_addr.GetPort(); }
+	uint16_t GetPort() const { return m_addr.GetPort(); }
 
-	size_t Read(unsigned char *buf, const size_t size, CSockAddress &addr);
+	size_t Read(uint8_t *buf, const size_t size, CSockAddress &addr);
 	void Write(const void *buf, const size_t size, const CSockAddress &addr) const;
 
 protected:

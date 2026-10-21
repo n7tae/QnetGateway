@@ -272,7 +272,7 @@ void IRCDDBApp::sendPing(const std::string &to, const std::string &from)
 	}
 }
 
-bool IRCDDBApp::sendHeard(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, unsigned char flag1, unsigned char flag2, unsigned char flag3, const std::string &destination, const std::string &tx_msg, const std::string &tx_stats)
+bool IRCDDBApp::sendHeard(const std::string &myCall, const std::string &myCallExt, const std::string &yourCall, const std::string &rpt1, const std::string &rpt2, uint8_t flag1, uint8_t flag2, uint8_t flag3, const std::string &destination, const std::string &tx_msg, const std::string &tx_stats)
 {
 
 	std::string my = myCall;

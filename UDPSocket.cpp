@@ -98,7 +98,7 @@ void CUDPSocket::Close(void)
 ////////////////////////////////////////////////////////////////////////////////////////
 // read
 
-size_t CUDPSocket::Read(unsigned char *buf, const size_t size, CSockAddress &Ip)
+size_t CUDPSocket::Read(uint8_t *buf, const size_t size, CSockAddress &Ip)
 {
 	if ( 0 > m_fd )
 		return 0;

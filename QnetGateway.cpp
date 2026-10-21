@@ -71,7 +71,7 @@ int CQnetGateway::FindIndex(const int i) const
 	return index;
 }
 
-bool CQnetGateway::Printable(unsigned char *s)
+bool CQnetGateway::Printable(uint8_t *s)
 {
 	bool rval = false;
 	for (unsigned i=0; s[i]; i++)
@@ -85,7 +85,7 @@ bool CQnetGateway::Printable(unsigned char *s)
 	return rval;
 }
 
-bool CQnetGateway::VoicePacketIsSync(const unsigned char *text) const
+bool CQnetGateway::VoicePacketIsSync(const uint8_t *text) const
 {
 	return *text==0x55U && *(text+1)==0x2DU && *(text+2)==0x16U;
 }
@@ -140,9 +140,9 @@ void CQnetGateway::set_dest_rptr(const char mod, std::string &call)
 }
 
 /* compute checksum */
-void CQnetGateway::calcPFCS(unsigned char *packet, int len)
+void CQnetGateway::calcPFCS(uint8_t *packet, int len)
 {
-	const unsigned short crc_tabccitt[256] =
+	const uint16_t crc_tabccitt[256] =
 	{
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
@@ -161,9 +161,9 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 		0xe70e,0xf687,0xc41c,0xd595,0xa12a,0xb0a3,0x8238,0x93b1,0x6b46,0x7acf,0x4854,0x59dd,0x2d62,0x3ceb,0x0e70,0x1ff9,
 		0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 	};
-	unsigned short crc_dstar_ffff = 0xffff;
-	short int low, high;
-	unsigned short tmp;
+	uint16_t crc_dstar_ffff = 0xffff;
+	int16_t low, high;
+	uint16_t tmp;
 
 	switch (len)
 	{
@@ -179,9 +179,9 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 		return;
 	}
 
-	for (unsigned short int i = low; i < high ; i++)
+	for (uint16_t i = low; i < high ; i++)
 	{
-		unsigned short short_c = 0x00ff & (unsigned short)packet[i];
+		uint16_t short_c = 0x00ff & (uint16_t)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
@@ -190,13 +190,13 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 
 	if (len == 56)
 	{
-		packet[54] = (unsigned char)(crc_dstar_ffff & 0xff);
-		packet[55] = (unsigned char)((tmp >> 8) & 0xff);
+		packet[54] = (uint8_t)(crc_dstar_ffff & 0xff);
+		packet[55] = (uint8_t)((tmp >> 8) & 0xff);
 	}
 	else
 	{
-		packet[56] = (unsigned char)(crc_dstar_ffff & 0xff);
-		packet[57] = (unsigned char)((tmp >> 8) & 0xff);
+		packet[56] = (uint8_t)(crc_dstar_ffff & 0xff);
+		packet[57] = (uint8_t)((tmp >> 8) & 0xff);
 	}
 
 	return;
@@ -393,9 +393,9 @@ int CQnetGateway::open_port(const SPORTIP *pip, int family)
 void CQnetGateway::GetIRCDataThread(const int i)
 {
 	IRCDDB_RESPONSE_TYPE type;
-	short last_status = 0;
+	int16_t last_status = 0;
 
-	short threshold = 0;
+	int16_t threshold = 0;
 	bool not_announced[3];
 	for (int i=0; i<3; i++)
 		not_announced[i] = Rptr.mod[i].defined;	// announce to all modules that are defined!
@@ -489,9 +489,9 @@ void CQnetGateway::GetIRCDataThread(const int i)
 						break;
 					CSockAddress to;
 					if (addr.npos == addr.find(':'))
-						to.Initialize(AF_INET, (unsigned short)g2_external.port, addr.c_str());
+						to.Initialize(AF_INET, (uint16_t)g2_external.port, addr.c_str());
 					else
-						to.Initialize(AF_INET6, (unsigned short)g2_ipv6_external.port, addr.c_str());
+						to.Initialize(AF_INET6, (uint16_t)g2_ipv6_external.port, addr.c_str());
 					sendto(g2_sock[i], "PONG", 4, 0, to.GetCPointer(), to.GetSize());
 					if (LOG_QSO)
 						printf("Sent 'PONG' to %s\n", addr.c_str());
@@ -586,7 +586,7 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, st
 	return 0;
 }
 
-bool CQnetGateway::Flag_is_ok(unsigned char flag)
+bool CQnetGateway::Flag_is_ok(uint8_t flag)
 {
 	//      normal          break          emr          emr+break
 	return 0x00U==flag || 0x08U==flag || 0x20U==flag || 0x28U==flag;
@@ -685,17 +685,17 @@ void CQnetGateway::ProcessTimeouts()
 	}
 }
 
-bool CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp)
+bool CQnetGateway::ProcessG2Msg(const uint8_t *data, const int mod, std::string &smrtgrp)
 {
 	static unsigned int part[3] = { 0 };
 	static char txt[3][21];
 	if ((data[0] != 0x55u) || (data[1] != 0x2du) || (data[2] != 0x16u))
 	{
-		const unsigned char c[3] =
+		const uint8_t c[3] =
 		{
-			static_cast<unsigned char>(data[0] ^ 0x70u),
-			static_cast<unsigned char>(data[1] ^ 0x4fu),
-			static_cast<unsigned char>(data[2] ^ 0x93u)
+			static_cast<uint8_t>(data[0] ^ 0x70u),
+			static_cast<uint8_t>(data[1] ^ 0x4fu),
+			static_cast<uint8_t>(data[2] ^ 0x93u)
 		};	// unscramble
 		if (part[mod])
 		{
@@ -764,11 +764,11 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt, const int source_sock)
 		return;
 	}
 
-	const unsigned char c[3] =
+	const uint8_t c[3] =
 	{
-		static_cast<unsigned char>(dsvt.vasd.text[0] ^ 0x70u),
-		static_cast<unsigned char>(dsvt.vasd.text[1] ^ 0x4fu),
-		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
+		static_cast<uint8_t>(dsvt.vasd.text[0] ^ 0x70u),
+		static_cast<uint8_t>(dsvt.vasd.text[1] ^ 0x4fu),
+		static_cast<uint8_t>(dsvt.vasd.text[2] ^ 0x93u)
 	};	// unscramble
 
 	if (sd.first)
@@ -850,7 +850,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt, const int source_sock)
 							if (mod >= 0 && mod < 3 && Rptr.mod[mod].defined)
 							{
 								printf("Got a slow data header: %36.36s\n", sd.header+3);
-								unsigned char call[CALL_SIZE];	// swap rpt1 and rpt2
+								uint8_t call[CALL_SIZE];	// swap rpt1 and rpt2
 								memcpy(call, sdheader.hdr.rpt1, CALL_SIZE);
 								memcpy(sdheader.hdr.rpt1, sdheader.hdr.rpt2, CALL_SIZE);
 								memcpy(sdheader.hdr.rpt2, call, CALL_SIZE);
@@ -952,11 +952,11 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 		return;
 	}
 
-	const unsigned char c[3] =
+	const uint8_t c[3] =
 	{
-		static_cast<unsigned char>(dsvt.vasd.text[0] ^ 0x70u),
-		static_cast<unsigned char>(dsvt.vasd.text[1] ^ 0x4fu),
-		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
+		static_cast<uint8_t>(dsvt.vasd.text[0] ^ 0x70u),
+		static_cast<uint8_t>(dsvt.vasd.text[1] ^ 0x4fu),
+		static_cast<uint8_t>(dsvt.vasd.text[2] ^ 0x93u)
 	};	// unscramble
 
 	if (sd.first)
@@ -991,7 +991,7 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 							{
 								std::string call(band_txt[i].mycall);
 								const char *s = gps.APRS(call, Rptr.mod[i].call.c_str());
-								if (! aprs->aprs_sock.Write((unsigned char *)s, strlen(s)))
+								if (! aprs->aprs_sock.Write((uint8_t *)s, strlen(s)))
 								{
 									time(&band_txt[i].gps_last_time);
 									band_txt[i].is_gps_sent = true;
@@ -1070,7 +1070,7 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 						{
 							std::string call(band_txt[i].mycall);
 							const char *s = gps.APRS(call, Rptr.mod[i].call.c_str());
-							if (! aprs->aprs_sock.Write((unsigned char *)s, strlen(s)))
+							if (! aprs->aprs_sock.Write((uint8_t *)s, strlen(s)))
 							{
 								time(&band_txt[i].gps_last_time);
 								band_txt[i].is_gps_sent = true;
@@ -1228,7 +1228,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 									fprintf(stderr, "Warning: inserting %d missing voice frame(s)\n", diff);
 								SDSVT dsvt;
 								memcpy(dsvt.title, g2buf.title, 14U);	// everything but the ctrl and voice data
-								const unsigned char quite[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
+								const uint8_t quite[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
 								memcpy(dsvt.vasd.voice, quite, 9U);
 								while (diff-- > 0)
 								{
@@ -1236,12 +1236,12 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 									nextctrl[i] %= 21U;
 									if (dsvt.ctrl)
 									{
-										const unsigned char silence[3] = { 0x70U, 0x4FU, 0x93U };
+										const uint8_t silence[3] = { 0x70U, 0x4FU, 0x93U };
 										memcpy(dsvt.vasd.voice, silence, 3U);
 									}
 									else
 									{
-										const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
+										const uint8_t sync[3] = { 0x55U, 0x2DU, 0x16U };
 										memcpy(dsvt.vasd.voice, sync, 3U);
 									}
 									ToModem[i].Write(dsvt.title, 27);
@@ -1902,7 +1902,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 										dtmf_buf_count[i]++;
 									}
 								}
-								const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
+								const uint8_t silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 								memcpy(dsvt.vasd.voice, silence, 9);
 							}
 							else
@@ -2153,7 +2153,7 @@ void CQnetGateway::Run()
 
 void CQnetGateway::compute_aprs_hash()
 {
-	short hash = 0x73e2;
+	int16_t hash = 0x73e2;
 	char rptr_sign[CALL_SIZE + 1];
 
 	strcpy(rptr_sign, OWNER.c_str());
@@ -2165,9 +2165,9 @@ void CQnetGateway::compute_aprs_hash()
 	}
 	*p = '\0';
 	p = rptr_sign;
-	short int len = strlen(rptr_sign);
+	int16_t len = strlen(rptr_sign);
 
-	for (short int i=0; i < len; i+=2)
+	for (int16_t i=0; i < len; i+=2)
 	{
 		hash ^= (*p++) << 8;
 		hash ^= (*p++);
@@ -2193,7 +2193,7 @@ void CQnetGateway::APRSBeaconThread()
 	   There are 3 keepalive packets in one minute, or every 20 seconds.
 	   In 5 minutes, we should have received a total of 15 keepalive packets.
 	*/
-	short THRESHOLD_COUNTDOWN = 15;
+	int16_t THRESHOLD_COUNTDOWN = 15;
 
 	time_t last_keepalive_time;
 	time(&last_keepalive_time);
@@ -2214,7 +2214,7 @@ void CQnetGateway::APRSBeaconThread()
 		time(&tnow);
 		if ((tnow - last_beacon_time) > (Rptr.aprs_interval * 60))
 		{
-			for (short int i=0; i<3; i++)
+			for (int16_t i=0; i<3; i++)
 			{
 				if (Rptr.mod[i].defined)
 				{
@@ -2268,7 +2268,7 @@ void CQnetGateway::APRSBeaconThread()
 						}
 						else
 						{
-							int rc = aprs->aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
+							int rc = aprs->aprs_sock.Write((uint8_t *)snd_buf, strlen(snd_buf));
 							if (rc < 0)
 							{
 								if ((errno == EPIPE) ||
@@ -2303,12 +2303,12 @@ void CQnetGateway::APRSBeaconThread()
 								break;
 							}
 						}
-						int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+						int rc = aprs->aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
 						if (rc > 0)
 							THRESHOLD_COUNTDOWN = 15;
 					}
 				}
-				int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+				int rc = aprs->aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
 				if (rc > 0)
 					THRESHOLD_COUNTDOWN = 15;
 			}
@@ -2317,7 +2317,7 @@ void CQnetGateway::APRSBeaconThread()
 		/*
 		   Are we still receiving from APRS host ?
 		*/
-		int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
+		int rc = aprs->aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
 		if (rc < 0)
 		{
 			if ((errno == EPIPE) ||
@@ -2373,8 +2373,8 @@ void CQnetGateway::APRSBeaconThread()
 void CQnetGateway::PlayFileThread(SECHO &edata)
 {
 	SDSVT dsvt;
-	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
-	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
+	const uint8_t sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
+	const uint8_t sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 
 	printf("File to playback:[%s]\n", edata.file);
 
@@ -2440,7 +2440,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 		int nread = fread(dsvt.vasd.voice, 9, 1, fp);
 		if (nread == 1)
 		{
-			dsvt.ctrl = (unsigned char)(i % 21);
+			dsvt.ctrl = (uint8_t)(i % 21);
 			if (0x0U == dsvt.ctrl)
 			{
 				memcpy(dsvt.vasd.text, sdsync, 3);
@@ -2537,7 +2537,7 @@ void CQnetGateway::qrgs_and_maps()
 
 bool CQnetGateway::Initialize(const std::string &path)
 {
-	short int i;
+	int16_t i;
 
 	/* Used to validate MYCALL input */
 	preg = std::regex("^[A-PR-Z0-9]{1}[A-Z0-9]{0,1}[0-9]{1,2}[A-Z]{1,4} {0,4}[ A-Z]{1}$", std::regex::extended);

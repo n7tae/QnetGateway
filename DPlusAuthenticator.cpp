@@ -58,7 +58,7 @@ int CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool 
 
 int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const bool repeaters)
 {
-	unsigned char buffer[4096U];
+	uint8_t buffer[4096U];
 	::memset(buffer, ' ', 56U);
 
 	buffer[0U] = 0x38U;

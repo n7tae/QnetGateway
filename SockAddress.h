@@ -33,7 +33,7 @@ public:
 		Clear();
 	}
 
-	CSockAddress(const int family, const unsigned short port = 0, const char *address = NULL)
+	CSockAddress(const int family, const uint16_t port = 0, const char *address = NULL)
 	{
 		Initialize(family, port, address);
 	}
@@ -192,7 +192,7 @@ public:
 		return addr.ss_family;
 	}
 
-	unsigned short GetPort() const
+	uint16_t GetPort() const
 	{
 		if (AF_INET == addr.ss_family)
 		{

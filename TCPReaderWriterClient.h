@@ -39,10 +39,10 @@ public:
 	CTCPReaderWriterClient();
 
 	bool Open(const std::string &address, int family, const std::string &port);
-	int ReadExact(unsigned char *buffer, const unsigned int length);
-	int Read(unsigned char *buffer, const unsigned int length);
+	int ReadExact(uint8_t *buffer, const unsigned int length);
+	int Read(uint8_t *buffer, const unsigned int length);
 	int ReadLine(std::string &line);
-	int Write(const unsigned char* buffer, const unsigned int length);
+	int Write(const uint8_t* buffer, const unsigned int length);
 	bool WriteLine(const std::string &line);
 	int GetFD() { return m_fd; }
 

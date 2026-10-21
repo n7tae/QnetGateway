@@ -1198,7 +1198,7 @@ void CQnetDVRPTR::ambefec_regenerate(tambevoicefec voice)
 	ambefec_interleave(voice, decoded);
 }
 
-const unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
+const uint8_t silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 
 void CQnetDVRPTR::CleanCall(std::string &callsign)
 {
@@ -1208,7 +1208,7 @@ void CQnetDVRPTR::CleanCall(std::string &callsign)
 	callsign.resize(CALL_SIZE, ' ');
 }
 
-const unsigned short crc_tabccitt[256] =
+const uint16_t crc_tabccitt[256] =
 {
 	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 	0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
@@ -1228,23 +1228,23 @@ const unsigned short crc_tabccitt[256] =
 	0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 };
 
-void CQnetDVRPTR::calcPFCS(unsigned char *packet)	//Netzwerk CRC
+void CQnetDVRPTR::calcPFCS(uint8_t *packet)	//Netzwerk CRC
 {
-	unsigned short crc_dstar_ffff = 0xffff;
-	unsigned short tmp, short_c;
+	uint16_t crc_dstar_ffff = 0xffff;
+	uint16_t tmp, short_c;
 	int i;
 
 	for (i = 17; i < 56 ; i++)
 	{
-		short_c = 0x00ff & (unsigned short)packet[i];
+		short_c = 0x00ff & (uint16_t)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
 	crc_dstar_ffff =  ~crc_dstar_ffff;
 	tmp = crc_dstar_ffff;
 
-	packet[56] = (unsigned char)(crc_dstar_ffff & 0xff);
-	packet[57] = (unsigned char)((tmp >> 8) & 0xff);
+	packet[56] = (uint8_t)(crc_dstar_ffff & 0xff);
+	packet[57] = (uint8_t)((tmp >> 8) & 0xff);
 
 	return;
 }
@@ -1416,7 +1416,7 @@ int CQnetDVRPTR::open_port(char *dvrptr_device)
 	return fd_ser;
 }
 
-int CQnetDVRPTR::read_port(int *fd_ser,unsigned char* buffera)
+int CQnetDVRPTR::read_port(int *fd_ser,uint8_t* buffera)
 {
 	int a;
 	fd_set rfds;
@@ -1632,9 +1632,9 @@ void CQnetDVRPTR::readFrom20000()
 	fd_set  readfd;
 	struct  timeval tv;
 	int inactive = 0;
-	short seq_no = 0;
+	int16_t seq_no = 0;
 
-	unsigned char ctrl_in = 0x80;
+	uint8_t ctrl_in = 0x80;
 	bool written_to_q = false;
 
 	int fd = FromGate.GetFD();
@@ -1869,7 +1869,7 @@ bool CQnetDVRPTR::check_serial()
 	char dvrptr_device[FILENAME_MAX + 1];
 	InitCount = 1;
 	bool match = false;
-	unsigned char puffer[200];
+	uint8_t puffer[200];
 
 	for (int i = 0; i < 32; i++)
 	{
@@ -2093,7 +2093,7 @@ void CQnetDVRPTR::Run()
 			InitCount = 2;
 		}
 
-		unsigned char puffer[200];
+		uint8_t puffer[200];
 		int bytes2 = read_port(&fd_ser, puffer);
 		char Temp_Text[200];
 		int seq_no = 0;
@@ -2523,8 +2523,8 @@ void CQnetDVRPTR::Run()
 			puffer[0] = 0x00;
 			if (last_RF_time > 0)
 			{
-				const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
-				const unsigned char silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
+				const uint8_t silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
+				const uint8_t silsync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
 				memcpy(Send_Network_Audio.title, "DSVT", 4);
 				Send_Network_Audio.config =  0x20U;
 				memset(Send_Network_Audio.flaga, 0U, 3U);

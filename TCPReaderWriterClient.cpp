@@ -120,7 +120,7 @@ bool CTCPReaderWriterClient::Open(const std::string &address, int family, const 
 	return false;
 }
 
-int CTCPReaderWriterClient::ReadExact(unsigned char *buf, const unsigned int length)
+int CTCPReaderWriterClient::ReadExact(uint8_t *buf, const unsigned int length)
 {
 	unsigned int offset = 0U;
 
@@ -137,7 +137,7 @@ int CTCPReaderWriterClient::ReadExact(unsigned char *buf, const unsigned int len
 	return length;
 }
 
-int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int length)
+int CTCPReaderWriterClient::Read(uint8_t* buffer, const unsigned int length)
 {
 	assert(buffer != NULL);
 	assert(length > 0U);
@@ -156,7 +156,7 @@ int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int lengt
 
 int CTCPReaderWriterClient::ReadLine(std::string& line)
 {
-	unsigned char c;
+	uint8_t c;
 	int resultCode;
 	int len = 0;
 	line = "";
@@ -175,7 +175,7 @@ int CTCPReaderWriterClient::ReadLine(std::string& line)
 	return resultCode <= 0 ? resultCode : len;
 }
 
-int CTCPReaderWriterClient::Write(const unsigned char *buffer, const unsigned int length)
+int CTCPReaderWriterClient::Write(const uint8_t *buffer, const unsigned int length)
 {
 	assert(buffer != NULL);
 	assert(length > 0U);
@@ -204,7 +204,7 @@ bool CTCPReaderWriterClient::WriteLine(const std::string& line)
 	bool result = true;
 	for(size_t i = 0; i < len && result; i++)
 	{
-		unsigned char c = lineCopy.at(i);
+		uint8_t c = lineCopy.at(i);
 		result = Write(&c, 1);
 	}
 

@@ -190,7 +190,7 @@ bool CQnetDB::UpdateLS(const char *address, const char from_mod, const char *to_
 	return false;
 }
 
-bool CQnetDB::UpdateGW(const char *name, const char *address, unsigned short port)
+bool CQnetDB::UpdateGW(const char *name, const char *address, uint16_t port)
 {
 	if (NULL == db)
 		return true;
@@ -287,7 +287,7 @@ bool CQnetDB::FindLS(const char mod, std::list<CLink> &linklist)
 	return false;
 }
 
-bool CQnetDB::FindGW(const char *name, std::string &address, unsigned short &port)
+bool CQnetDB::FindGW(const char *name, std::string &address, uint16_t &port)
 // returns true if NOT found
 {
 	if (NULL == db)
@@ -308,7 +308,7 @@ bool CQnetDB::FindGW(const char *name, std::string &address, unsigned short &por
 	if (SQLITE_ROW == sqlite3_step(stmt))
 	{
 		address.assign((const char *)sqlite3_column_text(stmt, 0));
-		port = (unsigned short)(sqlite3_column_int(stmt, 1));
+		port = (uint16_t)(sqlite3_column_int(stmt, 1));
 		sqlite3_finalize(stmt);
 		return false;
 	}

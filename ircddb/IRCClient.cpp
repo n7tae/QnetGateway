@@ -136,7 +136,7 @@ void IRCClient::Entry()
 
 					if (buf[len - 1] == 10)   // is there a NL char at the end?
 					{
-						if (ircSock.Write((unsigned char *)buf, len))
+						if (ircSock.Write((uint8_t *)buf, len))
 						{
 							printf("IRCClient::Entry: short write\n");
 

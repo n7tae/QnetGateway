@@ -63,18 +63,18 @@ enum class EHardwareType
 #pragma pack(push, 1)
 using SVERSION = struct version_tag
 {
-	unsigned char start;
-	unsigned char length;
-	unsigned char type;
-	unsigned char protocol;
-	unsigned char version[251];
+	uint8_t start;
+	uint8_t length;
+	uint8_t type;
+	uint8_t protocol;
+	uint8_t version[251];
 };
 
 using SMODEM = struct mmodem_tag
 {
-	unsigned char start;	// always 0xEOU
-	unsigned char length;	// 3 - 255
-	unsigned char type;
+	uint8_t start;	// always 0xEOU
+	uint8_t length;	// 3 - 255
+	uint8_t type;
 	// 0x70U acknowledge from modem, ACK
 	// 0x7FU error from modem, NACK
 	// 0x00U version
@@ -88,12 +88,12 @@ using SMODEM = struct mmodem_tag
 	// 0x13U transmission end
 	union
 	{
-		unsigned char ack;			// the type being acknowledged
-		unsigned char mode;			// 0 idle, 1 dstar, 2 dmr, 3 ysf, 99 calibration
+		uint8_t ack;			// the type being acknowledged
+		uint8_t mode;			// 0 idle, 1 dstar, 2 dmr, 3 ysf, 99 calibration
 		struct
 		{
-			unsigned char ack;		// the type being acknowledged
-			unsigned char reason;	// reason for the NAK
+			uint8_t ack;		// the type being acknowledged
+			uint8_t reason;	// reason for the NAK
 			// 1 - invalid command
 			// 2 - wrong mode
 			// 3 - command too long
@@ -102,62 +102,62 @@ using SMODEM = struct mmodem_tag
 		} nack;
 		// don't want to inflate the struct size, so it's here for reference only
 		//struct {
-		//	unsigned char protocol_version;
-		//	unsigned char version[250];
+		//	uint8_t protocol_version;
+		//	uint8_t version[250];
 		//} version;
 		struct
 		{
-			unsigned char modes;	// 0x1U dstar | 0x2 dmr | 0x4 system fusion
-			unsigned char status;	// 0 idle, 1 dstar, 2 dmr, 3 system fusion, 99 calibration
-			unsigned char flags;	// 0x1 Tx on, 0x2 adc overflow
-			unsigned char dsrsize;	// dstar buffersize
-			unsigned char dm1size;	// drm timeslot 1 buffersize
-			unsigned char dm2size;	// dmr timeslot 2 buffersize
-			unsigned char ysfsize;  // ysf buffersize
+			uint8_t modes;	// 0x1U dstar | 0x2 dmr | 0x4 system fusion
+			uint8_t status;	// 0 idle, 1 dstar, 2 dmr, 3 system fusion, 99 calibration
+			uint8_t flags;	// 0x1 Tx on, 0x2 adc overflow
+			uint8_t dsrsize;	// dstar buffersize
+			uint8_t dm1size;	// drm timeslot 1 buffersize
+			uint8_t dm2size;	// dmr timeslot 2 buffersize
+			uint8_t ysfsize;  // ysf buffersize
 		} status;
 		struct
 		{
-			unsigned char flags;		// 0x1 rx 0x2 tx 0x4 ptt 0x8 ysf lodev 0x10 debug 0x80 not duplex
-			unsigned char mode;			// 0x1 dstar 0x2 drm 0x4 ysf 0x8 p25 0x10 nxdx 0x20 pocsag
-			unsigned char tx_delay;		// tx delay in 10 millisecond increments
-			unsigned char init_mode;	// inital state 0 idle 1 dstar 2 dmr 3 ysf 99 calibration
-			unsigned char rx_level;		// rx input level 0-255
-			unsigned char cw_tx_level;	// cw tx output
-			unsigned char color;		// dmr color 0-15
-			unsigned char drm_delay;
-			unsigned char osc_offset;	// 128U
-			unsigned char dstar_tx_level;
-			unsigned char dmr_tx_level;
-			unsigned char ysf_tx_level;
-			unsigned char p25_tx_level;
-			unsigned char tx_dc_offset;
-			unsigned char rx_dc_offset;
-			unsigned char nxdn_tx_level;
-			unsigned char ysf_tx_hang;
-			unsigned char pocsag_tx;
+			uint8_t flags;		// 0x1 rx 0x2 tx 0x4 ptt 0x8 ysf lodev 0x10 debug 0x80 not duplex
+			uint8_t mode;			// 0x1 dstar 0x2 drm 0x4 ysf 0x8 p25 0x10 nxdx 0x20 pocsag
+			uint8_t tx_delay;		// tx delay in 10 millisecond increments
+			uint8_t init_mode;	// inital state 0 idle 1 dstar 2 dmr 3 ysf 99 calibration
+			uint8_t rx_level;		// rx input level 0-255
+			uint8_t cw_tx_level;	// cw tx output
+			uint8_t color;		// dmr color 0-15
+			uint8_t drm_delay;
+			uint8_t osc_offset;	// 128U
+			uint8_t dstar_tx_level;
+			uint8_t dmr_tx_level;
+			uint8_t ysf_tx_level;
+			uint8_t p25_tx_level;
+			uint8_t tx_dc_offset;
+			uint8_t rx_dc_offset;
+			uint8_t nxdn_tx_level;
+			uint8_t ysf_tx_hang;
+			uint8_t pocsag_tx;
 		} config;
 		struct
 		{
-			unsigned char zero;	// should be zero;
+			uint8_t zero;	// should be zero;
 			uint32_t rx;	// receive frequency
 			uint32_t tx;	// transmitter frequency
-			unsigned char level;	// rf level
+			uint8_t level;	// rf level
 			uint32_t ps;	// pocsag frequency, default 433000000U
 		} frequency;
 		struct
 		{
-			unsigned char flag[3];
-			unsigned char r2[8];
-			unsigned char r1[8];
-			unsigned char ur[8];
-			unsigned char my[8];
-			unsigned char nm[4];
-			unsigned char pfcs[2];
+			uint8_t flag[3];
+			uint8_t r2[8];
+			uint8_t r1[8];
+			uint8_t ur[8];
+			uint8_t my[8];
+			uint8_t nm[4];
+			uint8_t pfcs[2];
 		} header;
 		struct
 		{
-			unsigned char ambe[9];
-			unsigned char text[3];
+			uint8_t ambe[9];
+			uint8_t text[3];
 		} voice;
 	};
 };
@@ -166,7 +166,7 @@ using SMODEM = struct mmodem_tag
 class CFrame
 {
 public:
-	CFrame(const unsigned char *buf)
+	CFrame(const uint8_t *buf)
 	{
 		memcpy(&frame.start, buf, buf[1]);
 	}
@@ -186,8 +186,8 @@ public:
 
 	size_t size() const { return (size_t)frame.length; }
 
-	const unsigned char *data() const { return &frame.start; }
-	unsigned char type() { return frame.type; }
+	const uint8_t *data() const { return &frame.start; }
+	uint8_t type() { return frame.type; }
 
 private:
 	SMODEM frame;
@@ -207,12 +207,12 @@ private:
 	unsigned int dstarSpace;
 
 	// functions
-	bool VoicePacketIsSync(const unsigned char *);
+	bool VoicePacketIsSync(const uint8_t *);
 	void ProcessGateway(const SDSVT &dsvt);
 	bool ProcessModem(const SMODEM &frame);
 	int OpenModem();
-	int SendToModem(const unsigned char *buf);
-	EModemResponse GetModemData(unsigned char *buf, unsigned int size);
+	int SendToModem(const uint8_t *buf);
+	EModemResponse GetModemData(uint8_t *buf, unsigned int size);
 	bool GetVersion();
 	bool GetBufferSize();
 	bool SetFrequency();

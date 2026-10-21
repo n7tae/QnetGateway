@@ -28,9 +28,9 @@ public:
 
 	~CRandom() {}
 
-	unsigned short NewStreamID()
+	uint16_t NewStreamID()
 	{
-		unsigned short r = 0;
+		uint16_t r = 0;
 		while (0 == r)
 			r = 0xffffU & random();
 		return r;
