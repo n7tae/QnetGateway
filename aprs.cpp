@@ -285,16 +285,16 @@ void CAPRS::Open(const std::string &OWNER, const std::string &NAME)
 		fprintf(stderr, "Could write login into aprs\n");
 		aprs_sock.Close();
 		return;
+	} else {	// successfully wrote login packet
+		if (aprs_sock.ReadLine(str)) {
+			fprintf(stderr, "Did not receive aprs login ackn\n");
+			aprs_sock.Close();
+			return;
+		} else {
+			if (m_debug)
+				printf("APRS Login returned: %s\n", str.c_str());
+		}
 	}
-	
-	if (aprs_sock.ReadLine(str)) {
-		fprintf(stderr, "Did not receive aprs login ackn\n");
-		aprs_sock.Close();
-		return;
-	}
-	
-	if (m_debug)
-		printf("APRS Login returned: %s\n", str.c_str());
 	return;
 }
 
