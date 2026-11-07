@@ -43,6 +43,7 @@
 #include <thread>
 #include <chrono>
 #include <csignal>
+#include <iomanip>
 
 #include "IRCDDB.h"
 #include "IRCutils.h"
@@ -50,7 +51,7 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-const std::string GW_VERSION("QnetGateway-60706");
+const std::string GW_VERSION("QnetGateway-261105");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -335,6 +336,7 @@ bool CQnetGateway::ReadConfig(const std::string &cfgFile)
 	cfg.GetValue(path+"irc", estr, LOG_IRC);
 	cfg.GetValue(path+"dtmf", estr, LOG_DTMF);
 	cfg.GetValue(path+"debug", estr, LOG_DEBUG);
+	cfg.GetValue(path+"aprs", estr, LOG_APRS);
 
 	// file
 	path.assign("file_");
@@ -2184,186 +2186,53 @@ void CQnetGateway::APRSBeaconThread()
 	char rcv_buf[512];
 	time_t tnow = 0;
 
-	/*
-	   Every 20 seconds, the remote APRS host sends a KEEPALIVE packet-comment
-	   on the TCP/APRS port.
-	   If we have not received any KEEPALIVE packet-comment after 5 minutes
-	   we must assume that the remote APRS host is down or disappeared
-	   or has dropped the connection. In these cases, we must re-connect.
-	   There are 3 keepalive packets in one minute, or every 20 seconds.
-	   In 5 minutes, we should have received a total of 15 keepalive packets.
-	*/
-	int16_t THRESHOLD_COUNTDOWN = 15;
-
-	time_t last_keepalive_time;
-	time(&last_keepalive_time);
-
 	time_t last_beacon_time = 0;
 	/* This thread is also saying to the APRS_HOST that we are ALIVE */
 	while (keep_running)
 	{
-		if (aprs->aprs_sock.GetFD() == -1)
+		// start up the aprs client
+		while (keep_running and (aprs->aprs_sock.GetFD() < 0))
 		{
-			aprs->Open(OWNER);
+			aprs->Open(OWNER, GW_VERSION);
 			if (aprs->aprs_sock.GetFD() == -1)
-				sleep(1);
-			else
-				THRESHOLD_COUNTDOWN = 15;
+				sleep(5);
 		}
 
+		// see if it's time to update aprs beacon
 		time(&tnow);
-		if ((tnow - last_beacon_time) > (Rptr.aprs_interval * 60))
+		if ((tnow - last_beacon_time) >= (Rptr.aprs_interval * 60))
 		{
-			for (int16_t i=0; i<3; i++)
+			// update each channel, A B C
+			for (int i=0; i<3; i++)
 			{
-				if (Rptr.mod[i].defined)
+				if (Rptr.mod[i].defined and aprs->aprs_sock.GetFD() >= 0)
 				{
-					float tmp_lat = fabs(Rptr.mod[i].latitude);
-					float tmp_lon = fabs(Rptr.mod[i].longitude);
-					float lat = floor(tmp_lat);
-					float lon = floor(tmp_lon);
-					lat = (tmp_lat - lat) * 60.0F + lat  * 100.0F;
-					lon = (tmp_lon - lon) * 60.0F + lon  * 100.0F;
-
-					char lat_s[15], lon_s[15];
-					if (lat >= 1000.0F)
-						sprintf(lat_s, "%.2f", lat);
-					else if (lat >= 100.0F)
-						sprintf(lat_s, "0%.2f", lat);
-					else if (lat >= 10.0F)
-						sprintf(lat_s, "00%.2f", lat);
-					else
-						sprintf(lat_s, "000%.2f", lat);
-
-					if (lon >= 10000.0F)
-						sprintf(lon_s, "%.2f", lon);
-					else if (lon >= 1000.0F)
-						sprintf(lon_s, "0%.2f", lon);
-					else if (lon >= 100.0F)
-						sprintf(lon_s, "00%.2f", lon);
-					else if (lon >= 10.0F)
-						sprintf(lon_s, "000%.2f", lon);
-					else
-						sprintf(lon_s, "0000%.2f", lon);
-
-					/* send to aprs */
-					sprintf(snd_buf, "%s>APJI23,TCPIP*,qAC,%sS:!%s%cD%s%c&RNG%04u %s %s",
-							Rptr.mod[i].call.c_str(),  Rptr.mod[i].call.c_str(),
-							lat_s,  (Rptr.mod[i].latitude < 0.0)  ? 'S' : 'N',
-							lon_s,  (Rptr.mod[i].longitude < 0.0) ? 'W' : 'E',
-							(unsigned int)Rptr.mod[i].range, Rptr.mod[i].band.c_str(), GW_VERSION.c_str());
-					if (LOG_DEBUG)
-						printf("APRS Beacon =[%s]\n", snd_buf);
-					strcat(snd_buf, "\r\n");
-
-					while (keep_running)
-					{
-						if (aprs->aprs_sock.GetFD() == -1)
-						{
-							aprs->Open(OWNER);
-							if (aprs->aprs_sock.GetFD() == -1)
-								sleep(1);
-							else
-								THRESHOLD_COUNTDOWN = 15;
-						}
-						else
-						{
-							int rc = aprs->aprs_sock.Write((uint8_t *)snd_buf, strlen(snd_buf));
-							if (rc < 0)
-							{
-								if ((errno == EPIPE) ||
-										(errno == ECONNRESET) ||
-										(errno == ETIMEDOUT) ||
-										(errno == ECONNABORTED) ||
-										(errno == ESHUTDOWN) ||
-										(errno == EHOSTUNREACH) ||
-										(errno == ENETRESET) ||
-										(errno == ENETDOWN) ||
-										(errno == ENETUNREACH) ||
-										(errno == EHOSTDOWN) ||
-										(errno == ENOTCONN))
-								{
-									printf("send_aprs_beacon: APRS_HOST closed connection,error=%d\n",errno);
-									aprs->aprs_sock.Close();
-								}
-								else if (errno == EWOULDBLOCK)
-								{
-									std::this_thread::sleep_for(std::chrono::milliseconds(100));
-								}
-								else
-								{
-									/* Cant do nothing about it */
-									printf("send_aprs_beacon failed, error=%d\n", errno);
-									break;
-								}
+					auto line = Rptr.mod[i].position_ss.str();
+					if (aprs->aprs_sock.WriteLine(line)) {
+						aprs->aprs_sock.Close();
+					} else {
+						if (aprs->aprs_sock.ReadLine(line)) {
+							aprs->aprs_sock.Close();
+						} else {
+							if (aprs->m_debug) {
+								printf("APRS packet ackn: %s\n", line.c_str());
 							}
-							else
-							{
-								// printf("APRS beacon sent\n");
-								break;
-							}
+							time(&last_beacon_time);
 						}
-						int rc = aprs->aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
-						if (rc > 0)
-							THRESHOLD_COUNTDOWN = 15;
 					}
 				}
-				int rc = aprs->aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
-				if (rc > 0)
-					THRESHOLD_COUNTDOWN = 15;
 			}
-			time(&last_beacon_time);
 		}
-		/*
-		   Are we still receiving from APRS host ?
-		*/
-		int rc = aprs->aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
-		if (rc < 0)
-		{
-			if ((errno == EPIPE) ||
-					(errno == ECONNRESET) ||
-					(errno == ETIMEDOUT) ||
-					(errno == ECONNABORTED) ||
-					(errno == ESHUTDOWN) ||
-					(errno == EHOSTUNREACH) ||
-					(errno == ENETRESET) ||
-					(errno == ENETDOWN) ||
-					(errno == ENETUNREACH) ||
-					(errno == EHOSTDOWN) ||
-					(errno == ENOTCONN))
-			{
-				printf("send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n",errno);
+
+		// Are we still receiving keepalives from APRS host ?
+		if (keep_running and aprs->aprs_sock.GetFD() >= 0) {
+			std::string line;
+			if (aprs->aprs_sock.ReadLine(line)) {
 				aprs->aprs_sock.Close();
+			} else {
+				if (aprs->m_debug)
+					printf("APRS keep alive: %s\n", line.c_str());
 			}
-		}
-		else if (rc == 0)
-		{
-			printf("send_aprs_beacon: recv: APRS shutdown\n");
-			aprs->aprs_sock.Close();
-		}
-		else
-			THRESHOLD_COUNTDOWN = 15;
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-		/* 20 seconds passed already ? */
-		time(&tnow);
-		if ((tnow - last_keepalive_time) > 20)
-		{
-			/* we should be receving keepalive packets ONLY if the connection is alive */
-			if (aprs->aprs_sock.GetFD() >= 0)
-			{
-				if (THRESHOLD_COUNTDOWN > 0)
-					THRESHOLD_COUNTDOWN--;
-
-				if (THRESHOLD_COUNTDOWN == 0)
-				{
-					printf("APRS host keepalive timeout\n");
-					aprs->aprs_sock.Close();
-				}
-			}
-			/* reset timer */
-			time(&last_keepalive_time);
 		}
 	}
 	printf("APRS beacon thread exiting...\n");
@@ -2535,6 +2404,28 @@ void CQnetGateway::qrgs_and_maps()
 	return;
 }
 
+// Helper to convert decimal degrees to APRS DDMM.hh format
+std::string CQnetGateway::convertToAprsCoordinate(double decimalDegrees, bool isLatitude)
+{
+    double absolute = std::abs(decimalDegrees);
+    int degrees = static_cast<int>(absolute);
+    double minutes = (absolute - degrees) * 60.0;
+
+    std::stringstream ss;
+    if (isLatitude) {
+        // DDMM.hh (2 digits for degrees)
+        ss << std::setw(2) << std::setfill('0') << degrees;
+        ss << std::setw(5) << std::setfill('0') << std::fixed << std::setprecision(2) << minutes;
+        ss << (decimalDegrees >= 0 ? 'N' : 'S');
+    } else {
+        // DDDMM.hh (3 digits for degrees)
+        ss << std::setw(3) << std::setfill('0') << degrees;
+        ss << std::setw(5) << std::setfill('0') << std::fixed << std::setprecision(2) << minutes;
+        ss << (decimalDegrees >= 0 ? 'E' : 'W');
+    }
+    return ss.str();
+}
+
 bool CQnetGateway::Initialize(const std::string &path)
 {
 	int16_t i;
@@ -2631,7 +2522,7 @@ bool CQnetGateway::Initialize(const std::string &path)
 
 	if (APRS_ENABLE)
 	{
-		aprs = new CAPRS(&Rptr);
+		aprs = new CAPRS(&Rptr, LOG_APRS);
 		if (aprs)
 			aprs->Init();
 		else
@@ -2639,8 +2530,17 @@ bool CQnetGateway::Initialize(const std::string &path)
 			printf("aprs class init failed!\nAPRS will be turned off");
 			APRS_ENABLE = false;
 		}
+		for (int i=0; i<3; i++) {
+			if (Rptr.mod[i].defined) {
+				Rptr.mod[i].position_ss << Rptr.mod[i].call << ">APRS,TCPIP*:"
+					<< '!' << convertToAprsCoordinate(Rptr.mod[i].latitude, true) << 'D' <<  convertToAprsCoordinate(Rptr.mod[i].longitude,false) << '&'
+					<< Rptr.mod[i].band << " Voice (DStar) "
+					<< std::fixed << std::setprecision(4) << std::showpos
+					<< Rptr.mod[i].frequency << "MHz " << Rptr.mod[i].offset << "MHz QnetGateway";
+			}
+		}
+		compute_aprs_hash();
 	}
-	compute_aprs_hash();
 
 	for (int j=0; j<2; j++)
 	{

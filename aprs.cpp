@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2016-2020 by Thomas A. Early N7TAE
+ *   Copyright (C) 2016-2020,2026 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,8 +26,16 @@
 
 #include <thread>
 #include <chrono>
+#include <sstream>
 
 #include "aprs.h"
+
+CAPRS::CAPRS(SRPTR *prptr, bool debug) : m_rptr(prptr), m_debug(debug) {}
+
+CAPRS::~CAPRS()
+{
+	aprs_sock.Close();
+}
 
 // This is called when header comes in from repeater
 void CAPRS::SelectBand(int16_t rptr_idx, uint16_t streamID)
@@ -120,16 +128,16 @@ void CAPRS::ProcessText(uint16_t streamID, uint8_t seq, uint8_t *buf)
 	if (rc == -1)
 	{
 		if ((errno == EPIPE) ||
-				(errno == ECONNRESET) ||
-				(errno == ETIMEDOUT) ||
-				(errno == ECONNABORTED) ||
-				(errno == ESHUTDOWN) ||
-				(errno == EHOSTUNREACH) ||
-				(errno == ENETRESET) ||
-				(errno == ENETDOWN) ||
-				(errno == ENETUNREACH) ||
-				(errno == EHOSTDOWN) ||
-				(errno == ENOTCONN))
+			(errno == ECONNRESET) ||
+			(errno == ETIMEDOUT) ||
+			(errno == ECONNABORTED) ||
+			(errno == ESHUTDOWN) ||
+			(errno == EHOSTUNREACH) ||
+			(errno == ENETRESET) ||
+			(errno == ENETDOWN) ||
+			(errno == ENETUNREACH) ||
+			(errno == EHOSTDOWN) ||
+			(errno == ENOTCONN))
 		{
 			printf("CAPRS::ProcessText(): APRS_HOST closed connection, error=%d\n",errno);
 			aprs_sock.Close();
@@ -251,11 +259,9 @@ unsigned int CAPRS::GetData(int16_t rptr_idx, uint8_t *data, unsigned int len)
 	return l;
 }
 
-void CAPRS::Open(const std::string OWNER)
+void CAPRS::Open(const std::string &OWNER, const std::string &NAME)
 {
-	char snd_buf[512];
-	char rcv_buf[512];
-	while (aprs_sock.Open(m_rptr->aprs.ip, AF_UNSPEC, std::to_string(m_rptr->aprs.port)))
+	while (aprs_sock.Open(m_rptr->aprs.ip, AF_UNSPEC, std::to_string(m_rptr->aprs.port), m_debug))
 	{
 		fprintf(stderr, "Failed to open %s, retry in 10 seconds...\n", m_rptr->aprs.ip.c_str());
 		std::this_thread::sleep_for(std::chrono::seconds(10));
@@ -263,41 +269,32 @@ void CAPRS::Open(const std::string OWNER)
 
 	/* login to aprs */
 	//sprintf(snd_buf, "user %s pass %d vers QnetGateway 9 UDP 5 ", OWNER.c_str(), m_rptr->aprs_hash);
-	sprintf(snd_buf, "user %s pass %d vers QnetGateway-9 ", OWNER.c_str(), m_rptr->aprs_hash);
+	std::stringstream ss;
+	ss << "user " << OWNER << " pass " << m_rptr->aprs_hash << " version " << NAME;
 
 	/* add the user's filter */
 	if (m_rptr->aprs_filter.length())
 	{
-		strcat(snd_buf, "filter ");
-		strcat(snd_buf, m_rptr->aprs_filter.c_str());
+		ss << " filter " << m_rptr->aprs_filter;
 	}
-	//printf("APRS Login command:[%s]\n", snd_buf);
-	strcat(snd_buf, "\r\n");
+	std::string str(ss.str());
+	if (m_debug)
+		printf("APRS Login: %s\n", str.c_str());
 
-	while (true)
-	{
-		int rc = aprs_sock.Write((uint8_t *)snd_buf, strlen(snd_buf));
-		if (rc < 0)
-		{
-			if (errno == EWOULDBLOCK)
-			{
-				aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			}
-			else
-			{
-				printf("APRS Login command failed, error=%d\n", errno);
-				break;
-			}
-		}
-		else
-		{
-			// printf("APRS Login command sent\n");
-			break;
-		}
+	if (aprs_sock.WriteLine(str)) {
+		fprintf(stderr, "Could write login into aprs\n");
+		aprs_sock.Close();
+		return;
 	}
-	aprs_sock.Read((uint8_t *)rcv_buf, sizeof(rcv_buf));
-	//printf("APRS Login returned: %s", rcv_buf);
+	
+	if (aprs_sock.ReadLine(str)) {
+		fprintf(stderr, "Did not receive aprs login ackn\n");
+		aprs_sock.Close();
+		return;
+	}
+	
+	if (m_debug)
+		printf("APRS Login returned: %s\n", str.c_str());
 	return;
 }
 
@@ -456,19 +453,4 @@ unsigned int CAPRS::CalcCRC(uint8_t* buf, unsigned int len)
 		}
 	}
 	return (~my_crc & 0xffff);
-}
-
-CAPRS::CAPRS(SRPTR *prptr)
-{
-	m_rptr = prptr;
-}
-
-CAPRS::~CAPRS()
-{
-	aprs_sock.Close();
-}
-
-void CAPRS::CloseSock()
-{
-	aprs_sock.Close();
 }

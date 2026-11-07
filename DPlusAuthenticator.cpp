@@ -47,7 +47,7 @@ CDPlusAuthenticator::~CDPlusAuthenticator()
 int CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool repeaters)
 // return true if everything went okay
 {
-	int result = client.Open(m_address, AF_UNSPEC, "20001");
+	int result = client.Open(m_address, AF_UNSPEC, "20001", false);
 	if (result)
 	{
 		fprintf(stderr, "DPlus Authorization failed: %s\n", gai_strerror(result));

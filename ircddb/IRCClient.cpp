@@ -8,8 +8,9 @@
 #include "IRCutils.h"
 #include "IRCDDBApp.h"
 
-IRCClient::IRCClient(IRCDDBApp *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo)
+IRCClient::IRCClient(IRCDDBApp *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, bool logirc)
 {
+	logIRC = logirc;
 	safeStringCopy(host_name, hostName.c_str(), sizeof host_name);
 
 
@@ -79,7 +80,7 @@ void IRCClient::Entry()
 				else if (0 == strcmp(host_name, "ircv6.openquad.net"))
 					fam = AF_INET6;
 
-				if (! ircSock.Open(host_name, fam, std::to_string(port)))
+				if (! ircSock.Open(host_name, fam, std::to_string(port), logIRC))
 				{
 					state = 4;
 					timer = 0;

@@ -115,7 +115,7 @@ private:
 	std::string OWNER, owner, FILE_DTMF, FILE_ECHOTEST, IRCDDB_PASSWORD[2], FILE_QNVOICE_FILE, DASH_SHOW_ORDER;
 
 	bool GATEWAY_SEND_QRGS_MAP, GATEWAY_HEADER_REGEN, APRS_ENABLE, playNotInCache, showLastHeard;
-	bool LOG_DEBUG, LOG_IRC, LOG_DTMF, LOG_QSO, IS_HF[3];
+	bool LOG_APRS, LOG_DEBUG, LOG_IRC, LOG_DTMF, LOG_QSO, IS_HF[3];
 
 	int DASH_REFRESH, TIMING_PLAY_WAIT, TIMING_PLAY_DELAY, TIMING_TIMEOUT_ECHO, TIMING_TIMEOUT_VOICEMAIL, TIMING_TIMEOUT_REMOTE_G2, TIMING_TIMEOUT_LOCAL_RPTR, dtmf_digit;
 
@@ -177,6 +177,9 @@ private:
 	char dtmf_buf[3][MAX_DTMF_BUF + 1];
 	int dtmf_last_frame[3];
 	unsigned int dtmf_counter[3];
+
+	// helper
+	std::string convertToAprsCoordinate(double decimalDegrees, bool isLatitude);
 
 	bool VoicePacketIsSync(const uint8_t *text) const;
 	int open_port(const SPORTIP *pip, int family);

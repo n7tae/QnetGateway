@@ -10,7 +10,7 @@ CIRCDDB::CIRCDDB(const std::string &hostName, unsigned int port, const std::stri
 	const std::string update_channel("#dstar");
 
 	app = new IRCDDBApp(update_channel, &cache, log_irc);
-	client = new IRCClient(app, update_channel, hostName, port, callsign, password, versionInfo);
+	client = new IRCClient(app, update_channel, hostName, port, callsign, password, versionInfo, log_irc);
 }
 
 CIRCDDB::~CIRCDDB()

@@ -1,7 +1,6 @@
 #pragma once
 
-/*
- *   Copyright (C) 2016 by Thomas A. Early N7TAE
+/*   Copyright (C) 2016,2026 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -19,6 +18,7 @@
  */
 
 #include <string>
+#include <sstream>
 #include <time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -43,6 +43,7 @@ using SMOD = struct aprs_module
 	std::string band;  /* 23cm ... */
 	double frequency, offset, latitude, longitude, range, agl;
 	std::string desc1, desc2, url, package_version;
+	std::stringstream position_ss;
 };
 
 using SRPTR = struct aprs_info
@@ -59,15 +60,16 @@ using SRPTR = struct aprs_info
 class CAPRS
 {
 public:
+	// data
+	const bool m_debug;
 	// functions
-	CAPRS(SRPTR *prptr);
+	CAPRS(SRPTR *prptr, bool debug);
 	~CAPRS();
 	SRPTR *m_rptr;
 	void SelectBand(int16_t rptr_idx, uint16_t streamID);
 	void ProcessText(uint16_t streamID, uint8_t seq, uint8_t *buf);
-	void Open(const std::string OWNER);
+	void Open(const std::string &OWNER, const std::string &NAME);
 	void Init();
-	void CloseSock();
 	CTCPReaderWriterClient aprs_sock;
 
 private:
