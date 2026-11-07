@@ -35,6 +35,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <poll.h>
 
 #include <regex>
 #include <future>
@@ -2182,8 +2183,7 @@ void CQnetGateway::compute_aprs_hash()
 
 void CQnetGateway::APRSBeaconThread()
 {
-	char snd_buf[512];
-	char rcv_buf[512];
+	unsigned kaCount = 0;
 	time_t tnow = 0;
 
 	time_t last_beacon_time = 0;
@@ -2218,6 +2218,7 @@ void CQnetGateway::APRSBeaconThread()
 								printf("APRS packet ackn: %s\n", line.c_str());
 							}
 							time(&last_beacon_time);
+							kaCount = 0;
 						}
 					}
 				}
@@ -2226,12 +2227,29 @@ void CQnetGateway::APRSBeaconThread()
 
 		// Are we still receiving keepalives from APRS host ?
 		if (keep_running and aprs->aprs_sock.GetFD() >= 0) {
-			std::string line;
-			if (aprs->aprs_sock.ReadLine(line)) {
+			struct pollfd pfd;
+			pfd.fd = aprs->aprs_sock.GetFD();
+			pfd.events = POLLIN;
+			auto rtv = poll(&pfd, 1, 5000);
+			if (rtv < 0) {
+				fprintf(stderr, "APRS poll ERROR: %s\n", strerror(errno));
 				aprs->aprs_sock.Close();
-			} else {
-				if (aprs->m_debug)
-					printf("APRS keep alive: %s\n", line.c_str());
+				continue;
+			} else if (0 == rtv) {
+				// nothing to read;
+				continue;
+			} else if (pfd.revents & POLLIN) {
+				std::string line;
+				if (aprs->aprs_sock.ReadLine(line)) {
+					aprs->aprs_sock.Close();
+				} else {
+					if (aprs->m_debug and (++kaCount%15 == 0))
+						printf("APRS keep alive #%u: %s\n", kaCount, line.c_str());
+				}
+			} else if (pfd.revents & ( POLL_ERR | POLLHUP | POLLNVAL)) {
+				fprintf(stderr, "ERROR: aprs poll detected bad socket state\n");
+				aprs->aprs_sock.Close();
+				continue;
 			}
 		}
 	}
