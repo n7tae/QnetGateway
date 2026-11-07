@@ -52,7 +52,7 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-const std::string GW_VERSION("QnetGateway-261105");
+const std::string GW_VERSION("QnetGateway-261107");
 
 int CQnetGateway::FindIndex(const int i) const
 {
