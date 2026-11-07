@@ -178,7 +178,7 @@ FileMenu () {
 		fi
 		echo
 		echo    "     Additional entries in log files (in /usr/local/var)"
-		echo -n "al : APRS logging             = "; EvaluateVar log_aprs{,d}
+		echo -n "al : APRS logging             = "; EvaluateVar log_aprs{,_d}
 		echo -n "cl : Call(QSO) logging        = "; EvaluateVar log_qso{,_d}
 		echo -n "il : IRC logging              = "; EvaluateVar log_irc{,_d}
 		echo -n "dl : DTMF logging             = "; EvaluateVar log_dtmf{,_d}
@@ -228,6 +228,7 @@ FileMenu () {
 			elif [[ "$value" == vf* ]]; then unset file_qnvoicefile
 			elif [[ "$value" == gf* ]]; then unset file_gwys
 			elif [[ "$value" == ad* ]]; then unset file_announce_dir
+			elif [[ "$value" == al* ]]; then unset log_aprs
 			elif [[ "$value" == cl* ]]; then unset log_qso
 			elif [[ "$value" == il* ]]; then unset log_irc
 			elif [[ "$value" == dl* ]]; then unset log_dtmf

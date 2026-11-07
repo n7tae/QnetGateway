@@ -174,7 +174,7 @@ bool CTCPReaderWriterClient::ReadLine(std::string& line)
 		rtv = Read(&c, 1);
 		if (('\r' != c) and ('\n' != c) and (rtv == 1))
 			line += c;
-	} while(c != '\n' && rtv == 1);
+	} while(c != '\n' and rtv == 1);
 
 	return (rtv <= 0) ? true : false;
 }
