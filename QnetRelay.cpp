@@ -61,7 +61,7 @@ bool CQnetRelay::Initialize(const std::string &cfgfile)
 	return false;
 }
 
-int CQnetRelay::OpenSocket(const std::string &address, unsigned short port)
+int CQnetRelay::OpenSocket(const std::string &address, uint16_t port)
 {
 	if (! port)
 	{
@@ -139,7 +139,7 @@ void CQnetRelay::Run()
 			continue;
 
 		// there is something to read!
-		unsigned char buf[100];
+		uint8_t buf[100];
 		sockaddr_in addr;
 		memset(&addr, 0, sizeof(sockaddr_in));
 		socklen_t size = sizeof(sockaddr);
@@ -206,7 +206,7 @@ void CQnetRelay::Close()
 	FromGate.Close();
 }
 
-int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port)
+int CQnetRelay::SendTo(const int fd, const uint8_t *buf, const int size, const std::string &address, const uint16_t port)
 {
 	sockaddr_in addr;
 	::memset(&addr, 0, sizeof(sockaddr_in));
@@ -222,7 +222,7 @@ int CQnetRelay::SendTo(const int fd, const unsigned char *buf, const int size, c
 	return len;
 }
 
-bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
+bool CQnetRelay::ProcessGateway(const int len, const uint8_t *raw)
 {
 	if (27==len || 56==len)   //here is dstar data
 	{
@@ -290,9 +290,9 @@ bool CQnetRelay::ProcessGateway(const int len, const unsigned char *raw)
 	return false;
 }
 
-bool CQnetRelay::ProcessMMDVM(const int len, const unsigned char *raw)
+bool CQnetRelay::ProcessMMDVM(const int len, const uint8_t *raw)
 {
-	static unsigned short id = 0U;
+	static uint16_t id = 0U;
 	SDSRP dsrp;
 	if (len < 65)
 		::memcpy(dsrp.title, raw, len);	// transfer raw data to SDSRP struct
@@ -427,9 +427,9 @@ bool CQnetRelay::ReadConfig(const std::string &cfgFile)
 
 	int i;
 	cfg.GetValue(mmdvm_path+"_local_port", type, i, 10000, 65535);
-	MMDVM_IN_PORT = (unsigned short)i;
+	MMDVM_IN_PORT = (uint16_t)i;
 	cfg.GetValue(mmdvm_path+"_gateway_port", type, i, 10000, 65535);
-	MMDVM_OUT_PORT = (unsigned short)i;
+	MMDVM_OUT_PORT = (uint16_t)i;
 
 	cfg.GetValue(mmdvm_path+"_is_dstarrepeater", type, IS_DSTARREPEATER);
 	cfg.GetValue("log_qso", estr, log_qso);

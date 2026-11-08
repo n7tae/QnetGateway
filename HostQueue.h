@@ -35,7 +35,7 @@ public:
 		port = from.port;
 	}
 
-	CHost(const std::string n, const std::string a, unsigned short p)
+	CHost(const std::string n, const std::string a, uint16_t p)
 	{
 		name.assign(n);
 		addr.assign(a);
@@ -51,7 +51,7 @@ public:
 	}
 
 	std::string name, addr;
-	unsigned short port;
+	uint16_t port;
 };
 
 template <class T> class CTQueue

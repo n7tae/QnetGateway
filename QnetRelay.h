@@ -40,10 +40,10 @@ public:
 
 private:
 	// functions
-	bool ProcessGateway(const int len, const unsigned char *raw);
-	bool ProcessMMDVM(const int len, const unsigned char *raw);
-	int OpenSocket(const std::string &address, unsigned short port);
-	int SendTo(const int fd, const unsigned char *buf, const int size, const std::string &address, const unsigned short port);
+	bool ProcessGateway(const int len, const uint8_t *raw);
+	bool ProcessMMDVM(const int len, const uint8_t *raw);
+	int OpenSocket(const std::string &address, uint16_t port);
+	int SendTo(const int fd, const uint8_t *buf, const int size, const std::string &address, const uint16_t port);
 
 	// read configuration file
 	bool ReadConfig(const std::string &);
@@ -55,11 +55,11 @@ private:
 	// config data
 	char RPTR_MOD;
 	std::string MMDVM_INTERNAL_IP, MMDVM_TARGET_IP;
-	unsigned short MMDVM_IN_PORT, MMDVM_OUT_PORT;
+	uint16_t MMDVM_IN_PORT, MMDVM_OUT_PORT;
 	bool log_qso, IS_DSTARREPEATER;
 
 	// parameters
 	int msock;
 	unsigned int seed;
-	unsigned short COUNTER;
+	uint16_t COUNTER;
 };

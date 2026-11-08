@@ -35,6 +35,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <poll.h>
 
 #include <regex>
 #include <future>
@@ -43,6 +44,7 @@
 #include <thread>
 #include <chrono>
 #include <csignal>
+#include <iomanip>
 
 #include "IRCDDB.h"
 #include "IRCutils.h"
@@ -50,7 +52,7 @@
 #include "QnetGateway.h"
 #include "Utilities.h"
 
-const std::string GW_VERSION("QnetGateway-60706");
+const std::string GW_VERSION("QnetGateway-261107");
 
 int CQnetGateway::FindIndex(const int i) const
 {
@@ -71,7 +73,7 @@ int CQnetGateway::FindIndex(const int i) const
 	return index;
 }
 
-bool CQnetGateway::Printable(unsigned char *s)
+bool CQnetGateway::Printable(uint8_t *s)
 {
 	bool rval = false;
 	for (unsigned i=0; s[i]; i++)
@@ -85,7 +87,7 @@ bool CQnetGateway::Printable(unsigned char *s)
 	return rval;
 }
 
-bool CQnetGateway::VoicePacketIsSync(const unsigned char *text) const
+bool CQnetGateway::VoicePacketIsSync(const uint8_t *text) const
 {
 	return *text==0x55U && *(text+1)==0x2DU && *(text+2)==0x16U;
 }
@@ -140,9 +142,9 @@ void CQnetGateway::set_dest_rptr(const char mod, std::string &call)
 }
 
 /* compute checksum */
-void CQnetGateway::calcPFCS(unsigned char *packet, int len)
+void CQnetGateway::calcPFCS(uint8_t *packet, int len)
 {
-	const unsigned short crc_tabccitt[256] =
+	const uint16_t crc_tabccitt[256] =
 	{
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
@@ -161,9 +163,9 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 		0xe70e,0xf687,0xc41c,0xd595,0xa12a,0xb0a3,0x8238,0x93b1,0x6b46,0x7acf,0x4854,0x59dd,0x2d62,0x3ceb,0x0e70,0x1ff9,
 		0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 	};
-	unsigned short crc_dstar_ffff = 0xffff;
-	short int low, high;
-	unsigned short tmp;
+	uint16_t crc_dstar_ffff = 0xffff;
+	int16_t low, high;
+	uint16_t tmp;
 
 	switch (len)
 	{
@@ -179,9 +181,9 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 		return;
 	}
 
-	for (unsigned short int i = low; i < high ; i++)
+	for (uint16_t i = low; i < high ; i++)
 	{
-		unsigned short short_c = 0x00ff & (unsigned short)packet[i];
+		uint16_t short_c = 0x00ff & (uint16_t)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
@@ -190,13 +192,13 @@ void CQnetGateway::calcPFCS(unsigned char *packet, int len)
 
 	if (len == 56)
 	{
-		packet[54] = (unsigned char)(crc_dstar_ffff & 0xff);
-		packet[55] = (unsigned char)((tmp >> 8) & 0xff);
+		packet[54] = (uint8_t)(crc_dstar_ffff & 0xff);
+		packet[55] = (uint8_t)((tmp >> 8) & 0xff);
 	}
 	else
 	{
-		packet[56] = (unsigned char)(crc_dstar_ffff & 0xff);
-		packet[57] = (unsigned char)((tmp >> 8) & 0xff);
+		packet[56] = (uint8_t)(crc_dstar_ffff & 0xff);
+		packet[57] = (uint8_t)((tmp >> 8) & 0xff);
 	}
 
 	return;
@@ -335,6 +337,7 @@ bool CQnetGateway::ReadConfig(const std::string &cfgFile)
 	cfg.GetValue(path+"irc", estr, LOG_IRC);
 	cfg.GetValue(path+"dtmf", estr, LOG_DTMF);
 	cfg.GetValue(path+"debug", estr, LOG_DEBUG);
+	cfg.GetValue(path+"aprs", estr, LOG_APRS);
 
 	// file
 	path.assign("file_");
@@ -393,9 +396,9 @@ int CQnetGateway::open_port(const SPORTIP *pip, int family)
 void CQnetGateway::GetIRCDataThread(const int i)
 {
 	IRCDDB_RESPONSE_TYPE type;
-	short last_status = 0;
+	int16_t last_status = 0;
 
-	short threshold = 0;
+	int16_t threshold = 0;
 	bool not_announced[3];
 	for (int i=0; i<3; i++)
 		not_announced[i] = Rptr.mod[i].defined;	// announce to all modules that are defined!
@@ -489,9 +492,9 @@ void CQnetGateway::GetIRCDataThread(const int i)
 						break;
 					CSockAddress to;
 					if (addr.npos == addr.find(':'))
-						to.Initialize(AF_INET, (unsigned short)g2_external.port, addr.c_str());
+						to.Initialize(AF_INET, (uint16_t)g2_external.port, addr.c_str());
 					else
-						to.Initialize(AF_INET6, (unsigned short)g2_ipv6_external.port, addr.c_str());
+						to.Initialize(AF_INET6, (uint16_t)g2_ipv6_external.port, addr.c_str());
 					sendto(g2_sock[i], "PONG", 4, 0, to.GetCPointer(), to.GetSize());
 					if (LOG_QSO)
 						printf("Sent 'PONG' to %s\n", addr.c_str());
@@ -586,7 +589,7 @@ int CQnetGateway::get_yrcall_rptr(const std::string &call, std::string &rptr, st
 	return 0;
 }
 
-bool CQnetGateway::Flag_is_ok(unsigned char flag)
+bool CQnetGateway::Flag_is_ok(uint8_t flag)
 {
 	//      normal          break          emr          emr+break
 	return 0x00U==flag || 0x08U==flag || 0x20U==flag || 0x28U==flag;
@@ -685,17 +688,17 @@ void CQnetGateway::ProcessTimeouts()
 	}
 }
 
-bool CQnetGateway::ProcessG2Msg(const unsigned char *data, const int mod, std::string &smrtgrp)
+bool CQnetGateway::ProcessG2Msg(const uint8_t *data, const int mod, std::string &smrtgrp)
 {
 	static unsigned int part[3] = { 0 };
 	static char txt[3][21];
 	if ((data[0] != 0x55u) || (data[1] != 0x2du) || (data[2] != 0x16u))
 	{
-		const unsigned char c[3] =
+		const uint8_t c[3] =
 		{
-			static_cast<unsigned char>(data[0] ^ 0x70u),
-			static_cast<unsigned char>(data[1] ^ 0x4fu),
-			static_cast<unsigned char>(data[2] ^ 0x93u)
+			static_cast<uint8_t>(data[0] ^ 0x70u),
+			static_cast<uint8_t>(data[1] ^ 0x4fu),
+			static_cast<uint8_t>(data[2] ^ 0x93u)
 		};	// unscramble
 		if (part[mod])
 		{
@@ -764,11 +767,11 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt, const int source_sock)
 		return;
 	}
 
-	const unsigned char c[3] =
+	const uint8_t c[3] =
 	{
-		static_cast<unsigned char>(dsvt.vasd.text[0] ^ 0x70u),
-		static_cast<unsigned char>(dsvt.vasd.text[1] ^ 0x4fu),
-		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
+		static_cast<uint8_t>(dsvt.vasd.text[0] ^ 0x70u),
+		static_cast<uint8_t>(dsvt.vasd.text[1] ^ 0x4fu),
+		static_cast<uint8_t>(dsvt.vasd.text[2] ^ 0x93u)
 	};	// unscramble
 
 	if (sd.first)
@@ -850,7 +853,7 @@ void CQnetGateway::ProcessIncomingSD(const SDSVT &dsvt, const int source_sock)
 							if (mod >= 0 && mod < 3 && Rptr.mod[mod].defined)
 							{
 								printf("Got a slow data header: %36.36s\n", sd.header+3);
-								unsigned char call[CALL_SIZE];	// swap rpt1 and rpt2
+								uint8_t call[CALL_SIZE];	// swap rpt1 and rpt2
 								memcpy(call, sdheader.hdr.rpt1, CALL_SIZE);
 								memcpy(sdheader.hdr.rpt1, sdheader.hdr.rpt2, CALL_SIZE);
 								memcpy(sdheader.hdr.rpt2, call, CALL_SIZE);
@@ -952,11 +955,11 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 		return;
 	}
 
-	const unsigned char c[3] =
+	const uint8_t c[3] =
 	{
-		static_cast<unsigned char>(dsvt.vasd.text[0] ^ 0x70u),
-		static_cast<unsigned char>(dsvt.vasd.text[1] ^ 0x4fu),
-		static_cast<unsigned char>(dsvt.vasd.text[2] ^ 0x93u)
+		static_cast<uint8_t>(dsvt.vasd.text[0] ^ 0x70u),
+		static_cast<uint8_t>(dsvt.vasd.text[1] ^ 0x4fu),
+		static_cast<uint8_t>(dsvt.vasd.text[2] ^ 0x93u)
 	};	// unscramble
 
 	if (sd.first)
@@ -990,8 +993,10 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 							if (APRS_ENABLE && (! band_txt[i].is_gps_sent) && (time(NULL) - band_txt[i].gps_last_time > 30))
 							{
 								std::string call(band_txt[i].mycall);
-								const char *s = gps.APRS(call, Rptr.mod[i].call.c_str());
-								if (! aprs->aprs_sock.Write((unsigned char *)s, strlen(s)))
+								std::string s(gps.APRS(call, Rptr.mod[i].call.c_str()));
+								if (aprs->m_debug)
+									printf("Outgoing SD: %s\n", s.c_str());
+								if (aprs->aprs_sock.WriteLine(s))
 								{
 									time(&band_txt[i].gps_last_time);
 									band_txt[i].is_gps_sent = true;
@@ -1069,9 +1074,12 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 						if (APRS_ENABLE && (! band_txt[i].is_gps_sent) && (time(NULL) - band_txt[i].gps_last_time > 30))
 						{
 							std::string call(band_txt[i].mycall);
-							const char *s = gps.APRS(call, Rptr.mod[i].call.c_str());
-							if (! aprs->aprs_sock.Write((unsigned char *)s, strlen(s)))
-							{
+							std::string s(gps.APRS(call, Rptr.mod[i].call.c_str()));
+							if (aprs->m_debug)
+								printf("Outgoing position: %s\n", s.c_str());
+							if (aprs->aprs_sock.WriteLine(s)) {
+								fprintf(stderr, "ERROR: could not write Outgoing position\n");
+							} else {
 								time(&band_txt[i].gps_last_time);
 								band_txt[i].is_gps_sent = true;
 							}
@@ -1228,7 +1236,7 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 									fprintf(stderr, "Warning: inserting %d missing voice frame(s)\n", diff);
 								SDSVT dsvt;
 								memcpy(dsvt.title, g2buf.title, 14U);	// everything but the ctrl and voice data
-								const unsigned char quite[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
+								const uint8_t quite[9] = { 0x9EU, 0x8DU, 0x32U, 0x88U, 0x26U, 0x1AU, 0x3FU, 0x61U, 0xE8U };
 								memcpy(dsvt.vasd.voice, quite, 9U);
 								while (diff-- > 0)
 								{
@@ -1236,12 +1244,12 @@ void CQnetGateway::ProcessG2(const ssize_t g2buflen, SDSVT &g2buf, const int sou
 									nextctrl[i] %= 21U;
 									if (dsvt.ctrl)
 									{
-										const unsigned char silence[3] = { 0x70U, 0x4FU, 0x93U };
+										const uint8_t silence[3] = { 0x70U, 0x4FU, 0x93U };
 										memcpy(dsvt.vasd.voice, silence, 3U);
 									}
 									else
 									{
-										const unsigned char sync[3] = { 0x55U, 0x2DU, 0x16U };
+										const uint8_t sync[3] = { 0x55U, 0x2DU, 0x16U };
 										memcpy(dsvt.vasd.voice, sync, 3U);
 									}
 									ToModem[i].Write(dsvt.title, 27);
@@ -1902,7 +1910,7 @@ void CQnetGateway::ProcessModem(const ssize_t recvlen, SDSVT &dsvt)
 										dtmf_buf_count[i]++;
 									}
 								}
-								const unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
+								const uint8_t silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 								memcpy(dsvt.vasd.voice, silence, 9);
 							}
 							else
@@ -2153,7 +2161,7 @@ void CQnetGateway::Run()
 
 void CQnetGateway::compute_aprs_hash()
 {
-	short hash = 0x73e2;
+	int16_t hash = 0x73e2;
 	char rptr_sign[CALL_SIZE + 1];
 
 	strcpy(rptr_sign, OWNER.c_str());
@@ -2165,9 +2173,9 @@ void CQnetGateway::compute_aprs_hash()
 	}
 	*p = '\0';
 	p = rptr_sign;
-	short int len = strlen(rptr_sign);
+	int16_t len = strlen(rptr_sign);
 
-	for (short int i=0; i < len; i+=2)
+	for (int16_t i=0; i < len; i+=2)
 	{
 		hash ^= (*p++) << 8;
 		hash ^= (*p++);
@@ -2180,190 +2188,75 @@ void CQnetGateway::compute_aprs_hash()
 
 void CQnetGateway::APRSBeaconThread()
 {
-	char snd_buf[512];
-	char rcv_buf[512];
+	unsigned kaCount = 0;
 	time_t tnow = 0;
-
-	/*
-	   Every 20 seconds, the remote APRS host sends a KEEPALIVE packet-comment
-	   on the TCP/APRS port.
-	   If we have not received any KEEPALIVE packet-comment after 5 minutes
-	   we must assume that the remote APRS host is down or disappeared
-	   or has dropped the connection. In these cases, we must re-connect.
-	   There are 3 keepalive packets in one minute, or every 20 seconds.
-	   In 5 minutes, we should have received a total of 15 keepalive packets.
-	*/
-	short THRESHOLD_COUNTDOWN = 15;
-
-	time_t last_keepalive_time;
-	time(&last_keepalive_time);
 
 	time_t last_beacon_time = 0;
 	/* This thread is also saying to the APRS_HOST that we are ALIVE */
 	while (keep_running)
 	{
-		if (aprs->aprs_sock.GetFD() == -1)
+		// start up the aprs client
+		while (keep_running and (aprs->aprs_sock.GetFD() < 0))
 		{
-			aprs->Open(OWNER);
+			aprs->Open(OWNER, GW_VERSION);
 			if (aprs->aprs_sock.GetFD() == -1)
-				sleep(1);
-			else
-				THRESHOLD_COUNTDOWN = 15;
+				sleep(5);
 		}
 
+		// see if it's time to update aprs beacon
 		time(&tnow);
-		if ((tnow - last_beacon_time) > (Rptr.aprs_interval * 60))
+		if ((tnow - last_beacon_time) >= (Rptr.aprs_interval * 60))
 		{
-			for (short int i=0; i<3; i++)
+			// update each channel, A B C
+			for (int i=0; i<3; i++)
 			{
-				if (Rptr.mod[i].defined)
+				if (Rptr.mod[i].defined and aprs->aprs_sock.GetFD() >= 0)
 				{
-					float tmp_lat = fabs(Rptr.mod[i].latitude);
-					float tmp_lon = fabs(Rptr.mod[i].longitude);
-					float lat = floor(tmp_lat);
-					float lon = floor(tmp_lon);
-					lat = (tmp_lat - lat) * 60.0F + lat  * 100.0F;
-					lon = (tmp_lon - lon) * 60.0F + lon  * 100.0F;
-
-					char lat_s[15], lon_s[15];
-					if (lat >= 1000.0F)
-						sprintf(lat_s, "%.2f", lat);
-					else if (lat >= 100.0F)
-						sprintf(lat_s, "0%.2f", lat);
-					else if (lat >= 10.0F)
-						sprintf(lat_s, "00%.2f", lat);
-					else
-						sprintf(lat_s, "000%.2f", lat);
-
-					if (lon >= 10000.0F)
-						sprintf(lon_s, "%.2f", lon);
-					else if (lon >= 1000.0F)
-						sprintf(lon_s, "0%.2f", lon);
-					else if (lon >= 100.0F)
-						sprintf(lon_s, "00%.2f", lon);
-					else if (lon >= 10.0F)
-						sprintf(lon_s, "000%.2f", lon);
-					else
-						sprintf(lon_s, "0000%.2f", lon);
-
-					/* send to aprs */
-					sprintf(snd_buf, "%s>APJI23,TCPIP*,qAC,%sS:!%s%cD%s%c&RNG%04u %s %s",
-							Rptr.mod[i].call.c_str(),  Rptr.mod[i].call.c_str(),
-							lat_s,  (Rptr.mod[i].latitude < 0.0)  ? 'S' : 'N',
-							lon_s,  (Rptr.mod[i].longitude < 0.0) ? 'W' : 'E',
-							(unsigned int)Rptr.mod[i].range, Rptr.mod[i].band.c_str(), GW_VERSION.c_str());
-					if (LOG_DEBUG)
-						printf("APRS Beacon =[%s]\n", snd_buf);
-					strcat(snd_buf, "\r\n");
-
-					while (keep_running)
-					{
-						if (aprs->aprs_sock.GetFD() == -1)
-						{
-							aprs->Open(OWNER);
-							if (aprs->aprs_sock.GetFD() == -1)
-								sleep(1);
-							else
-								THRESHOLD_COUNTDOWN = 15;
-						}
-						else
-						{
-							int rc = aprs->aprs_sock.Write((unsigned char *)snd_buf, strlen(snd_buf));
-							if (rc < 0)
-							{
-								if ((errno == EPIPE) ||
-										(errno == ECONNRESET) ||
-										(errno == ETIMEDOUT) ||
-										(errno == ECONNABORTED) ||
-										(errno == ESHUTDOWN) ||
-										(errno == EHOSTUNREACH) ||
-										(errno == ENETRESET) ||
-										(errno == ENETDOWN) ||
-										(errno == ENETUNREACH) ||
-										(errno == EHOSTDOWN) ||
-										(errno == ENOTCONN))
-								{
-									printf("send_aprs_beacon: APRS_HOST closed connection,error=%d\n",errno);
-									aprs->aprs_sock.Close();
-								}
-								else if (errno == EWOULDBLOCK)
-								{
-									std::this_thread::sleep_for(std::chrono::milliseconds(100));
-								}
-								else
-								{
-									/* Cant do nothing about it */
-									printf("send_aprs_beacon failed, error=%d\n", errno);
-									break;
-								}
+					auto line = Rptr.mod[i].position_ss.str();
+					printf("APRS Beacon: %s\n", line.c_str());
+					if (aprs->aprs_sock.WriteLine(line)) {
+						aprs->aprs_sock.Close();
+					} else {
+						if (aprs->aprs_sock.ReadLine(line)) {
+							aprs->aprs_sock.Close();
+						} else {
+							if (aprs->m_debug) {
+								printf("APRS Beacon ackn: %s\n", line.c_str());
 							}
-							else
-							{
-								// printf("APRS beacon sent\n");
-								break;
-							}
+							time(&last_beacon_time);
+							kaCount = 0;
 						}
-						int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-						if (rc > 0)
-							THRESHOLD_COUNTDOWN = 15;
 					}
 				}
-				int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-				if (rc > 0)
-					THRESHOLD_COUNTDOWN = 15;
 			}
-			time(&last_beacon_time);
 		}
-		/*
-		   Are we still receiving from APRS host ?
-		*/
-		int rc = aprs->aprs_sock.Read((unsigned char *)rcv_buf, sizeof(rcv_buf));
-		if (rc < 0)
-		{
-			if ((errno == EPIPE) ||
-					(errno == ECONNRESET) ||
-					(errno == ETIMEDOUT) ||
-					(errno == ECONNABORTED) ||
-					(errno == ESHUTDOWN) ||
-					(errno == EHOSTUNREACH) ||
-					(errno == ENETRESET) ||
-					(errno == ENETDOWN) ||
-					(errno == ENETUNREACH) ||
-					(errno == EHOSTDOWN) ||
-					(errno == ENOTCONN))
-			{
-				printf("send_aprs_beacon: recv error: APRS_HOST closed connection,error=%d\n",errno);
+
+		// Are we still receiving keepalives from APRS host ?
+		if (keep_running and aprs->aprs_sock.GetFD() >= 0) {
+			struct pollfd pfd;
+			pfd.fd = aprs->aprs_sock.GetFD();
+			pfd.events = POLLIN;
+			auto rtv = poll(&pfd, 1, 5000);
+			if (rtv < 0) {
+				fprintf(stderr, "APRS poll ERROR: %s\n", strerror(errno));
 				aprs->aprs_sock.Close();
-			}
-		}
-		else if (rc == 0)
-		{
-			printf("send_aprs_beacon: recv: APRS shutdown\n");
-			aprs->aprs_sock.Close();
-		}
-		else
-			THRESHOLD_COUNTDOWN = 15;
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-		/* 20 seconds passed already ? */
-		time(&tnow);
-		if ((tnow - last_keepalive_time) > 20)
-		{
-			/* we should be receving keepalive packets ONLY if the connection is alive */
-			if (aprs->aprs_sock.GetFD() >= 0)
-			{
-				if (THRESHOLD_COUNTDOWN > 0)
-					THRESHOLD_COUNTDOWN--;
-
-				if (THRESHOLD_COUNTDOWN == 0)
-				{
-					printf("APRS host keepalive timeout\n");
+				continue;
+			} else if (0 == rtv) {
+				// nothing to read;
+				continue;
+			} else if (pfd.revents & POLLIN) {
+				std::string line;
+				if (aprs->aprs_sock.ReadLine(line)) {
 					aprs->aprs_sock.Close();
+				} else {
+					if (aprs->m_debug and (++kaCount%15 == 0))
+						printf("APRS keep alive #%u: %s\n", kaCount, line.c_str());
 				}
+			} else if (pfd.revents & ( POLL_ERR | POLLHUP | POLLNVAL)) {
+				fprintf(stderr, "ERROR: aprs poll detected bad socket state\n");
+				aprs->aprs_sock.Close();
+				continue;
 			}
-			/* reset timer */
-			time(&last_keepalive_time);
 		}
 	}
 	printf("APRS beacon thread exiting...\n");
@@ -2373,8 +2266,8 @@ void CQnetGateway::APRSBeaconThread()
 void CQnetGateway::PlayFileThread(SECHO &edata)
 {
 	SDSVT dsvt;
-	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
-	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
+	const uint8_t sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
+	const uint8_t sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 
 	printf("File to playback:[%s]\n", edata.file);
 
@@ -2440,7 +2333,7 @@ void CQnetGateway::PlayFileThread(SECHO &edata)
 		int nread = fread(dsvt.vasd.voice, 9, 1, fp);
 		if (nread == 1)
 		{
-			dsvt.ctrl = (unsigned char)(i % 21);
+			dsvt.ctrl = (uint8_t)(i % 21);
 			if (0x0U == dsvt.ctrl)
 			{
 				memcpy(dsvt.vasd.text, sdsync, 3);
@@ -2535,9 +2428,31 @@ void CQnetGateway::qrgs_and_maps()
 	return;
 }
 
+// Helper to convert decimal degrees to APRS DDMM.hh format
+std::string CQnetGateway::convertToAprsCoordinate(double decimalDegrees, bool isLatitude)
+{
+    double absolute = std::abs(decimalDegrees);
+    int degrees = static_cast<int>(absolute);
+    double minutes = (absolute - degrees) * 60.0;
+
+    std::stringstream ss;
+    if (isLatitude) {
+        // DDMM.hh (2 digits for degrees)
+        ss << std::setw(2) << std::setfill('0') << degrees;
+        ss << std::setw(5) << std::setfill('0') << std::fixed << std::setprecision(2) << minutes;
+        ss << (decimalDegrees >= 0 ? 'N' : 'S');
+    } else {
+        // DDDMM.hh (3 digits for degrees)
+        ss << std::setw(3) << std::setfill('0') << degrees;
+        ss << std::setw(5) << std::setfill('0') << std::fixed << std::setprecision(2) << minutes;
+        ss << (decimalDegrees >= 0 ? 'E' : 'W');
+    }
+    return ss.str();
+}
+
 bool CQnetGateway::Initialize(const std::string &path)
 {
-	short int i;
+	int16_t i;
 
 	/* Used to validate MYCALL input */
 	preg = std::regex("^[A-PR-Z0-9]{1}[A-Z0-9]{0,1}[0-9]{1,2}[A-Z]{1,4} {0,4}[ A-Z]{1}$", std::regex::extended);
@@ -2631,7 +2546,7 @@ bool CQnetGateway::Initialize(const std::string &path)
 
 	if (APRS_ENABLE)
 	{
-		aprs = new CAPRS(&Rptr);
+		aprs = new CAPRS(&Rptr, LOG_APRS);
 		if (aprs)
 			aprs->Init();
 		else
@@ -2639,8 +2554,17 @@ bool CQnetGateway::Initialize(const std::string &path)
 			printf("aprs class init failed!\nAPRS will be turned off");
 			APRS_ENABLE = false;
 		}
+		for (int i=0; i<3; i++) {
+			if (Rptr.mod[i].defined) {
+				Rptr.mod[i].position_ss << Rptr.mod[i].call << ">APRS,TCPIP*:"
+					<< '!' << convertToAprsCoordinate(Rptr.mod[i].latitude, true) << 'D' <<  convertToAprsCoordinate(Rptr.mod[i].longitude,false) << '&'
+					<< Rptr.mod[i].band << " Voice (DStar) "
+					<< std::fixed << std::setprecision(4) << std::showpos
+					<< Rptr.mod[i].frequency << "MHz " << Rptr.mod[i].offset << "MHz QnetGateway";
+			}
+		}
+		compute_aprs_hash();
 	}
-	compute_aprs_hash();
 
 	for (int j=0; j<2; j++)
 	{

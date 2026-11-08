@@ -1,6 +1,6 @@
 /*
  *   Copyright (C) 2010-2013 by Jonathan Naylor G4KLX
- *   Copyright (C) 2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2019,2026 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,69 +23,49 @@
 #include <cassert>
 #include <cstring>
 
-
-CTCPReaderWriterClient::CTCPReaderWriterClient(const std::string &address, int family, const std::string &port) :
-	m_address(address),
-	m_family(family),
-	m_port(port),
-	m_fd(-1)
-{
-}
-
 CTCPReaderWriterClient::CTCPReaderWriterClient() : m_fd(-1)
 {
 }
 
-CTCPReaderWriterClient::~CTCPReaderWriterClient()
+bool CTCPReaderWriterClient::Open(const std::string &address, int family, const std::string &port, const bool debug)
 {
-}
-
-bool CTCPReaderWriterClient::Open(const std::string &address, int family, const std::string &port)
-{
+	const char *where { "TCP Open ERROR:" };
 	m_address	= address;
-	m_family	= family;
 	m_port		= port;
-
-	return Open();
-}
-
-bool CTCPReaderWriterClient::Open()
-{
 	if (m_fd != -1)
 	{
-		fprintf(stderr, "ERROR: port for '%s' is already open!\n", m_address.c_str());
+		fprintf(stderr, "%s port for '%s' is already open!\n", where, m_address.c_str());
 		return true;
 	}
 
 	if (0 == m_address.size() || 0 == m_port.size() || 0 == std::stoul(m_port))
 	{
-		fprintf(stderr, "ERROR: '[%s]:%s' is malformed!\n", m_address.c_str(), m_port.c_str());
+		fprintf(stderr, "%s '[%s]:%s' is malformed!\n", where, m_address.c_str(), m_port.c_str());
 		return true;
 	}
 
-	if (AF_INET!=m_family && AF_INET6!=m_family && AF_UNSPEC!=m_family)
+	if (AF_INET!=family and AF_INET6!=family and AF_UNSPEC!=family)
 	{
-		fprintf(stderr, "ERROR: family must be AF_INET, AF_INET6 or AF_UNSPEC\n");
+		fprintf(stderr, "%s family must be AF_INET, AF_INET6 or AF_UNSPEC\n", where);
 		return true;
 	}
 
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_family = m_family;
+	hints.ai_family = family;
 	hints.ai_socktype = SOCK_STREAM;
-	//hints.ai_flags = AI_PASSIVE;
 	hints.ai_protocol = IPPROTO_TCP;
 
 	struct addrinfo *res;
 	int s = EAI_AGAIN;
 	int count = 0;
-	while (EAI_AGAIN==s and count++<20)
+	while (s and count++<20)
 	{
 		// connecting to a server, so we can wait until it's ready
 		s = getaddrinfo(m_address.c_str(), m_port.c_str(), &hints, &res);
 		if (s && s != EAI_AGAIN)
 		{
-			fprintf(stderr, "ERROR: getaddrinfo of %s: %s\n", m_address.c_str(), gai_strerror(s));
+			fprintf(stderr, "%s getaddrinfo of %s: %s\n", where, m_address.c_str(), gai_strerror(s));
 			return true;
 		}
 		std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -93,7 +73,7 @@ bool CTCPReaderWriterClient::Open()
 
 	if (EAI_AGAIN == s)
 	{
-		fprintf(stderr, "ERROR getaddrinfo of %s failed 20 times\n", m_address.c_str());
+		fprintf(stderr, "%s getaddrinfo of %s failed 20 times\n", where, m_address.c_str());
 		return true;
 	}
 
@@ -102,10 +82,21 @@ bool CTCPReaderWriterClient::Open()
 	{
 		m_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 		if (m_fd == -1)
+		{
+			if (debug) fprintf(stderr, "%s socket() error - %s\n", where, strerror(errno));
 			continue;
+		}
 
+		int flag = 1;
+		if (setsockopt(m_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag)))
+		{
+			if (debug) fprintf(stderr, "%s setsockopt(TCP_NODELAY) - %s\n", where, strerror(errno));
+			Close();
+			continue;
+		}
 		if (connect(m_fd, rp->ai_addr, rp->ai_addrlen))
 		{
+			if (debug) fprintf(stderr, "%s connect() - %s\n", where, strerror(errno));
 			Close();
 			continue;
 		}
@@ -124,7 +115,7 @@ bool CTCPReaderWriterClient::Open()
 				addr = &(addr6->sin6_addr);
 			}
 			if (inet_ntop(rp->ai_family, addr, buf, INET6_ADDRSTRLEN))
-				fprintf(stderr, "Successfully connected to %s at [%s]:%s\n", m_address.c_str(), buf, m_port.c_str());
+				printf("Successfully connected to %s at [%s]:%s\n", m_address.c_str(), buf, m_port.c_str());
 			break;
 		}
 	}
@@ -132,7 +123,7 @@ bool CTCPReaderWriterClient::Open()
 
 	if (rp == NULL)
 	{
-		fprintf(stderr, "Could not connect to any system returned by %s\n", m_address.c_str());
+		fprintf(stderr, "%s Could not connect to %s\n", where, m_address.c_str());
 		m_fd = -1;
 		return true;
 	}
@@ -140,24 +131,22 @@ bool CTCPReaderWriterClient::Open()
 	return false;
 }
 
-int CTCPReaderWriterClient::ReadExact(unsigned char *buf, const unsigned int length)
+int CTCPReaderWriterClient::ReadExact(uint8_t *buf, const unsigned int length)
 {
-	unsigned int offset = 0U;
+	unsigned int read = 0U;
 
-	do
-	{
-		int n = Read(buf + offset, length - offset);
-		if (n < 0)
+	do {
+		int n = Read(buf + read, length - read);
+		if (n < 1)
 			return n;
 
-		offset += n;
-	}
-	while ((length - offset) > 0U);
+		read += n;
+	} while ((length - read) > 0U);
 
 	return length;
 }
 
-int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int length)
+int CTCPReaderWriterClient::Read(uint8_t* buffer, const unsigned int length)
 {
 	assert(buffer != NULL);
 	assert(length > 0U);
@@ -167,68 +156,58 @@ int CTCPReaderWriterClient::Read(unsigned char* buffer, const unsigned int lengt
 	if (len <= 0)
 	{
 		if (len < 0)
-			fprintf(stderr, "Error returned from recv, err=%d\n", errno);
+			fprintf(stderr, "TCP Read() ERROR: %s\n", strerror(errno));
+		else
+			fprintf(stderr, "TCP Read() ERROR: Port closed by server\n");
 		return -1;
 	}
 
 	return len;
 }
 
-int CTCPReaderWriterClient::ReadLine(std::string& line)
+bool CTCPReaderWriterClient::ReadLine(std::string& line)
 {
-	unsigned char c;
-	int resultCode;
-	int len = 0;
-	line = "";
-
-	do
-	{
-		resultCode = Read(&c, 1);
-		if(resultCode == 1)
-		{
+	uint8_t c;
+	int rtv;
+	if (line.size())
+		line.clear();
+	do {
+		rtv = Read(&c, 1);
+		if (('\r' != c) and ('\n' != c) and (rtv == 1))
 			line += c;
-			len++;
-		}
-	}
-	while(c != '\n' && resultCode == 1);
+	} while(c != '\n' and rtv == 1);
 
-	return resultCode <= 0 ? resultCode : len;
+	return (rtv <= 0) ? true : false;
 }
 
-bool CTCPReaderWriterClient::Write(const unsigned char *buffer, const unsigned int length)
+bool CTCPReaderWriterClient::Write(const void *pvoid, const unsigned int length)
 {
-	assert(buffer != NULL);
+	assert(pvoid != NULL);
 	assert(length > 0U);
 	assert(m_fd != -1);
+	unsigned int wrote = 0;
+	uint8_t *buffer = (uint8_t *)pvoid;
 
-	ssize_t ret = send(m_fd, (char *)buffer, length, 0);
-	if (ret != ssize_t(length))
-	{
-		if (ret < 0)
-			fprintf(stderr, "Error returned from send, err=%s\n", strerror(errno));
-		else
-			fprintf(stderr, "Error only wrote %d of %d bytes\n", int(ret), int(length));
-		return true;
+	while (wrote < length) {
+		ssize_t ret = send(m_fd, buffer+wrote, length-wrote, 0);
+		if (ret <= 0)
+		{
+			if (ret < 0)
+				fprintf(stderr, "ERROR - TCP Write send(): %s\n", strerror(errno));
+			else
+				fprintf(stderr, "ERROR - TCP Write: port closed by server\n");
+			return true;
+		}
+		wrote += ret;
 	}
 
 	return false;
 }
 
-bool CTCPReaderWriterClient::WriteLine(const std::string& line)
+bool CTCPReaderWriterClient::WriteLine(std::string& line)
 {
-	std::string lineCopy(line);
-	if(lineCopy.size() > 0 && lineCopy.at(lineCopy.size() - 1) != '\n')
-		lineCopy.append("\n");
-
-	size_t len = lineCopy.size();
-	bool result = true;
-	for(size_t i = 0; i < len && result; i++)
-	{
-		unsigned char c = lineCopy.at(i);
-		result = Write(&c, 1);
-	}
-
-	return result;
+	line.append("\r\n");
+	return Write(line.c_str(), line.size());
 }
 
 void CTCPReaderWriterClient::Close()

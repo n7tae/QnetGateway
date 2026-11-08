@@ -48,25 +48,25 @@
 #define MODEM_VERSION "QnetModem-60706"
 #define MAX_RESPONSES 30
 
-const unsigned char FRAME_START  = 0xE0U;
+const uint8_t FRAME_START  = 0xE0U;
 
-const unsigned char TYPE_VERSION = 0x00U;
-const unsigned char TYPE_STATUS  = 0x01U;
-const unsigned char TYPE_CONFIG  = 0x02U;
-const unsigned char TYPE_MODE    = 0x03U;
-const unsigned char TYPE_FREQ    = 0x04U;
+const uint8_t TYPE_VERSION = 0x00U;
+const uint8_t TYPE_STATUS  = 0x01U;
+const uint8_t TYPE_CONFIG  = 0x02U;
+const uint8_t TYPE_MODE    = 0x03U;
+const uint8_t TYPE_FREQ    = 0x04U;
 
-const unsigned char TYPE_CWID    = 0x0AU;
+const uint8_t TYPE_CWID    = 0x0AU;
 
-const unsigned char TYPE_HEADER  = 0x10U;
-const unsigned char TYPE_DATA    = 0x11U;
-const unsigned char TYPE_LOST    = 0x12U;
-const unsigned char TYPE_EOT     = 0x13U;
+const uint8_t TYPE_HEADER  = 0x10U;
+const uint8_t TYPE_DATA    = 0x11U;
+const uint8_t TYPE_LOST    = 0x12U;
+const uint8_t TYPE_EOT     = 0x13U;
 
-const unsigned char TYPE_ACK     = 0x70U;
-const unsigned char TYPE_NACK    = 0x7FU;
+const uint8_t TYPE_ACK     = 0x70U;
+const uint8_t TYPE_NACK    = 0x7FU;
 
-bool CQnetModem::VoicePacketIsSync(const unsigned char *text)
+bool CQnetModem::VoicePacketIsSync(const uint8_t *text)
 {
 	return *text==0x55U && *(text+1)==0x2DU && *(text+2)==0x16U;
 }
@@ -170,7 +170,7 @@ bool CQnetModem::SetFrequency()
 		frame.length = 12U;
 	else
 	{
-		frame.frequency.level = (unsigned char)RF_LEVEL;
+		frame.frequency.level = (uint8_t)RF_LEVEL;
 		frame.frequency.ps = __builtin_bswap32(htonl(pocsagFrequency));
 
 		frame.length = 17U;
@@ -264,11 +264,11 @@ bool CQnetModem::SetConfiguration()
 		frame.config.flags |= 0x80U;
 
 	frame.config.mode           = 0x1U;	// Only D-Star is enabled!
-	frame.config.tx_delay       = (unsigned char)(TX_DELAY / 10);	// In 10ms units
+	frame.config.tx_delay       = (uint8_t)(TX_DELAY / 10);	// In 10ms units
 	frame.config.init_mode      = 0x1U;	// yup, just D-Star
-	frame.config.rx_level       = (unsigned char)RX_LEVEL;
+	frame.config.rx_level       = (uint8_t)RX_LEVEL;
 	frame.config.osc_offset     = 128U;           // Was OscOffset
-	frame.config.dstar_tx_level = (unsigned char)TX_LEVEL;
+	frame.config.dstar_tx_level = (uint8_t)TX_LEVEL;
 	frame.config.tx_dc_offset   = 128U;
 	frame.config.rx_dc_offset   = 128U;
 
@@ -349,7 +349,7 @@ int CQnetModem::OpenModem()
 	return fd;
 }
 
-EModemResponse CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
+EModemResponse CQnetModem::GetModemData(uint8_t *buf, unsigned int size)
 {
 	if (size < 4U)
 	{
@@ -421,7 +421,7 @@ EModemResponse CQnetModem::GetModemData(unsigned char *buf, unsigned int size)
 
 	while (junk_count)
 	{
-		unsigned char junk[8];
+		uint8_t junk[8];
 		ret = read(serfd, junk, (junk_count > 8U) ? 8U : junk_count);
 		if (ret < 0)
 		{
@@ -569,7 +569,7 @@ void CQnetModem::Run()
 			{
 				// send queued D-Star frames to modem
 				CFrame cframe = queue.front();
-				const unsigned char type = cframe.type();
+				const uint8_t type = cframe.type();
 				if ((type==TYPE_HEADER && dstarSpace>3U) || ((type==TYPE_DATA || type==TYPE_EOT || type==TYPE_LOST) && dstarSpace>0U))
 				{
 					SendToModem(cframe.data());
@@ -596,7 +596,7 @@ void CQnetModem::Close()
 	FromGate.Close();
 }
 
-int CQnetModem::SendToModem(const unsigned char *buf)
+int CQnetModem::SendToModem(const uint8_t *buf)
 {
 	ssize_t n;
 	size_t sent = 0;
@@ -643,7 +643,7 @@ void CQnetModem::ProcessGateway(const SDSVT &dsvt)
 	}
 	else  	// write a voice data packet
 	{
-		//const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
+		//const uint8_t sdsync[3] = { 0x55U, 0x2DU, 0x16U };
 		if (dsvt.ctrl & 0x40U)
 		{
 			if (LOG_DEBUG && superframe.size())
@@ -687,8 +687,8 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 {
 	static bool in_stream = false;
 	static bool first_voice_packet = false;
-	static short stream_id = 0U;
-	static unsigned char nextctrl = 21U;
+	static int16_t stream_id = 0U;
+	static uint8_t nextctrl = 21U;
 
 	// create a stream id if this is a header
 	if (frame.type == TYPE_HEADER)
@@ -730,8 +730,8 @@ bool CQnetModem::ProcessModem(const SMODEM &frame)
 	}
 	else if (in_stream && (frame.type==TYPE_DATA || frame.type==TYPE_EOT || frame.type==TYPE_LOST))  	// ambe
 	{
-		const unsigned char sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
-		const unsigned char silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
+		const uint8_t sync[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x55U,0x2DU,0x16U };
+		const uint8_t silence[12] = { 0x9EU,0x8DU,0x32U,0x88U,0x26U,0x1AU,0x3FU,0x61U,0xE8U,0x70U,0x4FU,0x93U };
 		dsvt.config = 0x20U;
 		if (frame.type == TYPE_DATA)
 		{

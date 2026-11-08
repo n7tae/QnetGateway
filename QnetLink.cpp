@@ -89,7 +89,7 @@ void CQnetLink::XRFWrite(const void *buf, const size_t size, const CSockAddress 
 		XRFSock6.Write(buf, size, addr);
 }
 
-bool CQnetLink::resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr)
+bool CQnetLink::resolve_rmt(const char *name, const uint16_t port, CSockAddress &addr)
 {
 	struct addrinfo hints;
 	struct addrinfo *res;
@@ -357,9 +357,9 @@ void CQnetLink::RptrAckThread(char *arg)
 	char from_mod = arg[0];
 	char RADIO_ID[21];
 	memcpy(RADIO_ID, arg + 1, 21);
-	unsigned char silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x16, 0x29, 0xf5 };
+	uint8_t silence[12] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8, 0x16, 0x29, 0xf5 };
 
-	short int streamid_raw = Random.NewStreamID();
+	int16_t streamid_raw = Random.NewStreamID();
 
 	sleep(delay_before);
 
@@ -403,7 +403,7 @@ void CQnetLink::RptrAckThread(char *arg)
 
 	for (int i=0; i<10; i++)
 	{
-		dsvt.ctrl = (unsigned char)i;
+		dsvt.ctrl = (uint8_t)i;
 		switch (i)
 		{
 		case 0:
@@ -494,7 +494,7 @@ void CQnetLink::LoadGateways(const std::string &filename)
 			{
 				std::istringstream iss(line);
 				std::string host, address;
-				unsigned short port;
+				uint16_t port;
 				iss >> host >> address >> port;
 				hqueue.Push(CHost(host, address, port));
 				count++;
@@ -534,9 +534,9 @@ void CQnetLink::LoadGateways(const std::string &filename)
 }
 
 /* compute checksum */
-void CQnetLink::calcPFCS(unsigned char *packet, int len)
+void CQnetLink::calcPFCS(uint8_t *packet, int len)
 {
-	unsigned short crc_tabccitt[256] =
+	uint16_t crc_tabccitt[256] =
 	{
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
@@ -556,9 +556,9 @@ void CQnetLink::calcPFCS(unsigned char *packet, int len)
 		0xf78f,0xe606,0xd49d,0xc514,0xb1ab,0xa022,0x92b9,0x8330,0x7bc7,0x6a4e,0x58d5,0x495c,0x3de3,0x2c6a,0x1ef1,0x0f78
 	};
 
-	unsigned short crc_dstar_ffff = 0xffff;
-	unsigned short tmp;
-	short int low, high;
+	uint16_t crc_dstar_ffff = 0xffff;
+	uint16_t tmp;
+	int16_t low, high;
 
 	if (len == 56)
 	{
@@ -573,9 +573,9 @@ void CQnetLink::calcPFCS(unsigned char *packet, int len)
 	else
 		return;
 
-	for (short int i=low; i<high ; i++)
+	for (int16_t i=low; i<high ; i++)
 	{
-		unsigned short short_c = 0x00ff & (unsigned short)packet[i];
+		uint16_t short_c = 0x00ff & (uint16_t)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
@@ -584,13 +584,13 @@ void CQnetLink::calcPFCS(unsigned char *packet, int len)
 
 	if (len == 56)
 	{
-		packet[54] = (unsigned char)(crc_dstar_ffff & 0xff);
-		packet[55] = (unsigned char)((tmp >> 8) & 0xff);
+		packet[54] = (uint8_t)(crc_dstar_ffff & 0xff);
+		packet[55] = (uint8_t)((tmp >> 8) & 0xff);
 	}
 	else
 	{
-		packet[56] = (unsigned char)(crc_dstar_ffff & 0xff);
-		packet[57] = (unsigned char)((tmp >> 8) & 0xff);
+		packet[56] = (uint8_t)(crc_dstar_ffff & 0xff);
+		packet[57] = (uint8_t)((tmp >> 8) & 0xff);
 	}
 	return;
 }
@@ -718,11 +718,11 @@ bool CQnetLink::ReadConfig(const std::string &cfgFile)
 	key.assign("link_");
 	int port;
 	cfg.GetValue(key+"ref_port", estr, port, 10000, 65535);
-	rmt_ref_port = (unsigned short)port;
+	rmt_ref_port = (uint16_t)port;
 	cfg.GetValue(key+"xrf_port", estr, port, 10000, 65535);
-	rmt_xrf_port = (unsigned short)port;
+	rmt_xrf_port = (uint16_t)port;
 	cfg.GetValue(key+"dcs_port", estr, port, 10000, 65535);
-	rmt_dcs_port = (unsigned short)port;
+	rmt_dcs_port = (uint16_t)port;
 	cfg.GetValue(key+"acknowledge", estr, bool_rptr_ack);
 	cfg.GetValue(key+"announce", estr, announce);
 	int maxdongle;
@@ -848,7 +848,7 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 	to_remote_g2[i].to_mod = '\0';
 
 	std::string address;
-	unsigned short port;
+	uint16_t port;
 	if (qnDB.FindGW(call, address, port))
 	{
 		sprintf(notify_msg[i], "%c_gatewaynotfound.dat_GATEWAY_NOT_FOUND", from_mod);
@@ -976,7 +976,7 @@ void CQnetLink::g2link(const char from_mod, const char *call, const char to_mod)
 	return;
 }
 
-void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
+void CQnetLink::ProcessXRF(uint8_t *buf, const int length)
 {
 	const std::string ip(fromDst4.GetAddress());
 	char call[CALL_SIZE + 1];
@@ -1566,7 +1566,7 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 					}
 					else if (to_remote_g2[i].addr.GetPort() == rmt_dcs_port)
 					{
-						unsigned char dcs_buf[1000];
+						uint8_t dcs_buf[1000];
 						memset(dcs_buf, 0x00, 600);
 						dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
 						dcs_buf[3] = '1';
@@ -1605,7 +1605,7 @@ void CQnetLink::ProcessXRF(unsigned char *buf, const int length)
 	}
 }
 
-void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
+void CQnetLink::ProcessDCS(uint8_t *dcs_buf, const int length)
 {
 	const std::string ip(fromDst4.GetAddress());
 
@@ -1859,7 +1859,7 @@ void CQnetLink::ProcessDCS(unsigned char *dcs_buf, const int length)
 	}
 }
 
-void CQnetLink::ProcessREF(unsigned char *buf, const int length)
+void CQnetLink::ProcessREF(uint8_t *buf, const int length)
 {
 	const std::string ip(fromDst4.GetAddress());
 
@@ -1868,9 +1868,9 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 	/* LH */
 	if (length==4 && buf[0]==4 && buf[1]==192 && buf[2]==7 && buf[3]==0)
 	{
-		unsigned short j_idx = 0;
-		unsigned short k_idx = 0;
-		unsigned char tmp[2];
+		uint16_t j_idx = 0;
+		uint16_t k_idx = 0;
+		uint8_t tmp[2];
 
 		auto pos = inbound_list.find(ip);
 		if (pos != inbound_list.end())
@@ -1959,11 +1959,11 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 	{
 		if (log_debug)
 			printf("Got a linked repeater request!\n");
-		unsigned short i_idx = 0;
-		unsigned short j_idx = 0;
-		unsigned short k_idx = 0;
-		unsigned char tmp[2];
-		unsigned short total = 0;
+		uint16_t i_idx = 0;
+		uint16_t j_idx = 0;
+		uint16_t k_idx = 0;
+		uint8_t tmp[2];
+		uint16_t total = 0;
 
 		auto pos = inbound_list.find(ip);
 		if (pos != inbound_list.end())
@@ -2052,11 +2052,11 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 	{
 		if (log_debug)
 			printf("Got a linked dongle request!!\n");
-		unsigned short i_idx = 0;
-		unsigned short j_idx = 0;
-		unsigned short k_idx = 0;
-		unsigned char tmp[2];
-		unsigned short total = 0;
+		uint16_t i_idx = 0;
+		uint16_t j_idx = 0;
+		uint16_t k_idx = 0;
+		uint8_t tmp[2];
+		uint16_t total = 0;
 
 		auto pos = inbound_list.find(ip);
 		if (pos != inbound_list.end())
@@ -2667,7 +2667,7 @@ void CQnetLink::ProcessREF(unsigned char *buf, const int length)
 						REFWrite(rdsvt.head, rdsvt.head[0],  to_remote_g2[i].addr);
 					else if (to_remote_g2[i].addr.GetPort() == rmt_dcs_port)
 					{
-						unsigned char dcs_buf[600];
+						uint8_t dcs_buf[600];
 						memset(dcs_buf, 0x00, 600);
 						dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
 						dcs_buf[3] = '1';
@@ -2791,7 +2791,7 @@ void CQnetLink::Run()
 			keep_running = false;
 		}
 
-		unsigned char buffer[1000];
+		uint8_t buffer[1000];
 		if (keep_running && FD_ISSET(XRFSock4.GetSocket(), &fdset))
 		{
 			socklen_t fromlen = sizeof(struct sockaddr_storage);
@@ -2845,7 +2845,7 @@ void CQnetLink::Run()
 
 		if (keep_running && FD_ISSET(FromGate.GetFD(), &fdset))
 		{
-			unsigned char your[3] = { 'C', 'C', 'C' };
+			uint8_t your[3] = { 'C', 'C', 'C' };
 			SDSVT dsvt;
 			int length = FromGate.Read(dsvt.title, 56);
 
@@ -3264,7 +3264,7 @@ void CQnetLink::Run()
 							}
 							else if (to_remote_g2[i].addr.GetPort() == rmt_dcs_port)
 							{
-								unsigned char dcs_buf[600];
+								uint8_t dcs_buf[600];
 								memset(dcs_buf, 0x0, 600);
 								dcs_buf[0] = dcs_buf[1] = dcs_buf[2] = '0';
 								dcs_buf[3] = '1';
@@ -3503,14 +3503,14 @@ void CQnetLink::AudioNotifyThread(SECHO &edata)
 	edata.header.config = 0x20U;
 
 	int count;
-	const unsigned char sdsync[3] = { 0x55U, 0x2DU, 0x16U };
-	const unsigned char sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
+	const uint8_t sdsync[3] = { 0x55U, 0x2DU, 0x16U };
+	const uint8_t sdsilence[3] = { 0x16U, 0x29U, 0xF5U };
 	for (count=0; count<ambeblocks && keep_running; count++)
 	{
 		int nread = fread(edata.header.vasd.voice, 9, 1, fp);
 		if (nread == 1)
 		{
-			edata.header.ctrl = (unsigned char)(count % 21);
+			edata.header.ctrl = (uint8_t)(count % 21);
 			if (0x0U == edata.header.ctrl)
 			{
 				memcpy(edata.header.vasd.text, sdsync, 3);

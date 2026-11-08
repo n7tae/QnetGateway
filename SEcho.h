@@ -25,7 +25,7 @@ using SECHO = struct echo_tag
 {
 	bool is_linked;
 	time_t last_time;
-	unsigned short streamid;
+	uint16_t streamid;
 	int fd;
 	char message[24];
 	SDSVT header;   // only used in qnlink (qngateway writes the header to the file)

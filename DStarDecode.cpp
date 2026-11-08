@@ -219,7 +219,7 @@ int CDStarDecode::golay2412(int data, int *decoded)
 	return errs;
 }
 
-int CDStarDecode::Decode(const unsigned char *d, int data[3])
+int CDStarDecode::Decode(const uint8_t *d, int data[3])
 {
 	int bits[3];
 	int i;

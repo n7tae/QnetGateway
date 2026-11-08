@@ -73,18 +73,18 @@ using  SDVAP_REGISTER = struct dvp_register_tag
 			{
 				struct
 				{
-					unsigned char flag[3];
-					unsigned char rpt2[8];
-					unsigned char rpt1[8];
-					unsigned char urcall[8];
-					unsigned char mycall[8];
-					unsigned char sfx[4];
-					unsigned char pfcs[2];
+					uint8_t flag[3];
+					uint8_t rpt2[8];
+					uint8_t rpt1[8];
+					uint8_t urcall[8];
+					uint8_t mycall[8];
+					uint8_t sfx[4];
+					uint8_t pfcs[2];
 				} hdr;
 				struct
 				{
-					unsigned char voice;
-					unsigned char sdata;
+					uint8_t voice;
+					uint8_t sdata;
 				} vad;
 			};
 		} frame;

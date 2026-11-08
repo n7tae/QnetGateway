@@ -20,12 +20,14 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <cstdint>
+
 class CDStarDecode
 {
 public:
 	CDStarDecode();
 	~CDStarDecode() {}
-	int Decode(const unsigned char *d, int data[3]);
+	int Decode(const uint8_t *d, int data[3]);
 
 private:
 	// functions

@@ -25,8 +25,8 @@
 #include "QnetTypeDefs.h"
 #include "Base.h"
 
-using tambevoicefec = unsigned char[9];
-using tambevoice = unsigned char[6];
+using tambevoicefec = uint8_t[9];
+using tambevoice = uint8_t[6];
 
 #define interleaveambe12(bp) { bp+=12; if (bp>71) bp -= 71; }
 #define CALL_SIZE 8
@@ -57,10 +57,10 @@ private:
 	unsigned int gorlay_decode23127(unsigned int code);
 	unsigned int gorlay_encode24128(unsigned int data);
 	unsigned int gorlay_decode24128(unsigned int code);
-	void calcPFCS(unsigned char *packet);
+	void calcPFCS(uint8_t *packet);
 	char *cleanstr(char *Text);
 	int open_port(char *dvrptr_device);
-	int read_port(int *fd_ser, unsigned char *buffera);
+	int read_port(int *fd_ser, uint8_t *buffera);
 	void send_ack(char *a_call, float ber);
 	/*** BER stuff ***/
 	int ber_data[3];
@@ -68,19 +68,19 @@ private:
 	int num_dv_frames;
 	int num_bit_errors;
 
-	short block = 0;
-	short old_seq_no = 0;
+	int16_t block = 0;
+	int16_t old_seq_no = 0;
 
-	short seq_no1 = 1;
-	short seq_no2 = 1;
-	short seq_no3 = 0;
+	int16_t seq_no1 = 1;
+	int16_t seq_no2 = 1;
+	int16_t seq_no3 = 0;
 	int fd_ser = -1;
 	bool busy20000 = false;
 
 	int rqst_count = 6;
-	unsigned short streamid = 0x0;
-	unsigned char start_Header[8]= {0xD0,0x03,0x00,0x16,0x01,0x00,0x00,0x00};
-	unsigned char ptt_off[8]= {0xD0,0x03,0x00,0x1A,0x01,0xff,0x00,0x00};
+	uint16_t streamid = 0x0;
+	uint8_t start_Header[8]= {0xD0,0x03,0x00,0x16,0x01,0x00,0x00,0x00};
+	uint8_t ptt_off[8]= {0xD0,0x03,0x00,0x1A,0x01,0xff,0x00,0x00};
 
 
 	SDSVT Send_Network_Header;
@@ -88,17 +88,17 @@ private:
 
 	int inactiveMax = 3200;
 
-	unsigned char Send_Modem_Header[52];
+	uint8_t Send_Modem_Header[52];
 
-	unsigned char writevoice[24];
-	unsigned char writevoice1[24];
+	uint8_t writevoice[24];
+	uint8_t writevoice1[24];
 
 	// Modem INIT
-	unsigned char Modem_Init0[6]= {0xD0,0x01,0x00,0x11,0x00,0x00};
-	unsigned char Modem_Init1[7]= {0xD0,0x02,0x00,0x10,0x03,0x00,0x00}; // RX TX Enable
-	unsigned char Modem_Init2[12]= {0xD0,0x07,0x00,0x14,0xC0,0x04,0x00,0x57,0x53,0x00,0x00,0x00}; // Modem Init
-	unsigned char Modem_STATUS[6]= {0xD0,0x01,0x00,0x10,0x00,0x00}; // Status Abfragr
-	unsigned char Modem_SERIAL[6]= {0xD0,0x01,0x00,0x12,0x00,0x00};
+	uint8_t Modem_Init0[6]= {0xD0,0x01,0x00,0x11,0x00,0x00};
+	uint8_t Modem_Init1[7]= {0xD0,0x02,0x00,0x10,0x03,0x00,0x00}; // RX TX Enable
+	uint8_t Modem_Init2[12]= {0xD0,0x07,0x00,0x14,0xC0,0x04,0x00,0x57,0x53,0x00,0x00,0x00}; // Modem Init
+	uint8_t Modem_STATUS[6]= {0xD0,0x01,0x00,0x10,0x00,0x00}; // Status Abfragr
+	uint8_t Modem_SERIAL[6]= {0xD0,0x01,0x00,0x12,0x00,0x00};
 
 	CUnixDgramWriter ToGate;
 	CUnixDgramReader FromGate;
@@ -118,7 +118,7 @@ private:
 	bool RX_Inverse = true;
 	bool TX_Inverse = true;
 	int TX_DELAY;  /* in milliseconds */
-	unsigned char SND_TERM_ID = 0x00;
+	uint8_t SND_TERM_ID = 0x00;
 	char DVCALL_and_G[9];
 	char DVCALL_and_MOD[9];
 	int REMOTE_TIMEOUT = 1;  /* 1 second */

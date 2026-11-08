@@ -46,7 +46,7 @@
 
 using SREFDSVT = struct refdsvt_tag
 {
-	unsigned char head[2];
+	uint8_t head[2];
 	SDSVT dsvt;
 };
 
@@ -55,10 +55,10 @@ using STOREMOTE = struct to_remote_g2_tag
 	char cs[CALL_SIZE + 1];
 	CSockAddress addr;
 	char from_mod, to_mod;
-	short countdown;
+	int16_t countdown;
 	bool auto_link, is_connected;
-	unsigned short in_streamid;  // incoming from remote systems
-	unsigned short out_streamid; // outgoing to remote systems
+	uint16_t in_streamid;  // incoming from remote systems
+	uint16_t out_streamid; // outgoing to remote systems
 };
 
 // This is the data payload in the map: inbound_list
@@ -67,14 +67,14 @@ using SINBOUND = struct inbound_tag
 {
 	char call[CALL_SIZE + 1];	// the callsign of the remote
 	CSockAddress addr;			// IP and port of remote
-	short countdown;			// if countdown expires, the connection is terminated
+	int16_t countdown;			// if countdown expires, the connection is terminated
 	char mod;					// A B C This user talked on this module
 	char client;				// dvap, dvdongle
 };
 
 using STRACING = struct tracing_tag
 {
-	unsigned short streamid;
+	uint16_t streamid;
 	time_t last_time;	// last time RF user talked
 };
 
@@ -94,20 +94,20 @@ private:
 	void UnpackCallsigns(const std::string &str, std::set<std::string> &set, const std::string &delimiters = ",");
 	void PrintCallsigns(const std::string &key, const std::set<std::string> &set);
 	void LoadGateways(const std::string &filename);
-	void calcPFCS(unsigned char *packet, int len);
+	void calcPFCS(uint8_t *packet, int len);
 	bool ReadConfig(const std::string &path);
 	bool srv_open();
 	void srv_close();
 	void g2link(const char from_mod, const char *call, const char to_mod);
 	void send_heartbeat();
-	bool resolve_rmt(const char *name, const unsigned short port, CSockAddress &addr);
+	bool resolve_rmt(const char *name, const uint16_t port, CSockAddress &addr);
 	void rptr_ack(int i);
 	void PlayAudioNotifyThread(char *msg);
 	void AudioNotifyThread(SECHO &edata);
 	void RptrAckThread(char *arg);
-	void ProcessXRF(unsigned char *buf, const int length);
-	void ProcessDCS(unsigned char *buf, const int length);
-	void ProcessREF(unsigned char *buf, const int length);
+	void ProcessXRF(uint8_t *buf, const int length);
+	void ProcessDCS(uint8_t *buf, const int length);
+	void ProcessREF(uint8_t *buf, const int length);
 	void REFWrite(const void *buf, const size_t size, const CSockAddress &addr);
 	void DCSWrite(const void *buf, const size_t size, const CSockAddress &addr);
 	void XRFWrite(const void *buf, const size_t size, const CSockAddress &addr);
@@ -116,12 +116,12 @@ private:
 	std::string login_call, owner, to_g2_external_ip, gwys, qnvoice_file, announce_dir;
 	bool only_admin_login, only_link_unlink, qso_details, log_debug, bool_rptr_ack, announce;
 	bool dplus_authorize, dplus_reflectors, dplus_repeaters, dplus_priority, uses_ipv6;
-	unsigned short rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
+	uint16_t rmt_xrf_port, rmt_ref_port, rmt_dcs_port, my_g2_link_port, to_g2_external_port;
 	int delay_between, delay_before;
 	std::string link_at_startup[3];
 	unsigned int max_dongles, saved_max_dongles;
 	int rf_inactivity_timer[3];
-	const unsigned char REF_ACK[3] = { 3, 96, 0 };
+	const uint8_t REF_ACK[3] = { 3, 96, 0 };
 
 	// the Key in this inbound_list map is the unique IP address of the remote
 	std::map<std::string, SINBOUND *> inbound_list;
@@ -137,20 +137,20 @@ private:
 	// broadcast for data arriving from xrf to local rptr
 	struct brd_from_xrf_tag
 	{
-		unsigned short xrf_streamid;		// streamid from xrf
-		unsigned short rptr_streamid[2];	// generated streamid to rptr(s)
+		uint16_t xrf_streamid;		// streamid from xrf
+		uint16_t rptr_streamid[2];	// generated streamid to rptr(s)
 	} brd_from_xrf;
 	SDSVT from_xrf_torptr_brd;
-	short brd_from_xrf_idx;
+	int16_t brd_from_xrf_idx;
 
 	// broadcast for data arriving from local rptr to xrf
 	struct brd_from_rptr_tag
 	{
-		unsigned short from_rptr_streamid;
-		unsigned short to_rptr_streamid[2];
+		uint16_t from_rptr_streamid;
+		uint16_t to_rptr_streamid[2];
 	} brd_from_rptr;
 	SDSVT fromrptr_torptr_brd;
-	short brd_from_rptr_idx;
+	int16_t brd_from_rptr_idx;
 
 	STRACING tracing[3];
 
@@ -168,21 +168,21 @@ private:
 	// Used to validate incoming donglers
 	regex_t preg;
 
-	unsigned char queryCommand[QUERY_SIZE];
+	uint8_t queryCommand[QUERY_SIZE];
 
 	// START:  TEXT crap
 	char dtmf_mycall[3][CALL_SIZE + 1];
 	bool new_group[3];
 	int header_type;
 	bool GPS_seen[3];
-	unsigned char tmp_txt[3];
+	uint8_t tmp_txt[3];
 	char *p_tmp2;
 	// END:  TEXT crap
 
 	// this is used for the "dashboard and qso_details" to avoid processing multiple headers
 	struct old_sid_tag
 	{
-		unsigned short sid;
+		uint16_t sid;
 	} old_sid[3];
 
 	CRandom Random;
@@ -190,9 +190,9 @@ private:
 	std::vector<unsigned long> speak;
 
 	// used for processing loop
-	const unsigned char endbytes[6] = { 0x55U, 0x55U, 0x55U, 0x55U, 0xC8U, 0x7AU };
+	const uint8_t endbytes[6] = { 0x55U, 0x55U, 0x55U, 0x55U, 0xC8U, 0x7AU };
 	time_t tnow;
-	unsigned char dcs_seq[3] = { 0x00, 0x00, 0x00 };
+	uint8_t dcs_seq[3] = { 0x00, 0x00, 0x00 };
 	struct
 	{
 		char mycall[9];

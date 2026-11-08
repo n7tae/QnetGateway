@@ -243,10 +243,10 @@ REPLY_TYPE CDVAPDongle::GetReply(SDVAP_REGISTER &dr)
 
 bool CDVAPDongle::syncit()
 {
-	unsigned char data[7];
+	uint8_t data[7];
 	struct timeval tv;
 	fd_set fds;
-	short cnt = 0;
+	int16_t cnt = 0;
 
 	printf("Starting syncing dvap\n");
 	memset(data,  0x00, 7);
@@ -271,7 +271,7 @@ bool CDVAPDongle::syncit()
 		}
 		else
 		{
-			unsigned char c;
+			uint8_t c;
 			n = read_from_dvp(&c, 1);
 			if (n > 0)
 			{

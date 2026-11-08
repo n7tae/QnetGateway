@@ -14,7 +14,7 @@ class IRCDDBApp;
 class IRCClient
 {
 public:
-	IRCClient(IRCDDBApp *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo);
+	IRCClient(IRCDDBApp *app, const std::string &update_channel, const std::string &hostName, unsigned int port, const std::string &callsign, const std::string &password, const std::string &versionInfo, bool logirc);
 
 	virtual ~IRCClient();
 	bool startWork();
@@ -34,6 +34,7 @@ private:
 	std::string password;
 
 	bool terminateThread;
+	bool logIRC;
 
 	IRCReceiver receiver;
 	IRCMessageQueue *recvQ;

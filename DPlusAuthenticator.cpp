@@ -47,7 +47,7 @@ CDPlusAuthenticator::~CDPlusAuthenticator()
 int CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool repeaters)
 // return true if everything went okay
 {
-	int result = client.Open(m_address, AF_UNSPEC, "20001");
+	int result = client.Open(m_address, AF_UNSPEC, "20001", false);
 	if (result)
 	{
 		fprintf(stderr, "DPlus Authorization failed: %s\n", gai_strerror(result));
@@ -58,7 +58,7 @@ int CDPlusAuthenticator::Process(CQnetDB &db, const bool reflectors, const bool 
 
 int CDPlusAuthenticator::authenticate(CQnetDB &db, const bool reflectors, const bool repeaters)
 {
-	unsigned char buffer[4096U];
+	uint8_t buffer[4096U];
 	::memset(buffer, ' ', 56U);
 
 	buffer[0U] = 0x38U;

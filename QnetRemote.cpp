@@ -43,14 +43,14 @@
 
 static int module;
 static time_t tNow = 0;
-static short streamid_raw = 0;
+static int16_t streamid_raw = 0;
 static std::string REPEATER, togateway;
 static int PLAY_WAIT, PLAY_DELAY;
 
-static unsigned char silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
+static uint8_t silence[9] = { 0x9E, 0x8D, 0x32, 0x88, 0x26, 0x1A, 0x3F, 0x61, 0xE8 };
 
 
-static unsigned short crc_tabccitt[256] =
+static uint16_t crc_tabccitt[256] =
 {
 	0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 	0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
@@ -102,23 +102,23 @@ static bool ReadCfgFile()
 	return false;
 }
 
-static void calcPFCS(unsigned char rawbytes[56])
+static void calcPFCS(uint8_t rawbytes[56])
 {
-	unsigned short crc_dstar_ffff = 0xffff;
-	unsigned short tmp, short_c;
-	short int i;
+	uint16_t crc_dstar_ffff = 0xffff;
+	uint16_t tmp, short_c;
+	int16_t i;
 
 	for (i = 15; i < 54 ; i++)
 	{
-		short_c = 0x00ff & (unsigned short)rawbytes[i];
+		short_c = 0x00ff & (uint16_t)rawbytes[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
 	crc_dstar_ffff =  ~crc_dstar_ffff;
 	tmp = crc_dstar_ffff;
 
-	rawbytes[54] = (unsigned char)(crc_dstar_ffff & 0xff);
-	rawbytes[55] = (unsigned char)((tmp >> 8) & 0xff);
+	rawbytes[54] = (uint8_t)(crc_dstar_ffff & 0xff);
+	rawbytes[55] = (uint8_t)((tmp >> 8) & 0xff);
 	return;
 }
 

@@ -3,7 +3,7 @@
 /* end of inma once */
 /*
  *   Copyright (C) 2010,2011,2012,2013 by Jonathan Naylor G4KLX
- *   Copyright (C) 2019 by Thomas A. Early N7TAE
+ *   Copyright (C) 2019,2026 by Thomas A. Early N7TAE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -36,25 +36,20 @@
 class CTCPReaderWriterClient
 {
 public:
-	CTCPReaderWriterClient(const std::string &address, int family, const std::string &port);
 	CTCPReaderWriterClient();
-	~CTCPReaderWriterClient();
 
-	bool Open(const std::string &address, int family, const std::string &port);
-	bool Open();
-
-	int ReadExact(unsigned char *buffer, const unsigned int length);
-	int Read(unsigned char *buffer, const unsigned int length);
-	int ReadLine(std::string &line);
-	bool Write(const unsigned char* buffer, const unsigned int length);
-	bool WriteLine(const std::string &line);
+	bool Open(const std::string &address, int family, const std::string &port, bool debug);
+	int ReadExact(uint8_t *buffer, const unsigned int length);
+	int Read(uint8_t *buffer, const unsigned int length);
+	bool ReadLine(std::string &line);
+	bool Write(const void* buffer, const unsigned int length);
+	bool WriteLine(std::string &line);
 	int GetFD() { return m_fd; }
 
 	void Close();
 
 private:
 	std::string m_address;
-	int m_family;
 	std::string m_port;
 	int m_fd;
 };

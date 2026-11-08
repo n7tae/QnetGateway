@@ -47,10 +47,10 @@ enum REPLY_TYPE
 #pragma pack(push, 1)
 using SITAP = struct itap_tag
 {
-	unsigned char length;
+	uint8_t length;
 	// 41 for header
 	// 16 for voice
-	unsigned char type;
+	uint8_t type;
 	// 0x03U pong
 	// 0x10U header from icom
 	// 0x11U acknowledgment
@@ -64,19 +64,19 @@ using SITAP = struct itap_tag
 	{
 		struct
 		{
-			unsigned char flag[3];
-			unsigned char r2[8];
-			unsigned char r1[8];
-			unsigned char ur[8];
-			unsigned char my[8];
-			unsigned char nm[4];
+			uint8_t flag[3];
+			uint8_t r2[8];
+			uint8_t r1[8];
+			uint8_t ur[8];
+			uint8_t my[8];
+			uint8_t nm[4];
 		} header;
 		struct
 		{
-			unsigned char counter;	// ordinal counter is reset with each header
-			unsigned char sequence;	// is modulo 21
-			unsigned char ambe[9];
-			unsigned char text[3];
+			uint8_t counter;	// ordinal counter is reset with each header
+			uint8_t sequence;	// is modulo 21
+			uint8_t ambe[9];
+			uint8_t text[3];
 		} voice;
 	};
 };
@@ -85,7 +85,7 @@ using SITAP = struct itap_tag
 class CFrame
 {
 public:
-	CFrame(const unsigned char *buf)
+	CFrame(const uint8_t *buf)
 	{
 		memcpy(&frame.length, buf, buf[0]);
 	}
@@ -99,7 +99,7 @@ public:
 
 	size_t size() const { return (size_t)frame.length; }
 
-	const unsigned char *data() const { return &frame.length; }
+	const uint8_t *data() const { return &frame.length; }
 
 private:
 	SITAP frame;
@@ -119,13 +119,13 @@ public:
 
 private:
 	// functions
-	bool ProcessGateway(const int len, const unsigned char *raw);
-	bool ProcessITAP(const unsigned char *raw);
+	bool ProcessGateway(const int len, const uint8_t *raw);
+	bool ProcessITAP(const uint8_t *raw);
 	int OpenITAP();
-	void SendToIcom(const unsigned char *buf);
-	REPLY_TYPE GetITAPData(unsigned char *buf);
-	void calcPFCS(const unsigned char *packet, unsigned char *pfcs);
-	void DumpSerialPacket(const char *title, const unsigned char *);
+	void SendToIcom(const uint8_t *buf);
+	REPLY_TYPE GetITAPData(uint8_t *buf);
+	void calcPFCS(const uint8_t *packet, uint8_t *pfcs);
+	void DumpSerialPacket(const char *title, const uint8_t *);
 
 	// read configuration file
 	bool ReadConfig(const std::string &path);
@@ -137,7 +137,7 @@ private:
 
 	// parameters
 	int serfd;
-	unsigned char tapcounter;
+	uint8_t tapcounter;
 
 	// helpers
 	CRandom random;

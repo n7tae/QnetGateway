@@ -62,7 +62,7 @@ int IRCReceiver::doRead(CTCPReaderWriterClient *ircSock, char *buf, int buf_size
 
 		if (FD_ISSET(fd, &rdset))
 		{
-			res = ircSock->Read((unsigned char *)buf, buf_size);
+			res = ircSock->Read((uint8_t *)buf, buf_size);
 
 			if (res < 0)
 			{

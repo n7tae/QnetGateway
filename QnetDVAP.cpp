@@ -53,11 +53,11 @@
 #define CALL_SIZE 8
 #define IP_SIZE 15
 
-void CQnetDVAP::calcPFCS(unsigned char *packet, unsigned char *pfcs)
+void CQnetDVAP::calcPFCS(uint8_t *packet, uint8_t *pfcs)
 {
-	unsigned short crc_dstar_ffff = 0xffff;
-	unsigned short tmp, short_c;
-	unsigned short crc_tabccitt[256] =
+	uint16_t crc_dstar_ffff = 0xffff;
+	uint16_t tmp, short_c;
+	uint16_t crc_tabccitt[256] =
 	{
 		0x0000,0x1189,0x2312,0x329b,0x4624,0x57ad,0x6536,0x74bf,0x8c48,0x9dc1,0xaf5a,0xbed3,0xca6c,0xdbe5,0xe97e,0xf8f7,
 		0x1081,0x0108,0x3393,0x221a,0x56a5,0x472c,0x75b7,0x643e,0x9cc9,0x8d40,0xbfdb,0xae52,0xdaed,0xcb64,0xf9ff,0xe876,
@@ -79,15 +79,15 @@ void CQnetDVAP::calcPFCS(unsigned char *packet, unsigned char *pfcs)
 
 	for (int i = 0; i < 39 ; i++)
 	{
-		short_c = 0x00ff & (unsigned short)packet[i];
+		short_c = 0x00ff & (uint16_t)packet[i];
 		tmp = (crc_dstar_ffff & 0x00ff) ^ short_c;
 		crc_dstar_ffff = (crc_dstar_ffff >> 8) ^ crc_tabccitt[tmp];
 	}
 	crc_dstar_ffff =  ~crc_dstar_ffff;
 	tmp = crc_dstar_ffff;
 
-	pfcs[0] = (unsigned char)(crc_dstar_ffff & 0xff);
-	pfcs[1] = (unsigned char)((tmp >> 8) & 0xff);
+	pfcs[0] = (uint8_t)(crc_dstar_ffff & 0xff);
+	pfcs[1] = (uint8_t)((tmp >> 8) & 0xff);
 
 	return;
 }
@@ -209,20 +209,20 @@ bool CQnetDVAP::ReadConfig(const std::string &cfgFile)
 
 void CQnetDVAP::ReadFromGateway()
 {
-	unsigned short streamid = 0U;
+	uint16_t streamid = 0U;
 	int inactive = 0;
 	int len = 0;
 	fd_set readfd;
 	struct timeval tv;
-	short seq_no = 0;
-	unsigned char sync_codes[3] = {0x55, 0x2d, 0x16};
+	int16_t seq_no = 0;
+	uint8_t sync_codes[3] = {0x55, 0x2d, 0x16};
 	SDSVT dsvt;
-	unsigned char frame_pos_to_dvap = 0;
-	unsigned char seq_to_dvap = 0;
-	unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
+	uint8_t frame_pos_to_dvap = 0;
+	uint8_t seq_to_dvap = 0;
+	uint8_t silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 
 	bool written_to_q = false;
-	unsigned char ctrl_in = 0x80;
+	uint8_t ctrl_in = 0x80;
 
 	while (keep_running)
 	{
@@ -248,7 +248,7 @@ void CQnetDVAP::ReadFromGateway()
 
 				if ('G' == dsvt.hdr.rpt1[7])
 				{
-					unsigned char tmp[8];
+					uint8_t tmp[8];
 					memcpy(tmp, dsvt.hdr.rpt1, 8);
 					memcpy(dsvt.hdr.rpt1, dsvt.hdr.rpt2, 8);
 					memcpy(dsvt.hdr.rpt2, tmp, 8);
@@ -505,7 +505,7 @@ void CQnetDVAP::RptrAckThread(SDVAP_ACK_ARG *parg)
 	sprintf(RADIO_ID, "%20.2f", ber);
 	memcpy(RADIO_ID, "BER%", 4);
 
-	unsigned char silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
+	uint8_t silence[12] = { 0x9e,0x8d,0x32,0x88,0x26,0x1a,0x3f,0x61,0xe8,0x70,0x4f,0x93 };
 
 	sleep(TIMING_PLAY_WAIT);
 
@@ -525,7 +525,7 @@ void CQnetDVAP::RptrAckThread(SDVAP_ACK_ARG *parg)
 	memcpy(dr.frame.hdr.rpt1, RPTR_and_G, 8);
 	memcpy(dr.frame.hdr.urcall, mycall, 8);
 	memcpy(dr.frame.hdr.mycall, RPTR_and_MOD, 8);
-	memcpy(dr.frame.hdr.sfx, (unsigned char *)"DVAP", 4);
+	memcpy(dr.frame.hdr.sfx, (uint8_t *)"DVAP", 4);
 	calcPFCS(dr.frame.hdr.flag, dr.frame.hdr.pfcs);
 	dongle.SendRegister(dr);
 	std::this_thread::sleep_for(std::chrono::milliseconds(TIMING_PLAY_DELAY));
@@ -615,9 +615,9 @@ void CQnetDVAP::ReadDVAPThread()
 	bool ok = true;
 	int i = 0;
 	u_int16_t streamid_raw = 0;
-	short int sequence = 0;
+	int16_t sequence = 0;
 	char mycall[8];
-	short int status_cntr = 3000;
+	int16_t status_cntr = 3000;
 
 	int num_dv_frames = 0;
 	int num_bit_errors = 0;
@@ -790,7 +790,7 @@ void CQnetDVAP::ReadDVAPThread()
 				dsvt.streamid = streamid_raw;
 				dsvt.ctrl = 0x80;
 				sequence = 0;
-				calcPFCS((unsigned char *)&(dsvt.hdr), dsvt.hdr.pfcs);
+				calcPFCS((uint8_t *)&(dsvt.hdr), dsvt.hdr.pfcs);
 				ToGate.Write(dsvt.title, 56);
 
 				// local RF user keying up, start timer
