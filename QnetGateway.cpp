@@ -2213,6 +2213,7 @@ void CQnetGateway::APRSBeaconThread()
 				if (Rptr.mod[i].defined and aprs->aprs_sock.GetFD() >= 0)
 				{
 					auto line = Rptr.mod[i].position_ss.str();
+					printf("APRS Beacon: %s\n", line.c_str());
 					if (aprs->aprs_sock.WriteLine(line)) {
 						aprs->aprs_sock.Close();
 					} else {
@@ -2220,7 +2221,7 @@ void CQnetGateway::APRSBeaconThread()
 							aprs->aprs_sock.Close();
 						} else {
 							if (aprs->m_debug) {
-								printf("APRS packet ackn: %s\n", line.c_str());
+								printf("APRS Beacon ackn: %s\n", line.c_str());
 							}
 							time(&last_beacon_time);
 							kaCount = 0;
