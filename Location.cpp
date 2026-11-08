@@ -119,9 +119,9 @@ const char *CLocation::APRS(std::string &call, const char *station)
 	double lon = modf(fabs(longitude), &lonmin);
 	lonmin *= 60.0;
 	if (last == ' ')
-		snprintf(aprs, 128, "%s>APDPRS,DSTAR*,qAR,%s:!%02d%04.2f%c/%03d%04.2f%c/A\r\n", call.c_str(), station, int(lat), latmin, (latitude>=0) ? 'N' : 'S', int(lon), lonmin, (longitude>=0) ? 'E' : 'W');
+		snprintf(aprs, 128, "%s>APDPRS,DSTAR*,qAR,%s:!%02d%04.2f%c/%03d%04.2f%c/A", call.c_str(), station, int(lat), latmin, (latitude>=0) ? 'N' : 'S', int(lon), lonmin, (longitude>=0) ? 'E' : 'W');
 	else
-		snprintf(aprs, 128, "%s-%c>APDPRS,DSTAR*,qAR,%s:!%02d%04.2f%c/%03d%04.2f%c/A\r\n", call.c_str(), last, station, int(lat), latmin, (latitude>=0) ? 'N' : 'S', int(lon), lonmin, (longitude>=0) ? 'E' : 'W');
+		snprintf(aprs, 128, "%s-%c>APDPRS,DSTAR*,qAR,%s:!%02d%04.2f%c/%03d%04.2f%c/A", call.c_str(), last, station, int(lat), latmin, (latitude>=0) ? 'N' : 'S', int(lon), lonmin, (longitude>=0) ? 'E' : 'W');
 
 	return aprs;
 }

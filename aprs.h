@@ -26,9 +26,9 @@
 #include "TCPReaderWriterClient.h"
 #include "IRCutils.h"
 
-enum aprs_level { al_none, al_$1, al_$2, al_c1, al_r1, al_c2, al_csum1, al_csum2, al_csum3, al_csum4, al_data, al_end };
+enum class EAprsLevel { none, one, two, c1, r1, c2, csum1, csum2, csum3, csum4, data, end };
 
-enum slow_level { sl_first, sl_second };
+enum class ESlowLevel { first, second };
 
 using SPORTIP = struct portip_tag
 {
@@ -76,11 +76,11 @@ private:
 	// data
 	struct
 	{
-		aprs_level al;
+		EAprsLevel al;
 		uint8_t data[300];
 		unsigned int len;
 		uint8_t buf[6];
-		slow_level sl;
+		ESlowLevel sl;
 		bool is_sent;
 	} aprs_pack[3];
 	// lock down a stream per band

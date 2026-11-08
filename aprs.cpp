@@ -122,30 +122,13 @@ void CAPRS::ProcessText(uint16_t streamID, uint8_t seq, uint8_t *buf)
 	p = strchr(aud, '\r');
 	*p = '\0';
 
-	sprintf(aprs_buf, "%s,qAR,%s:%s\r\n", hdr, m_rptr->mod[rptr_idx].call.c_str(), aud);
-	// printf("GPS-A=%s", aprs_buf);
-	int rc = aprs_sock.Write((uint8_t *)aprs_buf, strlen(aprs_buf));
-	if (rc == -1)
-	{
-		if ((errno == EPIPE) ||
-			(errno == ECONNRESET) ||
-			(errno == ETIMEDOUT) ||
-			(errno == ECONNABORTED) ||
-			(errno == ESHUTDOWN) ||
-			(errno == EHOSTUNREACH) ||
-			(errno == ENETRESET) ||
-			(errno == ENETDOWN) ||
-			(errno == ENETUNREACH) ||
-			(errno == EHOSTDOWN) ||
-			(errno == ENOTCONN))
-		{
-			printf("CAPRS::ProcessText(): APRS_HOST closed connection, error=%d\n",errno);
-			aprs_sock.Close();
-		}
-		else   /* if it is WOULDBLOCK, we will not go into a loop here */
-			printf("CAPRS::ProcessText(): send error=%d\n", errno);
+	sprintf(aprs_buf, "%s,qAR,%s:%s", hdr, m_rptr->mod[rptr_idx].call.c_str(), aud);
+	std::string gpsA(aprs_buf);
+	if (m_debug)
+		printf("GPS-A: %s\n", aprs_buf);
+	if (aprs_sock.WriteLine(gpsA)) {
+		fprintf(stderr, "ERROR: could not write %s\n", aprs_buf);
 	}
-
 	time(&aprs_streamID[rptr_idx].last_time);
 
 	return;
@@ -156,11 +139,11 @@ void CAPRS::Init()
 	/* Initialize the statistics on the APRS packets */
 	for (int16_t rptr_idx = 0; rptr_idx < 3; rptr_idx++)
 	{
-		aprs_pack[rptr_idx].al = al_none;
-		aprs_pack[rptr_idx].data[0] = '\0';
+		aprs_pack[rptr_idx].al = EAprsLevel::none;
+		memset(aprs_pack[rptr_idx].data, 0, sizeof(aprs_pack[rptr_idx].data));
 		aprs_pack[rptr_idx].len = 0;
-		aprs_pack[rptr_idx].buf[0] = '\0';
-		aprs_pack[rptr_idx].sl = sl_first;
+		memset(aprs_pack[rptr_idx].buf, 0, sizeof(aprs_pack[rptr_idx].buf));
+		aprs_pack[rptr_idx].sl = ESlowLevel::first;
 		aprs_pack[rptr_idx].is_sent = false;
 	}
 
@@ -187,18 +170,18 @@ bool CAPRS::WriteData(int16_t rptr_idx, uint8_t *data)
 
 	switch (aprs_pack[rptr_idx].sl)
 	{
-	case sl_first:
+	case ESlowLevel::first:
 		aprs_pack[rptr_idx].buf[0] = data[0] ^ 0x70;
 		aprs_pack[rptr_idx].buf[1] = data[1] ^ 0x4f;
 		aprs_pack[rptr_idx].buf[2] = data[2] ^ 0x93;
-		aprs_pack[rptr_idx].sl = sl_second;
+		aprs_pack[rptr_idx].sl = ESlowLevel::second;
 		return false;
 
-	case sl_second:
+	case ESlowLevel::second:
 		aprs_pack[rptr_idx].buf[3] = data[0] ^ 0x70;
 		aprs_pack[rptr_idx].buf[4] = data[1] ^ 0x4f;
 		aprs_pack[rptr_idx].buf[5] = data[2] ^ 0x93;
-		aprs_pack[rptr_idx].sl = sl_first;
+		aprs_pack[rptr_idx].sl = ESlowLevel::first;
 		break;
 	}
 
@@ -217,7 +200,7 @@ void CAPRS::SyncIt(int16_t rptr_idx)
 		return;
 	}
 
-	aprs_pack[rptr_idx].sl = sl_first;
+	aprs_pack[rptr_idx].sl = ESlowLevel::first;
 	return;
 }
 
@@ -229,9 +212,9 @@ void CAPRS::Reset(int16_t rptr_idx)
 		return;
 	}
 
-	aprs_pack[rptr_idx].al = al_none;
+	aprs_pack[rptr_idx].al = EAprsLevel::none;
 	aprs_pack[rptr_idx].len = 0;
-	aprs_pack[rptr_idx].sl = sl_first;
+	aprs_pack[rptr_idx].sl = ESlowLevel::first;
 	aprs_pack[rptr_idx].is_sent = false;
 
 	return;
@@ -252,7 +235,7 @@ unsigned int CAPRS::GetData(int16_t rptr_idx, uint8_t *data, unsigned int len)
 
 	memcpy(data, aprs_pack[rptr_idx].data  + 10, l);
 
-	aprs_pack[rptr_idx].al = al_none;
+	aprs_pack[rptr_idx].al = EAprsLevel::none;
 	aprs_pack[rptr_idx].len = 0;
 	aprs_pack[rptr_idx].is_sent = true;
 
@@ -310,101 +293,117 @@ bool CAPRS::AddData(int16_t rptr_idx, uint8_t *data)
 	{
 		uint8_t c = data[i];
 
-		if ((aprs_pack[rptr_idx].al == al_none) && (c == '$'))
+		switch (aprs_pack[rptr_idx].al)
 		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_$1;
-		}
-		else if ((aprs_pack[rptr_idx].al == al_$1) && (c == '$'))
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_$2;
-		}
-		else if ((aprs_pack[rptr_idx].al == al_$2) && (c == 'C'))
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_c1;
-		}
-		else if ((aprs_pack[rptr_idx].al == al_c1) && (c == 'R'))
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_r1;
-		}
-		else if ((aprs_pack[rptr_idx].al  == al_r1) && (c == 'C'))
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_c2;
-		}
-		else if (aprs_pack[rptr_idx].al == al_c2)
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_csum1;
-		}
-		else if (aprs_pack[rptr_idx].al == al_csum1)
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_csum2;
-		}
-		else if (aprs_pack[rptr_idx].al == al_csum2)
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_csum3;
-		}
-		else if (aprs_pack[rptr_idx].al == al_csum3)
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_csum4;
-		}
-		else if ((aprs_pack[rptr_idx].al == al_csum4) && (c == ','))
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-			aprs_pack[rptr_idx].al = al_data;
-		}
-		else if ((aprs_pack[rptr_idx].al == al_data) && (c != '\r'))
-		{
-			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
-			aprs_pack[rptr_idx].len++;
-
-			if (aprs_pack[rptr_idx].len >= 300)
+		case EAprsLevel::none:
+			if (c == '$')
 			{
-				printf("ERROR in aprs_add_data: Expected END of APRS data\n");
-				aprs_pack[rptr_idx].len = 0;
-				aprs_pack[rptr_idx].al  = al_none;
+				aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+				aprs_pack[rptr_idx].len++;
+				aprs_pack[rptr_idx].al = EAprsLevel::one;
 			}
-		}
-		else if ((aprs_pack[rptr_idx].al == al_data) && (c == '\r'))
-		{
+			break;
+		case EAprsLevel::one:
+			if (c == '$')
+			{
+				aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+				aprs_pack[rptr_idx].len++;
+				aprs_pack[rptr_idx].al = EAprsLevel::two;
+			}
+			break;
+		case EAprsLevel::two:
+			if (c == 'C')
+			{
+				aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+				aprs_pack[rptr_idx].len++;
+				aprs_pack[rptr_idx].al = EAprsLevel::c1;
+			}
+			break;
+		case EAprsLevel::c1:
+			if (c == 'R')
+			{
+				aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+				aprs_pack[rptr_idx].len++;
+				aprs_pack[rptr_idx].al = EAprsLevel::r1;
+			}
+			break;
+		case EAprsLevel::r1:
+			if (c == 'C')
+			{
+				aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+				aprs_pack[rptr_idx].len++;
+				aprs_pack[rptr_idx].al = EAprsLevel::c2;
+			}
+			break;
+		case EAprsLevel::c2:
 			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
 			aprs_pack[rptr_idx].len++;
-
-
-			bool ok = CheckData(rptr_idx);
-			if (ok)
+			aprs_pack[rptr_idx].al = EAprsLevel::csum1;
+			break;
+		case EAprsLevel::csum1:
+			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+			aprs_pack[rptr_idx].len++;
+			aprs_pack[rptr_idx].al = EAprsLevel::csum2;
+			break;
+		case EAprsLevel::csum2:
+			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+			aprs_pack[rptr_idx].len++;
+			aprs_pack[rptr_idx].al = EAprsLevel::csum3;
+			break;
+		case EAprsLevel::csum3:
+			aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+			aprs_pack[rptr_idx].len++;
+			aprs_pack[rptr_idx].al = EAprsLevel::csum4;
+			break;
+		case EAprsLevel::csum4:
+			if (c == ',')
 			{
-				aprs_pack[rptr_idx].al = al_end;
-				return true;
+				aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+				aprs_pack[rptr_idx].len++;
+				aprs_pack[rptr_idx].al = EAprsLevel::data;
+			}
+			break;
+		case EAprsLevel::data:
+			if (c != '\r')
+			{
+				aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+				aprs_pack[rptr_idx].len++;
+
+				if (aprs_pack[rptr_idx].len >= 300)
+				{
+					printf("ERROR in aprs_add_data: Expected END of APRS data\n");
+					aprs_pack[rptr_idx].len = 0;
+					aprs_pack[rptr_idx].al  = EAprsLevel::none;
+				}
+			}
+			break;
+		case EAprsLevel::end:
+			if (c == '\r')
+			{
+				aprs_pack[rptr_idx].data[aprs_pack[rptr_idx].len] = c;
+				aprs_pack[rptr_idx].len++;
+
+
+				bool ok = CheckData(rptr_idx);
+				if (ok)
+				{
+					aprs_pack[rptr_idx].al = EAprsLevel::end;
+					return true;
+				}
+				else
+				{
+					printf("BAD checksum in APRS data\n");
+					aprs_pack[rptr_idx].al = EAprsLevel::none;
+					aprs_pack[rptr_idx].len = 0;
+					return true;
+				}
 			}
 			else
 			{
-				printf("BAD checksum in APRS data\n");
-				aprs_pack[rptr_idx].al  = al_none;
+				aprs_pack[rptr_idx].al = EAprsLevel::none;
 				aprs_pack[rptr_idx].len = 0;
 			}
-		}
-		else
-		{
-			aprs_pack[rptr_idx].al  = al_none;
-			aprs_pack[rptr_idx].len = 0;
+			break;
 		}
 	}
 	return false;

@@ -993,8 +993,10 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 							if (APRS_ENABLE && (! band_txt[i].is_gps_sent) && (time(NULL) - band_txt[i].gps_last_time > 30))
 							{
 								std::string call(band_txt[i].mycall);
-								const char *s = gps.APRS(call, Rptr.mod[i].call.c_str());
-								if (! aprs->aprs_sock.Write((uint8_t *)s, strlen(s)))
+								std::string s(gps.APRS(call, Rptr.mod[i].call.c_str()));
+								if (aprs->m_debug)
+									printf("Outgoing SD: %s\n", s.c_str());
+								if (aprs->aprs_sock.WriteLine(s))
 								{
 									time(&band_txt[i].gps_last_time);
 									band_txt[i].is_gps_sent = true;
@@ -1072,9 +1074,12 @@ void CQnetGateway::ProcessOutGoingSD(const SDSVT &dsvt, const int i)
 						if (APRS_ENABLE && (! band_txt[i].is_gps_sent) && (time(NULL) - band_txt[i].gps_last_time > 30))
 						{
 							std::string call(band_txt[i].mycall);
-							const char *s = gps.APRS(call, Rptr.mod[i].call.c_str());
-							if (! aprs->aprs_sock.Write((uint8_t *)s, strlen(s)))
-							{
+							std::string s(gps.APRS(call, Rptr.mod[i].call.c_str()));
+							if (aprs->m_debug)
+								printf("Outgoing position: %s\n", s.c_str());
+							if (aprs->aprs_sock.WriteLine(s)) {
+								fprintf(stderr, "ERROR: could not write Outgoing position\n");
+							} else {
 								time(&band_txt[i].gps_last_time);
 								band_txt[i].is_gps_sent = true;
 							}
